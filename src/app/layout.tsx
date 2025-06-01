@@ -23,7 +23,7 @@ export default function RootLayout({
   return (
     <html lang="ja" className={lexend.variable}>
       <body>
-        <header style={{ display: "flex", backgroundColor: "#FFFFFF", color: "#141414", paddingTop: "12px", paddingBottom: "12px" }}>
+        <header className="fixed shadow z-50 w-full" style={{ display: "flex", backgroundColor: "#FFFFFF", color: "#141414", paddingTop: "12px", paddingBottom: "12px" }}>
           <div style={{ paddingLeft: "40px" }}>
             <Image
               src="/icon.svg"
@@ -38,7 +38,7 @@ export default function RootLayout({
           </h1>
         </header>
 
-        <main style={{ padding: "1rem" }}>
+        <main className="pt-[65px]">
           {children}
         </main>
 
