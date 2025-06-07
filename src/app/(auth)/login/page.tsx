@@ -20,7 +20,7 @@ export default function LoginPage() {
             if (signUpError) {
                 throw signUpError;
             }
-            alert('ログインに成功しました');
+            router.push('/dashboard');
         } catch (error) {
             alert('エラーが発生しました');
         }

@@ -51,7 +51,7 @@ export default function SignUpPage() {
 
     return (
         <main className="flex flex-col items-center justify-center min-h-screen">
-            <div className="w-[960px] h-[906px]">
+            <div className="w-[960px] h-[906px] pt-[20px]">
                 <div className="w-[960px] h-[242px]">
                     <Image
                         src="/signup_background.svg"
