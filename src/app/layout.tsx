@@ -1,8 +1,11 @@
 // app/layout.tsx
+'use client';
+
 import Image from "next/image";
 import React, { ReactNode } from "react";
 import { Lexend } from 'next/font/google';
 import './globals.css';
+import { usePathname } from 'next/navigation';
 
 const lexend = Lexend({
   subsets: ['latin'],
@@ -10,16 +13,14 @@ const lexend = Lexend({
   variable: '--font-lexend', // カスタムプロパティで使う
 });
 
-export const metadata = {
-  title: 'Lexend App',
-  description: 'Using Lexend with Tailwind',
-};
-
 export default function RootLayout({
   children
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const pathname = usePathname();
+  const isUserConsole = pathname.startsWith("/(user_console)");
+
   return (
     <html lang="ja" className={lexend.variable}>
       <body>
@@ -38,7 +39,7 @@ export default function RootLayout({
           </h1>
         </header>
 
-        <main className="pt-[65px]">
+        <main className="pt-[48px]">
           {children}
         </main>
 
