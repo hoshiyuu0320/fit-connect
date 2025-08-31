@@ -1,0 +1,16 @@
+@startuml
+actor User
+participant "MessagePage" as MP
+participant "MessageService" as MS
+participant "Supabase" as SB
+participant "Database" as DB
+
+User -> MP: メッセージ入力・送信ボタン押下
+MP -> MS: sendMessage({ ... })
+MS -> SB: messagesテーブルにinsert
+SB -> DB: 書き込み処理
+DB --> SB: 書き込み結果
+SB --> MS: 処理結果
+MS --> MP: 成功 or 失敗
+MP --> User: UI更新（メッセージ表示）
+@enduml

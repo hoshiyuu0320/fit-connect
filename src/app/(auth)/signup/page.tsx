@@ -5,6 +5,8 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button";
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
+import { createProfile } from '@/lib/supabase/createProfile'
+
 
 export default function SignUpPage() {
     const [fullName, setFullName] = useState("");
@@ -16,14 +18,20 @@ export default function SignUpPage() {
     const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         try {
-            const { error: signUpError } = await supabase.auth.signUp({
+            const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
                 email: email,
                 password: password,
             })
+
             if (signUpError) {
                 throw signUpError;
             }
+
             alert('登録完了メールを確認してください');
+            const userId = signUpData.user?.id;
+            if (!userId) return;
+
+            await createProfile(userId, fullName)
         } catch (error) {
             alert('エラーが発生しました');
         }

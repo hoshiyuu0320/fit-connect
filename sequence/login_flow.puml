@@ -1,0 +1,13 @@
+@startuml
+actor User
+participant "LoginController" as LC
+participant "AuthService" as AS
+participant "Database" as DB
+
+User -> LC: ログインフォームの送信
+LC -> AS: ログイン認証を実行
+AS -> DB: ユーザー情報の照会
+DB --> AS: ユーザー情報
+AS --> LC: 認証結果
+LC --> User: ログイン結果の表示
+@enduml
