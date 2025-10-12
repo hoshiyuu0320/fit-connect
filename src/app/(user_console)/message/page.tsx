@@ -4,7 +4,6 @@
 import { useEffect, useState } from "react";
 import { useUserStore } from '@/store/userStore';
 import { supabase } from '@/lib/supabase';
-import { sendMessage } from '@/lib/supabase/sendMessage';
 import { getClients } from '@/lib/supabase/getClients';
 import { getMessages } from '@/lib/supabase/getMessages';
 import type { RealtimeChannel } from '@supabase/supabase-js';
@@ -29,29 +28,40 @@ export default function MessagePage() {
     const [clientList, setClientList] = useState<any[]>([]);
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
+    const [loading, setLoading] = useState(false);
 
     const handleSend = async () => {
         if (!input.trim() || !userId || !selectedClient?.clientId) return;
-
+        setLoading(true);
         try {
-            await sendMessage({
-                senderId: userId,
-                receiverId: selectedClient.clientId,
-                message: input,
-                senderType: 'trainer',
-                receiverType: 'client',
+            const res = await fetch('/api/messages/send', {
+                method: 'POST',
+                body: JSON.stringify({
+                    trainerId: userId,
+                    clientId: selectedClient.clientId,
+                    message: input,
+                }),
             });
+            const data = await res.json();
+            if (res.ok) {
+                setMessages([...messages, {
+                    sender: 'You',
+                    content: input,
+                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    senderType: 'trainer',
+                    receiverType: 'client',
+                }]);
+            } else {
+                alert('送信に失敗しました' + data.error);
+            }
 
-            setMessages([...messages, {
-                sender: 'You',
-                content: input,
-                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                senderType: 'trainer',
-                receiverType: 'client',
-            }]);
+            setLoading(false);
             setInput('');
         } catch (err) {
             console.error('送信エラー:', err);
+            alert('送信に失敗しました');
+        } finally {
+            setLoading(false);
         }
     }
 
@@ -195,7 +205,7 @@ export default function MessagePage() {
                                     {msg.sender}{' '}
                                     <span className='text-gray-500 text-xs ml-2'>{msg.timestamp}</span>
                                 </div>
-                                <div className={`p-3 rounded border mt-1 max-w-md ${msg.senderType === 'client' ? 'bg-white' : 'bg-blue-100'}`}>
+                                <div className={`p-3 rounded border mt-1 max-w-md ${msg.senderType === 'trainer' ? 'bg-blue-100' : 'bg-white'}`}>
                                     {msg.content}
                                 </div>
                             </div>
@@ -214,10 +224,10 @@ export default function MessagePage() {
                             className="flex-1 border rounded px-3 py-2 outline-none focus:ring-2 focus:ring-blue-300"
                         />
                         <button
-                            onClick={handleSend}
-                            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                            onClick={handleSend} disabled={loading}
+                            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            Send
+                            {loading ? '送信中...' : '送信'}
                         </button>
                     </div>
                 </footer>
