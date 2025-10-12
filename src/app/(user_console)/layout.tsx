@@ -81,7 +81,8 @@ export default function Sidebar({ children }: { children: React.ReactNode }) {
 
     return (
         <main className="!pt-0">
-            <div className="flex min-h-screen">
+            {/*fixed  top-[48px] left-0 right-0 bottom-0は子要素をスクロールさせないため*/}
+            <div className="fixed flex h-screen top-[48px] left-0 right-0 bottom-0">
                 <aside className="text-black p-2 h-[calc(100vh-48px)] bg-[#FFFFFF]
                                   transition-all duration-300
                                   w-16 hover:w-64
@@ -103,7 +104,7 @@ export default function Sidebar({ children }: { children: React.ReactNode }) {
                         })}
                     </div>
                 </aside>
-                <section className="flex-1 p-6 bg-gray-100 ml-16">
+                <section className="flex-1 bg-gray-100 ml-16">
                     {children}
                 </section>
             </div>
