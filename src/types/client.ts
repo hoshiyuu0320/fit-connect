@@ -1,0 +1,165 @@
+// ================================================
+// FIT-CONNECT 顧客管理機能 TypeScript型定義
+// ================================================
+
+// クライアント基本情報
+export type Client = {
+  client_id: string
+  trainer_id: string
+  name: string
+  gender: 'male' | 'female' | 'other'
+  age: number
+  occupation: string | null
+  height: number
+  target_weight: number
+  purpose: 'diet' | 'contest' | 'body_make' | 'health_improvement' | 'mental_improvement' | 'performance_improvement'
+  goal_description: string | null
+  profile_image_url: string | null
+  line_user_id: string | null
+  created_at: string
+}
+
+// クライアント詳細情報（体重情報を含む）
+export type ClientDetail = Client & {
+  current_weight?: number  // 最新の体重記録から算出
+  initial_weight?: number  // 初回の体重記録
+}
+
+// 体重記録
+export type WeightRecord = {
+  id: string
+  client_id: string
+  weight: number
+  recorded_at: string
+}
+
+// 食事記録
+export type MealRecord = {
+  id: string
+  client_id: string
+  meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack'
+  description: string | null
+  calories: number | null
+  images: string[] | null
+  recorded_at: string
+}
+
+// 運動記録
+export type ExerciseRecord = {
+  id: string
+  client_id: string
+  exercise_type: 'walking' | 'running' | 'strength_training' | 'cycling' | 'swimming' | 'yoga' | 'pilates' | 'other'
+  duration: number | null
+  distance: number | null
+  calories: number | null
+  memo: string | null
+  recorded_at: string
+}
+
+// チケット
+export type Ticket = {
+  id: string
+  client_id: string
+  ticket_name: string
+  ticket_type: string
+  total_sessions: number
+  remaining_sessions: number
+  valid_from: string
+  valid_until: string
+  created_at: string
+}
+
+// ================================================
+// 定数定義
+// ================================================
+
+// 性別の選択肢
+export const GENDER_OPTIONS = {
+  male: '男性',
+  female: '女性',
+  other: 'その他',
+} as const
+
+// 目的の選択肢
+export const PURPOSE_OPTIONS = {
+  diet: 'ダイエット',
+  contest: 'コンテスト',
+  body_make: 'ボディメイク',
+  health_improvement: '健康維持・生活習慣の改善',
+  mental_improvement: 'メンタル・自己肯定感向上',
+  performance_improvement: 'パフォーマンス向上（競技・仕事）',
+} as const
+
+// 食事区分の選択肢
+export const MEAL_TYPE_OPTIONS = {
+  breakfast: '朝食',
+  lunch: '昼食',
+  dinner: '夕食',
+  snack: '間食',
+} as const
+
+// 運動種目の選択肢
+export const EXERCISE_TYPE_OPTIONS = {
+  walking: 'ウォーキング',
+  running: 'ランニング',
+  strength_training: '筋力トレーニング',
+  cycling: 'サイクリング',
+  swimming: 'スイミング',
+  yoga: 'ヨガ',
+  pilates: 'ピラティス',
+  other: 'その他',
+} as const
+
+// 年齢層の選択肢（フィルタリング用）
+export const AGE_RANGE_OPTIONS = [
+  { label: 'すべて', min: 0, max: 999 },
+  { label: '10代', min: 10, max: 19 },
+  { label: '20代', min: 20, max: 29 },
+  { label: '30代', min: 30, max: 39 },
+  { label: '40代', min: 40, max: 49 },
+  { label: '50代', min: 50, max: 59 },
+  { label: '60代以上', min: 60, max: 999 },
+] as const
+
+// ================================================
+// パラメータ型定義
+// ================================================
+
+// 顧客検索パラメータ
+export type SearchClientsParams = {
+  trainerId: string
+  searchQuery?: string      // 名前検索
+  gender?: 'male' | 'female' | 'other'
+  ageRange?: {
+    min: number
+    max: number
+  }
+  purpose?: Client['purpose']
+}
+
+// 食事記録取得パラメータ
+export type GetMealRecordsParams = {
+  clientId: string
+  mealType?: MealRecord['meal_type']  // フィルター（任意）
+  limit?: number      // 取得件数（デフォルト: 20）
+  offset?: number     // オフセット（デフォルト: 0）
+}
+
+// 食事記録取得結果
+export type GetMealRecordsResult = {
+  data: MealRecord[]
+  count: number  // 総件数
+}
+
+// 運動記録取得パラメータ
+export type GetExerciseRecordsParams = {
+  clientId: string
+  limit?: number      // 取得件数（デフォルト: 20）
+  offset?: number     // オフセット（デフォルト: 0）
+}
+
+// 運動記録取得結果
+export type GetExerciseRecordsResult = {
+  data: ExerciseRecord[]
+  count: number
+}
