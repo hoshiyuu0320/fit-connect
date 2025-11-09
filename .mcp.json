@@ -1,0 +1,16 @@
+{
+    "mcpServers": {
+        "supabase": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "@supabase/mcp-server-supabase@latest",
+                "--access-token",
+                "sbp_f67cde97d5578f7b947626ee1b110eac50eb1fd5"
+            ],
+            "env": {
+                "PATH": "/Users/hoshidayuuya/.nodebrew/current/bin:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+            }
+        }
+    }
+}

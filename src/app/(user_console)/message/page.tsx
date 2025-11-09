@@ -1,12 +1,15 @@
 // app/chat/page.tsx
 'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { useSearchParams } from 'next/navigation';
+import { getClientDetail } from '@/lib/supabase/getClientDetail'
 import { useUserStore } from '@/store/userStore';
 import { supabase } from '@/lib/supabase';
 import { getClients } from '@/lib/supabase/getClients';
 import { getMessages } from '@/lib/supabase/getMessages';
 import type { RealtimeChannel } from '@supabase/supabase-js';
+import type { Client } from '@/types/client'
 
 export default function MessagePage() {
     type Message = {
@@ -17,11 +20,8 @@ export default function MessagePage() {
         receiverType: 'client' | 'trainer',
     }
 
-    type Client = {
-        clientId: string;
-        clientName: string;
-    }
-
+    const searchParams = useSearchParams()
+    const client_id = searchParams.get("clientId")
     const { userName } = useUserStore()
     const [userId, setUserId] = useState<string | null>(null);
     const [input, setInput] = useState('');
@@ -29,16 +29,27 @@ export default function MessagePage() {
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
     const [loading, setLoading] = useState(false);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    // 最新のメッセージまでスクロールする関数
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    // メッセージが更新されたら自動スクロール
+    useEffect(() => {
+        scrollToBottom();
+    }, [messages]);
 
     const handleSend = async () => {
-        if (!input.trim() || !userId || !selectedClient?.clientId) return;
+        if (!input.trim() || !userId || !selectedClient?.client_id) return;
         setLoading(true);
         try {
             const res = await fetch('/api/messages/send', {
                 method: 'POST',
                 body: JSON.stringify({
                     trainerId: userId,
-                    clientId: selectedClient.clientId,
+                    client_id: selectedClient.client_id,
                     message: input,
                 }),
             });
@@ -65,7 +76,7 @@ export default function MessagePage() {
         }
     }
 
-    // 顧客情報の取得
+    // 顧客一覧の取得
     useEffect(() => {
         const fetchClients = async () => {
             const {
@@ -80,6 +91,22 @@ export default function MessagePage() {
             }
         }
         fetchClients();
+    }, []);
+
+    // 顧客情報の取得
+    useEffect(() => {
+        if (!client_id) return;
+        const fetchClientInfo = async () => {
+            try {
+                const clientInfo = await getClientDetail(client_id)
+                setSelectedClient(clientInfo as Client)
+            } catch (error) {
+                console.error('顧客情報取得エラー:', error);
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetchClientInfo();
     }, []);
 
     // メッセージ取得処理
@@ -100,12 +127,12 @@ export default function MessagePage() {
             // ✅ 初期取得処理
             const rawMessages = await getMessages({
                 senderId: user.id,
-                receiverId: selectedClient.clientId,
+                receiverId: selectedClient.client_id,
             });
             console.log("rawMessages", rawMessages);
 
             const formattedMessages: Message[] = rawMessages.map((msg: any) => ({
-                sender: msg.sender_type === 'client' ? selectedClient.clientName : 'You',
+                sender: msg.sender_type === 'client' ? selectedClient.name : 'You',
                 content: msg.message,
                 timestamp: new Date(msg.timestamp).toLocaleTimeString([], {
                     hour: '2-digit',
@@ -117,6 +144,12 @@ export default function MessagePage() {
             console.log("formattedMessages", formattedMessages);
 
             setMessages(formattedMessages);
+
+            // 既に存在する同名チャンネルを削除
+            const existingChannel = supabase
+                .getChannels()
+                .find((c) => c.topic === "realtime:message-room");
+            if (existingChannel) supabase.removeChannel(existingChannel)
 
             // ✅ Realtime購読
             channel = supabase
@@ -133,10 +166,10 @@ export default function MessagePage() {
                         const msg = payload.new;
 
                         // 送信者と受信者が一致する場合にのみ反映
-                        if (msg.receiver_id !== user.id || msg.sender_id !== selectedClient.clientId) return;
+                        if (msg.receiver_id !== user.id || msg.sender_id !== selectedClient.client_id) return;
 
                         const newMsg: Message = {
-                            sender: selectedClient.clientName,
+                            sender: selectedClient.name,
                             content: msg.message,
                             timestamp: new Date(msg.timestamp).toLocaleTimeString([], {
                                 hour: '2-digit',
@@ -166,14 +199,11 @@ export default function MessagePage() {
                     {clientList.map((client) => (
                         <li
                             key={client.client_id}
-                            className={`cursor-pointer p-2 rounded ${selectedClient?.clientId === client.client_id ? 'bg-blue-100' : ''
+                            className={`cursor-pointer p-2 rounded ${selectedClient?.client_id === client.client_id ? 'bg-blue-100' : ''
                                 }`}
                             onClick={() => {
                                 setSelectedClient(
-                                    {
-                                        clientId: client.client_id,
-                                        clientName: client.name
-                                    }
+                                    client as Client
                                 )
                             }
                             }
@@ -188,7 +218,7 @@ export default function MessagePage() {
             <div className="flex flex-col flex-1 overflow-hidden">
                 {/* Header */}
                 <header className="flex justify-between items-center px-4 py-3 border-b bg-white">
-                    <h1 className="text-lg font-semibold">{selectedClient?.clientName || ''}</h1>
+                    <h1 className="text-lg font-semibold">{selectedClient?.name || ''}</h1>
                     <div className="flex items-center space-x-3">
                         <span className="text-sm">{userName}</span>
                         <div className="w-8 h-8 bg-gray-300 rounded-full" />
@@ -211,6 +241,8 @@ export default function MessagePage() {
                             </div>
                         </div>
                     ))}
+                    {/* スクロール位置の参照用要素 */}
+                    <div ref={messagesEndRef} />
                 </main>
 
                 {/* Input */}
