@@ -1,7 +1,7 @@
 // app/chat/page.tsx
 'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from 'next/navigation';
 import { getClientDetail } from '@/lib/supabase/getClientDetail'
 import { useUserStore } from '@/store/userStore';
@@ -29,6 +29,17 @@ export default function MessagePage() {
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
     const [loading, setLoading] = useState(false);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    // 最新のメッセージまでスクロールする関数
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    // メッセージが更新されたら自動スクロール
+    useEffect(() => {
+        scrollToBottom();
+    }, [messages]);
 
     const handleSend = async () => {
         if (!input.trim() || !userId || !selectedClient?.client_id) return;
@@ -230,6 +241,8 @@ export default function MessagePage() {
                             </div>
                         </div>
                     ))}
+                    {/* スクロール位置の参照用要素 */}
+                    <div ref={messagesEndRef} />
                 </main>
 
                 {/* Input */}
