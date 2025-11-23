@@ -20,16 +20,24 @@ npm run lint
 
 ## Architecture Overview
 
-FIT-CONNECT is a Next.js 15 fitness trainer management application with Supabase backend and LINE integration for real-time messaging between trainers and clients.
+FIT-CONNECT is a fitness trainer management platform consisting of a Next.js 15 web application for trainers and a planned KMM (Kotlin Multiplatform Mobile) native app for clients, both backed by Supabase.
 
 ### Core Technology Stack
+
+**Trainer Web App (Current)**
 - **Framework:** Next.js 15 (App Router)
 - **Database:** Supabase (PostgreSQL with Row Level Security)
-- **Authentication:** Supabase Auth + LINE LIFF
-- **Messaging:** LINE Bot SDK + Supabase Realtime
+- **Authentication:** Supabase Auth
+- **Messaging:** Supabase Realtime
 - **State Management:** Zustand with localStorage persistence
 - **UI:** Tailwind CSS + Radix UI components
 - **Forms:** React Hook Form + Zod validation
+
+**Client Mobile App (Planned - See ROADMAP.md)**
+- **Shared Logic:** Kotlin Multiplatform Mobile (KMM)
+- **iOS UI:** SwiftUI
+- **Android UI:** Jetpack Compose
+- **Backend:** Supabase (shared with web app)
 
 ### Project Structure
 
@@ -38,20 +46,27 @@ src/
 ├── app/
 │   ├── (auth)/              # Auth routes (login, signup)
 │   ├── (user_console)/      # Protected dashboard routes
+│   │   ├── clients/         # Client management and detail pages
+│   │   ├── dashboard/       # Trainer dashboard
 │   │   ├── message/         # Real-time messaging UI
+│   │   ├── schedule/        # Session scheduling (placeholder)
+│   │   ├── report/          # Analytics and reports (placeholder)
+│   │   ├── workoutplan/     # Training plan management (placeholder)
+│   │   ├── settings/        # Account settings (placeholder)
 │   │   └── layout.tsx       # Sidebar layout
-│   ├── api/
-│   │   ├── messages/send/   # Message API with LINE push
-│   │   └── line/webhook/    # LINE webhook handler
-│   └── liff/                # LINE LIFF registration app
+│   └── api/
+│       └── messages/send/   # Message sending API endpoint
 ├── lib/
 │   ├── supabase.ts          # Browser Supabase client
 │   ├── supabaseAdmin.ts     # Server-side admin client
-│   └── supabase/            # Database query functions
+│   └── supabase/            # Database query functions (one file per operation)
 ├── store/
 │   └── userStore.ts         # Zustand state management
+├── types/
+│   └── client.ts            # TypeScript type definitions for client domain
 └── components/
-    └── ui/                  # Reusable UI components
+    ├── clients/             # Client-specific components
+    └── ui/                  # Reusable UI components (Radix-based)
 ```
 
 ### Database Schema
@@ -64,7 +79,15 @@ src/
 - `client_id` (UUID, PK)
 - `trainer_id` (UUID, FK) → profiles.id
 - `name` (TEXT)
-- `line_user_id` (TEXT, UNIQUE) - For LINE messaging
+- `gender` (TEXT) - 'male', 'female', 'other'
+- `age` (INT)
+- `occupation` (TEXT)
+- `height` (NUMERIC)
+- `target_weight` (NUMERIC)
+- `purpose` (TEXT) - 'diet', 'contest', 'body_make', 'health_improvement', 'mental_improvement', 'performance_improvement'
+- `goal_description` (TEXT)
+- `profile_image_url` (TEXT)
+- `line_user_id` (TEXT, UNIQUE) - Legacy LINE integration (deprecated)
 - `created_at` (TIMESTAMPTZ)
 
 **messages** (bidirectional messaging)
@@ -76,7 +99,43 @@ src/
 - `message` (TEXT)
 - `timestamp` (TIMESTAMPTZ)
 
-All tables use Row Level Security (RLS) for access control.
+**weight_records** (client weight tracking)
+- `id` (UUID, PK)
+- `client_id` (UUID, FK) → clients.client_id
+- `weight` (NUMERIC)
+- `recorded_at` (TIMESTAMPTZ)
+
+**meal_records** (client meal logging)
+- `id` (UUID, PK)
+- `client_id` (UUID, FK) → clients.client_id
+- `meal_type` (TEXT) - 'breakfast', 'lunch', 'dinner', 'snack'
+- `description` (TEXT)
+- `calories` (INT)
+- `images` (TEXT[]) - Array of image URLs
+- `recorded_at` (TIMESTAMPTZ)
+
+**exercise_records** (client workout logging)
+- `id` (UUID, PK)
+- `client_id` (UUID, FK) → clients.client_id
+- `exercise_type` (TEXT) - 'walking', 'running', 'strength_training', etc.
+- `duration` (INT) - Minutes
+- `distance` (NUMERIC) - Kilometers
+- `calories` (INT)
+- `memo` (TEXT)
+- `recorded_at` (TIMESTAMPTZ)
+
+**tickets** (session ticket management)
+- `id` (UUID, PK)
+- `client_id` (UUID, FK) → clients.client_id
+- `ticket_name` (TEXT)
+- `ticket_type` (TEXT)
+- `total_sessions` (INT)
+- `remaining_sessions` (INT)
+- `valid_from` (TIMESTAMPTZ)
+- `valid_until` (TIMESTAMPTZ)
+- `created_at` (TIMESTAMPTZ)
+
+All tables use Row Level Security (RLS) for access control. See `src/types/client.ts` for complete TypeScript type definitions.
 
 ## Key Architectural Patterns
 
@@ -88,28 +147,32 @@ All tables use Row Level Security (RLS) for access control.
 ### Database Operations
 Each database operation is isolated in its own file under `src/lib/supabase/`:
 - `getClients.ts` - Fetch trainer's clients
+- `getClientDetail.ts` - Fetch single client with details
+- `searchClients.ts` - Search/filter clients by name, gender, age, purpose
 - `getMessages.ts` - Bidirectional message query
 - `sendMessage.ts` - Insert message record
 - `createProfile.ts` - Create trainer profile on signup
-- `saveLineUser.ts` - Register client via LINE
+- `getProfile.ts` - Fetch trainer profile
+- `getWeightRecords.ts` - Fetch client weight history
+- `getMealRecords.ts` - Fetch client meal logs (with pagination)
+- `getExerciseRecords.ts` - Fetch client exercise logs (with pagination)
+- `getTickets.ts` - Fetch client session tickets
 
 ### Authentication Flow
-1. **Email/Password:** `supabase.auth.signUp()` → `createProfile()` → redirect to dashboard
-2. **LINE LIFF:** Share `/liff?trainerId=<uuid>` link → LIFF initialization → `saveLineUser()` → LINE friend addition
+1. **Trainer:** `supabase.auth.signUp()` → `createProfile()` → redirect to dashboard
+2. **Client:** Will be handled via KMM mobile app (future implementation)
 
 ### Messaging Architecture
-**Trainer → Client (Web to LINE):**
-1. Trainer sends message in web UI
+**Trainer → Client:**
+1. Trainer sends message in web UI ([/message](src/app/(user_console)/message/page.tsx))
 2. POST to `/api/messages/send`
 3. Save to `messages` table via `supabaseAdmin`
-4. Push to LINE via `lineClient.pushMessage()` if client has `line_user_id`
+4. Client receives via Realtime subscription (future: push notification to mobile app)
 
-**Client → Trainer (LINE to Web):**
-1. Client sends message in LINE app
-2. LINE webhook → POST to `/api/line/webhook`
-3. Extract `lineUserId` → query `clients` table
-4. Save to `messages` table
-5. Trainer sees message in web UI via Realtime subscription
+**Client → Trainer:**
+1. Client sends message via mobile app (future implementation)
+2. Save to `messages` table
+3. Trainer sees message in web UI via Realtime subscription
 
 **Real-time Updates:**
 ```typescript
@@ -130,10 +193,10 @@ Required in `.env.local`:
 ```
 NEXT_PUBLIC_SUPABASE_URL          # Supabase project URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY     # Supabase anonymous key
-NEXT_PUBLIC_LIFF_ID               # LINE LIFF app ID
-SUPABASE_SERVICE_ROLE_KEY         # Admin key (server-only)
-LINE_CHANNEL_ACCESS_TOKEN         # LINE Bot channel token
+SUPABASE_SERVICE_ROLE_KEY         # Admin key (server-only, never expose to client)
 ```
+
+**Note:** LINE-related environment variables (LIFF_ID, LINE_CHANNEL_ACCESS_TOKEN) are deprecated as the project is transitioning to a KMM mobile app architecture.
 
 ## Important Notes
 
@@ -141,13 +204,15 @@ LINE_CHANNEL_ACCESS_TOKEN         # LINE Bot channel token
 - All auth pages (`/login`, `/signup`) use `"use client"` for form handling
 - Dashboard routes use `"use client"` for interactivity and Realtime subscriptions
 - API routes are server-side only and use `supabaseAdmin`
-- LIFF app (`/liff`) is client-side only (requires browser APIs)
 
-### LINE Integration
-- LIFF app must be opened within LINE app for proper initialization
-- Webhook endpoint (`/api/line/webhook`) receives all LINE events
-- Only `message` events of type `text` are currently processed
-- `line_user_id` is the key that links clients to LINE accounts
+### Client Management Features
+- **Client List** ([/clients](src/app/(user_console)/clients/page.tsx)): Search and filter clients by name, gender, age range, and fitness purpose
+- **Client Detail** ([/clients/[client_id]](src/app/(user_console)/clients/[client_id]/page.tsx)): View comprehensive client profile including:
+  - Basic info (age, gender, height, target weight, goals)
+  - Weight progression tracking
+  - Meal records with images and calorie data
+  - Exercise logs with duration, distance, and calories
+  - Session tickets with remaining sessions and expiry dates
 
 ### Path Aliases
 - Use `@/` prefix for imports (maps to `./src/*`)
@@ -163,15 +228,24 @@ LINE_CHANNEL_ACCESS_TOKEN         # LINE Bot channel token
 - Minimal global state - most data fetched from Supabase
 - Realtime subscriptions handle live updates
 
-### Known Limitations (from database design docs)
+### Known Limitations
 - No foreign key constraints on `messages.sender_id` and `messages.receiver_id`
 - Missing indexes on `messages` table for performance optimization
-- Some pages are placeholder implementations (schedule, report, workout plan, settings)
+- Placeholder implementations: `/schedule`, `/report`, `/workoutplan`, `/settings`
+- Client-side record creation (meals, exercises, weight) requires KMM mobile app (not yet implemented)
+- Graph visualization for weight tracking not yet implemented (shows table data only)
+
+### Development Roadmap
+See [ROADMAP.md](ROADMAP.md) for comprehensive implementation plan including:
+- Phase 1: Schedule/session management and dashboard improvements
+- Phase 2: KMM mobile app for clients with meal/exercise logging
+- Phase 3: Analytics, reports, and training plan features
+- Phase 4: Settings page and performance optimizations
 
 ## API Endpoints
 
 ### POST /api/messages/send
-Send message from trainer to client with optional LINE push notification.
+Send message from trainer to client.
 
 **Body:**
 ```json
@@ -184,10 +258,7 @@ Send message from trainer to client with optional LINE push notification.
 
 **Returns:** `{ status: 'ok' }` on success
 
-### POST /api/line/webhook
-LINE webhook endpoint for receiving messages from clients.
-
-**Handles:** LINE webhook events (message events are processed and saved to database)
+**Note:** Currently saves to database only. Push notifications to mobile app will be added in Phase 2.
 
 ## Common Development Patterns
 
@@ -209,3 +280,6 @@ LINE webhook endpoint for receiving messages from clients.
 3. Filter by table and optionally by row conditions
 4. Update local state in callback
 5. Clean up subscription on unmount
+
+# 開発フロー
+- レイアウトは既存のレイアウトを踏襲すること
