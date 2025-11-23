@@ -1,14 +1,15 @@
-
 ```mermaid
 erDiagram
     AUTH_USERS ||--|| PROFILES : "1:1"
     PROFILES ||--o{ CLIENTS : "1:N 担当"
     PROFILES ||--o{ MESSAGES : "送受信"
+    PROFILES ||--o{ SESSIONS : "1:N 実施"
     CLIENTS ||--o{ MESSAGES : "送受信"
     CLIENTS ||--o{ WEIGHT_RECORDS : "1:N 記録"
     CLIENTS ||--o{ MEAL_RECORDS : "1:N 記録"
     CLIENTS ||--o{ EXERCISE_RECORDS : "1:N 記録"
     CLIENTS ||--o{ TICKETS : "1:N 保有"
+    CLIENTS ||--o{ SESSIONS : "1:N 受講"
 
     AUTH_USERS {
         uuid id PK "Supabase Auth管理"
@@ -46,10 +47,23 @@ erDiagram
         timestamptz timestamp "送信日時"
     }
 
+    SESSIONS {
+        uuid id PK "セッションID"
+        uuid trainer_id FK "トレーナーID"
+        uuid client_id FK "クライアントID"
+        timestamptz session_date "セッション予定日時"
+        integer duration_minutes "セッション時間 (分)"
+        text status "ステータス (scheduled/confirmed/completed/cancelled)"
+        text session_type "セッション種別"
+        text memo "メモ"
+        timestamptz created_at "作成日時"
+        timestamptz updated_at "更新日時"
+    }
+
     WEIGHT_RECORDS {
         uuid id PK "記録ID"
         uuid client_id FK "クライアントID"
-        numeric weight "体重 (kg)"
+        numeric weight_kg "体重 (kg)"
         timestamptz recorded_at "記録日時"
     }
 
@@ -67,9 +81,9 @@ erDiagram
         uuid id PK "記録ID"
         uuid client_id FK "クライアントID"
         text exercise_type "運動種目"
-        integer duration "運動時間 (分)"
+        integer duration_minutes "運動時間 (分)"
         numeric distance "距離 (km)"
-        numeric calories "消費カロリー (kcal)"
+        numeric calories_burned "消費カロリー (kcal)"
         text memo "メモ"
         timestamptz recorded_at "記録日時"
     }

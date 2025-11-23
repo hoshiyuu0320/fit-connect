@@ -230,7 +230,51 @@ line_users ──→ profiles (外部キー)
 
 ---
 
-### 3.7 tickets（チケット）
+### 3.7 sessions（セッション予定）
+
+**概要:** トレーナーとクライアント間のセッション予定を管理するテーブル
+
+| カラム名         | データ型    | NULL     | キー | デフォルト値      | 説明                                                    |
+| ---------------- | ----------- | -------- | ---- | ----------------- | ------------------------------------------------------- |
+| id               | uuid        | NOT NULL | PK   | gen_random_uuid() | セッションID                                            |
+| trainer_id       | uuid        | NOT NULL | FK   | -                 | トレーナーID                                            |
+| client_id        | uuid        | NOT NULL | FK   | -                 | クライアントID                                          |
+| session_date     | timestamptz | NOT NULL | -    | -                 | セッション予定日時                                      |
+| duration_minutes | integer     | NOT NULL | -    | 60                | セッション時間（分）                                    |
+| status           | text        | NOT NULL | -    | 'scheduled'       | ステータス（scheduled/confirmed/completed/cancelled）   |
+| session_type     | text        | NULL     | -    | -                 | セッション種別（パーソナルトレーニング、カウンセリング等） |
+| memo             | text        | NULL     | -    | -                 | メモ                                                    |
+| created_at       | timestamptz | NOT NULL | -    | now()             | 作成日時                                                |
+| updated_at       | timestamptz | NOT NULL | -    | now()             | 更新日時                                                |
+
+**制約:**
+- PRIMARY KEY: id
+- FOREIGN KEY: trainer_id → profiles.id (ON DELETE CASCADE)
+- FOREIGN KEY: client_id → clients.client_id (ON DELETE CASCADE)
+- CHECK: status IN ('scheduled', 'confirmed', 'completed', 'cancelled')
+- CHECK: duration_minutes > 0
+- RLS: 有効
+
+**インデックス:**
+- PRIMARY KEY index on id
+- INDEX on trainer_id（検索高速化）
+- INDEX on client_id（検索高速化）
+- INDEX on session_date（日時検索高速化）
+- INDEX on status（ステータス別検索高速化）
+
+**リレーション:**
+- trainer_id → profiles.id (N:1)
+- client_id → clients.client_id (N:1)
+
+**備考:**
+- トレーナーのスケジュール管理に使用
+- ダッシュボードに本日の予定を表示
+- セッション完了時にチケットの残数を減算（別機能で実施）
+- updated_atは更新トリガーで自動更新
+
+---
+
+### 3.8 tickets（チケット）
 
 **概要:** クライアントが保有するセッション回数券を管理するテーブル
 
