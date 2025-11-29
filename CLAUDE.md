@@ -20,7 +20,7 @@ npm run lint
 
 ## Architecture Overview
 
-FIT-CONNECT is a fitness trainer management platform consisting of a Next.js 15 web application for trainers and a planned KMM (Kotlin Multiplatform Mobile) native app for clients, both backed by Supabase.
+FIT-CONNECT is a fitness trainer management platform consisting of a Next.js 15 web application for trainers and a planned Flutter native app for clients, both backed by Supabase.
 
 ### Core Technology Stack
 
@@ -34,9 +34,8 @@ FIT-CONNECT is a fitness trainer management platform consisting of a Next.js 15 
 - **Forms:** React Hook Form + Zod validation
 
 **Client Mobile App (Planned - See ROADMAP.md)**
-- **Shared Logic:** Kotlin Multiplatform Mobile (KMM)
-- **iOS UI:** SwiftUI
-- **Android UI:** Jetpack Compose
+- **Framework:** Flutter
+- **Language:** Dart
 - **Backend:** Supabase (shared with web app)
 
 ### Project Structure
@@ -160,7 +159,7 @@ Each database operation is isolated in its own file under `src/lib/supabase/`:
 
 ### Authentication Flow
 1. **Trainer:** `supabase.auth.signUp()` → `createProfile()` → redirect to dashboard
-2. **Client:** Will be handled via KMM mobile app (future implementation)
+2. **Client:** Will be handled via Flutter mobile app (future implementation)
 
 ### Messaging Architecture
 **Trainer → Client:**
@@ -196,7 +195,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY     # Supabase anonymous key
 SUPABASE_SERVICE_ROLE_KEY         # Admin key (server-only, never expose to client)
 ```
 
-**Note:** LINE-related environment variables (LIFF_ID, LINE_CHANNEL_ACCESS_TOKEN) are deprecated as the project is transitioning to a KMM mobile app architecture.
+**Note:** LINE-related environment variables (LIFF_ID, LINE_CHANNEL_ACCESS_TOKEN) are deprecated as the project is transitioning to a Flutter mobile app architecture.
 
 ## Important Notes
 
@@ -232,13 +231,13 @@ SUPABASE_SERVICE_ROLE_KEY         # Admin key (server-only, never expose to clie
 - No foreign key constraints on `messages.sender_id` and `messages.receiver_id`
 - Missing indexes on `messages` table for performance optimization
 - Placeholder implementations: `/schedule`, `/report`, `/workoutplan`, `/settings`
-- Client-side record creation (meals, exercises, weight) requires KMM mobile app (not yet implemented)
+- Client-side record creation (meals, exercises, weight) requires Flutter mobile app (not yet implemented)
 - Graph visualization for weight tracking not yet implemented (shows table data only)
 
 ### Development Roadmap
 See [ROADMAP.md](ROADMAP.md) for comprehensive implementation plan including:
 - Phase 1: Schedule/session management and dashboard improvements
-- Phase 2: KMM mobile app for clients with meal/exercise logging
+- Phase 2: Flutter mobile app for clients with meal/exercise logging
 - Phase 3: Analytics, reports, and training plan features
 - Phase 4: Settings page and performance optimizations
 

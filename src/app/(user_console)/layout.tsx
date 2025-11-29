@@ -1,14 +1,12 @@
 // components/Layout.tsx
 "use client";
 
-import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useRouter } from "next/navigation";
 
 export default function Sidebar({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const router = useRouter();
-    const [isCollapsed, setIsCollapsed] = useState(true);
 
     const menuItems = [
         {

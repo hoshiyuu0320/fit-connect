@@ -1,7 +1,6 @@
 // app/api/messages/send/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { messagingApi } from '@line/bot-sdk';
-import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 const lineClient = new messagingApi.MessagingApiClient({
@@ -17,7 +16,7 @@ export async function POST(req: NextRequest) {
   }
 
   // DBに保存
-  const { data, error } = await supabaseAdmin.from('messages').insert([
+  const { error } = await supabaseAdmin.from('messages').insert([
     {
       sender_id: trainerId,
       receiver_id: clientId,

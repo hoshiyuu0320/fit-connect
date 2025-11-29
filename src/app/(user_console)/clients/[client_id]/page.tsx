@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import { useParams, useRouter } from 'next/navigation'
 import { getClientDetail } from '@/lib/supabase/getClientDetail'
 import { getWeightRecords } from '@/lib/supabase/getWeightRecords'
@@ -194,8 +195,14 @@ export default function ClientDetailPage() {
                     {meal.images && meal.images.length > 0 && (
                       <div className="flex gap-2 flex-wrap">
                         {meal.images.map((img, idx) => (
-                          <div key={idx} className="w-20 h-20 rounded overflow-hidden bg-gray-100">
-                            <img src={img} alt="食事画像" className="w-full h-full object-cover" />
+                          <div key={idx} className="relative w-20 h-20 rounded overflow-hidden bg-gray-100">
+                            <Image
+                              src={img}
+                              alt="食事画像"
+                              fill
+                              className="object-cover"
+                              unoptimized
+                            />
                           </div>
                         ))}
                       </div>

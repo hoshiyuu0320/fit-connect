@@ -58,7 +58,7 @@ export async function getTodaysSessions(trainerId: string): Promise<TodaysSessio
   return data.map((session) => ({
     id: session.id,
     client_id: session.client_id,
-    client_name: (session.clients as { name: string }).name,
+    client_name: Array.isArray(session.clients) ? session.clients[0]?.name : (session.clients as { name: string })?.name,
     session_date: session.session_date,
     duration_minutes: session.duration_minutes,
     status: session.status as 'scheduled' | 'confirmed' | 'completed' | 'cancelled',

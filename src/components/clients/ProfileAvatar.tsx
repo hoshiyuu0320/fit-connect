@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import type { Client } from '@/types/client'
 
@@ -32,10 +33,12 @@ export function ProfileAvatar({ client, size = 'md', className }: ProfileAvatarP
   if (client.profile_image_url) {
     return (
       <div className={cn('relative rounded-full overflow-hidden', sizeClasses[size], className)}>
-        <img
+        <Image
           src={client.profile_image_url}
           alt={client.name}
-          className="w-full h-full object-cover"
+          fill
+          className="object-cover"
+          unoptimized
         />
       </div>
     )

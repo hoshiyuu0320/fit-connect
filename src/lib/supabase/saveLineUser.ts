@@ -1,9 +1,9 @@
 import { supabase } from '@/lib/supabase'
 
 type LineUserParam = {
-    lineUserid: String;
-    name: String;
-    trainerId: String;
+    lineUserid: string;
+    name: string;
+    trainerId: string;
 }
 
 

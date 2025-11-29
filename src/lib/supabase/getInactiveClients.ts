@@ -36,23 +36,34 @@ export async function getInactiveClients(trainerId: string): Promise<InactiveCli
   const clientIds = clients.map((c) => c.client_id)
 
   // 各テーブルから7日以内の記録がある顧客IDを取得
-  const [weightRecords, mealRecords, exerciseRecords] = await Promise.all([
-    supabase
-      .from('weight_records')
-      .select('client_id, recorded_at')
-      .in('client_id', clientIds)
-      .gte('recorded_at', cutoffDate),
-    supabase
-      .from('meal_records')
-      .select('client_id, recorded_at')
-      .in('client_id', clientIds)
-      .gte('recorded_at', cutoffDate),
-    supabase
-      .from('exercise_records')
-      .select('client_id, recorded_at')
-      .in('client_id', clientIds)
-      .gte('recorded_at', cutoffDate),
-  ])
+  let weightRecords: { data: { client_id: string }[] | null } = { data: [] };
+  let mealRecords: { data: { client_id: string }[] | null } = { data: [] };
+  let exerciseRecords: { data: { client_id: string }[] | null } = { data: [] };
+
+  try {
+    const results = await Promise.all([
+      supabase
+        .from('weight_records')
+        .select('client_id, recorded_at')
+        .in('client_id', clientIds)
+        .gte('recorded_at', cutoffDate),
+      supabase
+        .from('meal_records')
+        .select('client_id, recorded_at')
+        .in('client_id', clientIds)
+        .gte('recorded_at', cutoffDate),
+      supabase
+        .from('exercise_records')
+        .select('client_id, recorded_at')
+        .in('client_id', clientIds)
+        .gte('recorded_at', cutoffDate),
+    ]);
+    weightRecords = results[0];
+    mealRecords = results[1];
+    exerciseRecords = results[2];
+  } catch (error) {
+    console.error('記録取得エラー:', error);
+  }
 
   // 7日以内に記録があるクライアントIDのセット
   const activeClientIds = new Set<string>()
@@ -70,29 +81,40 @@ export async function getInactiveClients(trainerId: string): Promise<InactiveCli
   const inactiveClientsWithActivity = await Promise.all(
     inactiveClients.map(async (client) => {
       // 全テーブルから最新の記録を取得
-      const [latestWeight, latestMeal, latestExercise] = await Promise.all([
-        supabase
-          .from('weight_records')
-          .select('recorded_at')
-          .eq('client_id', client.client_id)
-          .order('recorded_at', { ascending: false })
-          .limit(1)
-          .single(),
-        supabase
-          .from('meal_records')
-          .select('recorded_at')
-          .eq('client_id', client.client_id)
-          .order('recorded_at', { ascending: false })
-          .limit(1)
-          .single(),
-        supabase
-          .from('exercise_records')
-          .select('recorded_at')
-          .eq('client_id', client.client_id)
-          .order('recorded_at', { ascending: false })
-          .limit(1)
-          .single(),
-      ])
+      let latestWeight: { data: { recorded_at: string } | null } = { data: null };
+      let latestMeal: { data: { recorded_at: string } | null } = { data: null };
+      let latestExercise: { data: { recorded_at: string } | null } = { data: null };
+
+      try {
+        const results = await Promise.all([
+          supabase
+            .from('weight_records')
+            .select('recorded_at')
+            .eq('client_id', client.client_id)
+            .order('recorded_at', { ascending: false })
+            .limit(1)
+            .single(),
+          supabase
+            .from('meal_records')
+            .select('recorded_at')
+            .eq('client_id', client.client_id)
+            .order('recorded_at', { ascending: false })
+            .limit(1)
+            .single(),
+          supabase
+            .from('exercise_records')
+            .select('recorded_at')
+            .eq('client_id', client.client_id)
+            .order('recorded_at', { ascending: false })
+            .limit(1)
+            .single(),
+        ]);
+        latestWeight = results[0];
+        latestMeal = results[1];
+        latestExercise = results[2];
+      } catch (error) {
+        console.error('最新記録取得エラー:', error);
+      }
 
       // 最も新しい記録日を取得
       const dates = [

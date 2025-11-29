@@ -1,12 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
 import liff from "@line/liff";
-import { createClient } from "@supabase/supabase-js";
 import { saveLineUser } from "@/lib/supabase/saveLineUser";
 
 export default function LiffPage() {
 
-    const [profile, setProfile] = useState<any>(null);
     const [status, setStatus] = useState<string>("読み込み中...");
     useEffect(() => {
         const initLiff = async () => {
@@ -23,7 +21,6 @@ export default function LiffPage() {
 
                 // LINEプロフィール取得
                 const profileData = await liff.getProfile();
-                setProfile(profileData);
                 console.log("lineProfileData", profileData);
 
                 // URLからtrainerId取得

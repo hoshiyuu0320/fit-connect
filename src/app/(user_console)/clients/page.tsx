@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { searchClients } from '@/lib/supabase/searchClients'
 import { ClientCard } from '@/components/clients/ClientCard'
@@ -18,24 +18,8 @@ export default function ClientsPage() {
   const [ageRangeFilter, setAgeRangeFilter] = useState(0) // AGE_RANGE_OPTIONSのindex
   const [purposeFilter, setPurposeFilter] = useState<Client['purpose'] | 'all'>('all')
 
-  // 初回データ取得
-  useEffect(() => {
-    const fetchClients = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (user) {
-        setTrainerId(user.id)
-        await loadClients(user.id)
-      }
-      setLoading(false)
-    }
-    fetchClients()
-  }, [])
-
   // 検索・フィルター実行
-  const loadClients = async (userId: string) => {
+  const loadClients = useCallback(async (userId: string) => {
     setLoading(true)
     try {
       const ageRange = AGE_RANGE_OPTIONS[ageRangeFilter]
@@ -54,14 +38,30 @@ export default function ClientsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [searchQuery, genderFilter, ageRangeFilter, purposeFilter])
+
+  // 初回データ取得
+  useEffect(() => {
+    const fetchClients = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (user) {
+        setTrainerId(user.id)
+        await loadClients(user.id)
+      }
+      setLoading(false)
+    }
+    fetchClients()
+  }, [loadClients])
 
   // フィルター変更時に再検索
   useEffect(() => {
     if (trainerId) {
       loadClients(trainerId)
     }
-  }, [searchQuery, genderFilter, ageRangeFilter, purposeFilter])
+  }, [loadClients, trainerId])
 
   return (
     <div className="h-[calc(100vh-48px)] overflow-y-auto bg-gray-50">
