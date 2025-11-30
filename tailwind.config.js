@@ -2,8 +2,9 @@
 module.exports = {
 	darkMode: ["class"],
 	content: [
+		"./src/**/*.{js,ts,jsx,tsx}",  // srcフォルダ全体
 		"./src/app/**/*.{js,ts,jsx,tsx}",
-		"./components/**/*.{js,ts,jsx,tsx}"
+		"./components/**/*.{js,ts,jsx,tsx}",
 	],
 	theme: {
 		extend: {
@@ -58,7 +59,10 @@ module.exports = {
 				'22px': '22px',
 				'16px': '16px',
 				'14px': '14px',
-			}
+			},
+			width: {
+				'180': '180px',
+			},
 		}
 	},
 	plugins: [require("tailwindcss-animate")],

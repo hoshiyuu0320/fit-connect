@@ -202,7 +202,7 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[425px] bg-white">
                 <DialogHeader>
                     <DialogTitle>{session ? 'セッション編集' : 'セッション予約'}</DialogTitle>
                 </DialogHeader>
@@ -217,7 +217,7 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
                             <SelectTrigger>
                                 <SelectValue placeholder="顧客を選択" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="bg-white">
                                 {clients.map((client) => (
                                     <SelectItem key={client.client_id} value={client.client_id}>
                                         {client.name}
@@ -238,7 +238,7 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
                             <SelectTrigger>
                                 <SelectValue placeholder="チケットを選択（任意）" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="bg-white">
                                 <SelectItem value="none">使用しない</SelectItem>
                                 {tickets.map((ticket) => (
                                     <SelectItem key={ticket.id} value={ticket.id}>
@@ -280,7 +280,7 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
                                 <SelectTrigger>
                                     <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="bg-white">
                                     <SelectItem value="scheduled">予定</SelectItem>
                                     <SelectItem value="confirmed">確定</SelectItem>
                                     <SelectItem value="completed">完了</SelectItem>
