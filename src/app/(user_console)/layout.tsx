@@ -86,7 +86,7 @@ export default function Sidebar({ children }: { children: React.ReactNode }) {
                                   w-16 hover:w-64
                                   overflow-hidden
                                   group fixed left-0 top-[48px]
-                                  border-r border-gray-200">
+                                  border-r border-gray-200 z-40">
                     <div className="flex flex-col space-y-2">
                         {menuItems.map((item) => {
                             const isActive = pathname === item.href;

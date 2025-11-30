@@ -11,7 +11,8 @@ import { CalendarEvent } from './CalendarEvent';
 type ViewMode = 'day' | 'week' | 'month';
 
 const HOURS = Array.from({ length: 17 }, (_, i) => i + 6); // 6 AM to 10 PM
-const WEEK_DAYS = ['月', '火', '水', '木', '金', '土', '日'];
+// const WEEK_DAYS = ['月', '火', '水', '木', '金', '土', '日'];
+const WEEK_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 export default function CalendarView() {
     const [currentDate, setCurrentDate] = useState<Date | null>(null);
@@ -94,7 +95,7 @@ export default function CalendarView() {
         return (
             <div className="flex flex-col h-full overflow-hidden bg-white rounded-tl-2xl shadow-sm border border-gray-200">
                 {/* Header */}
-                <div className="flex border-b border-gray-100 mr-[8px]">
+                <div className="flex border-b border-gray-100">
                     <div className="w-16 flex-shrink-0 border-r border-gray-100 bg-gray-50/50"></div>
                     <div className={`flex-1 grid ${viewMode === 'day' ? 'grid-cols-1' : 'grid-cols-7'}`}>
                         {days.map((day, i) => {
@@ -115,12 +116,12 @@ export default function CalendarView() {
 
                 {/* Grid Scrollable Area */}
                 <div className="flex-1 overflow-y-auto relative">
-                    <div className="flex min-h-[800px]">
+                    <div className="flex min-h-[1360px]">
                         {/* Time Column */}
-                        <div className="w-16 flex-shrink-0 border-r border-gray-100 bg-gray-50/30 text-xs text-gray-400 font-medium sticky left-0 z-20 bg-white">
+                        <div className="w-16 flex-shrink-0 border-r border-gray-100 bg-gray-50/30 text-xs text-gray-400 font-medium sticky left-0 z-20 bg-white pb-[50px]">
                             {HOURS.map(hour => (
                                 <div key={hour} className="h-20 border-b border-gray-100 relative">
-                                    <span className="absolute -top-2.5 right-2 bg-white px-1">
+                                    <span className="absolute top-1 right-2 bg-white px-1">
                                         {hour}:00
                                     </span>
                                 </div>
@@ -137,7 +138,7 @@ export default function CalendarView() {
                             </div>
 
                             {/* Horizontal Hour Lines Background */}
-                            <div className="absolute inset-0 flex flex-col pointer-events-none">
+                            <div className="absolute inset-0 flex flex-col pointer-events-none pb-[50px]">
                                 {HOURS.map((_, i) => (
                                     <div key={i} className="h-20 border-b border-gray-100 w-full"></div>
                                 ))}
