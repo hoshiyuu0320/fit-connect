@@ -126,11 +126,21 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
                 setValue('status', session.status);
                 setValue('ticket_id', session.ticket_id || undefined);
             } else if (selectedDate) {
+                // Format date in local timezone to avoid UTC conversion issues
+                const year = selectedDate.getFullYear();
+                const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                const day = String(selectedDate.getDate()).padStart(2, '0');
+                const localDateString = `${year}-${month}-${day}`;
+
+                const hours = String(selectedDate.getHours()).padStart(2, '0');
+                const minutes = String(selectedDate.getMinutes()).padStart(2, '0');
+                const localTimeString = `${hours}:${minutes}`;
+
                 reset({
                     duration_minutes: 60,
                     status: 'scheduled',
-                    session_date: selectedDate.toISOString().split('T')[0],
-                    session_time: '10:00',
+                    session_date: localDateString,
+                    session_time: localTimeString,
                 });
             }
         }
