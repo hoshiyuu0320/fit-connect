@@ -2,10 +2,9 @@
 'use client';
 
 import Image from "next/image";
-import React, { ReactNode } from "react";
+import React from "react";
 import { Lexend } from 'next/font/google';
 import './globals.css';
-import { usePathname } from 'next/navigation';
 
 const lexend = Lexend({
   subsets: ['latin'],
@@ -18,9 +17,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const pathname = usePathname();
-  const isUserConsole = pathname.startsWith("/(user_console)");
-
   return (
     <html lang="ja" className={lexend.variable}>
       <body>

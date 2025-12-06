@@ -21,7 +21,7 @@ export default function LoginPage() {
                 throw signUpError;
             }
             router.push('/dashboard');
-        } catch (error) {
+        } catch {
             alert('エラーが発生しました');
         }
     }
@@ -81,7 +81,7 @@ export default function LoginPage() {
                         </div>
                         <div className="flex items-start justify-center text-center w-[960px] h-[37px]">
                             <p className="text-[#3D4D5C] text-[14px] font-regular pt-[4px]">
-                                Don't have an account?
+                                Don&apos;t have an account?
                             </p>
                         </div>
                         <div className="flex items-center w-[960px] h-[72px]">

@@ -1,9 +1,9 @@
-"use client"
+import CalendarView from '@/components/schedule/CalendarView';
 
 export default function SchedulePage() {
     return (
-        <main>
-            <h1>Welcome to the Schedule</h1>
-        </main>
+        <div className="h-full">
+            <CalendarView />
+        </div>
     );
 }

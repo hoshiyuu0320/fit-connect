@@ -102,12 +102,11 @@
 #### 2.3 顧客側ネイティブアプリの開発
 **優先度: 高**
 **目的: 顧客の利便性向上**
-**技術スタック: KMM (Kotlin Multiplatform Mobile) + SwiftUI (iOS) + Jetpack Compose (Android)**
+**技術スタック: Flutter**
 
 - [ ] 顧客用モバイルアプリの設計
-  - KMMによる共通ロジック実装
-  - iOS: SwiftUI
-  - Android: Jetpack Compose
+  - Flutterによるクロスプラットフォーム開発
+  - iOS/Android両対応
 - [ ] 認証機能（Supabase Auth連携）
 - [ ] ホーム画面
   - 今日の予定表示
@@ -251,9 +250,8 @@
 - **UI:** Tailwind CSS + Radix UI
 
 ### 顧客側（ネイティブアプリ）
-- **共通ロジック:** Kotlin Multiplatform Mobile (KMM)
-- **iOS UI:** SwiftUI
-- **Android UI:** Jetpack Compose
+- **フレームワーク:** Flutter
+- **言語:** Dart
 - **バックエンド:** Supabase (共通API)
 
 ---
@@ -262,3 +260,4 @@
 
 - 2025-11-09: 初版作成
 - 2025-11-09: LINE連携を削除、顧客側KMMアプリ開発に方針変更
+- 2025-11-29: 顧客側アプリの技術スタックをKMMからFlutterに変更

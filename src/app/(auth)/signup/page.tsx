@@ -32,7 +32,7 @@ export default function SignUpPage() {
             if (!userId) return;
 
             await createProfile(userId, fullName)
-        } catch (error) {
+        } catch {
             alert('エラーが発生しました');
         }
     }

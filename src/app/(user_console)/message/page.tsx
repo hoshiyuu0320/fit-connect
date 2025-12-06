@@ -1,7 +1,7 @@
 // app/chat/page.tsx
 'use client';
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
 import { useSearchParams } from 'next/navigation';
 import { getClientDetail } from '@/lib/supabase/getClientDetail'
 import { useUserStore } from '@/store/userStore';
@@ -11,7 +11,7 @@ import { getMessages } from '@/lib/supabase/getMessages';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import type { Client } from '@/types/client'
 
-export default function MessagePage() {
+function MessageContent() {
     type Message = {
         sender: string,
         content: string,
@@ -25,7 +25,7 @@ export default function MessagePage() {
     const { userName } = useUserStore()
     const [userId, setUserId] = useState<string | null>(null);
     const [input, setInput] = useState('');
-    const [clientList, setClientList] = useState<any[]>([]);
+    const [clientList, setClientList] = useState<Client[]>([]);
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
     const [loading, setLoading] = useState(false);
@@ -87,7 +87,7 @@ export default function MessagePage() {
                 setUserId(user.id);
                 const clients = await getClients(user.id)
                 console.log("user.id" + user.id)
-                setClientList(clients)
+                setClientList(clients as unknown as Client[])
             }
         }
         fetchClients();
@@ -107,14 +107,13 @@ export default function MessagePage() {
             }
         }
         fetchClientInfo();
-    }, []);
+    }, [client_id]);
 
     // メッセージ取得処理
     useEffect(() => {
         if (!selectedClient) return;
 
         let channel: RealtimeChannel | null = null;
-        let currentUser: any = null;
 
         const fetchAndSubscribe = async () => {
             const {
@@ -122,7 +121,6 @@ export default function MessagePage() {
             } = await supabase.auth.getUser();
 
             if (!user) return;
-            currentUser = user;
 
             // ✅ 初期取得処理
             const rawMessages = await getMessages({
@@ -131,6 +129,7 @@ export default function MessagePage() {
             });
             console.log("rawMessages", rawMessages);
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const formattedMessages: Message[] = rawMessages.map((msg: any) => ({
                 sender: msg.sender_type === 'client' ? selectedClient.name : 'You',
                 content: msg.message,
@@ -265,5 +264,13 @@ export default function MessagePage() {
                 </footer>
             </div>
         </div>
+    );
+}
+
+export default function MessagePage() {
+    return (
+        <Suspense fallback={<div className="flex items-center justify-center h-screen">Loading...</div>}>
+            <MessageContent />
+        </Suspense>
     );
 }

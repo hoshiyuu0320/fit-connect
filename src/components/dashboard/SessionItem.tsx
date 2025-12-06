@@ -5,7 +5,6 @@ import type { TodaysSession } from '@/lib/supabase/getTodaysSessions'
 export type SessionItemProps = TodaysSession
 
 export function SessionItem({
-  id,
   client_id,
   client_name,
   session_date,
