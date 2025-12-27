@@ -23,14 +23,14 @@ export async function getRecentMessages(
     .from('messages')
     .select(`
       id,
-      message,
-      timestamp,
+      content,
+      created_at,
       sender_id,
       sender_type
     `)
     .eq('receiver_id', trainerId)
     .eq('receiver_type', 'trainer')
-    .order('timestamp', { ascending: false })
+    .order('created_at', { ascending: false })
     .limit(limit)
 
   if (error) {
@@ -65,8 +65,8 @@ export async function getRecentMessages(
   // メッセージに顧客名を追加
   return data.map((msg) => ({
     id: msg.id,
-    message: msg.message,
-    timestamp: msg.timestamp,
+    message: msg.content,
+    timestamp: msg.created_at,
     sender_id: msg.sender_id,
     sender_name: clientNameMap.get(msg.sender_id) ?? '不明',
     client_id: msg.sender_id,

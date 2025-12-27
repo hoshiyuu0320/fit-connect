@@ -10,7 +10,7 @@ export const getMessages = async ({senderId, receiverId} : GetMessageParam ) => 
     .from('messages')
     .select('*')
     .or(`and(sender_id.eq.${senderId},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${senderId})`)
-    .order('timestamp', { ascending: true });
+    .order('created_at', { ascending: true });
 
     if(error) {
         console.error('メッセージ取得エラー', error)
