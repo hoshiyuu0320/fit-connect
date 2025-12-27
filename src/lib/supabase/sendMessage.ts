@@ -3,20 +3,19 @@ import { supabase } from '@/lib/supabase';
 type MessageParam = {
     senderId: string;
     receiverId: string;
-    message: string;
+    content: string;
     senderType: 'client' | 'trainer';
     receiverType: 'client' | 'trainer';
 };
 
-export const sendMessage = async ({ senderId, receiverId, message, senderType, receiverType}: MessageParam ) => {
+export const sendMessage = async ({ senderId, receiverId, content, senderType, receiverType}: MessageParam ) => {
     const { data, error } = await supabase
     .from('messages')
     .insert([
         {
             sender_id: senderId,
             receiver_id: receiverId,
-            message: message,
-            timestamp: new Date().toISOString(),
+            content: content,
             sender_type: senderType,
             receiver_type: receiverType,
         },

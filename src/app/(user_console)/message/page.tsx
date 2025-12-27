@@ -47,13 +47,19 @@ function MessageContent() {
         try {
             const res = await fetch('/api/messages/send', {
                 method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
                 body: JSON.stringify({
                     trainerId: userId,
-                    client_id: selectedClient.client_id,
-                    message: input,
+                    clientId: selectedClient.client_id,
+                    content: input,
                 }),
             });
-            const data = await res.json();
+            console.log('Response status:', res.status);
+            const text = await res.text();
+            console.log('Response text:', text);
+            const data = text ? JSON.parse(text) : {};
             if (res.ok) {
                 setMessages([...messages, {
                     sender: 'You',
@@ -132,8 +138,8 @@ function MessageContent() {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const formattedMessages: Message[] = rawMessages.map((msg: any) => ({
                 sender: msg.sender_type === 'client' ? selectedClient.name : 'You',
-                content: msg.message,
-                timestamp: new Date(msg.timestamp).toLocaleTimeString([], {
+                content: msg.content,
+                timestamp: new Date(msg.created_at).toLocaleTimeString([], {
                     hour: '2-digit',
                     minute: '2-digit',
                 }),
@@ -169,8 +175,8 @@ function MessageContent() {
 
                         const newMsg: Message = {
                             sender: selectedClient.name,
-                            content: msg.message,
-                            timestamp: new Date(msg.timestamp).toLocaleTimeString([], {
+                            content: msg.content,
+                            timestamp: new Date(msg.created_at).toLocaleTimeString([], {
                                 hour: '2-digit',
                                 minute: '2-digit',
                             }),

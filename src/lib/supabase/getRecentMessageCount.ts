@@ -15,7 +15,7 @@ export async function getRecentMessageCount(trainerId: string): Promise<number> 
     .select('*', { count: 'exact', head: true })
     .eq('receiver_id', trainerId)
     .eq('receiver_type', 'trainer')
-    .gte('timestamp', sevenDaysAgo.toISOString())
+    .gte('created_at', sevenDaysAgo.toISOString())
 
   if (error) {
     console.error('メッセージ数取得エラー:', error)

@@ -17,6 +17,16 @@ export default function SignUpPage() {
 
     const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+
+        if (password !== confirmPassword) {
+            alert('パスワードが一致しません');
+            return;
+        }
+        if (password.length < 6) {
+            alert('パスワードは6文字以上である必要があります');
+            return;
+        }
+
         try {
             const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
                 email: email,
@@ -31,9 +41,10 @@ export default function SignUpPage() {
             const userId = signUpData.user?.id;
             if (!userId) return;
 
-            await createProfile(userId, fullName)
-        } catch {
-            alert('エラーが発生しました');
+            await createProfile(userId, fullName, email)
+        } catch (error: any) {
+            console.error('Signup error:', error);
+            alert(error.message || 'エラーが発生しました');
         }
     }
 
