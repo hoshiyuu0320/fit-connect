@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { supabase } from '@/lib/supabase'
-import { getProfile } from '@/lib/supabase/getProfile'
+import { getTrainer } from '@/lib/supabase/getTrainer'
 import { getClientCount } from '@/lib/supabase/getClientCount'
 import { getRecentMessageCount } from '@/lib/supabase/getRecentMessageCount'
 import { getRecentMessages } from '@/lib/supabase/getRecentMessages'
@@ -67,8 +67,8 @@ export default function DashboardPage() {
 
       if (user) {
         try {
-          // プロフィール取得
-          const profile = await getProfile(user.id)
+          // トレーナー情報取得
+          const profile = await getTrainer(user.id)
           if (profile?.name) {
             setUserName(profile.name)
           }

@@ -5,7 +5,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button";
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import { createProfile } from '@/lib/supabase/createProfile'
+import { createTrainer } from '@/lib/supabase/createTrainer'
 
 
 export default function SignUpPage() {
@@ -44,10 +44,11 @@ export default function SignUpPage() {
             const userId = signUpData.user?.id;
             if (!userId) return;
 
-            await createProfile(userId, fullName, email)
-        } catch (error: any) {
+            await createTrainer(userId, fullName, email)
+        } catch (error: unknown) {
             console.error('Signup error:', error);
-            alert(error.message || 'エラーが発生しました');
+            const message = error instanceof Error ? error.message : 'エラーが発生しました';
+            alert(message);
         }
     }
 

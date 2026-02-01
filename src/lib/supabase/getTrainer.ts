@@ -1,11 +1,11 @@
 import { supabase } from '../supabase'
 
-export async function getProfile(userId: string) {
+export async function getTrainer(userId: string) {
   const { data, error } = await supabase
-    .from('profiles')
+    .from('trainers')
     .select('name')
     .eq('id', userId)
-    .single() 
+    .single()
 
   if (error) throw error
   return data

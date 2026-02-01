@@ -70,13 +70,17 @@ src/
 
 ### Database Schema
 
-**profiles** (trainers)
+**trainers**
 - `id` (UUID, PK) - References auth.users.id
 - `name` (TEXT) - Trainer name
+- `email` (TEXT) - Trainer email
+- `profile_image_url` (TEXT) - Profile image URL
+- `created_at` (TIMESTAMPTZ)
+- `updated_at` (TIMESTAMPTZ)
 
 **clients** (trainer's clients)
 - `client_id` (UUID, PK)
-- `trainer_id` (UUID, FK) → profiles.id
+- `trainer_id` (UUID, FK) → trainers.id
 - `name` (TEXT)
 - `gender` (TEXT) - 'male', 'female', 'other'
 - `age` (INT)
@@ -150,15 +154,15 @@ Each database operation is isolated in its own file under `src/lib/supabase/`:
 - `searchClients.ts` - Search/filter clients by name, gender, age, purpose
 - `getMessages.ts` - Bidirectional message query
 - `sendMessage.ts` - Insert message record
-- `createProfile.ts` - Create trainer profile on signup
-- `getProfile.ts` - Fetch trainer profile
+- `createTrainer.ts` - Create trainer record on signup
+- `getTrainer.ts` - Fetch trainer info
 - `getWeightRecords.ts` - Fetch client weight history
 - `getMealRecords.ts` - Fetch client meal logs (with pagination)
 - `getExerciseRecords.ts` - Fetch client exercise logs (with pagination)
 - `getTickets.ts` - Fetch client session tickets
 
 ### Authentication Flow
-1. **Trainer:** `supabase.auth.signUp()` → `createProfile()` → redirect to dashboard
+1. **Trainer:** `supabase.auth.signUp()` → `createTrainer()` → redirect to dashboard
 2. **Client:** Will be handled via Flutter mobile app (future implementation)
 
 ### Messaging Architecture
@@ -282,3 +286,49 @@ Send message from trainer to client.
 
 # 開発フロー
 - レイアウトは既存のレイアウトを踏襲すること
+
+## Subagents（専門エージェント）
+
+このプロジェクトには専門分野に特化したサブエージェント定義があります。
+
+### 利用可能なサブエージェント
+
+| エージェント | ファイル | 用途 |
+|-------------|---------|------|
+| **Next.js UI Agent** | `.claude/agents/nextjs-ui.md` | Page/Component作成、Tailwind CSS、Radix UI |
+| **Supabase Agent** | `.claude/agents/supabase.md` | クエリ関数、API Route、Realtime購読 |
+| **Zustand Agent** | `.claude/agents/zustand.md` | Store作成、グローバル状態管理 |
+| **Explore Agent** | `.claude/agents/explore.md` | コードベース調査・探索、実装箇所特定 |
+| **Plan Agent** | `.claude/agents/plan.md` | 複雑なタスクの計画・設計、タスク分解 |
+
+### 使用方法
+
+各エージェントの詳細な指示は `.claude/agents/` ディレクトリ内のファイルを参照してください。
+
+**Next.js UI Agent:**
+- Client/Server Componentの使い分け
+- Radix UIコンポーネントの使用パターン
+- Tailwind CSSスタイリングルール
+- React Hook Form + Zodによるフォーム実装
+
+**Supabase Agent:**
+- デュアルクライアントパターン（Browser/Admin）
+- クエリ関数の基本構造（1操作1ファイル）
+- API Routeの実装パターン
+- Realtime購読の設定
+
+**Zustand Agent:**
+- Store作成パターン（persist/non-persist）
+- セレクターによるパフォーマンス最適化
+- 非同期アクションの実装
+- 既存Store一覧
+
+**Explore Agent:**
+- ファイル・コード検索パターン
+- 依存関係調査方法
+- 主要Supabase関数一覧
+
+**Plan Agent:**
+- 実装計画の作成プロセス
+- タスク分解の基準
+- 担当エージェントの割り当て
