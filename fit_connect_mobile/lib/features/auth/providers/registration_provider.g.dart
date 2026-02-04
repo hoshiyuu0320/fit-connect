@@ -7,14 +7,15 @@ part of 'registration_provider.dart';
 // **************************************************************************
 
 String _$registrationNotifierHash() =>
-    r'505a0daa95172c35d4dc7a7728862c3a58ee4a35';
+    r'6ec2b5fdb9b9689bb4dcd20911784423233a6b75';
 
 /// 登録フロー中の状態を管理するProvider
+/// keepAlive: true で画面遷移時も状態を保持
 ///
 /// Copied from [RegistrationNotifier].
 @ProviderFor(RegistrationNotifier)
-final registrationNotifierProvider = AutoDisposeNotifierProvider<
-    RegistrationNotifier, RegistrationState>.internal(
+final registrationNotifierProvider =
+    NotifierProvider<RegistrationNotifier, RegistrationState>.internal(
   RegistrationNotifier.new,
   name: r'registrationNotifierProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -24,6 +25,6 @@ final registrationNotifierProvider = AutoDisposeNotifierProvider<
   allTransitiveDependencies: null,
 );
 
-typedef _$RegistrationNotifier = AutoDisposeNotifier<RegistrationState>;
+typedef _$RegistrationNotifier = Notifier<RegistrationState>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:confetti/confetti.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/features/auth/providers/registration_provider.dart';
-import 'package:fit_connect_mobile/features/home/presentation/screens/main_screen.dart';
+import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 /// 登録完了画面
@@ -82,13 +82,13 @@ class _RegistrationCompleteScreenState
     // 登録状態をクリア
     ref.read(registrationNotifierProvider.notifier).clear();
 
-    // ホーム画面へ遷移（スタックをクリア）
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (context) => const MainScreen(),
-      ),
-      (route) => false,
-    );
+    // currentClientProviderのキャッシュを無効化
+    // これにより、app.dartの_AuthLoadingScreenが再評価時に新しいclientデータを取得する
+    ref.invalidate(currentClientProvider);
+
+    // app.dartのStreamBuilderに戻る（_AuthLoadingScreenがMainScreenを表示する）
+    // これにより、ログアウト時もStreamBuilderが正常にWelcomeScreenへ遷移できる
+    Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
   @override
