@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
+import 'package:fit_connect_mobile/features/auth/data/client_repository.dart';
 import 'package:fit_connect_mobile/features/auth/providers/auth_provider.dart';
 import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
 
@@ -29,7 +30,7 @@ class SettingsScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // ユーザー情報セクション
-              _buildUserInfoSection(clientAsync, trainerAsync),
+              _buildUserInfoSection(context, ref, clientAsync, trainerAsync),
 
               const SizedBox(height: 16),
 
@@ -45,6 +46,8 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   Widget _buildUserInfoSection(
+    BuildContext context,
+    WidgetRef ref,
     AsyncValue clientAsync,
     AsyncValue trainerAsync,
   ) {
@@ -89,13 +92,36 @@ class SettingsScreen extends ConsumerWidget {
               const SizedBox(height: 16),
 
               // クライアント名
-              Text(
-                client.name,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.slate800,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    client.name,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.slate800,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  InkWell(
+                    onTap: () => _showEditNameDialog(
+                      context,
+                      ref,
+                      client.clientId,
+                      client.name,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      child: const Icon(
+                        LucideIcons.pencil,
+                        size: 16,
+                        color: AppColors.slate400,
+                      ),
+                    ),
+                  ),
+                ],
               ),
 
               const SizedBox(height: 8),
@@ -306,6 +332,93 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
+  void _showEditNameDialog(
+    BuildContext context,
+    WidgetRef ref,
+    String clientId,
+    String currentName,
+  ) {
+    final controller = TextEditingController(text: currentName);
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('名前を編集'),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            controller: controller,
+            autofocus: true,
+            decoration: const InputDecoration(
+              labelText: '名前',
+              hintText: '名前を入力してください',
+            ),
+            maxLength: 50,
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return '名前を入力してください';
+              }
+              return null;
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text(
+              'キャンセル',
+              style: TextStyle(color: AppColors.slate600),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              if (!formKey.currentState!.validate()) return;
+
+              final newName = controller.text.trim();
+              Navigator.of(dialogContext).pop();
+
+              try {
+                await ref.read(clientRepositoryProvider).updateClientName(
+                  clientId,
+                  newName,
+                );
+
+                // Providerをinvalidateして再取得
+                ref.invalidate(currentClientProvider);
+
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('名前を更新しました'),
+                      backgroundColor: AppColors.emerald600,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('更新に失敗しました: $e'),
+                      backgroundColor: AppColors.rose800,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text(
+              '保存',
+              style: TextStyle(
+                color: AppColors.primary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showLogoutDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
@@ -412,13 +525,27 @@ class _PreviewUserInfoSection extends StatelessWidget {
           const SizedBox(height: 16),
 
           // クライアント名
-          const Text(
-            '山田 太郎',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppColors.slate800,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                '山田 太郎',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.slate800,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.all(4),
+                child: const Icon(
+                  LucideIcons.pencil,
+                  size: 16,
+                  color: AppColors.slate400,
+                ),
+              ),
+            ],
           ),
 
           const SizedBox(height: 8),

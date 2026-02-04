@@ -1,9 +1,9 @@
 # FIT-CONNECT Mobile - 実装タスク一覧
 
 **作成日**: 2025年12月30日
-**バージョン**: 2.7
+**バージョン**: 2.8
 **進捗状況**: 全体 99% 完了
-**最終更新**: 2026年2月4日 - 登録時の名前入力画面（ProfileSetupScreen）実装完了
+**最終更新**: 2026年2月4日 - プロフィール編集機能（SettingsScreen拡張）実装完了
 
 ---
 
@@ -161,6 +161,49 @@
 ## 最新の変更履歴
 
 ### 2026年2月4日
+
+#### 7. プロフィール編集機能（SettingsScreen拡張）実装
+
+**目的**: 登録後に設定画面からクライアント名を編集できるようにする
+
+**新規作成ファイル**:
+- `lib/features/auth/data/client_repository.dart`
+- `lib/features/auth/data/client_repository.g.dart` (自動生成)
+
+**改修ファイル**:
+- `lib/features/settings/presentation/screens/settings_screen.dart`
+
+**実装内容**:
+
+1. **ClientRepository新規作成**
+   - `fetchClient(String clientId)`: クライアント情報を取得
+   - `updateClientName(String clientId, String name)`: 名前を更新（updated_atも更新）
+   - `clientRepositoryProvider`: Riverpod Provider（@riverpod）
+
+2. **SettingsScreen改修**
+   - 名前の横に編集アイコン（LucideIcons.pencil）追加
+   - タップで編集ダイアログ表示（AlertDialog）
+   - バリデーション: 空チェック、50文字制限
+   - 保存成功時: 緑色SnackBar「名前を更新しました」
+   - 保存失敗時: 赤色SnackBarでエラー表示
+   - `ref.invalidate(currentClientProvider)`で画面更新
+   - UIプレビュー関数も編集アイコン付きに更新
+
+**動作フロー**:
+```
+設定画面 → 名前横の鉛筆アイコンタップ
+  ↓
+編集ダイアログ表示（現在の名前が初期値）
+  ↓
+名前を入力して「保存」タップ
+  ↓
+ClientRepository.updateClientName() 実行
+  ↓
+成功: currentClientProvider invalidate → 画面更新 → SnackBar表示
+失敗: エラーSnackBar表示
+```
+
+---
 
 #### 6. 登録時の名前入力画面（ProfileSetupScreen）実装
 
@@ -611,12 +654,14 @@ class Trainer {
   - [x] **`completeRegistration()` でemailカラムにも保存**（`currentUser?.email`を使用）- 既存実装済み
   - [x] UIプレビュー関数作成（4種類：Empty, With Name, Loading, Validation Error）
 
-- [ ] **7.2 プロフィール編集機能（設定画面拡張）**
-  - [ ] `SettingsScreen` にプロフィール編集セクション追加
-  - [ ] 名前編集機能（タップで編集モード）
-  - [ ] ClientRepository に `updateClient()` メソッド追加
-  - [ ] clients テーブルの UPDATE RLSポリシー確認/追加
-  - [ ] 保存成功時のフィードバック（SnackBar）
+- [x] **7.2 プロフィール編集機能（設定画面拡張）** ✅ 完了（2026/02/04）
+  - [x] `SettingsScreen` にプロフィール編集セクション追加
+  - [x] 名前編集機能（タップで編集ダイアログ表示）
+  - [x] ClientRepository 新規作成（`fetchClient()`, `updateClientName()`）
+  - [x] clients テーブルの UPDATE RLSポリシー確認（`clients_update_own` 既存）
+  - [x] 保存成功時のフィードバック（緑色SnackBar）
+  - [x] `ref.invalidate(currentClientProvider)` で画面リフレッシュ
+  - [x] UIプレビュー関数更新（編集アイコン付き）
 
 - [ ] **7.3 プロフィール画像機能（オプション）**
   - [ ] 画像選択・アップロード機能
@@ -660,7 +705,7 @@ class Trainer {
 |---|--------|------|----------|
 | ~~0~~ | ~~**新規登録後の不具合調査・修正**~~ | ✅ 完了（2026/02/04） | - |
 | ~~1~~ | ~~**登録時の名前入力画面**~~ | ✅ 完了（2026/02/04） | - |
-| 2 | **プロフィール編集機能** | SettingsScreen拡張、名前編集、UPDATE RLS | 中 |
+| ~~2~~ | ~~**プロフィール編集機能**~~ | ✅ 完了（2026/02/04） | - |
 | 3 | **統計カード拡張** | 前回比、期間平均/最高/最低/変動幅（体重記録画面） | 小 |
 
 ### 🟡 高優先（MVP後すぐ）
