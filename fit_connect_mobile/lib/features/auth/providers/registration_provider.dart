@@ -31,7 +31,8 @@ class RegistrationState {
 }
 
 /// 登録フロー中の状態を管理するProvider
-@riverpod
+/// keepAlive: true で画面遷移時も状態を保持
+@Riverpod(keepAlive: true)
 class RegistrationNotifier extends _$RegistrationNotifier {
   @override
   RegistrationState build() => const RegistrationState();
@@ -96,11 +97,17 @@ class RegistrationNotifier extends _$RegistrationNotifier {
     }
 
     // clientsテーブルにレコード作成
+    final userEmail = SupabaseService.client.auth.currentUser?.email;
     await SupabaseService.client.from('clients').insert({
       'client_id': userId,
       'trainer_id': trainerId,
       'name': '新規クライアント', // 後でプロフィール設定画面で変更可能
+      'email': userEmail,
     });
+
+    // 注意: ここでcurrentClientProviderをinvalidateしない
+    // invalidateすると_AuthLoadingScreenが再ビルドされ、即座にMainScreenに遷移してしまう
+    // invalidateはRegistrationCompleteScreenの_navigateToHome()で行う
   }
 
   /// 状態をクリア
