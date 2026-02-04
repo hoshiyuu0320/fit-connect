@@ -5,6 +5,7 @@ import 'package:fit_connect_mobile/core/theme/app_theme.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/features/home/presentation/screens/main_screen.dart';
 import 'package:fit_connect_mobile/features/auth/presentation/screens/welcome_screen.dart';
+import 'package:fit_connect_mobile/features/auth/presentation/screens/profile_setup_screen.dart';
 import 'package:fit_connect_mobile/features/auth/presentation/screens/registration_complete_screen.dart';
 import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
 import 'package:fit_connect_mobile/features/auth/providers/registration_provider.dart';
@@ -69,9 +70,12 @@ class _AuthLoadingScreen extends ConsumerWidget {
         if (client != null) {
           // クライアントデータあり → MainScreenへ
           return const MainScreen();
-        } else if (registrationState.hasTrainer) {
-          // クライアントデータなし＆登録フロー中 → 登録完了画面へ
+        } else if (registrationState.isRegistrationComplete) {
+          // 登録完了 → 登録完了画面へ
           return const RegistrationCompleteScreen();
+        } else if (registrationState.hasTrainer) {
+          // クライアントデータなし＆登録フロー中 → プロフィール設定画面へ
+          return const ProfileSetupScreen();
         } else {
           // クライアントデータなし＆登録フローなし → オンボーディングへ
           // （認証済みだがクライアント登録がない状態）
@@ -103,9 +107,9 @@ class _AuthLoadingScreen extends ConsumerWidget {
         );
       },
       error: (error, stack) {
-        // エラー時: 登録フロー中なら完了画面、そうでなければオンボーディング
+        // エラー時: 登録フロー中ならプロフィール設定画面、そうでなければオンボーディング
         if (registrationState.hasTrainer) {
-          return const RegistrationCompleteScreen();
+          return const ProfileSetupScreen();
         }
         return const WelcomeScreen();
       },

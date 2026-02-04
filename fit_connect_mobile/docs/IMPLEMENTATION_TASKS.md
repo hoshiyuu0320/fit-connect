@@ -1,9 +1,9 @@
 # FIT-CONNECT Mobile - 実装タスク一覧
 
 **作成日**: 2025年12月30日
-**バージョン**: 2.6
+**バージョン**: 2.7
 **進捗状況**: 全体 99% 完了
-**最終更新**: 2026年2月4日 - 新規登録後の不具合修正完了
+**最終更新**: 2026年2月4日 - 登録時の名前入力画面（ProfileSetupScreen）実装完了
 
 ---
 
@@ -159,6 +159,57 @@
 ---
 
 ## 最新の変更履歴
+
+### 2026年2月4日
+
+#### 6. 登録時の名前入力画面（ProfileSetupScreen）実装
+
+**目的**: 新規登録フローで、クライアントが自分の名前を入力できるようにする
+
+**新規作成ファイル**:
+- `lib/features/auth/presentation/screens/profile_setup_screen.dart`
+
+**改修ファイル**:
+- `lib/features/auth/providers/registration_provider.dart`
+- `lib/app.dart`
+
+**実装内容**:
+
+1. **ProfileSetupScreen新規作成**
+   - 名前入力フォーム（TextFormField、Form）
+   - バリデーション: 空チェック、50文字制限
+   - ローディング状態の処理
+   - エラーハンドリング（SnackBar表示）
+   - UIプレビュー関数4種類（Empty, With Name, Loading, Validation Error）
+
+2. **RegistrationState改修**
+   - `clientName` フィールド追加
+   - `setClientName()` メソッド追加
+   - `copyWith()` 対応
+
+3. **completeRegistration()改修**
+   - `state.clientName` を使用してINSERT
+   - 空の場合はデフォルト値「新規クライアント」を使用
+
+4. **app.dart遷移修正**
+   - `registrationState.hasTrainer == true` 時の遷移先を `ProfileSetupScreen` に変更
+
+**動作フロー**:
+```
+LoginScreen (メール認証)
+  ↓ [認証成功]
+popUntil → app.dart StreamBuilder
+  ↓ [registrationState.hasTrainer == true]
+ProfileSetupScreen (名前入力)
+  ↓ [登録完了ボタン]
+setClientName() → completeRegistration() → invalidate(currentClientProvider)
+  ↓
+RegistrationCompleteScreen (紙吹雪アニメーション)
+  ↓ [トレーニングを始める]
+MainScreen
+```
+
+---
 
 ### 2026年2月1日
 
@@ -552,13 +603,13 @@ class Trainer {
 
 #### タスク
 
-- [ ] **7.1 登録時の名前入力画面**
-  - [ ] `ProfileSetupScreen` 新規作成（`lib/features/auth/presentation/screens/`）
-  - [ ] 名前入力フォーム（TextFormField、バリデーション）
-  - [ ] 登録フローへの組み込み（LoginScreen → ProfileSetupScreen → RegistrationCompleteScreen）
-  - [ ] `completeRegistration()` 修正（名前パラメータ受け取り）
-  - [ ] **`completeRegistration()` でemailカラムにも保存**（`currentUser?.email`を使用）
-  - [ ] UIプレビュー関数作成
+- [x] **7.1 登録時の名前入力画面** ✅ 完了（2026/02/04）
+  - [x] `ProfileSetupScreen` 新規作成（`lib/features/auth/presentation/screens/`）
+  - [x] 名前入力フォーム（TextFormField、バリデーション：空チェック、50文字制限）
+  - [x] 登録フローへの組み込み（LoginScreen → ProfileSetupScreen → RegistrationCompleteScreen）
+  - [x] `completeRegistration()` 修正（`RegistrationState.clientName`から取得）
+  - [x] **`completeRegistration()` でemailカラムにも保存**（`currentUser?.email`を使用）- 既存実装済み
+  - [x] UIプレビュー関数作成（4種類：Empty, With Name, Loading, Validation Error）
 
 - [ ] **7.2 プロフィール編集機能（設定画面拡張）**
   - [ ] `SettingsScreen` にプロフィール編集セクション追加
@@ -608,7 +659,7 @@ class Trainer {
 | # | タスク | 詳細 | 見積もり |
 |---|--------|------|----------|
 | ~~0~~ | ~~**新規登録後の不具合調査・修正**~~ | ✅ 完了（2026/02/04） | - |
-| 1 | **登録時の名前入力画面** | ProfileSetupScreen作成、登録フロー組み込み | 中 |
+| ~~1~~ | ~~**登録時の名前入力画面**~~ | ✅ 完了（2026/02/04） | - |
 | 2 | **プロフィール編集機能** | SettingsScreen拡張、名前編集、UPDATE RLS | 中 |
 | 3 | **統計カード拡張** | 前回比、期間平均/最高/最低/変動幅（体重記録画面） | 小 |
 
