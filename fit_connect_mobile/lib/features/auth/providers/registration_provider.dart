@@ -8,22 +8,30 @@ class RegistrationState {
   final String? trainerId;
   final String? trainerName;
   final String? trainerImageUrl;
+  final String? clientName;
+  final bool isRegistrationComplete;
 
   const RegistrationState({
     this.trainerId,
     this.trainerName,
     this.trainerImageUrl,
+    this.clientName,
+    this.isRegistrationComplete = false,
   });
 
   RegistrationState copyWith({
     String? trainerId,
     String? trainerName,
     String? trainerImageUrl,
+    String? clientName,
+    bool? isRegistrationComplete,
   }) {
     return RegistrationState(
       trainerId: trainerId ?? this.trainerId,
       trainerName: trainerName ?? this.trainerName,
       trainerImageUrl: trainerImageUrl ?? this.trainerImageUrl,
+      clientName: clientName ?? this.clientName,
+      isRegistrationComplete: isRegistrationComplete ?? this.isRegistrationComplete,
     );
   }
 
@@ -53,6 +61,16 @@ class RegistrationNotifier extends _$RegistrationNotifier {
     );
   }
 
+  /// クライアント名をセット
+  void setClientName(String name) {
+    state = state.copyWith(clientName: name);
+  }
+
+  /// 登録完了フラグをセット
+  void setRegistrationComplete(bool value) {
+    state = state.copyWith(isRegistrationComplete: value);
+  }
+
   /// トレーナーIDからSupabaseでトレーナー情報を取得
   Future<bool> fetchTrainerInfo(String trainerId) async {
     try {
@@ -76,6 +94,7 @@ class RegistrationNotifier extends _$RegistrationNotifier {
         trainerId: trainerId,
         trainerName: response['name'] as String?,
         trainerImageUrl: response['profile_image_url'] as String?,
+        clientName: state.clientName,
       );
       return true;
     } catch (e) {
@@ -96,14 +115,14 @@ class RegistrationNotifier extends _$RegistrationNotifier {
       throw Exception('User not authenticated');
     }
 
-    // clientsテーブルにレコード作成
+    // clientsテーブルにレコード作成（既存の場合は更新）
     final userEmail = SupabaseService.client.auth.currentUser?.email;
-    await SupabaseService.client.from('clients').insert({
+    await SupabaseService.client.from('clients').upsert({
       'client_id': userId,
       'trainer_id': trainerId,
-      'name': '新規クライアント', // 後でプロフィール設定画面で変更可能
+      'name': state.clientName?.isNotEmpty == true ? state.clientName : '新規クライアント',
       'email': userEmail,
-    });
+    }, onConflict: 'client_id');
 
     // 注意: ここでcurrentClientProviderをinvalidateしない
     // invalidateすると_AuthLoadingScreenが再ビルドされ、即座にMainScreenに遷移してしまう

@@ -25,7 +25,6 @@ class _RegistrationCompleteScreenState
   late AnimationController _scaleController;
   late Animation<double> _scaleAnimation;
   bool _isLoading = true;
-  String? _error;
 
   @override
   void initState() {
@@ -46,29 +45,18 @@ class _RegistrationCompleteScreenState
       curve: Curves.elasticOut,
     );
 
-    // 登録完了処理を実行
-    _completeRegistration();
+    // 登録はProfileSetupScreenで完了済み
+    // ここではアニメーションを開始するのみ
+    _startAnimations();
   }
 
-  Future<void> _completeRegistration() async {
-    try {
-      await ref.read(registrationNotifierProvider.notifier).completeRegistration();
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-        // アニメーション開始
-        _confettiController.play();
-        _scaleController.forward();
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _error = e.toString();
-        });
-      }
-    }
+  void _startAnimations() {
+    setState(() {
+      _isLoading = false;
+    });
+    // アニメーション開始
+    _confettiController.play();
+    _scaleController.forward();
   }
 
   @override
@@ -79,16 +67,16 @@ class _RegistrationCompleteScreenState
   }
 
   void _navigateToHome() {
-    // 登録状態をクリア
+    // 登録状態をクリア（isRegistrationComplete も false になる）
     ref.read(registrationNotifierProvider.notifier).clear();
 
     // currentClientProviderのキャッシュを無効化
-    // これにより、app.dartの_AuthLoadingScreenが再評価時に新しいclientデータを取得する
+    // これにより、app.dartの_AuthLoadingScreenが再評価され、
+    // client != null なので MainScreen が表示される
     ref.invalidate(currentClientProvider);
 
-    // app.dartのStreamBuilderに戻る（_AuthLoadingScreenがMainScreenを表示する）
-    // これにより、ログアウト時もStreamBuilderが正常にWelcomeScreenへ遷移できる
-    Navigator.of(context).popUntil((route) => route.isFirst);
+    // Navigatorでの遷移は不要
+    // app.dartの状態変化により自動的にMainScreenが表示される
   }
 
   @override
@@ -114,75 +102,6 @@ class _RegistrationCompleteScreenState
                 ),
               ),
             ],
-          ),
-        ),
-      );
-    }
-
-    if (_error != null) {
-      return Scaffold(
-        backgroundColor: Colors.white,
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: AppColors.rose100,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Icon(
-                    LucideIcons.alertTriangle,
-                    size: 40,
-                    color: AppColors.rose800,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  '登録中にエラーが発生しました',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.slate800,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  _error!,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppColors.slate500,
-                  ),
-                ),
-                const SizedBox(height: 32),
-                ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      _isLoading = true;
-                      _error = null;
-                    });
-                    _completeRegistration();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary600,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
-                      vertical: 16,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text('再試行'),
-                ),
-              ],
-            ),
           ),
         ),
       );
