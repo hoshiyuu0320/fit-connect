@@ -1,9 +1,9 @@
 # FIT-CONNECT Mobile - 実装タスク一覧
 
 **作成日**: 2025年12月30日
-**バージョン**: 2.8
+**バージョン**: 2.9
 **進捗状況**: 全体 99% 完了
-**最終更新**: 2026年2月4日 - プロフィール編集機能（SettingsScreen拡張）実装完了
+**最終更新**: 2026年2月4日 - プロフィール画像機能（7.3）実装完了
 
 ---
 
@@ -161,6 +161,55 @@
 ## 最新の変更履歴
 
 ### 2026年2月4日
+
+#### 8. プロフィール画像機能実装
+
+**目的**: 設定画面からプロフィール画像を設定・変更できるようにする
+
+**新規作成ファイル**:
+- `supabase/migrations/20260204100000_create_client_avatars_bucket.sql`
+
+**改修ファイル**:
+- `lib/services/storage_service.dart`
+- `lib/features/auth/data/client_repository.dart`
+- `lib/features/settings/presentation/screens/settings_screen.dart`
+
+**実装内容**:
+
+1. **Supabase Storageバケット作成**
+   - バケット名: `client-avatars`
+   - 公開: true
+   - ファイルサイズ制限: 5MB
+   - 許可MIME: image/jpeg, image/png, image/webp, image/heic
+   - RLSポリシー: 自分のフォルダにのみアップロード可能
+
+2. **StorageService拡張**
+   - `uploadProfileImage(File file, String userId)`: プロフィール画像アップロード
+   - `deleteProfileImage(String userId)`: プロフィール画像削除
+   - キャッシュバスティング用タイムスタンプ付きURL
+
+3. **ClientRepository拡張**
+   - `updateProfileImageUrl(String clientId, String? imageUrl)`: DB更新
+
+4. **SettingsScreen改修**
+   - CircleAvatarにカメラアイコンオーバーレイ追加
+   - タップで画像選択ダイアログ表示（カメラ/ギャラリー）
+   - アップロード中ローディング表示
+   - 成功/失敗時のSnackBar表示
+   - Provider invalidateで画面更新
+
+**動作フロー**:
+```
+プロフィール画像タップ → カメラ/ギャラリー選択
+  ↓
+画像選択 → ローディング表示
+  ↓
+Storage アップロード → DB更新 → Provider invalidate
+  ↓
+画面更新 → SnackBar表示
+```
+
+---
 
 #### 7. プロフィール編集機能（SettingsScreen拡張）実装
 
@@ -663,11 +712,15 @@ class Trainer {
   - [x] `ref.invalidate(currentClientProvider)` で画面リフレッシュ
   - [x] UIプレビュー関数更新（編集アイコン付き）
 
-- [ ] **7.3 プロフィール画像機能（オプション）**
-  - [ ] 画像選択・アップロード機能
-  - [ ] Supabase Storage バケット（client-avatars）
-  - [ ] 画像圧縮・リサイズ
-  - [ ] SettingsScreen・MessageScreen での表示
+- [x] **7.3 プロフィール画像機能** ✅ 完了（2026/02/04）
+  - [x] Supabase Storage バケット作成（`client-avatars`）
+  - [x] StorageService拡張（`uploadProfileImage()`, `deleteProfileImage()`）
+  - [x] ClientRepository拡張（`updateProfileImageUrl()`）
+  - [x] 画像選択・アップロード機能（カメラ/ギャラリー）
+  - [x] 画像圧縮（既存のImagePicker設定で対応）
+  - [x] SettingsScreenでの表示・変更機能
+  - [x] カメラアイコンオーバーレイ
+  - [x] ローディング表示・SnackBarフィードバック
 
 #### 実装優先度
 
@@ -675,7 +728,7 @@ class Trainer {
 2. **7.2 プロフィール編集** - 高優先（登録後の変更手段）
 3. **7.3 プロフィール画像** - 中優先（あると良い機能）
 
-**期待される成果**: 新規登録時にクライアント名を設定でき、登録後も設定画面から変更可能
+**期待される成果**: 新規登録時にクライアント名を設定でき、登録後も設定画面から名前・プロフィール画像を変更可能 ✅ 達成
 
 ---
 
@@ -716,13 +769,12 @@ class Trainer {
 | 5 | **既読機能** | read_at更新、既読表示UI（✓マーク） | 中 |
 | 6 | **ページネーション** | 大量メッセージ対応、無限スクロール | 中 |
 | 7 | **画像ギャラリー** | 食事画像のグリッド表示、フルスクリーン表示 | 中 |
-| 8 | **プロフィール画像** | 画像選択・アップロード、Storage連携 | 中 |
+| ~~8~~ | ~~**プロフィール画像**~~ | ✅ 完了（2026/02/04） | - |
 
 ### 🟢 中優先（アップデート）
 
 | # | タスク | 詳細 | 見積もり |
 |---|--------|------|----------|
-| 8 | **プロフィール編集** | 名前、アイコン変更 | 中 |
 | 9 | **ダークモード** | テーマ切り替え、ダークカラーパレット | 中 |
 | 10 | **画像最適化** | cached_network_image、プレースホルダー | 小 |
 | 11 | **アニメーション強化** | ページ遷移、リスト項目フェードイン | 中 |

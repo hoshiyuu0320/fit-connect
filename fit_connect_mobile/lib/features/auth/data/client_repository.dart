@@ -43,4 +43,15 @@ class ClientRepository {
       throw Exception('クライアント名の更新に失敗しました: $e');
     }
   }
+
+  /// プロフィール画像URLを更新
+  Future<void> updateProfileImageUrl(String clientId, String? imageUrl) async {
+    try {
+      await _supabase.from('clients').update({
+        'profile_image_url': imageUrl,
+      }).eq('client_id', clientId);
+    } catch (e) {
+      throw Exception('プロフィール画像の更新に失敗しました: $e');
+    }
+  }
 }

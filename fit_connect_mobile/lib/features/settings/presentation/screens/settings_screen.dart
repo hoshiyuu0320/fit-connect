@@ -7,6 +7,7 @@ import 'package:fit_connect_mobile/core/theme/app_theme.dart';
 import 'package:fit_connect_mobile/features/auth/data/client_repository.dart';
 import 'package:fit_connect_mobile/features/auth/providers/auth_provider.dart';
 import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
+import 'package:fit_connect_mobile/services/storage_service.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -73,20 +74,52 @@ class SettingsScreen extends ConsumerWidget {
 
           return Column(
             children: [
-              // プロフィール画像
-              CircleAvatar(
-                radius: 40,
-                backgroundColor: AppColors.primary100,
-                backgroundImage: client.profileImageUrl != null
-                    ? NetworkImage(client.profileImageUrl!)
-                    : null,
-                child: client.profileImageUrl == null
-                    ? const Icon(
-                        LucideIcons.user,
-                        size: 40,
-                        color: AppColors.primary500,
-                      )
-                    : null,
+              // プロフィール画像（タップで変更可能）
+              GestureDetector(
+                onTap: () => _showProfileImagePicker(
+                  context,
+                  ref,
+                  client.clientId,
+                ),
+                child: Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 40,
+                      backgroundColor: AppColors.primary100,
+                      backgroundImage: client.profileImageUrl != null
+                          ? NetworkImage(client.profileImageUrl!)
+                          : null,
+                      child: client.profileImageUrl == null
+                          ? const Icon(
+                              LucideIcons.user,
+                              size: 40,
+                              color: AppColors.primary500,
+                            )
+                          : null,
+                    ),
+                    // カメラアイコンオーバーレイ
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white,
+                            width: 2,
+                          ),
+                        ),
+                        child: const Icon(
+                          LucideIcons.camera,
+                          size: 14,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
 
               const SizedBox(height: 16),
@@ -419,6 +452,68 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
+  void _showProfileImagePicker(
+    BuildContext context,
+    WidgetRef ref,
+    String clientId,
+  ) async {
+    // 画像選択ダイアログを表示
+    final file = await StorageService.showImagePickerDialog(context);
+    if (file == null) return;
+
+    // ローディング表示
+    if (context.mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    try {
+      // 画像をアップロード
+      final imageUrl =
+          await StorageService.uploadProfileImage(file, clientId);
+
+      if (imageUrl == null) {
+        throw Exception('画像のアップロードに失敗しました');
+      }
+
+      // DBを更新
+      await ref.read(clientRepositoryProvider).updateProfileImageUrl(
+        clientId,
+        imageUrl,
+      );
+
+      // Providerをinvalidateして再取得
+      ref.invalidate(currentClientProvider);
+
+      // ローディングを閉じる
+      if (context.mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('プロフィール画像を更新しました'),
+            backgroundColor: AppColors.emerald600,
+          ),
+        );
+      }
+    } catch (e) {
+      // ローディングを閉じる
+      if (context.mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('画像の更新に失敗しました: $e'),
+            backgroundColor: AppColors.rose800,
+          ),
+        );
+      }
+    }
+  }
+
   void _showLogoutDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
@@ -511,15 +606,39 @@ class _PreviewUserInfoSection extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // プロフィール画像
-          const CircleAvatar(
-            radius: 40,
-            backgroundColor: AppColors.primary100,
-            child: Icon(
-              LucideIcons.user,
-              size: 40,
-              color: AppColors.primary500,
-            ),
+          // プロフィール画像（カメラアイコンオーバーレイ付き）
+          Stack(
+            children: [
+              const CircleAvatar(
+                radius: 40,
+                backgroundColor: AppColors.primary100,
+                child: Icon(
+                  LucideIcons.user,
+                  size: 40,
+                  color: AppColors.primary500,
+                ),
+              ),
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white,
+                      width: 2,
+                    ),
+                  ),
+                  child: const Icon(
+                    LucideIcons.camera,
+                    size: 14,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
           ),
 
           const SizedBox(height: 16),
