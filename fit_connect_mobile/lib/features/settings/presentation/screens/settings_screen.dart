@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
+import 'package:fit_connect_mobile/features/auth/data/client_repository.dart';
 import 'package:fit_connect_mobile/features/auth/providers/auth_provider.dart';
 import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
+import 'package:fit_connect_mobile/services/storage_service.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -29,7 +31,7 @@ class SettingsScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // ユーザー情報セクション
-              _buildUserInfoSection(clientAsync, trainerAsync),
+              _buildUserInfoSection(context, ref, clientAsync, trainerAsync),
 
               const SizedBox(height: 16),
 
@@ -45,6 +47,8 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   Widget _buildUserInfoSection(
+    BuildContext context,
+    WidgetRef ref,
     AsyncValue clientAsync,
     AsyncValue trainerAsync,
   ) {
@@ -70,32 +74,87 @@ class SettingsScreen extends ConsumerWidget {
 
           return Column(
             children: [
-              // プロフィール画像
-              CircleAvatar(
-                radius: 40,
-                backgroundColor: AppColors.primary100,
-                backgroundImage: client.profileImageUrl != null
-                    ? NetworkImage(client.profileImageUrl!)
-                    : null,
-                child: client.profileImageUrl == null
-                    ? const Icon(
-                        LucideIcons.user,
-                        size: 40,
-                        color: AppColors.primary500,
-                      )
-                    : null,
+              // プロフィール画像（タップで変更可能）
+              GestureDetector(
+                onTap: () => _showProfileImagePicker(
+                  context,
+                  ref,
+                  client.clientId,
+                ),
+                child: Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 40,
+                      backgroundColor: AppColors.primary100,
+                      backgroundImage: client.profileImageUrl != null
+                          ? NetworkImage(client.profileImageUrl!)
+                          : null,
+                      child: client.profileImageUrl == null
+                          ? const Icon(
+                              LucideIcons.user,
+                              size: 40,
+                              color: AppColors.primary500,
+                            )
+                          : null,
+                    ),
+                    // カメラアイコンオーバーレイ
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white,
+                            width: 2,
+                          ),
+                        ),
+                        child: const Icon(
+                          LucideIcons.camera,
+                          size: 14,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
 
               const SizedBox(height: 16),
 
               // クライアント名
-              Text(
-                client.name,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.slate800,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    client.name,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.slate800,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  InkWell(
+                    onTap: () => _showEditNameDialog(
+                      context,
+                      ref,
+                      client.clientId,
+                      client.name,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      child: const Icon(
+                        LucideIcons.pencil,
+                        size: 16,
+                        color: AppColors.slate400,
+                      ),
+                    ),
+                  ),
+                ],
               ),
 
               const SizedBox(height: 8),
@@ -306,6 +365,155 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
+  void _showEditNameDialog(
+    BuildContext context,
+    WidgetRef ref,
+    String clientId,
+    String currentName,
+  ) {
+    final controller = TextEditingController(text: currentName);
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('名前を編集'),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            controller: controller,
+            autofocus: true,
+            decoration: const InputDecoration(
+              labelText: '名前',
+              hintText: '名前を入力してください',
+            ),
+            maxLength: 50,
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return '名前を入力してください';
+              }
+              return null;
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text(
+              'キャンセル',
+              style: TextStyle(color: AppColors.slate600),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              if (!formKey.currentState!.validate()) return;
+
+              final newName = controller.text.trim();
+              Navigator.of(dialogContext).pop();
+
+              try {
+                await ref.read(clientRepositoryProvider).updateClientName(
+                  clientId,
+                  newName,
+                );
+
+                // Providerをinvalidateして再取得
+                ref.invalidate(currentClientProvider);
+
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('名前を更新しました'),
+                      backgroundColor: AppColors.emerald600,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('更新に失敗しました: $e'),
+                      backgroundColor: AppColors.rose800,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text(
+              '保存',
+              style: TextStyle(
+                color: AppColors.primary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showProfileImagePicker(
+    BuildContext context,
+    WidgetRef ref,
+    String clientId,
+  ) async {
+    // 画像選択ダイアログを表示
+    final file = await StorageService.showImagePickerDialog(context);
+    if (file == null) return;
+
+    // ローディング表示
+    if (context.mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    try {
+      // 画像をアップロード
+      final imageUrl =
+          await StorageService.uploadProfileImage(file, clientId);
+
+      if (imageUrl == null) {
+        throw Exception('画像のアップロードに失敗しました');
+      }
+
+      // DBを更新
+      await ref.read(clientRepositoryProvider).updateProfileImageUrl(
+        clientId,
+        imageUrl,
+      );
+
+      // Providerをinvalidateして再取得
+      ref.invalidate(currentClientProvider);
+
+      // ローディングを閉じる
+      if (context.mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('プロフィール画像を更新しました'),
+            backgroundColor: AppColors.emerald600,
+          ),
+        );
+      }
+    } catch (e) {
+      // ローディングを閉じる
+      if (context.mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('画像の更新に失敗しました: $e'),
+            backgroundColor: AppColors.rose800,
+          ),
+        );
+      }
+    }
+  }
+
   void _showLogoutDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
@@ -398,27 +606,65 @@ class _PreviewUserInfoSection extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // プロフィール画像
-          const CircleAvatar(
-            radius: 40,
-            backgroundColor: AppColors.primary100,
-            child: Icon(
-              LucideIcons.user,
-              size: 40,
-              color: AppColors.primary500,
-            ),
+          // プロフィール画像（カメラアイコンオーバーレイ付き）
+          Stack(
+            children: [
+              const CircleAvatar(
+                radius: 40,
+                backgroundColor: AppColors.primary100,
+                child: Icon(
+                  LucideIcons.user,
+                  size: 40,
+                  color: AppColors.primary500,
+                ),
+              ),
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white,
+                      width: 2,
+                    ),
+                  ),
+                  child: const Icon(
+                    LucideIcons.camera,
+                    size: 14,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
           ),
 
           const SizedBox(height: 16),
 
           // クライアント名
-          const Text(
-            '山田 太郎',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppColors.slate800,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                '山田 太郎',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.slate800,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.all(4),
+                child: const Icon(
+                  LucideIcons.pencil,
+                  size: 16,
+                  color: AppColors.slate400,
+                ),
+              ),
+            ],
           ),
 
           const SizedBox(height: 8),

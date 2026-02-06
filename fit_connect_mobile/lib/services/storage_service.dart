@@ -11,6 +11,7 @@ class StorageService {
 
   /// バケット名
   static const String bucketName = 'message-photos';
+  static const String avatarBucketName = 'client-avatars';
 
   /// 画像の最大サイズ
   static const double maxWidth = 1920;
@@ -123,6 +124,61 @@ class StorageService {
       return true;
     } catch (e) {
       debugPrint('[StorageService] deleteImage error: $e');
+      return false;
+    }
+  }
+
+  /// プロフィール画像をアップロード
+  /// [file] - アップロードする画像ファイル
+  /// [userId] - ユーザーID
+  /// 戻り値: アップロードされた画像の公開URL
+  static Future<String?> uploadProfileImage(File file, String userId) async {
+    try {
+      // プロフィール画像は avatar.jpg 固定（上書き更新）
+      final filePath = '$userId/avatar.jpg';
+
+      // 既存の画像を削除（エラーは無視）
+      try {
+        await SupabaseService.client.storage
+            .from(avatarBucketName)
+            .remove([filePath]);
+      } catch (_) {
+        // 既存ファイルがない場合は無視
+      }
+
+      // 新しい画像をアップロード
+      await SupabaseService.client.storage
+          .from(avatarBucketName)
+          .upload(filePath, file);
+
+      // 公開URLを取得（キャッシュバスティング用にタイムスタンプ追加）
+      final publicUrl = SupabaseService.client.storage
+          .from(avatarBucketName)
+          .getPublicUrl(filePath);
+
+      final urlWithTimestamp = '$publicUrl?t=${DateTime.now().millisecondsSinceEpoch}';
+
+      debugPrint('[StorageService] Profile image uploaded: $urlWithTimestamp');
+      return urlWithTimestamp;
+    } catch (e) {
+      debugPrint('[StorageService] uploadProfileImage error: $e');
+      return null;
+    }
+  }
+
+  /// プロフィール画像を削除
+  /// [userId] - ユーザーID
+  static Future<bool> deleteProfileImage(String userId) async {
+    try {
+      final filePath = '$userId/avatar.jpg';
+      await SupabaseService.client.storage
+          .from(avatarBucketName)
+          .remove([filePath]);
+
+      debugPrint('[StorageService] Profile image deleted: $filePath');
+      return true;
+    } catch (e) {
+      debugPrint('[StorageService] deleteProfileImage error: $e');
       return false;
     }
   }
