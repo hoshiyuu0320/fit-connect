@@ -1,9 +1,9 @@
 # FIT-CONNECT Mobile - 実装タスク一覧
 
 **作成日**: 2025年12月30日
-**バージョン**: 3.0
+**バージョン**: 3.1
 **進捗状況**: 全体 99% 完了
-**最終更新**: 2026年2月7日 - 統計カード拡張（#3）実装完了
+**最終更新**: 2026年2月7日 - プッシュ通知機能実装完了
 
 ---
 
@@ -37,7 +37,7 @@
 | **Supabase統合** | 100% | 🟢 完了 |
 | **Supabase Storage** | 100% | 🟢 完了 |
 | **リアルタイム機能** | 100% | 🟢 完了 |
-| **Edge Functions** | 80% | 🟡 進行中 |
+| **Edge Functions** | 100% | 🟢 完了 |
 | **UIプレビュー関数** | 95% | 🟡 進行中 |
 | **日本語対応** | 100% | 🟢 完了 |
 | **テスト** | 0% | 🔴 未着手 |
@@ -155,12 +155,66 @@
   - ✅ MessageScreenで編集機能統合
   - ✅ 5分以内編集可能、期限切れエラー表示
   - ✅ UIプレビュー関数追加
+- ✅ **プッシュ通知機能実装**
+  - ✅ DBマイグレーション（fcm_tokenカラム追加）
+  - ✅ NotificationService完全実装（FCMトークン管理・通知表示・タップハンドリング）
+  - ✅ Firebase初期化（main.dart - iOS/Androidのみ）
+  - ✅ 認証フローFCMトークン管理統合（ログイン時保存・ログアウト時削除）
+  - ✅ Edge Function FCM HTTP v1 API通知送信（メッセージ通知・目標達成通知）
+  - ✅ iOS entitlements・Android通知チャンネル設定
+  - ✅ Webhookペイロードにsender_type/receiver_type追加
+  - ✅ セットアップ手順ドキュメント作成
 
 ---
 
 ## 最新の変更履歴
 
 ### 2026年2月7日
+
+#### 10. プッシュ通知機能実装
+
+**目的**: メッセージ受信時と目標達成時にプッシュ通知を送信する
+
+**新規作成ファイル**:
+- `ios/Runner/Runner.entitlements` — iOS APNs development設定
+- `ios/Runner/RunnerRelease.entitlements` — iOS APNs production設定
+- `docs/PUSH_NOTIFICATION_SETUP.md` — モバイル側セットアップ手順
+- `docs/WEB_PUSH_NOTIFICATION_SETUP.md` — WEBアプリ側セットアップ手順
+
+**改修ファイル**:
+- `lib/services/notification_service.dart` — 大幅改修（FCMトークン管理・通知表示・タップハンドリング）
+- `lib/main.dart` — Firebase初期化追加（iOS/Androidのみ）
+- `lib/app.dart` — ログイン時FCMトークン保存・通知タップハンドリング
+- `lib/features/auth/providers/auth_provider.dart` — ログアウト時FCMトークン削除
+- `supabase/functions/parse-message-tags/index.ts` — FCM HTTP v1 API通知送信追加
+- `android/app/src/main/AndroidManifest.xml` — 通知チャンネルメタデータ追加
+
+**DBマイグレーション**:
+- `clients` テーブルに `fcm_token` カラム追加
+- `trainers` テーブルに `fcm_token` カラム追加
+- Webhookペイロードに `sender_type`/`receiver_type` 追加
+
+**実装内容**:
+
+1. **NotificationService** — 権限リクエスト、FCMトークン取得・保存・削除、フォアグラウンド/バックグラウンド通知表示、通知タップハンドリング、トークンリフレッシュ対応
+2. **Firebase初期化** — iOS/Androidのみ（macOS開発環境除外）、try-catchでエラー時もアプリ起動継続
+3. **認証フロー統合** — ログイン検知時にFCMトークン自動保存、ログアウト時に自動削除
+4. **Edge Function** — FCM HTTP v1 API（サービスアカウントJWT認証 → OAuth2トークン取得 → FCM送信）
+5. **通知トリガー**:
+   - メッセージINSERT時 → 受信者に「〇〇からのメッセージ」通知
+   - 体重記録で目標達成時 → クライアントに「目標達成！」通知
+6. **プラットフォーム設定** — iOS entitlements（APNs）、Android通知チャンネル
+
+**手動セットアップ（未実施）**:
+- APNsキー作成・Firebase登録（Apple Developer Program登録後）
+- Firebaseサービスアカウントキー → Supabase Secrets登録（設定済み）
+- Edge Functionデプロイ（デプロイ済み）
+
+**動作確認状況**:
+- Edge Function → FCM API送信直前まで正常動作確認済み
+- 受信端末のFCMトークン保存後に通知受信可能
+
+---
 
 #### 9. 統計カード拡張
 
@@ -678,37 +732,44 @@ class Trainer {
 
 ---
 
-### 📌 フェーズ6: プッシュ通知
+### 📌 フェーズ6: プッシュ通知 ✅ 実装完了
 
 **目的**: メッセージ受信時や目標達成時にリアルタイム通知
 
 #### タスク
 
-- [ ] **6.1 Firebase設定確認**
-  - [ ] iOS: `ios/Runner/GoogleService-Info.plist` 確認
-  - [ ] Android: `android/app/google-services.json` 確認
-  - [ ] Firebase Console でプロジェクト設定確認
+- [x] **6.1 Firebase設定**
+  - [x] iOS: `ios/Runner/GoogleService-Info.plist` 確認
+  - [x] Android: `android/app/google-services.json` 確認
+  - [x] Firebase初期化（main.dart - iOS/Androidのみ）
+  - [x] iOS entitlements作成（development/production）
+  - [x] Android通知チャンネルメタデータ追加
 
-- [ ] **6.2 NotificationService 有効化**
-  - [ ] `lib/main.dart:15` のコメント解除
-  - [ ] `lib/services/notification_service.dart` の実装確認
-  - [ ] パーミッション処理
-    - [ ] iOS: 通知許可ダイアログ
-    - [ ] Android: 通知チャンネル設定
-  - [ ] FCMトークン取得とSupabaseへの保存
+- [x] **6.2 NotificationService 実装**
+  - [x] 権限リクエスト・FCMトークン取得
+  - [x] フォアグラウンド通知表示（flutter_local_notifications）
+  - [x] バックグラウンド通知ハンドリング
+  - [x] 通知タップハンドリング（onMessageOpenedApp / getInitialMessage）
+  - [x] FCMトークンSupabase保存（saveTokenToSupabase）
+  - [x] FCMトークン削除（clearTokenFromSupabase）
+  - [x] トークンリフレッシュリスナー
 
-- [ ] **6.3 通知ハンドリング**
-  - [ ] フォアグラウンド通知表示
-  - [ ] バックグラウンド通知ハンドリング
-  - [ ] 通知タップ時のナビゲーション
-    - [ ] メッセージ通知 → メッセージ画面
-    - [ ] 目標達成通知 → 目標達成画面
+- [x] **6.3 認証フロー統合**
+  - [x] ログイン時FCMトークン自動保存（app.dart）
+  - [x] ログアウト時FCMトークン自動削除（auth_provider.dart）
 
-- [ ] **6.4 Supabase Edge Function連携**
-  - [ ] メッセージ送信時の通知送信（Edge Function）
-  - [ ] 目標達成時の通知送信（Edge Function）
+- [x] **6.4 Edge Function連携**
+  - [x] FCM HTTP v1 API送信機能（サービスアカウントJWT認証）
+  - [x] メッセージINSERT時の通知送信
+  - [x] 目標達成時の通知送信
+  - [x] Webhookペイロードにsender_type/receiver_type追加
 
-**期待される成果**: トレーナーからのメッセージや目標達成時にプッシュ通知が届く
+- [ ] **6.5 手動セットアップ（残タスク）**
+  - [x] Firebaseサービスアカウントキー → Supabase Secrets登録
+  - [x] Edge Functionデプロイ
+  - [ ] APNs認証キー作成・Firebase登録（Apple Developer Program登録後）
+
+**期待される成果**: メッセージ受信時・目標達成時にプッシュ通知が届く ✅ 実装完了（APNs設定後にiOS実機で動作）
 
 ---
 
@@ -793,7 +854,7 @@ class Trainer {
 
 | # | タスク | 詳細 | 見積もり |
 |---|--------|------|----------|
-| 4 | **プッシュ通知** | Firebase設定、NotificationService有効化、通知ハンドリング | 大 |
+| ~~4~~ | ~~**プッシュ通知**~~ | ✅ 完了（2026/02/07） | - |
 | 5 | **既読機能** | read_at更新、既読表示UI（✓マーク） | 中 |
 | 6 | **ページネーション** | 大量メッセージ対応、無限スクロール | 中 |
 | 7 | **画像ギャラリー** | 食事画像のグリッド表示、フルスクリーン表示 | 中 |
@@ -902,4 +963,4 @@ supabase/
 
 ---
 
-**最終更新**: 2026年2月7日 - 統計カード拡張完了（v3.0）
+**最終更新**: 2026年2月7日 - プッシュ通知機能実装完了（v3.1）
