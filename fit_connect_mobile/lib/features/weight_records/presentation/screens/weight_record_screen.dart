@@ -30,6 +30,9 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
     final latestWeightAsync = ref.watch(latestWeightRecordProvider);
     final goalAsync = ref.watch(currentGoalProvider);
     final achievementRateAsync = ref.watch(achievementRateProvider);
+    final weightStatsAsync = ref.watch(
+      weightStatsProvider(period: _selectedPeriod),
+    );
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -39,7 +42,7 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
         const SizedBox(height: 16),
 
         // Stats Card
-        _buildStatsCard(latestWeightAsync, goalAsync, achievementRateAsync),
+        _buildStatsCard(latestWeightAsync, goalAsync, achievementRateAsync, recordsAsync, weightStatsAsync),
         const SizedBox(height: 24),
 
         // Chart
@@ -81,6 +84,8 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
     AsyncValue<WeightRecord?> latestWeightAsync,
     AsyncValue<Client?> goalAsync,
     AsyncValue<double> achievementRateAsync,
+    AsyncValue<List<WeightRecord>> recordsAsync,
+    AsyncValue<Map<String, double>> weightStatsAsync,
   ) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -95,7 +100,9 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
             data: (goal) {
               final currentWeight = latestWeight?.weight ?? 0.0;
               final targetWeight = goal?.targetWeight ?? 0.0;
-              final initialWeight = goal?.initialWeight ?? currentWeight;
+              // initial_weightがNULLの場合、記録の最古データをフォールバックに使用
+              final oldestRecordWeight = recordsAsync.valueOrNull?.lastOrNull?.weight;
+              final initialWeight = goal?.initialWeight ?? oldestRecordWeight ?? currentWeight;
               final vsStart = initialWeight - currentWeight;
 
               // 減量 or 増量の判定
@@ -165,8 +172,14 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
                           isPositive: vsStart >= 0,
                         ),
                       ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildPreviousComparisonBox(recordsAsync),
+                      ),
                     ],
                   ),
+                  const SizedBox(height: 12),
+                  _buildPeriodStats(weightStatsAsync),
                 ],
               );
             },
@@ -528,6 +541,101 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
     );
   }
 
+  Widget _buildPreviousComparisonBox(AsyncValue<List<WeightRecord>> recordsAsync) {
+    return recordsAsync.when(
+      data: (records) {
+        if (records.length < 2) {
+          return _buildComparisonBox('前回比', '--', isPositive: true);
+        }
+        final diff = records[0].weight - records[1].weight;
+        final isPositive = diff <= 0;
+        return _buildComparisonBox(
+          '前回比',
+          '${diff >= 0 ? "+" : ""}${diff.toStringAsFixed(1)}kg',
+          isPositive: isPositive,
+        );
+      },
+      loading: () => _buildComparisonBox('前回比', '...', isPositive: true),
+      error: (_, __) => _buildComparisonBox('前回比', '--', isPositive: true),
+    );
+  }
+
+  Widget _buildPeriodStats(AsyncValue<Map<String, double>> statsAsync) {
+    return statsAsync.when(
+      data: (stats) {
+        final average = stats['average'] ?? 0.0;
+        final min = stats['min'] ?? 0.0;
+        final max = stats['max'] ?? 0.0;
+        final range = max - min;
+
+        if (average == 0.0) return const SizedBox.shrink();
+
+        return Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppColors.slate50,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '期間統計',
+                style: TextStyle(
+                  color: AppColors.slate500,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildMiniStat('平均', '${average.toStringAsFixed(1)}kg'),
+                  ),
+                  Expanded(
+                    child: _buildMiniStat('最高', '${max.toStringAsFixed(1)}kg'),
+                  ),
+                  Expanded(
+                    child: _buildMiniStat('最低', '${min.toStringAsFixed(1)}kg'),
+                  ),
+                  Expanded(
+                    child: _buildMiniStat('変動幅', '${range.toStringAsFixed(1)}kg'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+
+  Widget _buildMiniStat(String label, String value) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.slate400,
+            fontSize: 10,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: const TextStyle(
+            color: AppColors.slate800,
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildComparisonBox(String label, String value, {bool isPositive = true}) {
     final color = isPositive ? AppColors.emerald600 : AppColors.rose800;
     final bgColor = isPositive ? AppColors.emerald50 : AppColors.rose100;
@@ -738,7 +846,45 @@ class _PreviewWeightRecordScreen extends StatelessWidget {
                       isPositive: vsStart >= 0,
                     ),
                   ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildComparisonBox(
+                      '前回比',
+                      '-0.5kg',
+                      isPositive: true,
+                    ),
+                  ),
                 ],
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.slate50,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '期間統計',
+                      style: TextStyle(
+                        color: AppColors.slate500,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(child: _buildMiniStat('平均', '67.3kg')),
+                        Expanded(child: _buildMiniStat('最高', '70.0kg')),
+                        Expanded(child: _buildMiniStat('最低', '65.5kg')),
+                        Expanded(child: _buildMiniStat('変動幅', '4.5kg')),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -1004,6 +1150,29 @@ class _PreviewWeightRecordScreen extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMiniStat(String label, String value) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.slate400,
+            fontSize: 10,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: const TextStyle(
+            color: AppColors.slate800,
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
           ),
         ),
       ],
