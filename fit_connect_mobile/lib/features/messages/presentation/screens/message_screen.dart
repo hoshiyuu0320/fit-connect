@@ -64,13 +64,45 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
     });
   }
 
+  /// タグを解析するプライベートメソッド
+  List<String>? _parseTags(String text) {
+    if (text.contains('#食事') || text.contains('#meal')) {
+      if (text.contains('朝食') || text.contains('breakfast')) {
+        return ['食事:朝食'];
+      } else if (text.contains('昼食') || text.contains('lunch')) {
+        return ['食事:昼食'];
+      } else if (text.contains('夕食') || text.contains('dinner')) {
+        return ['食事:夕食'];
+      } else if (text.contains('間食') || text.contains('snack')) {
+        return ['食事:間食'];
+      } else {
+        return ['食事'];
+      }
+    } else if (text.contains('#体重') || text.contains('#weight')) {
+      return ['体重'];
+    } else if (text.contains('#運動') || text.contains('#exercise')) {
+      if (text.contains('筋トレ')) {
+        return ['運動:筋トレ'];
+      } else if (text.contains('有酸素') || text.contains('ランニング')) {
+        return ['運動:有酸素'];
+      } else {
+        return ['運動'];
+      }
+    }
+    return null;
+  }
+
   Future<void> _editMessage(String newContent) async {
     if (_editingMessageId == null) return;
+
+    // タグを解析
+    final newTags = _parseTags(newContent);
 
     try {
       final success = await ref.read(messagesNotifierProvider.notifier).editMessage(
             messageId: _editingMessageId!,
             newContent: newContent,
+            newTags: newTags,
           );
 
       if (!success) {
@@ -108,30 +140,7 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
 
     // 通常送信モード
     // Parse tags from message
-    List<String>? tags;
-    if (text.contains('#食事') || text.contains('#meal')) {
-      if (text.contains('朝食') || text.contains('breakfast')) {
-        tags = ['食事:朝食'];
-      } else if (text.contains('昼食') || text.contains('lunch')) {
-        tags = ['食事:昼食'];
-      } else if (text.contains('夕食') || text.contains('dinner')) {
-        tags = ['食事:夕食'];
-      } else if (text.contains('間食') || text.contains('snack')) {
-        tags = ['食事:間食'];
-      } else {
-        tags = ['食事'];
-      }
-    } else if (text.contains('#体重') || text.contains('#weight')) {
-      tags = ['体重'];
-    } else if (text.contains('#運動') || text.contains('#exercise')) {
-      if (text.contains('筋トレ')) {
-        tags = ['運動:筋トレ'];
-      } else if (text.contains('有酸素') || text.contains('ランニング')) {
-        tags = ['運動:有酸素'];
-      } else {
-        tags = ['運動'];
-      }
-    }
+    final tags = _parseTags(text);
 
     try {
       await ref.read(messagesNotifierProvider.notifier).sendMessage(

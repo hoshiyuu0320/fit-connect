@@ -6,8 +6,8 @@ Deno.serve(async (req) => {
         const payload = await req.json()
         console.log('Received payload:', JSON.stringify(payload))
 
-        // Check if this is a webhook payload (INSERT on messages)
-        if (payload.type === 'INSERT' && payload.table === 'messages') {
+        // Check if this is a webhook payload (INSERT or UPDATE on messages)
+        if ((payload.type === 'INSERT' || payload.type === 'UPDATE') && payload.table === 'messages') {
             const message = payload.record
             // Skip if message is from system or doesn't have content
             if (!message.content) {
@@ -15,23 +15,43 @@ Deno.serve(async (req) => {
                 return new Response(JSON.stringify({ skipped: true }), { headers: { 'Content-Type': 'application/json' } })
             }
 
-            console.log('Processing message:', message.id, message.content)
+            console.log('Processing message:', payload.type, message.id, message.content)
+
+            // Initialize Supabase Client with Service Role Key
+            const supabaseUrl = Deno.env.get('SUPABASE_URL')
+            const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+
+            if (!supabaseUrl || !supabaseKey) {
+                throw new Error('Missing Supabase environment variables')
+            }
+
+            const supabase = createClient(supabaseUrl, supabaseKey)
+
+            // If UPDATE, delete existing records linked to this message
+            if (payload.type === 'UPDATE') {
+                console.log('UPDATE event: Deleting existing records for message:', message.id)
+
+                const deleteResults = await Promise.all([
+                    supabase.from('weight_records').delete().eq('message_id', message.id),
+                    supabase.from('meal_records').delete().eq('message_id', message.id),
+                    supabase.from('exercise_records').delete().eq('message_id', message.id),
+                ])
+
+                deleteResults.forEach((result, index) => {
+                    const tables = ['weight_records', 'meal_records', 'exercise_records']
+                    if (result.error) {
+                        console.error(`Error deleting from ${tables[index]}:`, result.error)
+                    } else {
+                        console.log(`Deleted existing records from ${tables[index]}`)
+                    }
+                })
+            }
 
             // 1. Parse Tag
             const tagData = parseTag(message.content)
 
             if (tagData) {
                 console.log('Tag detected:', JSON.stringify(tagData))
-
-                // Initialize Supabase Client with Service Role Key
-                const supabaseUrl = Deno.env.get('SUPABASE_URL')
-                const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-
-                if (!supabaseUrl || !supabaseKey) {
-                    throw new Error('Missing Supabase environment variables')
-                }
-
-                const supabase = createClient(supabaseUrl, supabaseKey)
 
                 // 2. Update message with normalized tags
                 const { error: updateError } = await supabase.from('messages').update({
@@ -40,6 +60,8 @@ Deno.serve(async (req) => {
 
                 if (updateError) {
                     console.error('Error updating message tags:', updateError)
+                } else if (payload.type === 'UPDATE') {
+                    console.log('UPDATE: Message tags updated (this should not trigger another webhook)')
                 }
 
                 // 3. Create specific record based on category
@@ -70,6 +92,10 @@ Deno.serve(async (req) => {
                 }
             } else {
                 console.log('No tag detected in message')
+                // UPDATE時にタグがない場合は削除のみで終了（既に削除済み）
+                if (payload.type === 'UPDATE') {
+                    console.log('UPDATE: No tags found, existing records were deleted')
+                }
             }
         }
 
