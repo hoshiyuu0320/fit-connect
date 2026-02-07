@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
@@ -9,6 +10,7 @@ import 'package:fit_connect_mobile/features/auth/presentation/screens/profile_se
 import 'package:fit_connect_mobile/features/auth/presentation/screens/registration_complete_screen.dart';
 import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
 import 'package:fit_connect_mobile/features/auth/providers/registration_provider.dart';
+import 'package:fit_connect_mobile/services/notification_service.dart';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -57,17 +59,51 @@ class _LoadingScreen extends StatelessWidget {
 }
 
 /// 認証後のデータ取得を待つローディング画面
-class _AuthLoadingScreen extends ConsumerWidget {
+class _AuthLoadingScreen extends ConsumerStatefulWidget {
   const _AuthLoadingScreen();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_AuthLoadingScreen> createState() => _AuthLoadingScreenState();
+}
+
+class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen> {
+  bool _tokenSaved = false;
+
+  void _saveTokenIfNeeded(String clientId) {
+    if (_tokenSaved) return;
+    _tokenSaved = true;
+
+    // iOS/Androidのみ
+    if (defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.android) {
+      // FCMトークンをDBに保存（非同期で実行、UIをブロックしない）
+      NotificationService.saveTokenToSupabase(clientId, 'client').then((_) {
+        print('[App] FCMトークン保存完了');
+      }).catchError((e) {
+        print('[App] FCMトークン保存エラー: $e');
+      });
+
+      // 通知タップハンドリングを設定
+      NotificationService.onNotificationTap = (type, id) {
+        print('[App] 通知タップ: type=$type, id=$id');
+        // MainScreenのNavigatorを使ってタブ切り替え
+        // 注意: MaterialAppのNavigatorContextが必要
+        // 現在のcontext経由でMainScreenのStateにアクセスできないため、
+        // シンプルにMainScreenを表示するだけ（タブ遷移は将来拡張）
+      };
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final clientAsync = ref.watch(currentClientProvider);
     final registrationState = ref.watch(registrationNotifierProvider);
 
     return clientAsync.when(
       data: (client) {
         if (client != null) {
+          // FCMトークン保存（MainScreen表示前）
+          _saveTokenIfNeeded(client.clientId);
           // クライアントデータあり → MainScreenへ
           return const MainScreen();
         } else if (registrationState.isRegistrationComplete) {
