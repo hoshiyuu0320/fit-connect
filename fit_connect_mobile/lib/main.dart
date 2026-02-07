@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'services/supabase_service.dart';
 import 'services/notification_service.dart';
 import 'app.dart';
@@ -22,8 +24,18 @@ void main() async {
   await SupabaseService.waitForSessionRestore();
   print('✅ セッション復元完了');
 
-  // プッシュ通知初期化（後で実装）
-  // await NotificationService.initialize();
+  // Firebase & プッシュ通知初期化（iOS/Androidのみ、macOS開発環境では実行しない）
+  if (defaultTargetPlatform == TargetPlatform.iOS ||
+      defaultTargetPlatform == TargetPlatform.android) {
+    try {
+      await Firebase.initializeApp();
+      print('✅ Firebase初期化完了');
+      await NotificationService.initialize();
+      print('✅ プッシュ通知初期化完了');
+    } catch (e) {
+      print('⚠️ Firebase/通知初期化エラー: $e');
+    }
+  }
 
   runApp(
     const ProviderScope(

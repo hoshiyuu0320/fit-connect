@@ -1,7 +1,9 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase show User;
 import 'package:fit_connect_mobile/services/supabase_service.dart';
+import 'package:fit_connect_mobile/services/notification_service.dart';
 
 part 'auth_provider.g.dart';
 
@@ -54,6 +56,19 @@ class AuthNotifier extends _$AuthNotifier {
 
   /// サインアウト
   Future<void> signOut() async {
+    // iOS/Androidのみ: ログアウト前にFCMトークンをDBから削除
+    if (defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.android) {
+      final userId = SupabaseService.client.auth.currentUser?.id;
+      if (userId != null) {
+        try {
+          await NotificationService.clearTokenFromSupabase(userId, 'client');
+          print('[AuthNotifier] FCMトークン削除完了');
+        } catch (e) {
+          print('[AuthNotifier] FCMトークン削除エラー: $e');
+        }
+      }
+    }
     await SupabaseService.client.auth.signOut();
   }
 }
