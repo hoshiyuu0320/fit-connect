@@ -110,11 +110,11 @@ class MessageRepository {
     return Message.fromJson(response);
   }
 
-  /// メッセージを既読にする
-  Future<void> markAsRead(String messageId) async {
-    await _supabase.from('messages').update({
-      'read_at': DateTime.now().toIso8601String(),
-    }).eq('id', messageId);
+  /// 会話単位でメッセージを既読にする（SECURITY DEFINER関数経由）
+  Future<void> markConversationAsRead(String otherUserId) async {
+    await _supabase.rpc('mark_messages_as_read', params: {
+      'p_other_user_id': otherUserId,
+    });
   }
 
   /// 未読メッセージ数を取得

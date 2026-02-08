@@ -47,9 +47,10 @@ final messagesStreamProvider =
 // ignore: unused_element
 typedef MessagesStreamRef = AutoDisposeStreamProviderRef<List<Message>>;
 String _$unreadMessageCountHash() =>
-    r'c6e76b24b7f5f08d7fe20491602883dbca42aa35';
+    r'c98a07f1698d9ce70f898226c8c0bfec65d609b4';
 
 /// 未読メッセージ数を取得するProvider
+/// messagesStreamProviderを監視し、メッセージ変更時に自動再取得
 ///
 /// Copied from [unreadMessageCount].
 @ProviderFor(unreadMessageCount)
@@ -229,7 +230,7 @@ class _MessageByIdProviderElement
   String get messageId => (origin as MessageByIdProvider).messageId;
 }
 
-String _$messagesNotifierHash() => r'fa4b08e2c9e3eab11e949a50483330b38e30b89a';
+String _$messagesNotifierHash() => r'2084ebbc3a7c5ccc2ed5134d7ec0d1bf17477779';
 
 /// メッセージ送受信を管理するProvider
 ///
