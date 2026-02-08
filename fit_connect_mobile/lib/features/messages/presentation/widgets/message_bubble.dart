@@ -18,6 +18,7 @@ class MessageBubble extends StatelessWidget {
   final VoidCallback? onReply;
   final VoidCallback? onEdit;
   final bool isEdited;
+  final bool isRead;
 
   const MessageBubble({
     super.key,
@@ -33,6 +34,7 @@ class MessageBubble extends StatelessWidget {
     this.onReply,
     this.onEdit,
     this.isEdited = false,
+    this.isRead = false,
   });
 
   /// メッセージからタグ部分を除去した本文を取得
@@ -221,6 +223,22 @@ class MessageBubble extends StatelessWidget {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      if (isUser && isRead) ...[
+                        const Text(
+                          '既読',
+                          style: TextStyle(
+                            color: AppColors.slate400,
+                            fontSize: 10,
+                          ),
+                        ),
+                        const Text(
+                          ' ・ ',
+                          style: TextStyle(
+                            color: AppColors.slate400,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
                       if (isEdited) ...[
                         const Text(
                           '編集済み',
@@ -534,6 +552,57 @@ Widget previewMessageBubbleEditMenu() {
                 message: '返信のみ可能です',
                 isUser: false,
                 timestamp: '12:35',
+                onReply: () {},
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+@Preview(name: 'MessageBubble - Read Receipt')
+Widget previewMessageBubbleReadReceipt() {
+  return MaterialApp(
+    theme: AppTheme.lightTheme,
+    home: Scaffold(
+      backgroundColor: AppColors.slate50,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              MessageBubble(
+                message: '既読メッセージです',
+                isUser: true,
+                timestamp: '12:34',
+                isRead: true,
+                onReply: () {},
+              ),
+              const SizedBox(height: 16),
+              MessageBubble(
+                message: '既読かつ編集済みメッセージ',
+                isUser: true,
+                timestamp: '12:35',
+                isRead: true,
+                isEdited: true,
+                onReply: () {},
+              ),
+              const SizedBox(height: 16),
+              MessageBubble(
+                message: '未読メッセージです',
+                isUser: true,
+                timestamp: '12:36',
+                isRead: false,
+                onReply: () {},
+              ),
+              const SizedBox(height: 16),
+              MessageBubble(
+                message: '相手のメッセージ（既読表示なし）',
+                isUser: false,
+                timestamp: '12:37',
+                isRead: true,
                 onReply: () {},
               ),
             ],

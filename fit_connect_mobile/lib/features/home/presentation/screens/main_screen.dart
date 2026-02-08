@@ -9,6 +9,7 @@ import 'package:fit_connect_mobile/features/goals/providers/goal_provider.dart';
 import 'package:fit_connect_mobile/features/goals/providers/goal_achievement_provider.dart';
 import 'package:fit_connect_mobile/features/goals/presentation/widgets/goal_achievement_overlay.dart';
 import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
+import 'package:fit_connect_mobile/features/messages/providers/messages_provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 class MainScreen extends ConsumerStatefulWidget {
@@ -41,6 +42,9 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Watch unread message count
+    final unreadCount = ref.watch(unreadMessageCountProvider).valueOrNull ?? 0;
+
     // Watch goal achievement state
     final showCelebration = ref.watch(goalAchievementNotifierProvider);
     final goalAsync = ref.watch(currentGoalProvider);
@@ -95,7 +99,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     _buildNavItem(0, LucideIcons.home, 'Home'),
-                    _buildNavItem(1, LucideIcons.messageSquare, 'Message'),
+                    _buildNavItem(1, LucideIcons.messageSquare, 'Message', badgeCount: unreadCount),
                     _buildNavItem(2, LucideIcons.barChart2, 'Records'),
                     _buildNavItem(3, LucideIcons.settings, '設定'),
                   ],
@@ -119,7 +123,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     );
   }
 
-  Widget _buildNavItem(int index, IconData icon, String label) {
+  Widget _buildNavItem(int index, IconData icon, String label, {int? badgeCount}) {
     final isSelected = _currentIndex == index;
     return InkWell(
       onTap: () => setState(() => _currentIndex = index),
@@ -135,10 +139,37 @@ class _MainScreenState extends ConsumerState<MainScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              color: isSelected ? AppColors.primary600 : AppColors.slate400,
-              size: 24,
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(
+                  icon,
+                  color: isSelected ? AppColors.primary600 : AppColors.slate400,
+                  size: 24,
+                ),
+                if (badgeCount != null && badgeCount > 0)
+                  Positioned(
+                    top: -6,
+                    right: -10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                      decoration: BoxDecoration(
+                        color: AppColors.rose800,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        badgeCount > 99 ? '99+' : '$badgeCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 4),
             Text(

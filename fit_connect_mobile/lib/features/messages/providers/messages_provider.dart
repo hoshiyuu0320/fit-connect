@@ -95,16 +95,24 @@ class MessagesNotifier extends _$MessagesNotifier {
     return false;
   }
 
-  /// メッセージを既読にする
-  Future<void> markAsRead(String messageId) async {
+  /// 会話のメッセージを既読にする
+  Future<void> markConversationAsRead() async {
+    final trainerId = ref.read(currentTrainerIdProvider);
+    if (trainerId == null) return;
+
     final repository = ref.read(messageRepositoryProvider);
-    await repository.markAsRead(messageId);
+    await repository.markConversationAsRead(trainerId);
+    ref.invalidate(unreadMessageCountProvider);
   }
 }
 
 /// 未読メッセージ数を取得するProvider
+/// messagesStreamProviderを監視し、メッセージ変更時に自動再取得
 @riverpod
 Future<int> unreadMessageCount(UnreadMessageCountRef ref) async {
+  // Supabase Realtimeの変更を監視して未読数を自動更新
+  ref.watch(messagesStreamProvider);
+
   final user = ref.watch(authNotifierProvider).valueOrNull;
   if (user == null) return 0;
 

@@ -27,6 +27,15 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
   String? _editingMessageContent;
 
   @override
+  void initState() {
+    super.initState();
+    // 画面表示時に既存の未読メッセージを既読化
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(messagesNotifierProvider.notifier).markConversationAsRead();
+    });
+  }
+
+  @override
   void dispose() {
     _scrollController.dispose();
     super.dispose();
@@ -166,6 +175,20 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
   @override
   Widget build(BuildContext context) {
     final messagesAsync = ref.watch(messagesStreamProvider);
+
+    // 自動既読処理: 受信メッセージに未読があれば既読化（新着メッセージ到着時）
+    ref.listen<AsyncValue<List<Message>>>(messagesStreamProvider, (previous, next) {
+      next.whenData((messages) {
+        final userId = ref.read(authNotifierProvider).valueOrNull?.id;
+        if (userId == null) return;
+        final hasUnread = messages.any((m) =>
+            m.senderId != userId && m.readAt == null);
+        if (hasUnread && mounted) {
+          ref.read(messagesNotifierProvider.notifier).markConversationAsRead();
+        }
+      });
+    });
+
     final currentUser = ref.watch(authNotifierProvider).valueOrNull;
     final trainerProfile = ref.watch(trainerProfileProvider).valueOrNull;
     final trainerName = trainerProfile?.name ?? 'トレーナー';
@@ -385,6 +408,7 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
                     : null,
                 isSystem: false,
                 isEdited: message.isEdited,
+                isRead: isUser && message.readAt != null,
                 onReply: () => _setReplyTarget(message),
                 onEdit: isUser ? () => _setEditTarget(message) : null,
               );

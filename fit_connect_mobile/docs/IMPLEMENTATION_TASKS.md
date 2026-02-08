@@ -1,9 +1,9 @@
 # FIT-CONNECT Mobile - 実装タスク一覧
 
 **作成日**: 2025年12月30日
-**バージョン**: 3.1
+**バージョン**: 3.2
 **進捗状況**: 全体 99% 完了
-**最終更新**: 2026年2月7日 - プッシュ通知機能実装完了
+**最終更新**: 2026年2月8日 - 既読機能実装完了
 
 ---
 
@@ -168,6 +168,44 @@
 ---
 
 ## 最新の変更履歴
+
+### 2026年2月8日
+
+#### 11. 既読機能実装
+
+**目的**: メッセージの既読表示と未読バッジ機能を追加
+
+**DBマイグレーション**:
+- `mark_messages_as_read(p_other_user_id uuid)` SECURITY DEFINER関数作成（RLSバイパスで安全に既読更新）
+- `idx_messages_unread` 部分インデックス作成（未読検索高速化）
+
+**改修ファイル**:
+- `lib/features/messages/data/message_repository.dart` — `markAsRead()` → `markConversationAsRead()` に変更（Supabase RPC呼び出し）
+- `lib/features/messages/providers/messages_provider.dart` — `markAsRead()` → `markConversationAsRead()` に変更、`unreadMessageCountProvider` invalidate追加
+- `lib/features/messages/presentation/widgets/message_bubble.dart` — `isRead`プロパティ追加、「既読」表示ロジック、プレビュー関数追加
+- `lib/features/messages/presentation/screens/message_screen.dart` — `ref.listen`で自動既読処理、`isRead`をMessageBubbleに渡す
+- `lib/features/home/presentation/screens/main_screen.dart` — Messageタブに未読数バッジ表示
+
+**実装内容**:
+
+1. **SECURITY DEFINER関数** — RLSをバイパスして受信者が既読更新可能
+2. **会話単位の一括既読化** — 個別メッセージIDではなく相手ユーザーID指定でシンプル
+3. **自動既読処理** — メッセージ画面表示時に`ref.listen`で未読を検知し自動既読化
+4. **LINEスタイル既読表示** — 送信メッセージに「既読 ・ 12:34」表示
+5. **未読バッジ** — BottomNavigationBarのMessageタブに赤い数字バッジ
+
+**動作フロー**:
+```
+メッセージ画面表示
+  ↓ [ref.listen で未読検知]
+markConversationAsRead() → RPC mark_messages_as_read
+  ↓ [DB更新]
+unreadMessageCountProvider invalidate → バッジ更新
+  ↓ [Realtime Stream]
+MessageBubble に isRead=true 反映 → 「既読」表示
+```
+
+---
 
 ### 2026年2月7日
 
@@ -682,9 +720,11 @@ class Trainer {
   - [x] プレビュー関数追加（MessageBubble、ChatInput）
   - [ ] タグ変更時の記録更新ロジック（将来実装）
 
-- [ ] **2.6 既読機能（将来実装）**
-  - [ ] `read_at` タイムスタンプ更新
-  - [ ] 既読表示UI
+- [x] **2.6 既読機能** ✅ 完了（2026/02/08）
+  - [x] `read_at` タイムスタンプ更新（SECURITY DEFINER関数経由）
+  - [x] 既読表示UI（LINEスタイル「既読」表示）
+  - [x] 自動既読処理（画面表示時に`ref.listen`で検知）
+  - [x] 未読バッジ（MainScreen BottomNavigationBar）
 
 - [ ] **2.7 ページネーション（将来実装）**
   - [ ] 大量メッセージ対応
@@ -855,7 +895,7 @@ class Trainer {
 | # | タスク | 詳細 | 見積もり |
 |---|--------|------|----------|
 | ~~4~~ | ~~**プッシュ通知**~~ | ✅ 完了（2026/02/07） | - |
-| 5 | **既読機能** | read_at更新、既読表示UI（✓マーク） | 中 |
+| ~~5~~ | ~~**既読機能**~~ | ✅ 完了（2026/02/08） | - |
 | 6 | **ページネーション** | 大量メッセージ対応、無限スクロール | 中 |
 | 7 | **画像ギャラリー** | 食事画像のグリッド表示、フルスクリーン表示 | 中 |
 | ~~8~~ | ~~**プロフィール画像**~~ | ✅ 完了（2026/02/04） | - |
@@ -963,4 +1003,4 @@ supabase/
 
 ---
 
-**最終更新**: 2026年2月7日 - プッシュ通知機能実装完了（v3.1）
+**最終更新**: 2026年2月8日 - 既読機能実装完了（v3.2）
