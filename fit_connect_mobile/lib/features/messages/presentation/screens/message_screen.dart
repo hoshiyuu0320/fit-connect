@@ -5,6 +5,7 @@ import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
 import 'package:fit_connect_mobile/features/messages/models/message_model.dart';
 import 'package:fit_connect_mobile/features/messages/providers/messages_provider.dart';
+import 'package:fit_connect_mobile/features/messages/providers/paginated_messages_state.dart';
 import 'package:fit_connect_mobile/features/messages/presentation/widgets/message_bubble.dart';
 import 'package:fit_connect_mobile/features/messages/presentation/widgets/chat_input.dart';
 import 'package:fit_connect_mobile/features/auth/providers/auth_provider.dart';
@@ -25,20 +26,44 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
   String? _replyToContent;
   String? _editingMessageId;
   String? _editingMessageContent;
+  DateTime? _lastLoadMoreTime;
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     // 画面表示時に既存の未読メッセージを既読化
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(messagesNotifierProvider.notifier).markConversationAsRead();
+      ref.read(paginatedMessagesProvider.notifier).markConversationAsRead();
     });
   }
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    // reverse: true のListViewでは maxScrollExtent側が上端（古いメッセージ側）
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      // デバウンス: 前回のloadMoreから1秒以内は再発火しない
+      final now = DateTime.now();
+      if (_lastLoadMoreTime != null &&
+          now.difference(_lastLoadMoreTime!) < const Duration(seconds: 1)) {
+        return;
+      }
+
+      final currentState = ref.read(paginatedMessagesProvider).valueOrNull;
+      if (currentState != null &&
+          currentState.hasMore &&
+          !currentState.isLoadingMore) {
+        _lastLoadMoreTime = now;
+        ref.read(paginatedMessagesProvider.notifier).loadMore();
+      }
+    }
   }
 
   void _setReplyTarget(Message message) {
@@ -108,11 +133,12 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
     final newTags = _parseTags(newContent);
 
     try {
-      final success = await ref.read(messagesNotifierProvider.notifier).editMessage(
-            messageId: _editingMessageId!,
-            newContent: newContent,
-            newTags: newTags,
-          );
+      final success =
+          await ref.read(paginatedMessagesProvider.notifier).editMessage(
+                messageId: _editingMessageId!,
+                newContent: newContent,
+                newTags: newTags,
+              );
 
       if (!success) {
         // 編集期限切れ
@@ -138,7 +164,8 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
     }
   }
 
-  Future<void> _handleSend(String text, List<String>? imageUrls, String? replyToId) async {
+  Future<void> _handleSend(
+      String text, List<String>? imageUrls, String? replyToId) async {
     if (text.trim().isEmpty && (imageUrls == null || imageUrls.isEmpty)) return;
 
     // 編集モードの場合
@@ -152,14 +179,13 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
     final tags = _parseTags(text);
 
     try {
-      await ref.read(messagesNotifierProvider.notifier).sendMessage(
+      await ref.read(paginatedMessagesProvider.notifier).sendMessage(
             content: text,
             imageUrls: imageUrls,
             tags: tags,
             replyToMessageId: replyToId,
           );
       _clearReplyTarget();
-      // スクロールは messagesAsync.when の data コールバックで自動的に行われる
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -174,17 +200,18 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final messagesAsync = ref.watch(messagesStreamProvider);
+    final stateAsync = ref.watch(paginatedMessagesProvider);
 
     // 自動既読処理: 受信メッセージに未読があれば既読化（新着メッセージ到着時）
-    ref.listen<AsyncValue<List<Message>>>(messagesStreamProvider, (previous, next) {
-      next.whenData((messages) {
+    ref.listen<AsyncValue<PaginatedMessagesState>>(paginatedMessagesProvider,
+        (previous, next) {
+      next.whenData((paginatedState) {
         final userId = ref.read(authNotifierProvider).valueOrNull?.id;
         if (userId == null) return;
-        final hasUnread = messages.any((m) =>
-            m.senderId != userId && m.readAt == null);
+        final hasUnread = paginatedState.messages
+            .any((m) => m.senderId != userId && m.readAt == null);
         if (hasUnread && mounted) {
-          ref.read(messagesNotifierProvider.notifier).markConversationAsRead();
+          ref.read(paginatedMessagesProvider.notifier).markConversationAsRead();
         }
       });
     });
@@ -201,13 +228,13 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
         body: Column(
           children: [
             Expanded(
-              child: messagesAsync.when(
-                data: (messages) {
-                  if (messages.isEmpty) {
+              child: stateAsync.when(
+                data: (paginatedState) {
+                  if (paginatedState.messages.isEmpty) {
                     return _buildEmptyState();
                   }
 
-                  return _buildMessageList(messages, currentUser?.id);
+                  return _buildMessageList(paginatedState, currentUser?.id);
                 },
                 loading: () => const Center(
                   child: CircularProgressIndicator(),
@@ -225,7 +252,8 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
                       ),
                       const SizedBox(height: 8),
                       TextButton(
-                        onPressed: () => ref.invalidate(messagesStreamProvider),
+                        onPressed: () =>
+                            ref.invalidate(paginatedMessagesProvider),
                         child: const Text('再試行'),
                       ),
                     ],
@@ -351,7 +379,9 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
     );
   }
 
-  Widget _buildMessageList(List<Message> messages, String? currentUserId) {
+  Widget _buildMessageList(
+      PaginatedMessagesState paginatedState, String? currentUserId) {
+    final messages = paginatedState.messages;
     final trainerProfile = ref.watch(trainerProfileProvider).valueOrNull;
     final trainerName = trainerProfile?.name ?? 'トレーナー';
 
@@ -377,11 +407,37 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
       ..sort((a, b) => b.compareTo(a));
 
     return ListView.builder(
-      reverse: true, // Start from bottom
+      reverse: true,
       controller: _scrollController,
       padding: const EdgeInsets.all(16),
-      itemCount: sortedDates.length,
+      itemCount: sortedDates.length +
+          (paginatedState.isLoadingMore || !paginatedState.hasMore ? 1 : 0),
       itemBuilder: (context, dateIndex) {
+        // ローディングインジケータ or 「これ以上メッセージはありません」
+        if (dateIndex == sortedDates.length) {
+          if (paginatedState.isLoadingMore) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+          if (!paginatedState.hasMore) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Center(
+                child: Text(
+                  'これ以上メッセージはありません',
+                  style: TextStyle(
+                    color: AppColors.slate400,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            );
+          }
+          return const SizedBox.shrink();
+        }
+
         final dateKey = sortedDates[dateIndex];
         final dayMessages = groupedMessages[dateKey]!;
         final date = DateTime.parse(dateKey);
@@ -508,7 +564,7 @@ class _PreviewMessageScreen extends StatelessWidget {
         images: null,
       ),
       _MockMessage(
-        content: '順調ですね！その調子で頑張りましょう💪',
+        content: '順調ですね！その調子で頑張りましょう',
         isUser: false,
         timestamp: '10:05',
         tags: null,
@@ -598,9 +654,9 @@ class _PreviewMessageScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: AppColors.slate100),
                   ),
-                  child: Text(
+                  child: const Text(
                     '今日',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.slate400,
                       fontSize: 10,
                       fontWeight: FontWeight.bold,

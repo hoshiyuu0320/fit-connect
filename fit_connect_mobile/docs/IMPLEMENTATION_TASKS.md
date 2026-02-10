@@ -3,7 +3,7 @@
 **作成日**: 2025年12月30日
 **バージョン**: 3.2
 **進捗状況**: 全体 99% 完了
-**最終更新**: 2026年2月8日 - 既読機能実装完了
+**最終更新**: 2026年2月10日 - メッセージページネーション実装完了
 
 ---
 
@@ -75,8 +75,9 @@
 - ✅ UIプレビュー関数作成（meal_week_calendar, meal_month_calendar, exercise_week_calendar）
 - ✅ 体重記録のグラフ実装（fl_chart - 折れ線グラフ、目標体重点線、ツールチップ）
 - ✅ UIプレビュー関数作成（weight_record_screen）
-- ✅ メッセージリアルタイム機能実装（Supabase Realtime Stream）
-- ✅ メッセージ画面のRiverpod統合（messagesStreamProvider）
+- ✅ メッセージリアルタイム機能実装（Supabase Realtime Channel）
+- ✅ メッセージ画面のRiverpod統合（paginatedMessagesProvider）
+- ✅ メッセージページネーション実装（cursor-based + Realtime channel）
 - ✅ メッセージ送信機能実装（タグ自動解析付き）
 - ✅ メッセージ自動スクロール機能（画面遷移時・新規メッセージ受信時）
 - ✅ UIプレビュー関数作成（message_screen）
@@ -168,6 +169,47 @@
 ---
 
 ## 最新の変更履歴
+
+### 2026年2月10日
+
+#### 12. メッセージページネーション実装
+
+**目的**: メッセージが大量になった場合のパフォーマンス対策。`.stream()` による全件取得を廃止し、cursor-basedページネーション + Realtimeチャンネルに切り替え。
+
+**新規作成ファイル**:
+- `lib/features/messages/providers/paginated_messages_state.dart` — ページネーション状態クラス（messages, hasMore, isLoadingMore）
+
+**改修ファイル**:
+- `lib/features/messages/data/message_repository.dart` — `fetchMessages()` 追加（cursor-based）、`subscribeToMessages()` 追加（Realtime INSERT/UPDATE購読）、`getMessagesStream()` 削除
+- `lib/features/messages/providers/messages_provider.dart` — `PaginatedMessagesNotifier` 新規追加、`messagesStreamProvider`・`MessagesNotifier` 削除、`unreadMessageCountProvider` 依存変更
+- `lib/features/messages/presentation/screens/message_screen.dart` — Provider参照切り替え（7箇所）、スクロール検知(`_onScroll`)追加、ローディングインジケータ追加
+
+**実装内容**:
+
+1. **PaginatedMessagesState** — `messages`（古→新）, `hasMore`, `isLoadingMore` を持つイミュータブル状態クラス
+2. **fetchMessages()** — `created_at < before` のcursor-basedページネーション（30件ずつ）
+3. **subscribeToMessages()** — Realtime channelでINSERT/UPDATEを購読、会話ペアフィルタ
+4. **PaginatedMessagesNotifier** — 初回30件fetch + Realtime自動セットアップ、`loadMore()`でスクロール追加ロード、楽観的更新（送信即時表示）、ID重複排除
+5. **スクロール検知** — `reverse: true` のListViewで上端接近時に`loadMore()`発火、1秒デバウンス付き
+6. **ローディングUI** — 追加ロード中CircularProgressIndicator、全件表示時「これ以上メッセージはありません」
+
+**バグ修正**:
+- `before.toIso8601String()` がローカル時間（JST）をタイムゾーンなしで出力 → SupabaseがUTCと解釈 → 9時間先のカーソルで全メッセージ再取得される無限ループ
+- **修正**: `before.toUtc().toIso8601String()` でUTC変換 + ID重複排除を安全策として追加
+
+**動作フロー**:
+```
+初回ロード: 最新30件fetch + Realtime channel開始
+  ↓ [上にスクロール]
+loadMore(): created_at < oldest.createdAt で30件追加fetch
+  ↓ [prepend + 重複排除]
+hasMore判定（取得件数 >= 30 なら true）
+  ↓ [新着メッセージ]
+Realtime INSERT → 末尾に追加（IDで重複チェック）
+Realtime UPDATE → 該当メッセージを置換（既読・編集反映）
+```
+
+---
 
 ### 2026年2月8日
 
@@ -726,9 +768,11 @@ class Trainer {
   - [x] 自動既読処理（画面表示時に`ref.listen`で検知）
   - [x] 未読バッジ（MainScreen BottomNavigationBar）
 
-- [ ] **2.7 ページネーション（将来実装）**
-  - [ ] 大量メッセージ対応
-  - [ ] 無限スクロール実装
+- [x] **2.7 ページネーション** ✅ 完了（2026/02/10）
+  - [x] cursor-basedページネーション（30件ずつ）
+  - [x] 無限スクロール実装（スクロール検知 + デバウンス）
+  - [x] Realtime channel切り替え（.stream()廃止）
+  - [x] 楽観的更新 + ID重複排除
 
 **期待される成果**: メッセージ送信 → 自動的に体重/食事/運動記録が作成される ✅ 達成
 
@@ -896,7 +940,7 @@ class Trainer {
 |---|--------|------|----------|
 | ~~4~~ | ~~**プッシュ通知**~~ | ✅ 完了（2026/02/07） | - |
 | ~~5~~ | ~~**既読機能**~~ | ✅ 完了（2026/02/08） | - |
-| 6 | **ページネーション** | 大量メッセージ対応、無限スクロール | 中 |
+| ~~6~~ | ~~**ページネーション**~~ | ✅ 完了（2026/02/10） | - |
 | 7 | **画像ギャラリー** | 食事画像のグリッド表示、フルスクリーン表示 | 中 |
 | ~~8~~ | ~~**プロフィール画像**~~ | ✅ 完了（2026/02/04） | - |
 
@@ -1003,4 +1047,4 @@ supabase/
 
 ---
 
-**最終更新**: 2026年2月8日 - 既読機能実装完了（v3.2）
+**最終更新**: 2026年2月10日 - メッセージページネーション実装完了（v3.3）
