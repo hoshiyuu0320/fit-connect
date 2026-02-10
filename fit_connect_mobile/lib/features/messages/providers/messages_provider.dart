@@ -1,6 +1,8 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:fit_connect_mobile/features/messages/models/message_model.dart';
 import 'package:fit_connect_mobile/features/messages/data/message_repository.dart';
+import 'package:fit_connect_mobile/features/messages/providers/paginated_messages_state.dart';
 import 'package:fit_connect_mobile/features/auth/providers/auth_provider.dart';
 import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
 
@@ -12,41 +14,94 @@ MessageRepository messageRepository(MessageRepositoryRef ref) {
   return MessageRepository();
 }
 
-/// メッセージリストを取得するProvider（リアルタイム）
+/// ページネーション付きメッセージ管理Provider
 @riverpod
-Stream<List<Message>> messagesStream(MessagesStreamRef ref) {
-  final user = ref.watch(authNotifierProvider).valueOrNull;
-  final trainerId = ref.watch(currentTrainerIdProvider);
+class PaginatedMessages extends _$PaginatedMessages {
+  static const _pageSize = 30;
+  RealtimeChannel? _channel;
 
-  if (user == null || trainerId == null) {
-    return Stream.value([]);
-  }
-
-  final repository = ref.watch(messageRepositoryProvider);
-  return repository.getMessagesStream(
-    userId: user.id,
-    otherUserId: trainerId,
-  );
-}
-
-/// メッセージ送受信を管理するProvider
-@riverpod
-class MessagesNotifier extends _$MessagesNotifier {
   @override
-  Future<List<Message>> build() async {
+  Future<PaginatedMessagesState> build() async {
     final user = ref.watch(authNotifierProvider).valueOrNull;
     final trainerId = ref.watch(currentTrainerIdProvider);
 
-    if (user == null || trainerId == null) return [];
+    if (user == null || trainerId == null) {
+      return PaginatedMessagesState.empty;
+    }
+
+    // 前回のchannelがあれば解除
+    await _channel?.unsubscribe();
+    _channel = null;
 
     final repository = ref.watch(messageRepositoryProvider);
-    return repository.getMessages(
+    final messages = await repository.fetchMessages(
       userId: user.id,
       otherUserId: trainerId,
+      limit: _pageSize,
+    );
+
+    // Realtime channelセットアップ
+    _setupRealtimeChannel(user.id, trainerId);
+
+    // dispose時にchannel解除
+    ref.onDispose(() {
+      _channel?.unsubscribe();
+      _channel = null;
+    });
+
+    return PaginatedMessagesState(
+      messages: messages,
+      hasMore: messages.length >= _pageSize,
+      isLoadingMore: false,
     );
   }
 
-  /// メッセージを送信
+  /// 古いメッセージを追加ロード
+  Future<void> loadMore() async {
+    final currentState = state.valueOrNull;
+    if (currentState == null || !currentState.hasMore || currentState.isLoadingMore) {
+      return;
+    }
+
+    state = AsyncData(currentState.copyWith(isLoadingMore: true));
+
+    try {
+      final user = ref.read(authNotifierProvider).valueOrNull;
+      final trainerId = ref.read(currentTrainerIdProvider);
+      if (user == null || trainerId == null) return;
+
+      final repository = ref.read(messageRepositoryProvider);
+      final oldestMessage = currentState.messages.first;
+
+      final olderMessages = await repository.fetchMessages(
+        userId: user.id,
+        otherUserId: trainerId,
+        limit: _pageSize,
+        before: oldestMessage.createdAt,
+      );
+
+      // 最新のstateを再取得（fetch中にRealtimeで新着が追加された可能性）
+      final latestState = state.valueOrNull;
+      if (latestState == null) return;
+
+      // 重複排除（安全策）
+      final existingIds = latestState.messages.map((m) => m.id).toSet();
+      final newMessages = olderMessages.where((m) => !existingIds.contains(m.id)).toList();
+
+      state = AsyncData(latestState.copyWith(
+        messages: [...newMessages, ...latestState.messages],
+        hasMore: olderMessages.length >= _pageSize,
+        isLoadingMore: false,
+      ));
+    } catch (e) {
+      final latestState = state.valueOrNull;
+      if (latestState != null) {
+        state = AsyncData(latestState.copyWith(isLoadingMore: false));
+      }
+    }
+  }
+
+  /// メッセージを送信（楽観的更新）
   Future<void> sendMessage({
     required String content,
     List<String>? imageUrls,
@@ -61,7 +116,7 @@ class MessagesNotifier extends _$MessagesNotifier {
     }
 
     final repository = ref.read(messageRepositoryProvider);
-    await repository.sendMessage(
+    final sentMessage = await repository.sendMessage(
       senderId: user.id,
       receiverId: trainerId,
       senderType: 'client',
@@ -72,7 +127,13 @@ class MessagesNotifier extends _$MessagesNotifier {
       replyToMessageId: replyToMessageId,
     );
 
-    ref.invalidateSelf();
+    // 楽観的更新: ローカルstateに即追加
+    final currentState = state.valueOrNull;
+    if (currentState != null) {
+      state = AsyncData(currentState.copyWith(
+        messages: [...currentState.messages, sentMessage],
+      ));
+    }
   }
 
   /// メッセージを編集（5分以内）
@@ -89,7 +150,14 @@ class MessagesNotifier extends _$MessagesNotifier {
     );
 
     if (result != null) {
-      ref.invalidateSelf();
+      // ローカルstateで該当メッセージを置換
+      final currentState = state.valueOrNull;
+      if (currentState != null) {
+        final updatedMessages = currentState.messages.map((m) {
+          return m.id == messageId ? result : m;
+        }).toList();
+        state = AsyncData(currentState.copyWith(messages: updatedMessages));
+      }
       return true;
     }
     return false;
@@ -104,15 +172,46 @@ class MessagesNotifier extends _$MessagesNotifier {
     await repository.markConversationAsRead(trainerId);
     ref.invalidate(unreadMessageCountProvider);
   }
+
+  /// Realtime channelセットアップ
+  void _setupRealtimeChannel(String userId, String otherUserId) {
+    final repository = ref.read(messageRepositoryProvider);
+    _channel = repository.subscribeToMessages(
+      userId: userId,
+      otherUserId: otherUserId,
+      onInsert: (message) {
+        final currentState = state.valueOrNull;
+        if (currentState == null) return;
+
+        // 重複チェック（楽観的更新済みの自分のメッセージ）
+        final alreadyExists = currentState.messages.any((m) => m.id == message.id);
+        if (alreadyExists) return;
+
+        state = AsyncData(currentState.copyWith(
+          messages: [...currentState.messages, message],
+        ));
+
+        // 相手からの新着メッセージの場合、未読数を更新
+        if (message.senderId != userId) {
+          ref.invalidate(unreadMessageCountProvider);
+        }
+      },
+      onUpdate: (message) {
+        final currentState = state.valueOrNull;
+        if (currentState == null) return;
+
+        final updatedMessages = currentState.messages.map((m) {
+          return m.id == message.id ? message : m;
+        }).toList();
+        state = AsyncData(currentState.copyWith(messages: updatedMessages));
+      },
+    );
+  }
 }
 
 /// 未読メッセージ数を取得するProvider
-/// messagesStreamProviderを監視し、メッセージ変更時に自動再取得
 @riverpod
 Future<int> unreadMessageCount(UnreadMessageCountRef ref) async {
-  // Supabase Realtimeの変更を監視して未読数を自動更新
-  ref.watch(messagesStreamProvider);
-
   final user = ref.watch(authNotifierProvider).valueOrNull;
   if (user == null) return 0;
 

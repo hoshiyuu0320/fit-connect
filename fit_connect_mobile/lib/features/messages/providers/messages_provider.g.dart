@@ -26,31 +26,10 @@ final messageRepositoryProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef MessageRepositoryRef = AutoDisposeProviderRef<MessageRepository>;
-String _$messagesStreamHash() => r'3ba88b0db331e3047dadd319ccc9ea5cab8d2d59';
-
-/// メッセージリストを取得するProvider（リアルタイム）
-///
-/// Copied from [messagesStream].
-@ProviderFor(messagesStream)
-final messagesStreamProvider =
-    AutoDisposeStreamProvider<List<Message>>.internal(
-  messagesStream,
-  name: r'messagesStreamProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$messagesStreamHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef MessagesStreamRef = AutoDisposeStreamProviderRef<List<Message>>;
 String _$unreadMessageCountHash() =>
-    r'c98a07f1698d9ce70f898226c8c0bfec65d609b4';
+    r'c6e76b24b7f5f08d7fe20491602883dbca42aa35';
 
 /// 未読メッセージ数を取得するProvider
-/// messagesStreamProviderを監視し、メッセージ変更時に自動再取得
 ///
 /// Copied from [unreadMessageCount].
 @ProviderFor(unreadMessageCount)
@@ -230,23 +209,23 @@ class _MessageByIdProviderElement
   String get messageId => (origin as MessageByIdProvider).messageId;
 }
 
-String _$messagesNotifierHash() => r'2084ebbc3a7c5ccc2ed5134d7ec0d1bf17477779';
+String _$paginatedMessagesHash() => r'b31f6de0676cda377658fee17c5a5f9427f02ae8';
 
-/// メッセージ送受信を管理するProvider
+/// ページネーション付きメッセージ管理Provider
 ///
-/// Copied from [MessagesNotifier].
-@ProviderFor(MessagesNotifier)
-final messagesNotifierProvider =
-    AutoDisposeAsyncNotifierProvider<MessagesNotifier, List<Message>>.internal(
-  MessagesNotifier.new,
-  name: r'messagesNotifierProvider',
+/// Copied from [PaginatedMessages].
+@ProviderFor(PaginatedMessages)
+final paginatedMessagesProvider = AutoDisposeAsyncNotifierProvider<
+    PaginatedMessages, PaginatedMessagesState>.internal(
+  PaginatedMessages.new,
+  name: r'paginatedMessagesProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
       ? null
-      : _$messagesNotifierHash,
+      : _$paginatedMessagesHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
-typedef _$MessagesNotifier = AutoDisposeAsyncNotifier<List<Message>>;
+typedef _$PaginatedMessages = AutoDisposeAsyncNotifier<PaginatedMessagesState>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

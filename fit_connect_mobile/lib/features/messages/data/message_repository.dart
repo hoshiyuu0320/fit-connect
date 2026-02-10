@@ -1,5 +1,6 @@
 import 'package:fit_connect_mobile/features/messages/models/message_model.dart';
 import 'package:fit_connect_mobile/services/supabase_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class MessageRepository {
   final _supabase = SupabaseService.client;
@@ -31,23 +32,72 @@ class MessageRepository {
     return messages;
   }
 
-  /// メッセージのリアルタイムストリームを取得
-  Stream<List<Message>> getMessagesStream({
+  /// ページネーション付きメッセージ取得（cursor-based）
+  Future<List<Message>> fetchMessages({
     required String userId,
     required String otherUserId,
-  }) {
-    return _supabase
+    int limit = 30,
+    DateTime? before,
+  }) async {
+    var query = _supabase
         .from('messages')
-        .stream(primaryKey: ['id'])
-        .order('created_at', ascending: true)
-        .map((data) {
-          return data
-              .map((json) => Message.fromJson(json))
-              .where((msg) =>
-                  (msg.senderId == userId && msg.receiverId == otherUserId) ||
-                  (msg.senderId == otherUserId && msg.receiverId == userId))
-              .toList();
-        });
+        .select()
+        .or('and(sender_id.eq.$userId,receiver_id.eq.$otherUserId),and(sender_id.eq.$otherUserId,receiver_id.eq.$userId)');
+
+    if (before != null) {
+      query = query.lt('created_at', before.toUtc().toIso8601String());
+    }
+
+    final response = await query
+        .order('created_at', ascending: false)
+        .limit(limit);
+    final messages = (response as List)
+        .map((json) => Message.fromJson(json))
+        .toList();
+
+    // 時系列順にソート（古い順）
+    messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    return messages;
+  }
+
+  /// Realtime channel購読
+  RealtimeChannel subscribeToMessages({
+    required String userId,
+    required String otherUserId,
+    required void Function(Message message) onInsert,
+    required void Function(Message message) onUpdate,
+  }) {
+    final channel = _supabase.channel('messages:$userId:$otherUserId');
+
+    channel
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'messages',
+          callback: (payload) {
+            final message = Message.fromJson(payload.newRecord);
+            // 該当する会話ペアのメッセージのみ処理
+            if ((message.senderId == userId && message.receiverId == otherUserId) ||
+                (message.senderId == otherUserId && message.receiverId == userId)) {
+              onInsert(message);
+            }
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'messages',
+          callback: (payload) {
+            final message = Message.fromJson(payload.newRecord);
+            if ((message.senderId == userId && message.receiverId == otherUserId) ||
+                (message.senderId == otherUserId && message.receiverId == userId)) {
+              onUpdate(message);
+            }
+          },
+        )
+        .subscribe();
+
+    return channel;
   }
 
   /// メッセージを送信
