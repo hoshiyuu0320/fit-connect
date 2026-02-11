@@ -18,6 +18,12 @@ npm start
 npm run lint
 ```
 
+## Development Rules
+
+- `.env`ファイルは参照しないこと
+- 実装に関しては`docs/IMPLEMENTATION_TASKS.md`を参照して実装すること
+- 実装の進捗は`docs/IMPLEMENTATION_TASKS.md`を随時更新すること
+
 ## Architecture Overview
 
 FIT-CONNECT is a fitness trainer management platform consisting of a Next.js 15 web application for trainers and a planned Flutter native app for clients, both backed by Supabase.
