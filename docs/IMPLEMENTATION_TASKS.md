@@ -82,6 +82,14 @@
   - API Route更新（`image_urls`対応）
   - メッセージページUI更新（添付・表示・Realtime対応）
   - `Message`型を`src/types/client.ts`に追加
+- メッセージ入力UX改善
+  - IME変換中のEnter送信防止（`isComposing`チェック）
+  - Shift+Enterで改行対応（`input`→`textarea`化、自動高さ調整）
+  - 送信後のメッセージに改行を維持（`whitespace-pre-wrap`）
+  - 送信後のテキストエリア高さリセット
+- メッセージ表示をスタック形式に変更（`flex-col-reverse`）
+  - 画面を開いた時に最新メッセージが下部に表示
+  - 上にスクロールで過去メッセージを閲覧
 
 ### 2026年2月1日
 
