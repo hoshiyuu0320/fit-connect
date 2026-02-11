@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
   }
 
   // DBに保存
-  const { error } = await supabaseAdmin.from('messages').insert([
+  const { data, error } = await supabaseAdmin.from('messages').insert([
     {
       sender_id: trainerId,
       receiver_id: clientId,
@@ -29,12 +29,12 @@ export async function POST(req: NextRequest) {
       receiver_type: 'client',
       ...(hasImages && { image_urls }),
     },
-  ]);
+  ]).select('id, created_at').single();
 
   if (error) {
     console.error('DB insert error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ status: 'ok' });
+  return NextResponse.json({ status: 'ok', id: data.id, created_at: data.created_at });
 }
