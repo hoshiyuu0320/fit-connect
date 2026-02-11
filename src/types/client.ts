@@ -58,12 +58,16 @@ export type ExerciseRecord = {
 
 // メッセージ
 export type Message = {
+  id: string
   sender: string
   content: string
   timestamp: string
+  created_at: string
   senderType: 'client' | 'trainer'
   receiverType: 'client' | 'trainer'
   image_urls: string[]
+  is_edited: boolean
+  edited_at: string | null
 }
 
 // チケット

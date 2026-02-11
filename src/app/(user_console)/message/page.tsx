@@ -14,6 +14,15 @@ import { ImageModal } from '@/components/message/ImageModal';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import type { Client, Message } from '@/types/client'
 
+const EDIT_TIME_LIMIT_MINUTES = 5;
+
+function canEditMessage(createdAt: string): boolean {
+    const now = new Date();
+    const created = new Date(createdAt);
+    const diffMinutes = (now.getTime() - created.getTime()) / 1000 / 60;
+    return diffMinutes <= EDIT_TIME_LIMIT_MINUTES;
+}
+
 function MessageContent() {
     const searchParams = useSearchParams()
     const client_id = searchParams.get("clientId")
@@ -27,7 +36,11 @@ function MessageContent() {
     const [selectedImages, setSelectedImages] = useState<File[]>([]);
     const [uploading, setUploading] = useState(false);
     const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
+    const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+    const [editInput, setEditInput] = useState('');
+    const [editSaving, setEditSaving] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const editTextareaRef = useRef<HTMLTextAreaElement>(null);
 
     const handleSend = async () => {
         const hasText = input.trim().length > 0;
@@ -66,12 +79,16 @@ function MessageContent() {
             const data = text ? JSON.parse(text) : {};
             if (res.ok) {
                 setMessages([...messages, {
+                    id: data.id,
                     sender: 'You',
                     content: input,
                     timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    created_at: data.created_at || new Date().toISOString(),
                     senderType: 'trainer',
                     receiverType: 'client',
                     image_urls: imageUrls,
+                    is_edited: false,
+                    edited_at: null,
                 }]);
                 setSelectedImages([]);
             } else {
@@ -92,6 +109,54 @@ function MessageContent() {
             setUploading(false);
         }
     }
+
+    const handleEditStart = (msg: Message) => {
+        setEditingMessageId(msg.id);
+        setEditInput(msg.content);
+    };
+
+    const handleEditCancel = () => {
+        setEditingMessageId(null);
+        setEditInput('');
+    };
+
+    const handleEditSave = async () => {
+        if (!editingMessageId || editSaving) return;
+        const trimmed = editInput.trim();
+        if (!trimmed) return;
+
+        setEditSaving(true);
+        try {
+            const res = await fetch('/api/messages/edit', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    messageId: editingMessageId,
+                    content: trimmed,
+                }),
+            });
+
+            if (res.ok) {
+                setMessages((prev) =>
+                    prev.map((m) =>
+                        m.id === editingMessageId
+                            ? { ...m, content: trimmed, is_edited: true, edited_at: new Date().toISOString() }
+                            : m
+                    )
+                );
+                setEditingMessageId(null);
+                setEditInput('');
+            } else {
+                const data = await res.json();
+                alert(data.error || '編集に失敗しました');
+            }
+        } catch (err) {
+            console.error('編集エラー:', err);
+            alert('編集に失敗しました');
+        } finally {
+            setEditSaving(false);
+        }
+    };
 
     // 顧客一覧の取得
     useEffect(() => {
@@ -148,15 +213,19 @@ function MessageContent() {
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const formattedMessages: Message[] = rawMessages.map((msg: any) => ({
+                id: msg.id,
                 sender: msg.sender_type === 'client' ? selectedClient.name : 'You',
                 content: msg.content,
                 timestamp: new Date(msg.created_at).toLocaleTimeString([], {
                     hour: '2-digit',
                     minute: '2-digit',
                 }),
+                created_at: msg.created_at,
                 senderType: msg.sender_type,
                 receiverType: msg.receiver_type,
                 image_urls: msg.image_urls || [],
+                is_edited: msg.is_edited || false,
+                edited_at: msg.edited_at || null,
             }));
             console.log("formattedMessages", formattedMessages);
 
@@ -186,17 +255,45 @@ function MessageContent() {
                         if (msg.receiver_id !== user.id || msg.sender_id !== selectedClient.client_id) return;
 
                         const newMsg: Message = {
+                            id: msg.id,
                             sender: selectedClient.name,
                             content: msg.content,
                             timestamp: new Date(msg.created_at).toLocaleTimeString([], {
                                 hour: '2-digit',
                                 minute: '2-digit',
                             }),
+                            created_at: msg.created_at,
                             senderType: msg.sender_type,
                             receiverType: msg.receiver_type,
                             image_urls: msg.image_urls || [],
+                            is_edited: msg.is_edited || false,
+                            edited_at: msg.edited_at || null,
                         };
                         setMessages((prev) => [...prev, newMsg]);
+                    }
+                )
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'UPDATE',
+                        schema: 'public',
+                        table: 'messages',
+                    },
+                    (payload) => {
+                        const msg = payload.new;
+
+                        setMessages((prev) =>
+                            prev.map((m) =>
+                                m.id === msg.id
+                                    ? {
+                                        ...m,
+                                        content: msg.content,
+                                        is_edited: msg.is_edited || false,
+                                        edited_at: msg.edited_at || null,
+                                    }
+                                    : m
+                            )
+                        );
                     }
                 )
                 .subscribe();
@@ -248,32 +345,95 @@ function MessageContent() {
                     {[...messages].reverse().map((msg, index) => (
                         <div key={index} className="flex items-start space-x-3">
                             <div className="w-10 h-10 bg-gray-300 rounded-full" />
-                            <div>
+                            <div className="flex-1 min-w-0">
                                 <div className='text-sm font-medium'>
                                     {msg.sender}{' '}
                                     <span className='text-gray-500 text-xs ml-2'>{msg.timestamp}</span>
-                                </div>
-                                <div className={`p-3 rounded border mt-1 max-w-md whitespace-pre-wrap ${msg.senderType === 'trainer' ? 'bg-blue-100' : 'bg-white'}`}>
-                                    {msg.content}
-                                    {msg.image_urls && msg.image_urls.length > 0 && (
-                                        <div className="flex gap-2 mt-2">
-                                            {msg.image_urls.map((url, imgIndex) => (
-                                                <button
-                                                    key={imgIndex}
-                                                    type="button"
-                                                    onClick={() => setSelectedImageUrl(url)}
-                                                    className="block"
-                                                >
-                                                    <img
-                                                        src={url}
-                                                        alt={`添付画像 ${imgIndex + 1}`}
-                                                        className="w-24 h-24 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
-                                                    />
-                                                </button>
-                                            ))}
-                                        </div>
+                                    {msg.is_edited && (
+                                        <span
+                                            className='text-gray-400 text-xs ml-2 cursor-default'
+                                            title={msg.edited_at ? `編集: ${new Date(msg.edited_at).toLocaleString()}` : '編集済み'}
+                                        >
+                                            編集済み
+                                        </span>
                                     )}
                                 </div>
+                                {editingMessageId === msg.id ? (
+                                    <div className="mt-1 max-w-md">
+                                        <textarea
+                                            ref={editTextareaRef}
+                                            value={editInput}
+                                            onChange={(e) => setEditInput(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                                                    e.preventDefault();
+                                                    handleEditSave();
+                                                }
+                                                if (e.key === 'Escape') {
+                                                    handleEditCancel();
+                                                }
+                                            }}
+                                            className="w-full border-2 border-blue-400 rounded p-3 outline-none focus:ring-2 focus:ring-blue-300 resize-none bg-white"
+                                            rows={2}
+                                            autoFocus
+                                        />
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <button
+                                                type="button"
+                                                onClick={handleEditCancel}
+                                                className="px-3 py-1 text-sm text-gray-600 rounded hover:bg-gray-100"
+                                            >
+                                                キャンセル
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={handleEditSave}
+                                                disabled={editSaving || !editInput.trim()}
+                                                className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                {editSaving ? '保存中...' : '保存'}
+                                            </button>
+                                            <span className="text-xs text-gray-400">Enter で保存 / Esc でキャンセル</span>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="group relative inline-block max-w-md">
+                                        <div className={`p-3 rounded border mt-1 whitespace-pre-wrap ${msg.senderType === 'trainer' ? 'bg-blue-100' : 'bg-white'}`}>
+                                            {msg.content}
+                                            {msg.image_urls && msg.image_urls.length > 0 && (
+                                                <div className="flex gap-2 mt-2">
+                                                    {msg.image_urls.map((url, imgIndex) => (
+                                                        <button
+                                                            key={imgIndex}
+                                                            type="button"
+                                                            onClick={() => setSelectedImageUrl(url)}
+                                                            className="block"
+                                                        >
+                                                            <img
+                                                                src={url}
+                                                                alt={`添付画像 ${imgIndex + 1}`}
+                                                                className="w-24 h-24 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+                                                            />
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                        {msg.senderType === 'trainer' && canEditMessage(msg.created_at) && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleEditStart(msg)}
+                                                className="absolute -right-8 top-1 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-gray-200"
+                                                title="メッセージを編集"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500">
+                                                    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                                                    <path d="m15 5 4 4" />
+                                                </svg>
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ))}
