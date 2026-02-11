@@ -11,6 +11,9 @@ import { getMessages } from '@/lib/supabase/getMessages';
 import { uploadMessageImage } from '@/lib/supabase/uploadMessageImage';
 import { ImageUploader } from '@/components/message/ImageUploader';
 import { ImageModal } from '@/components/message/ImageModal';
+import { ReplyPreview } from '@/components/message/ReplyPreview';
+import { ReplyQuote } from '@/components/message/ReplyQuote';
+import { getMessageById } from '@/lib/supabase/getMessageById';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import type { Client, Message } from '@/types/client'
 
@@ -39,6 +42,7 @@ function MessageContent() {
     const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
     const [editInput, setEditInput] = useState('');
     const [editSaving, setEditSaving] = useState(false);
+    const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const editTextareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -71,6 +75,7 @@ function MessageContent() {
                     clientId: selectedClient.client_id,
                     content: input,
                     ...(imageUrls.length > 0 && { image_urls: imageUrls }),
+                    ...(replyToMessage && { reply_to_message_id: replyToMessage.id }),
                 }),
             });
             console.log('Response status:', res.status);
@@ -89,8 +94,16 @@ function MessageContent() {
                     image_urls: imageUrls,
                     is_edited: false,
                     edited_at: null,
+                    reply_to_message_id: replyToMessage?.id || null,
+                    reply_to_message: replyToMessage ? {
+                        id: replyToMessage.id,
+                        sender: replyToMessage.sender,
+                        content: replyToMessage.content,
+                        image_urls: replyToMessage.image_urls,
+                    } : null,
                 }]);
                 setSelectedImages([]);
+                setReplyToMessage(null);
             } else {
                 alert('送信に失敗しました' + data.error);
             }
@@ -158,6 +171,16 @@ function MessageContent() {
         }
     };
 
+    const handleReplyStart = (msg: Message) => {
+        setReplyToMessage(msg);
+        // 入力欄にフォーカス
+        textareaRef.current?.focus();
+    };
+
+    const handleReplyCancel = () => {
+        setReplyToMessage(null);
+    };
+
     // 顧客一覧の取得
     useEffect(() => {
         const fetchClients = async () => {
@@ -211,22 +234,43 @@ function MessageContent() {
             });
             console.log("rawMessages", rawMessages);
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const formattedMessages: Message[] = rawMessages.map((msg: any) => ({
-                id: msg.id,
-                sender: msg.sender_type === 'client' ? selectedClient.name : 'You',
-                content: msg.content,
-                timestamp: new Date(msg.created_at).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                }),
-                created_at: msg.created_at,
-                senderType: msg.sender_type,
-                receiverType: msg.receiver_type,
-                image_urls: msg.image_urls || [],
-                is_edited: msg.is_edited || false,
-                edited_at: msg.edited_at || null,
-            }));
+            const formattedMessages: Message[] = await Promise.all(
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                rawMessages.map(async (msg: any) => {
+                    let replyToMessageData = null;
+                    if (msg.reply_to_message_id) {
+                        try {
+                            const replyMsg = await getMessageById(msg.reply_to_message_id);
+                            replyToMessageData = {
+                                id: replyMsg.id,
+                                sender: replyMsg.sender_type === 'client' ? selectedClient.name : 'You',
+                                content: replyMsg.content,
+                                image_urls: replyMsg.image_urls || [],
+                            };
+                        } catch (error) {
+                            console.error('返信先メッセージ取得エラー:', error);
+                        }
+                    }
+
+                    return {
+                        id: msg.id,
+                        sender: msg.sender_type === 'client' ? selectedClient.name : 'You',
+                        content: msg.content,
+                        timestamp: new Date(msg.created_at).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                        }),
+                        created_at: msg.created_at,
+                        senderType: msg.sender_type,
+                        receiverType: msg.receiver_type,
+                        image_urls: msg.image_urls || [],
+                        is_edited: msg.is_edited || false,
+                        edited_at: msg.edited_at || null,
+                        reply_to_message_id: msg.reply_to_message_id || null,
+                        reply_to_message: replyToMessageData,
+                    };
+                })
+            );
             console.log("formattedMessages", formattedMessages);
 
             setMessages(formattedMessages);
@@ -268,6 +312,8 @@ function MessageContent() {
                             image_urls: msg.image_urls || [],
                             is_edited: msg.is_edited || false,
                             edited_at: msg.edited_at || null,
+                            reply_to_message_id: msg.reply_to_message_id || null,
+                            reply_to_message: null,  // Realtime時は簡易対応
                         };
                         setMessages((prev) => [...prev, newMsg]);
                     }
@@ -399,6 +445,13 @@ function MessageContent() {
                                 ) : (
                                     <div className="group relative inline-block max-w-md">
                                         <div className={`p-3 rounded border mt-1 whitespace-pre-wrap ${msg.senderType === 'trainer' ? 'bg-blue-100' : 'bg-white'}`}>
+                                            {msg.reply_to_message && (
+                                                <ReplyQuote
+                                                    senderName={msg.reply_to_message.sender}
+                                                    content={msg.reply_to_message.content}
+                                                    isTrainerMessage={msg.senderType === 'trainer'}
+                                                />
+                                            )}
                                             {msg.content}
                                             {msg.image_urls && msg.image_urls.length > 0 && (
                                                 <div className="flex gap-2 mt-2">
@@ -432,6 +485,20 @@ function MessageContent() {
                                                 </svg>
                                             </button>
                                         )}
+                                        {/* 返信ボタン - クライアントメッセージのみ表示 */}
+                                        {msg.senderType === 'client' && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleReplyStart(msg)}
+                                                className="absolute -right-8 top-1 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-gray-200"
+                                                title="返信"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500">
+                                                    <polyline points="9 14 4 9 9 4"></polyline>
+                                                    <path d="M20 20v-7a4 4 0 0 0-4-4H4"></path>
+                                                </svg>
+                                            </button>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -446,6 +513,15 @@ function MessageContent() {
                         onImagesChange={setSelectedImages}
                         disabled={loading}
                     />
+                    {/* 返信プレビュー */}
+                    {replyToMessage && (
+                        <ReplyPreview
+                            senderName={replyToMessage.sender}
+                            content={replyToMessage.content}
+                            imageUrls={replyToMessage.image_urls}
+                            onCancel={handleReplyCancel}
+                        />
+                    )}
                     <div className="flex items-center space-x-3 mt-2">
                         <textarea
                             ref={textareaRef}
