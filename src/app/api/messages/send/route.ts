@@ -4,10 +4,19 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { trainerId, clientId, content } = body;
+  const { trainerId, clientId, content, image_urls } = body;
 
-  if (!trainerId || !clientId || !content) {
+  // contentかimage_urlsのどちらかは必須
+  const hasContent = content && content.trim().length > 0;
+  const hasImages = Array.isArray(image_urls) && image_urls.length > 0;
+
+  if (!trainerId || !clientId || (!hasContent && !hasImages)) {
     return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
+  }
+
+  // image_urlsのバリデーション
+  if (hasImages && image_urls.length > 3) {
+    return NextResponse.json({ error: '画像は最大3枚までです' }, { status: 400 });
   }
 
   // DBに保存
@@ -15,12 +24,13 @@ export async function POST(req: NextRequest) {
     {
       sender_id: trainerId,
       receiver_id: clientId,
-      content: content,
+      content: content || '',
       sender_type: 'trainer',
       receiver_type: 'client',
+      ...(hasImages && { image_urls }),
     },
   ]);
-  
+
   if (error) {
     console.error('DB insert error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

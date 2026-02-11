@@ -56,6 +56,16 @@ export type ExerciseRecord = {
   recorded_at: string
 }
 
+// メッセージ
+export type Message = {
+  sender: string
+  content: string
+  timestamp: string
+  senderType: 'client' | 'trainer'
+  receiverType: 'client' | 'trainer'
+  image_urls: string[]
+}
+
 // チケット
 export type Ticket = {
   id: string

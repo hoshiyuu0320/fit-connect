@@ -8,18 +8,13 @@ import { useUserStore } from '@/store/userStore';
 import { supabase } from '@/lib/supabase';
 import { getClients } from '@/lib/supabase/getClients';
 import { getMessages } from '@/lib/supabase/getMessages';
+import { uploadMessageImage } from '@/lib/supabase/uploadMessageImage';
+import { ImageUploader } from '@/components/message/ImageUploader';
+import { ImageModal } from '@/components/message/ImageModal';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import type { Client } from '@/types/client'
+import type { Client, Message } from '@/types/client'
 
 function MessageContent() {
-    type Message = {
-        sender: string,
-        content: string,
-        timestamp: string,
-        senderType: 'client' | 'trainer',
-        receiverType: 'client' | 'trainer',
-    }
-
     const searchParams = useSearchParams()
     const client_id = searchParams.get("clientId")
     const { userName } = useUserStore()
@@ -29,22 +24,30 @@ function MessageContent() {
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
     const [loading, setLoading] = useState(false);
-    const messagesEndRef = useRef<HTMLDivElement>(null);
-
-    // 最新のメッセージまでスクロールする関数
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    };
-
-    // メッセージが更新されたら自動スクロール
-    useEffect(() => {
-        scrollToBottom();
-    }, [messages]);
+    const [selectedImages, setSelectedImages] = useState<File[]>([]);
+    const [uploading, setUploading] = useState(false);
+    const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     const handleSend = async () => {
-        if (!input.trim() || !userId || !selectedClient?.client_id) return;
+        const hasText = input.trim().length > 0;
+        const hasImages = selectedImages.length > 0;
+        if ((!hasText && !hasImages) || !userId || !selectedClient?.client_id) return;
+
         setLoading(true);
+        setUploading(hasImages);
+
         try {
+            // 画像がある場合は並列アップロード
+            let imageUrls: string[] = [];
+            if (hasImages) {
+                imageUrls = await Promise.all(
+                    selectedImages.map((file) =>
+                        uploadMessageImage(file, userId, selectedClient.client_id)
+                    )
+                );
+            }
+
             const res = await fetch('/api/messages/send', {
                 method: 'POST',
                 headers: {
@@ -54,6 +57,7 @@ function MessageContent() {
                     trainerId: userId,
                     clientId: selectedClient.client_id,
                     content: input,
+                    ...(imageUrls.length > 0 && { image_urls: imageUrls }),
                 }),
             });
             console.log('Response status:', res.status);
@@ -67,18 +71,25 @@ function MessageContent() {
                     timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                     senderType: 'trainer',
                     receiverType: 'client',
+                    image_urls: imageUrls,
                 }]);
+                setSelectedImages([]);
             } else {
                 alert('送信に失敗しました' + data.error);
             }
 
             setLoading(false);
+            setUploading(false);
             setInput('');
+            if (textareaRef.current) {
+                textareaRef.current.style.height = 'auto';
+            }
         } catch (err) {
             console.error('送信エラー:', err);
             alert('送信に失敗しました');
         } finally {
             setLoading(false);
+            setUploading(false);
         }
     }
 
@@ -128,7 +139,7 @@ function MessageContent() {
 
             if (!user) return;
 
-            // ✅ 初期取得処理
+            // 初期取得処理
             const rawMessages = await getMessages({
                 senderId: user.id,
                 receiverId: selectedClient.client_id,
@@ -145,6 +156,7 @@ function MessageContent() {
                 }),
                 senderType: msg.sender_type,
                 receiverType: msg.receiver_type,
+                image_urls: msg.image_urls || [],
             }));
             console.log("formattedMessages", formattedMessages);
 
@@ -156,7 +168,7 @@ function MessageContent() {
                 .find((c) => c.topic === "realtime:message-room");
             if (existingChannel) supabase.removeChannel(existingChannel)
 
-            // ✅ Realtime購読
+            // Realtime購読
             channel = supabase
                 .channel('message-room')
                 .on(
@@ -182,6 +194,7 @@ function MessageContent() {
                             }),
                             senderType: msg.sender_type,
                             receiverType: msg.receiver_type,
+                            image_urls: msg.image_urls || [],
                         };
                         setMessages((prev) => [...prev, newMsg]);
                     }
@@ -231,8 +244,8 @@ function MessageContent() {
                 </header>
 
                 {/* Messages */}
-                <main className="flex-1 overflow-y-auto p-6 space-y-4">
-                    {messages.map((msg, index) => (
+                <main className="flex-1 overflow-y-auto p-6 flex flex-col-reverse gap-4">
+                    {[...messages].reverse().map((msg, index) => (
                         <div key={index} className="flex items-start space-x-3">
                             <div className="w-10 h-10 bg-gray-300 rounded-full" />
                             <div>
@@ -240,35 +253,77 @@ function MessageContent() {
                                     {msg.sender}{' '}
                                     <span className='text-gray-500 text-xs ml-2'>{msg.timestamp}</span>
                                 </div>
-                                <div className={`p-3 rounded border mt-1 max-w-md ${msg.senderType === 'trainer' ? 'bg-blue-100' : 'bg-white'}`}>
+                                <div className={`p-3 rounded border mt-1 max-w-md whitespace-pre-wrap ${msg.senderType === 'trainer' ? 'bg-blue-100' : 'bg-white'}`}>
                                     {msg.content}
+                                    {msg.image_urls && msg.image_urls.length > 0 && (
+                                        <div className="flex gap-2 mt-2">
+                                            {msg.image_urls.map((url, imgIndex) => (
+                                                <button
+                                                    key={imgIndex}
+                                                    type="button"
+                                                    onClick={() => setSelectedImageUrl(url)}
+                                                    className="block"
+                                                >
+                                                    <img
+                                                        src={url}
+                                                        alt={`添付画像 ${imgIndex + 1}`}
+                                                        className="w-24 h-24 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+                                                    />
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
                     ))}
-                    {/* スクロール位置の参照用要素 */}
-                    <div ref={messagesEndRef} />
                 </main>
 
                 {/* Input */}
                 <footer className="border-t p-4 bg-white">
-                    <div className="flex items-center space-x-3">
-                        <input
-                            type="text"
+                    <ImageUploader
+                        images={selectedImages}
+                        onImagesChange={setSelectedImages}
+                        disabled={loading}
+                    />
+                    <div className="flex items-center space-x-3 mt-2">
+                        <textarea
+                            ref={textareaRef}
                             value={input}
-                            onChange={(e) => setInput(e.target.value)}
+                            onChange={(e) => {
+                                setInput(e.target.value);
+                                const el = textareaRef.current;
+                                if (el) {
+                                    el.style.height = 'auto';
+                                    el.style.height = `${el.scrollHeight}px`;
+                                }
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                                    e.preventDefault();
+                                    handleSend();
+                                }
+                            }}
                             placeholder="Send a message..."
-                            className="flex-1 border rounded px-3 py-2 outline-none focus:ring-2 focus:ring-blue-300"
+                            rows={1}
+                            className="flex-1 border rounded px-3 py-2 outline-none focus:ring-2 focus:ring-blue-300 resize-none overflow-y-auto"
+                            style={{ maxHeight: '120px' }}
                         />
                         <button
                             onClick={handleSend} disabled={loading}
                             className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            {loading ? '送信中...' : '送信'}
+                            {uploading ? 'アップロード中...' : loading ? '送信中...' : '送信'}
                         </button>
                     </div>
                 </footer>
             </div>
+
+            {/* 画像拡大モーダル */}
+            <ImageModal
+                imageUrl={selectedImageUrl}
+                onClose={() => setSelectedImageUrl(null)}
+            />
         </div>
     );
 }
