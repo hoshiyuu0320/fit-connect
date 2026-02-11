@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { trainerId, clientId, content, image_urls } = body;
+  const { trainerId, clientId, content, image_urls, reply_to_message_id } = body;
 
   // contentかimage_urlsのどちらかは必須
   const hasContent = content && content.trim().length > 0;
@@ -28,6 +28,7 @@ export async function POST(req: NextRequest) {
       sender_type: 'trainer',
       receiver_type: 'client',
       ...(hasImages && { image_urls }),
+      ...(reply_to_message_id && { reply_to_message_id }),
     },
   ]).select('id, created_at').single();
 
