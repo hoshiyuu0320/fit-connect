@@ -30,6 +30,7 @@ export type WeightRecord = {
   id: string
   client_id: string
   weight: number
+  notes: string | null
   recorded_at: string
 }
 
@@ -38,7 +39,7 @@ export type MealRecord = {
   id: string
   client_id: string
   meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack'
-  description: string | null
+  notes: string | null
   calories: number | null
   images: string[] | null
   recorded_at: string
