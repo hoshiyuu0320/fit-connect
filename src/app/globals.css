@@ -140,3 +140,13 @@
   scrollbar-width: thin;
   scrollbar-color: #d1d5db transparent;
 }
+
+/* number input スピナーボタンを大きく */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: inner-spin-button;
+  opacity: 1;
+  height: 2em;
+  width: 1.5em;
+  cursor: pointer;
+}
