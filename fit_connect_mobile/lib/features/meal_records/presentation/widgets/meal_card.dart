@@ -208,13 +208,13 @@ class _MealCardState extends State<MealCard> {
   (Color, Color, String, String) _getMealTypeStyle(String mealType) {
     switch (mealType.toLowerCase()) {
       case 'breakfast':
-        return (AppColors.amber100, AppColors.amber800, '🍳', 'Breakfast');
+        return (AppColors.amber100, AppColors.amber800, '🍳', '朝食');
       case 'lunch':
-        return (AppColors.primary100, AppColors.primary700, '🥗', 'Lunch');
+        return (AppColors.primary100, AppColors.primary700, '🥗', '昼食');
       case 'dinner':
-        return (AppColors.rose100, AppColors.rose800, '🥩', 'Dinner');
+        return (AppColors.rose100, AppColors.rose800, '🥩', '夕食');
       case 'snack':
-        return (AppColors.indigo100, AppColors.indigo800, '🍎', 'Snack');
+        return (AppColors.indigo100, AppColors.indigo800, '🍎', '間食');
       default:
         return (AppColors.slate100, AppColors.slate600, '🍽️', mealType);
     }

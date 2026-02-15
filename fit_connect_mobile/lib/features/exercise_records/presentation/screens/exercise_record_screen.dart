@@ -6,6 +6,7 @@ import 'package:fit_connect_mobile/core/theme/app_theme.dart';
 import 'package:fit_connect_mobile/features/exercise_records/models/exercise_record_model.dart';
 import 'package:fit_connect_mobile/features/exercise_records/providers/exercise_records_provider.dart';
 import 'package:fit_connect_mobile/features/exercise_records/presentation/widgets/exercise_week_calendar.dart';
+import 'package:fit_connect_mobile/features/exercise_records/presentation/widgets/exercise_month_calendar.dart';
 import 'package:fit_connect_mobile/shared/models/period_filter.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
@@ -33,6 +34,9 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
     final typeCountsAsync = ref.watch(
       exerciseTypeCountsProvider(period: _selectedPeriod),
     );
+    final caloriesAsync = ref.watch(
+      exerciseTotalCaloriesProvider(period: _selectedPeriod),
+    );
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -46,12 +50,16 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
         const SizedBox(height: 24),
 
         // Summary Card
-        _buildSummaryCard(recordsAsync, typeCountsAsync),
+        _buildSummaryCard(recordsAsync, typeCountsAsync, caloriesAsync),
         const SizedBox(height: 16),
 
-        // Calendar - show week calendar for week period
+        // Calendar - show week calendar for week, month calendar for month
         if (_selectedPeriod == PeriodFilter.week) ...[
           const ExerciseWeekCalendar(),
+          const SizedBox(height: 16),
+        ],
+        if (_selectedPeriod == PeriodFilter.month) ...[
+          const ExerciseMonthCalendar(),
           const SizedBox(height: 16),
         ],
 
@@ -111,9 +119,9 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
 
   Widget _buildTypeFilter() {
     final types = [
-      (null, 'All', LucideIcons.layoutGrid),
-      ('strength_training', 'Strength', LucideIcons.dumbbell),
-      ('cardio', 'Cardio', LucideIcons.heart),
+      (null, 'すべて', LucideIcons.layoutGrid),
+      ('strength_training', '筋トレ', LucideIcons.dumbbell),
+      ('cardio', '有酸素', LucideIcons.heart),
     ];
 
     return Row(
@@ -167,6 +175,7 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
   Widget _buildSummaryCard(
     AsyncValue<List<ExerciseRecord>> recordsAsync,
     AsyncValue<Map<String, int>> typeCountsAsync,
+    AsyncValue<double> caloriesAsync,
   ) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -190,8 +199,8 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
             children: [
               Text(
                 _selectedPeriod == PeriodFilter.week
-                    ? "📊 This Week's Summary"
-                    : "📊 ${_selectedPeriod.label} Summary",
+                    ? "📊 今週のサマリー"
+                    : "📊 ${_selectedPeriod.label}のサマリー",
                 style: const TextStyle(
                   color: AppColors.slate800,
                   fontWeight: FontWeight.bold,
@@ -203,22 +212,76 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
                 children: [
                   Expanded(
                       child:
-                          _buildSummaryStat('Total', total.toString(), '📊')),
+                          _buildSummaryStat('合計', total.toString(), '📊')),
                   const SizedBox(width: 8),
                   Expanded(
                       child: _buildSummaryStat(
-                          'Strength', strength.toString(), '💪')),
+                          '筋トレ', strength.toString(), '🏋️')),
                   const SizedBox(width: 8),
                   Expanded(
                       child:
-                          _buildSummaryStat('Cardio', cardio.toString(), '🏃')),
+                          _buildSummaryStat('有酸素', cardio.toString(), '🏃')),
                 ],
+              ),
+              const SizedBox(height: 12),
+              // Calories Row
+              caloriesAsync.when(
+                data: (calories) => _buildCaloriesRow(calories),
+                loading: () => _buildCaloriesRow(null),
+                error: (_, __) => _buildCaloriesRow(null),
               ),
             ],
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
+      ),
+    );
+  }
+
+  Widget _buildCaloriesRow(double? calories) {
+    String displayValue;
+    if (calories == null) {
+      displayValue = '-- kcal';
+    } else if (calories == 0) {
+      displayValue = '-- kcal';
+    } else {
+      final formatter = NumberFormat('#,###');
+      displayValue = '${formatter.format(calories.round())} kcal';
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withAlpha(153),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white),
+      ),
+      child: Row(
+        children: [
+          const Text(
+            '🔥',
+            style: TextStyle(fontSize: 16),
+          ),
+          const SizedBox(width: 8),
+          const Text(
+            '消費カロリー',
+            style: TextStyle(
+              color: AppColors.slate600,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const Spacer(),
+          Text(
+            displayValue,
+            style: const TextStyle(
+              color: AppColors.indigo600,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -269,12 +332,12 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
                       size: 48, color: AppColors.slate300),
                   const SizedBox(height: 12),
                   const Text(
-                    'No exercise records yet',
+                    '運動記録がありません',
                     style: TextStyle(color: AppColors.slate400),
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Start logging your workouts!',
+                    '運動を記録しましょう！',
                     style: TextStyle(color: AppColors.slate300, fontSize: 12),
                   ),
                 ],
@@ -340,19 +403,24 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
     final yesterday = today.subtract(const Duration(days: 1));
 
     if (date == today) {
-      return 'Today';
+      return '今日';
     } else if (date == yesterday) {
-      return 'Yesterday';
+      return '昨日';
     } else {
-      return DateFormat('MMM d (E)').format(date);
+      return '${date.month}/${date.day}（${_weekdayLabel(date.weekday)}）';
     }
+  }
+
+  String _weekdayLabel(int weekday) {
+    const labels = ['月', '火', '水', '木', '金', '土', '日'];
+    return labels[weekday - 1];
   }
 
   Widget _buildExerciseCard(ExerciseRecord record) {
     final isStrength = record.exerciseType == 'strength_training';
     final color = isStrength ? AppColors.purple500 : AppColors.orange500;
     final bg = isStrength ? AppColors.purple50 : AppColors.orange50;
-    final icon = isStrength ? '💪' : '🏃';
+    final icon = isStrength ? '🏋️' : '🏃';
     final typeLabel = _getExerciseTypeLabel(record.exerciseType);
 
     return Container(
@@ -391,7 +459,7 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        typeLabel.toUpperCase(),
+                        typeLabel,
                         style: TextStyle(
                           color: color,
                           fontSize: 8,
@@ -424,7 +492,7 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
                 if (record.duration != null) ...[
                   const SizedBox(height: 2),
                   Text(
-                    '${record.duration} mins',
+                    '${record.duration}分',
                     style: const TextStyle(
                         color: AppColors.slate500, fontSize: 12),
                   ),
@@ -440,23 +508,23 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
   String _getExerciseTypeLabel(String type) {
     switch (type) {
       case 'strength_training':
-        return 'Strength';
+        return '筋トレ';
       case 'cardio':
-        return 'Cardio';
+        return '有酸素運動';
       case 'walking':
-        return 'Walking';
+        return 'ウォーキング';
       case 'running':
-        return 'Running';
+        return 'ランニング';
       case 'cycling':
-        return 'Cycling';
+        return 'サイクリング';
       case 'swimming':
-        return 'Swimming';
+        return '水泳';
       case 'yoga':
-        return 'Yoga';
+        return 'ヨガ';
       case 'pilates':
-        return 'Pilates';
+        return 'ピラティス';
       default:
-        return 'Other';
+        return 'その他';
     }
   }
 }
@@ -533,7 +601,7 @@ Widget previewExerciseRecordScreenEmpty() {
                         size: 48, color: AppColors.slate300),
                     const SizedBox(height: 12),
                     const Text(
-                      'No exercise records yet',
+                      '運動記録がありません',
                       style: TextStyle(color: AppColors.slate400),
                     ),
                   ],
@@ -560,7 +628,7 @@ class _PreviewPeriodFilter extends StatelessWidget {
       ),
       child: Row(
         children:
-            ['Today', 'Week', 'Month', '3M', 'All'].asMap().entries.map((e) {
+            ['今日', '週', '月', '3ヶ月', '全期間'].asMap().entries.map((e) {
           final isActive = e.key == 1; // Week is active
           return Expanded(
             child: Container(
@@ -591,9 +659,9 @@ class _PreviewTypeFilter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final types = [
-      ('All', LucideIcons.layoutGrid, true),
-      ('Strength', LucideIcons.dumbbell, false),
-      ('Cardio', LucideIcons.heart, false),
+      ('すべて', LucideIcons.layoutGrid, true),
+      ('筋トレ', LucideIcons.dumbbell, false),
+      ('有酸素', LucideIcons.heart, false),
     ];
 
     return Row(
@@ -658,7 +726,7 @@ class _PreviewSummaryCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            "📊 This Week's Summary",
+            "📊 今週のサマリー",
             style: TextStyle(
               color: AppColors.slate800,
               fontWeight: FontWeight.bold,
@@ -668,12 +736,48 @@ class _PreviewSummaryCard extends StatelessWidget {
           const SizedBox(height: 16),
           Row(
             children: [
-              Expanded(child: _buildStat('Total', '5', '📊')),
+              Expanded(child: _buildStat('合計', '5', '📊')),
               const SizedBox(width: 8),
-              Expanded(child: _buildStat('Strength', '3', '💪')),
+              Expanded(child: _buildStat('筋トレ', '3', '🏋️')),
               const SizedBox(width: 8),
-              Expanded(child: _buildStat('Cardio', '2', '🏃')),
+              Expanded(child: _buildStat('有酸素', '2', '🏃')),
             ],
+          ),
+          const SizedBox(height: 12),
+          // Calories Row
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withAlpha(153),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white),
+            ),
+            child: const Row(
+              children: [
+                Text(
+                  '🔥',
+                  style: TextStyle(fontSize: 16),
+                ),
+                SizedBox(width: 8),
+                Text(
+                  '消費カロリー',
+                  style: TextStyle(
+                    color: AppColors.slate600,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Spacer(),
+                Text(
+                  '1,150 kcal',
+                  style: TextStyle(
+                    color: AppColors.indigo600,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -731,7 +835,7 @@ class _PreviewSummaryCardEmpty extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            "📊 This Week's Summary",
+            "📊 今週のサマリー",
             style: TextStyle(
               color: AppColors.slate800,
               fontWeight: FontWeight.bold,
@@ -742,15 +846,51 @@ class _PreviewSummaryCardEmpty extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                  child: _PreviewSummaryCard()._buildStat('Total', '0', '📊')),
+                  child: _PreviewSummaryCard()._buildStat('合計', '0', '📊')),
               const SizedBox(width: 8),
               Expanded(
                   child:
-                      _PreviewSummaryCard()._buildStat('Strength', '0', '💪')),
+                      _PreviewSummaryCard()._buildStat('筋トレ', '0', '🏋️')),
               const SizedBox(width: 8),
               Expanded(
-                  child: _PreviewSummaryCard()._buildStat('Cardio', '0', '🏃')),
+                  child: _PreviewSummaryCard()._buildStat('有酸素', '0', '🏃')),
             ],
+          ),
+          const SizedBox(height: 12),
+          // Calories Row
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withAlpha(153),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white),
+            ),
+            child: const Row(
+              children: [
+                Text(
+                  '🔥',
+                  style: TextStyle(fontSize: 16),
+                ),
+                SizedBox(width: 8),
+                Text(
+                  '消費カロリー',
+                  style: TextStyle(
+                    color: AppColors.slate600,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Spacer(),
+                Text(
+                  '-- kcal',
+                  style: TextStyle(
+                    color: AppColors.indigo600,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -765,7 +905,7 @@ class _PreviewRecordsList extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Today',
+          '今日',
           style: TextStyle(
             color: AppColors.slate800,
             fontSize: 14,
@@ -782,8 +922,8 @@ class _PreviewRecordsList extends StatelessWidget {
     final isStrength = record.exerciseType == 'strength_training';
     final color = isStrength ? AppColors.purple500 : AppColors.orange500;
     final bg = isStrength ? AppColors.purple50 : AppColors.orange50;
-    final icon = isStrength ? '💪' : '🏃';
-    final typeLabel = isStrength ? 'Strength' : 'Cardio';
+    final icon = isStrength ? '🏋️' : '🏃';
+    final typeLabel = isStrength ? '筋トレ' : '有酸素運動';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -821,7 +961,7 @@ class _PreviewRecordsList extends StatelessWidget {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        typeLabel.toUpperCase(),
+                        typeLabel,
                         style: TextStyle(
                           color: color,
                           fontSize: 8,
@@ -854,7 +994,7 @@ class _PreviewRecordsList extends StatelessWidget {
                 if (record.duration != null) ...[
                   const SizedBox(height: 2),
                   Text(
-                    '${record.duration} mins',
+                    '${record.duration}分',
                     style: const TextStyle(
                         color: AppColors.slate500, fontSize: 12),
                   ),
@@ -926,7 +1066,7 @@ class _PreviewWeekCalendar extends StatelessWidget {
 
               String? icon;
               if (exerciseTypes.contains('strength_training')) {
-                icon = '💪';
+                icon = '🏋️';
               } else if (exerciseTypes.any((type) =>
                   type == 'cardio' ||
                   type == 'running' ||

@@ -36,7 +36,10 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       onNavigateToRecordsTab: _navigateToRecordsTab,
     ),
     const MessageScreen(),
-    RecordsScreen(initialTabIndex: _recordsTabIndex),
+    RecordsScreen(
+      initialTabIndex: _recordsTabIndex,
+      onTabChanged: (index) => _recordsTabIndex = index,
+    ),
     const SettingsScreen(),
   ];
 

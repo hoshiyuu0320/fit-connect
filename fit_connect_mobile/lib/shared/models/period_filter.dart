@@ -31,19 +31,19 @@ enum PeriodFilter {
     }
   }
 
-  /// 短い表示用ラベル（英語）
+  /// 短い表示用ラベル
   String get shortLabel {
     switch (this) {
       case PeriodFilter.today:
-        return 'Today';
+        return '今日';
       case PeriodFilter.week:
-        return 'Week';
+        return '週';
       case PeriodFilter.month:
-        return 'Month';
+        return '月';
       case PeriodFilter.threeMonths:
-        return '3M';
+        return '3ヶ月';
       case PeriodFilter.all:
-        return 'All';
+        return '全期間';
     }
   }
 

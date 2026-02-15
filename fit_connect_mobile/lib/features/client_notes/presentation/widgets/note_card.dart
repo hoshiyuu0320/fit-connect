@@ -118,7 +118,7 @@ class NoteCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          '$fileCount file${fileCount > 1 ? 's' : ''} attached',
+                          '添付ファイル${fileCount}件',
                           style: const TextStyle(
                             color: AppColors.slate500,
                             fontSize: 12,

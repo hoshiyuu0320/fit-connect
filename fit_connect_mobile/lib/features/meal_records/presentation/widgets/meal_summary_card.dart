@@ -49,18 +49,18 @@ class MealSummaryCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          
-          _buildRow(LucideIcons.utensils, 'Meals', meals),
+
+          _buildRow(LucideIcons.utensils, '食事', meals),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Divider(height: 1, color: AppColors.primary200.withOpacity(0.5)),
           ),
-          _buildRow(LucideIcons.image, 'Photos', photos),
+          _buildRow(LucideIcons.image, '写真', photos),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Divider(height: 1, color: AppColors.primary200.withOpacity(0.5)),
           ),
-          _buildRow(LucideIcons.flame, 'Calories', calories),
+          _buildRow(LucideIcons.flame, 'カロリー', calories),
         ],
       ),
     );
@@ -111,7 +111,7 @@ Widget previewMealSummaryCardToday() {
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: MealSummaryCard(
-            title: "Today's Summary",
+            title: "今日のサマリー",
             meals: '2/3',
             photos: '4',
             calories: '1,250 kcal',
@@ -132,7 +132,7 @@ Widget previewMealSummaryCardWeek() {
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: MealSummaryCard(
-            title: "This Week's Summary",
+            title: "今週のサマリー",
             meals: '18/21',
             photos: '24',
             calories: '12,500 kcal',
@@ -153,7 +153,7 @@ Widget previewMealSummaryCardEmpty() {
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: MealSummaryCard(
-            title: "Today's Summary",
+            title: "今日のサマリー",
             meals: '0/3',
             photos: '0',
             calories: '0 kcal',

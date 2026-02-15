@@ -7,8 +7,9 @@ import 'package:fit_connect_mobile/features/client_notes/presentation/screens/cl
 
 class RecordsScreen extends StatefulWidget {
   final int initialTabIndex;
+  final ValueChanged<int>? onTabChanged;
 
-  const RecordsScreen({super.key, this.initialTabIndex = 0});
+  const RecordsScreen({super.key, this.initialTabIndex = 0, this.onTabChanged});
 
   @override
   State<RecordsScreen> createState() => _RecordsScreenState();
@@ -25,6 +26,11 @@ class _RecordsScreenState extends State<RecordsScreen> with SingleTickerProvider
       vsync: this,
       initialIndex: widget.initialTabIndex,
     );
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        widget.onTabChanged?.call(_tabController.index);
+      }
+    });
   }
 
   @override
@@ -47,7 +53,7 @@ class _RecordsScreenState extends State<RecordsScreen> with SingleTickerProvider
       backgroundColor: AppColors.slate50, // Matches background of inner screens
       appBar: AppBar(
         title: const Text(
-          'Records',
+          '記録',
           style: TextStyle(color: AppColors.slate800, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.white,
@@ -61,18 +67,18 @@ class _RecordsScreenState extends State<RecordsScreen> with SingleTickerProvider
           indicatorWeight: 3,
           labelStyle: const TextStyle(fontWeight: FontWeight.bold),
           tabs: const [
-            Tab(text: 'Meals'),
-            Tab(text: 'Weight'),
-            Tab(text: 'Exercise'),
-            Tab(text: 'Notes'),
+            Tab(text: '体重'),
+            Tab(text: '食事'),
+            Tab(text: '運動'),
+            Tab(text: 'ノート'),
           ],
         ),
       ),
       body: TabBarView(
         controller: _tabController,
         children: const [
-          MealRecordScreen(),
           WeightRecordScreen(),
+          MealRecordScreen(),
           ExerciseRecordScreen(),
           ClientNotesScreen(),
         ],

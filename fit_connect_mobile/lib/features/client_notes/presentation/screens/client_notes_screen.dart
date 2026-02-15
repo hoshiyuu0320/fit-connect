@@ -154,7 +154,7 @@ class ClientNotesScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'From your trainer',
+                  'トレーナーより',
                   style: TextStyle(
                     color: AppColors.primary600,
                     fontSize: 15,
@@ -190,7 +190,7 @@ class ClientNotesScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           const Text(
-            'No notes shared yet',
+            '共有されたノートはありません',
             style: TextStyle(
               color: AppColors.slate500,
               fontSize: 16,
@@ -199,7 +199,7 @@ class ClientNotesScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Your trainer hasn\'t shared any session notes yet.',
+            'トレーナーからまだセッションノートが共有されていません。',
             style: TextStyle(
               color: AppColors.slate400,
               fontSize: 14,
@@ -301,7 +301,7 @@ class _PreviewNotesListWithData extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'From your trainer',
+                          'トレーナーより',
                           style: TextStyle(
                             color: AppColors.primary600,
                             fontSize: 15,
@@ -362,7 +362,7 @@ class _PreviewNotesListEmpty extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               const Text(
-                'No notes shared yet',
+                '共有されたノートはありません',
                 style: TextStyle(
                   color: AppColors.slate500,
                   fontSize: 16,
@@ -371,7 +371,7 @@ class _PreviewNotesListEmpty extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Your trainer hasn\'t shared any session notes yet.',
+                'トレーナーからまだセッションノートが共有されていません。',
                 style: TextStyle(
                   color: AppColors.slate400,
                   fontSize: 14,
