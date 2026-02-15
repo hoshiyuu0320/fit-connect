@@ -22,10 +22,15 @@ export function NotesTab({ notes, clientId, trainerId, onRefetch }: NotesTabProp
   const isPdf = (url: string) => url.toLowerCase().endsWith('.pdf')
 
   const getFileName = (url: string) => {
-    const parts = url.split('/')
-    const fullName = parts[parts.length - 1]
-    const match = fullName.match(/^\d+_[^.]+\.(.+)$/)
-    return match ? `file.${match[1]}` : fullName
+    // ハッシュフラグメントに元のファイル名がある場合はそちらを使用
+    const hashIndex = url.indexOf('#')
+    if (hashIndex !== -1) {
+      return decodeURIComponent(url.substring(hashIndex + 1))
+    }
+    // フォールバック: パスから抽出
+    const decoded = decodeURIComponent(url.split('/').pop() || '')
+    const match = decoded.match(/^\d+_(.+)$/)
+    return match ? match[1] : decoded
   }
 
   return (

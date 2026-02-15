@@ -16,10 +16,9 @@ export async function uploadNoteFile(
     throw new Error('ファイルサイズが10MBを超えています')
   }
 
-  const ext = file.name.split('.').pop() || 'bin'
   const timestamp = Date.now()
-  const randomId = crypto.randomUUID()
-  const path = `${trainerId}/${clientId}/${timestamp}_${randomId}.${ext}`
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+  const path = `${trainerId}/${clientId}/${timestamp}_${safeName}`
 
   const { error } = await supabase.storage
     .from('client-notes')
@@ -34,5 +33,6 @@ export async function uploadNoteFile(
     .from('client-notes')
     .getPublicUrl(path)
 
-  return publicUrl
+  // 元のファイル名をハッシュフラグメントに付加（表示用）
+  return `${publicUrl}#${encodeURIComponent(file.name)}`
 }
