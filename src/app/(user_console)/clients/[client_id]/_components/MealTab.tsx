@@ -32,11 +32,13 @@ interface MealTabProps {
 
 export function MealTab({ mealRecords }: MealTabProps) {
   const [period, setPeriod] = useState<MealPeriod>('today')
+  const [displayMonth, setDisplayMonth] = useState(new Date())
 
   const filteredMeals = useMemo(() => {
     if (mealRecords.length === 0) return []
     const now = new Date()
     let startDate: Date
+    let endDate: Date | null = null
     switch (period) {
       case 'today':
         startDate = startOfDay(now)
@@ -45,7 +47,8 @@ export function MealTab({ mealRecords }: MealTabProps) {
         startDate = startOfWeek(now, { weekStartsOn: 1 })
         break
       case 'month':
-        startDate = startOfMonth(now)
+        startDate = startOfMonth(displayMonth)
+        endDate = endOfMonth(displayMonth)
         break
       case '3months':
         startDate = subMonths(now, 3)
@@ -56,9 +59,13 @@ export function MealTab({ mealRecords }: MealTabProps) {
         break
     }
     return mealRecords
-      .filter((m) => new Date(m.recorded_at) >= startDate)
+      .filter((m) => {
+        const d = new Date(m.recorded_at)
+        if (endDate) return d >= startDate && d <= endDate
+        return d >= startDate
+      })
       .sort((a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime())
-  }, [mealRecords, period])
+  }, [mealRecords, period, displayMonth])
 
   // 日付ごとにグループ化
   const groupedMeals = useMemo(() => {
@@ -153,7 +160,7 @@ export function MealTab({ mealRecords }: MealTabProps) {
       {period === 'week' && <WeekCalendar meals={mealRecords} />}
 
       {/* 月カレンダー */}
-      {period === 'month' && <MonthCalendar meals={mealRecords} />}
+      {period === 'month' && <MonthCalendar meals={mealRecords} displayMonth={displayMonth} setDisplayMonth={setDisplayMonth} />}
 
       {/* 食事一覧（日付グループ） */}
       {groupedMeals.length > 0 ? (
@@ -327,9 +334,8 @@ function WeekCalendar({ meals }: { meals: MealRecord[] }) {
 }
 
 // --- 月カレンダー（カレンダー + 日別記録 横並び） ---
-function MonthCalendar({ meals }: { meals: MealRecord[] }) {
+function MonthCalendar({ meals, displayMonth, setDisplayMonth }: { meals: MealRecord[]; displayMonth: Date; setDisplayMonth: (d: Date | ((prev: Date) => Date)) => void }) {
   const now = new Date()
-  const [displayMonth, setDisplayMonth] = useState(now)
   const [selectedDate, setSelectedDate] = useState<string>(format(now, 'yyyy-MM-dd'))
 
   const monthStart = startOfMonth(displayMonth)
