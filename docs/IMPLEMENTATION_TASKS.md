@@ -1,9 +1,9 @@
 # FIT-CONNECT Web - 実装タスク一覧
 
 **作成日**: 2026年2月1日
-**バージョン**: 1.8
-**進捗状況**: 全体 85% 完了
-**最終更新**: 2026年2月15日 - クライアントQRコード招待機能実装
+**バージョン**: 1.9
+**進捗状況**: 全体 90% 完了
+**最終更新**: 2026年2月15日 - チケット管理機能実装
 
 ---
 
@@ -38,6 +38,7 @@
 | **ワークアウトプラン** | 0% | 🔴 未着手 |
 | **設定画面** | 0% | 🔴 未着手 |
 | **クライアント招待（QR）** | 100% | 🟢 完了 |
+| **チケット管理** | 100% | 🟢 完了 |
 
 ### 完了済み項目
 
@@ -62,9 +63,9 @@
 - ✅ カルテ（トレーナーノート）機能（CRUD、ファイルアップロード、共有管理）
 - ✅ クライアント編集機能（基本情報・目標設定の編集モーダル）
 - ✅ クライアントQRコード招待（QR表示、招待コードコピー、画像ダウンロード）
+- ✅ チケット管理（テンプレート・発行・月契約、独立ページ `/tickets`、pg_cron自動発行）
 
 ### 未実装項目
-- 🚧 チケット管理画面
 - 🚧 プッシュ通知
 - 🚧 レポート機能
 - 🚧 ワークアウトプラン
@@ -76,6 +77,17 @@
 
 ### 2026年2月15日
 
+- チケット管理機能を大幅リニューアル（フェーズ3.4完了）
+  - **アーキテクチャ変更**: 顧客詳細内タブ → サイドバー独立ページ `/tickets` に移動
+  - **テンプレート機能**: テンプレート作成・編集・削除（`ticket_templates`テーブル）
+  - **チケット発行**: テンプレートから顧客を選んで発行、全顧客チケット一覧
+  - **月契約**: 月契約作成・ステータス管理（active/paused/cancelled）
+  - **自動発行**: pg_cron で毎日00:00 UTC に `issue_recurring_tickets()` 実行
+  - **DB**: `ticket_templates`, `ticket_subscriptions` テーブル + RLS + indexes
+  - **API Routes**: 6新規（templates CRUD, issue, all, subscriptions CRUD）
+  - **UI**: 10コンポーネント（3タブ構成: テンプレート/チケット発行/月契約）
+  - **顧客詳細**: TicketsTab は読み取り専用に変更（`/tickets`へのリンク付き）
+  - `CreateTicketParams`, `UpdateTicketParams` 型、`TICKET_TYPE_OPTIONS` 定数追加
 - クライアント編集機能を実装（フェーズ3.2完了）
   - `Client`型に`goal_deadline`フィールド追加
   - `updateClient.ts` - クライアント更新関数
@@ -329,7 +341,7 @@ interface ReplyQuoteProps {
 
 ---
 
-### 📌 フェーズ3: クライアント管理強化 🟡 一部完了
+### 📌 フェーズ3: クライアント管理強化 ✅ 完了
 
 **目的**: クライアント情報の編集・可視化機能を追加
 
@@ -429,15 +441,23 @@ import QRCode from 'qrcode.react';
 />
 ```
 
-#### 3.4 チケット管理画面
+#### 3.4 チケット管理画面 ✅ 完了
+
+**設計方針**: サイドバー独立ページ `/tickets` に移動。テンプレートから発行する運用フロー。月契約は pg_cron で自動発行。
 
 | # | タスク | 状態 | 詳細 |
 |---|--------|------|------|
-| 3.4.1 | チケット一覧画面作成 | 🔴 | `/clients/[client_id]/tickets` |
-| 3.4.2 | チケット作成モーダル | 🔴 | `TicketCreateModal.tsx` |
-| 3.4.3 | チケット編集機能 | 🔴 | 残回数、有効期限の更新 |
-| 3.4.4 | チケット作成API | 🔴 | `src/lib/supabase/createTicket.ts` |
-| 3.4.5 | セッション紐付けUI改善 | 🔴 | セッション作成時のチケット選択 |
+| 3.4.1 | DBマイグレーション | ✅ | `ticket_templates`, `ticket_subscriptions` テーブル + RLS + indexes + pg_cron |
+| 3.4.2 | テンプレートCRUD | ✅ | `GET/POST /api/ticket-templates`, `PUT/DELETE /api/ticket-templates/[id]` |
+| 3.4.3 | チケット発行API | ✅ | `POST /api/tickets/issue`（テンプレートから発行）, `GET /api/tickets/all`（全顧客チケット） |
+| 3.4.4 | 月契約API | ✅ | `GET/POST /api/ticket-subscriptions`, `PUT/DELETE /api/ticket-subscriptions/[id]` |
+| 3.4.5 | テンプレートタブUI | ✅ | `TemplateList`, `TemplateFormModal`, `DeleteTemplateDialog` |
+| 3.4.6 | チケット発行タブUI | ✅ | `IssueTicketSection`, `IssuedTicketList`, `EditIssuedTicketModal`, `DeleteIssuedTicketDialog` |
+| 3.4.7 | 月契約タブUI | ✅ | `SubscriptionList`, `CreateSubscriptionModal`, `SubscriptionStatusDialog` |
+| 3.4.8 | メインページ統合 | ✅ | `/tickets/page.tsx` - 3タブ構成（テンプレート/チケット発行/月契約） |
+| 3.4.9 | 顧客詳細リファクタリング | ✅ | `TicketsTab` 読み取り専用化、旧モーダル3ファイル削除 |
+| 3.4.10 | セッション紐付けUI | ✅ | SessionModal.tsxで実装済み（チケット選択・消化ロジック） |
+| 3.4.11 | 自動発行（pg_cron） | ✅ | `issue_recurring_tickets()` - 毎日00:00 UTC、active月契約のチケットを自動発行 |
 
 ---
 
@@ -533,7 +553,7 @@ import QRCode from 'qrcode.react';
 | 5 | ~~**体重グラフ表示**~~ | ✅ 完了 | - |
 | 6 | ~~**クライアント編集**~~ | ✅ 完了 | - |
 | 7 | ~~**クライアントQRコード招待**~~ | ✅ 完了 | - |
-| 8 | **チケット管理** | 作成・編集機能 | 中 |
+| 8 | ~~**チケット管理**~~ | ✅ 完了 | - |
 
 ### 🟢 中優先（アップデート）
 

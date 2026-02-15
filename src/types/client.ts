@@ -92,6 +92,86 @@ export type Ticket = {
   created_at: string
 }
 
+export type CreateTicketParams = {
+  clientId: string
+  ticketName: string
+  ticketType: string
+  totalSessions: number
+  validFrom: string
+  validUntil: string
+}
+
+export type UpdateTicketParams = {
+  id: string
+  ticketName?: string
+  ticketType?: string
+  totalSessions?: number
+  remainingSessions?: number
+  validFrom?: string
+  validUntil?: string
+}
+
+// チケットテンプレート
+export type TicketTemplate = {
+  id: string
+  trainer_id: string
+  template_name: string
+  ticket_type: string
+  total_sessions: number
+  valid_months: number
+  is_recurring: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type CreateTicketTemplateParams = {
+  trainerId: string
+  templateName: string
+  ticketType: string
+  totalSessions: number
+  validMonths: number
+  isRecurring: boolean
+}
+
+export type UpdateTicketTemplateParams = {
+  id: string
+  templateName?: string
+  ticketType?: string
+  totalSessions?: number
+  validMonths?: number
+  isRecurring?: boolean
+}
+
+// チケット月契約
+export type TicketSubscription = {
+  id: string
+  template_id: string
+  client_id: string
+  status: 'active' | 'paused' | 'cancelled'
+  start_date: string
+  next_issue_date: string
+  created_at: string
+  // JOINで取得
+  template?: TicketTemplate
+  client_name?: string
+}
+
+export type CreateTicketSubscriptionParams = {
+  templateId: string
+  clientId: string
+  startDate: string
+}
+
+export type UpdateTicketSubscriptionParams = {
+  id: string
+  status: 'active' | 'paused' | 'cancelled'
+}
+
+// 発行済みチケット（顧客名付き）
+export type TicketWithClient = Ticket & {
+  client_name: string
+}
+
 // カルテ（トレーナーノート）
 export type ClientNote = {
   id: string
@@ -167,6 +247,14 @@ export const EXERCISE_TYPE_OPTIONS = {
   yoga: 'ヨガ',
   pilates: 'ピラティス',
   cardio: '有酸素運動',
+  other: 'その他',
+} as const
+
+// チケット種別の選択肢
+export const TICKET_TYPE_OPTIONS = {
+  personal: 'パーソナル',
+  group: 'グループ',
+  online: 'オンライン',
   other: 'その他',
 } as const
 

@@ -17,6 +17,7 @@ import { MealTab } from './_components/MealTab'
 import { WeightTab } from './_components/WeightTab'
 import { ExerciseTab } from './_components/ExerciseTab'
 import { NotesTab } from './_components/NotesTab'
+import { TicketsTab } from './_components/TicketsTab'
 
 export default function ClientDetailPage() {
   const params = useParams()
@@ -104,12 +105,13 @@ export default function ClientDetailPage() {
 
         {/* タブ */}
         <Tabs defaultValue="summary" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="summary">サマリー</TabsTrigger>
             <TabsTrigger value="weight">体重</TabsTrigger>
             <TabsTrigger value="meal">食事</TabsTrigger>
             <TabsTrigger value="exercise">運動</TabsTrigger>
             <TabsTrigger value="notes">カルテ</TabsTrigger>
+            <TabsTrigger value="tickets">チケット</TabsTrigger>
           </TabsList>
 
           <TabsContent value="summary">
@@ -144,6 +146,10 @@ export default function ClientDetailPage() {
               trainerId={trainerId}
               onRefetch={refetchNotes}
             />
+          </TabsContent>
+
+          <TabsContent value="tickets">
+            <TicketsTab tickets={tickets} />
           </TabsContent>
         </Tabs>
       </div>
