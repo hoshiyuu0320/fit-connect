@@ -8,11 +8,12 @@ import type { ExerciseRecord } from '@/types/client'
 const EXERCISE_EMOJI: Record<string, string> = {
   walking: '🚶',
   running: '🏃',
-  strength_training: '💪',
+  strength_training: '🏋️',
   cycling: '🚴',
   swimming: '🏊',
   yoga: '🧘',
   pilates: '🤸',
+  cardio: '🏃',
   other: '🏋️'
 }
 

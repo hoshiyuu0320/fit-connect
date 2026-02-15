@@ -49,7 +49,7 @@ export type MealRecord = {
 export type ExerciseRecord = {
   id: string
   client_id: string
-  exercise_type: 'walking' | 'running' | 'strength_training' | 'cycling' | 'swimming' | 'yoga' | 'pilates' | 'other'
+  exercise_type: 'walking' | 'running' | 'strength_training' | 'cycling' | 'swimming' | 'yoga' | 'pilates' | 'cardio' | 'other'
   duration: number | null
   distance: number | null
   calories: number | null
@@ -165,6 +165,7 @@ export const EXERCISE_TYPE_OPTIONS = {
   swimming: 'スイミング',
   yoga: 'ヨガ',
   pilates: 'ピラティス',
+  cardio: '有酸素運動',
   other: 'その他',
 } as const
 
