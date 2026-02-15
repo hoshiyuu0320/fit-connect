@@ -3,6 +3,7 @@ import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/features/meal_records/presentation/screens/meal_record_screen.dart';
 import 'package:fit_connect_mobile/features/weight_records/presentation/screens/weight_record_screen.dart';
 import 'package:fit_connect_mobile/features/exercise_records/presentation/screens/exercise_record_screen.dart';
+import 'package:fit_connect_mobile/features/client_notes/presentation/screens/client_notes_screen.dart';
 
 class RecordsScreen extends StatefulWidget {
   final int initialTabIndex;
@@ -20,7 +21,7 @@ class _RecordsScreenState extends State<RecordsScreen> with SingleTickerProvider
   void initState() {
     super.initState();
     _tabController = TabController(
-      length: 3,
+      length: 4,
       vsync: this,
       initialIndex: widget.initialTabIndex,
     );
@@ -63,6 +64,7 @@ class _RecordsScreenState extends State<RecordsScreen> with SingleTickerProvider
             Tab(text: 'Meals'),
             Tab(text: 'Weight'),
             Tab(text: 'Exercise'),
+            Tab(text: 'Notes'),
           ],
         ),
       ),
@@ -72,6 +74,7 @@ class _RecordsScreenState extends State<RecordsScreen> with SingleTickerProvider
           MealRecordScreen(),
           WeightRecordScreen(),
           ExerciseRecordScreen(),
+          ClientNotesScreen(),
         ],
       ),
     );

@@ -471,7 +471,7 @@ flutter widget-preview start
 supabase functions serve --no-verify-jwt
 
 **Edge Functionのデプロイコマンド:**
-supabase functions deploy parse-message-tags
+supabase functions deploy parse-message-tags --no-verify-jwt
 
 ## Subagents（専門エージェント）
 

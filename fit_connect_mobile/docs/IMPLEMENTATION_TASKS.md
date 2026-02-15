@@ -1,9 +1,9 @@
 # FIT-CONNECT Mobile - 実装タスク一覧
 
 **作成日**: 2025年12月30日
-**バージョン**: 3.4
+**バージョン**: 3.5
 **進捗状況**: 全体 99% 完了
-**最終更新**: 2026年2月10日 - 画像ギャラリー（フルスクリーンビューア）実装完了
+**最終更新**: 2026年2月15日 - カルテ（クライアントノート）閲覧機能実装完了
 
 ---
 
@@ -170,6 +170,48 @@
 ---
 
 ## 最新の変更履歴
+
+### 2026年2月15日
+
+#### 14. カルテ（クライアントノート）閲覧機能実装
+
+**目的**: トレーナーがWeb側で作成・共有したカルテ（セッションノート）をクライアントのモバイルアプリで閲覧できるようにする
+
+**新規作成ファイル**:
+- `lib/features/client_notes/models/client_note_model.dart` — データモデル（@JsonSerializable）
+- `lib/features/client_notes/models/client_note_model.g.dart` — 自動生成
+- `lib/features/client_notes/data/client_note_repository.dart` — Supabaseクエリ（getSharedNotes, getSharedNotesCount）
+- `lib/features/client_notes/providers/client_notes_provider.dart` — Riverpod Provider（sharedClientNotesProvider）
+- `lib/features/client_notes/providers/client_notes_provider.g.dart` — 自動生成
+- `lib/features/client_notes/presentation/screens/client_notes_screen.dart` — カルテ一覧画面（Notesタブ）
+- `lib/features/client_notes/presentation/screens/client_note_detail_screen.dart` — カルテ詳細画面
+- `lib/features/client_notes/presentation/widgets/note_card.dart` — カルテカードWidget
+- `supabase/migrations/20260215115338_add_client_notes_select_policy.sql` — RLSポリシー
+
+**改修ファイル**:
+- `lib/features/home/presentation/screens/records_screen.dart` — TabController length: 3→4、Notesタブ追加
+
+**実装内容**:
+
+1. **RLSポリシー追加** — `clients_select_shared_notes`：`is_shared = true AND client_id = auth.uid()` で共有済み自分宛てのみ閲覧可能
+2. **ClientNoteモデル** — id, clientId, trainerId, title, content, fileUrls(List<String>), isShared, sharedAt, sessionNumber, createdAt, updatedAt
+3. **ClientNoteRepository** — `getSharedNotes()`（一覧取得、created_at降順）、`getSharedNotesCount()`（件数取得）
+4. **sharedClientNotesProvider** — AsyncProviderでカルテ一覧をRiverpod管理
+5. **NoteCard Widget** — セッション番号 + タイトル + 日付 + 本文プレビュー(2行) + ファイル数バッジ + 矢印。プレビュー関数3種
+6. **ClientNotesScreen** — サマリーカード（件数表示）+ NoteCardリスト + 空状態表示 + エラーリトライ。プレビュー関数2種
+7. **ClientNoteDetailScreen** — ヘッダー（セッション番号、タイトル、トレーナー名、日付）+ 内容（行間1.6）+ 添付ファイル表示（画像→FullScreenImageViewer / PDF→url_launcher）。プレビュー関数2種
+8. **RecordsScreen** — 4タブ化（Meals | Weight | Exercise | Notes）
+
+**画面遷移フロー**:
+```
+Records (TabBar)
+  └── Notes (ClientNotesScreen)
+        └── [カードタップ] → ClientNoteDetailScreen
+              ├── [画像タップ] → FullScreenImageViewer（既存）
+              └── [PDFタップ] → 外部ブラウザ
+```
+
+---
 
 ### 2026年2月10日
 

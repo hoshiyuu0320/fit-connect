@@ -36,9 +36,11 @@ class _MealRecordScreenState extends ConsumerState<MealRecordScreen> {
         _buildPeriodFilter(),
         const SizedBox(height: 24),
 
-        // Summary Card
-        _buildSummaryCard(recordsAsync, todayCountAsync),
-        const SizedBox(height: 16),
+        // Summary Card (Today only)
+        if (_selectedPeriod == PeriodFilter.today) ...[
+          _buildSummaryCard(recordsAsync, todayCountAsync),
+          const SizedBox(height: 16),
+        ],
 
         // Calendar - show week calendar for week, month calendar for month
         if (_selectedPeriod == PeriodFilter.week) ...[
