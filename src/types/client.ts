@@ -30,6 +30,7 @@ export type WeightRecord = {
   id: string
   client_id: string
   weight: number
+  notes: string | null
   recorded_at: string
 }
 
@@ -38,7 +39,7 @@ export type MealRecord = {
   id: string
   client_id: string
   meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack'
-  description: string | null
+  notes: string | null
   calories: number | null
   images: string[] | null
   recorded_at: string
@@ -48,7 +49,7 @@ export type MealRecord = {
 export type ExerciseRecord = {
   id: string
   client_id: string
-  exercise_type: 'walking' | 'running' | 'strength_training' | 'cycling' | 'swimming' | 'yoga' | 'pilates' | 'other'
+  exercise_type: 'walking' | 'running' | 'strength_training' | 'cycling' | 'swimming' | 'yoga' | 'pilates' | 'cardio' | 'other'
   duration: number | null
   distance: number | null
   calories: number | null
@@ -90,6 +91,42 @@ export type Ticket = {
   created_at: string
 }
 
+// カルテ（トレーナーノート）
+export type ClientNote = {
+  id: string
+  client_id: string
+  trainer_id: string
+  title: string
+  content: string
+  file_urls: string[]
+  is_shared: boolean
+  shared_at: string | null
+  session_number: number | null
+  created_at: string
+  updated_at: string
+}
+
+// カルテ作成パラメータ
+export type CreateClientNoteParams = {
+  clientId: string
+  trainerId: string
+  title: string
+  content: string
+  fileUrls?: string[]
+  isShared?: boolean
+  sessionNumber?: number | null
+}
+
+// カルテ更新パラメータ
+export type UpdateClientNoteParams = {
+  id: string
+  title?: string
+  content?: string
+  fileUrls?: string[]
+  isShared?: boolean
+  sessionNumber?: number | null
+}
+
 // ================================================
 // 定数定義
 // ================================================
@@ -128,6 +165,7 @@ export const EXERCISE_TYPE_OPTIONS = {
   swimming: 'スイミング',
   yoga: 'ヨガ',
   pilates: 'ピラティス',
+  cardio: '有酸素運動',
   other: 'その他',
 } as const
 
