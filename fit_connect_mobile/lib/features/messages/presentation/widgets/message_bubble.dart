@@ -316,7 +316,7 @@ class MessageBubble extends StatelessWidget {
     if (tag.contains('食事')) return '🍽️'; // 食事（詳細なし）
 
     // 運動タグ
-    if (tag.contains('筋トレ')) return '💪'; // 筋トレ
+    if (tag.contains('筋トレ')) return '🏋️'; // 筋トレ
     if (tag.contains('有酸素')) return '🏃'; // 有酸素
     if (tag.contains('ランニング') || tag.contains('走')) return '🏃'; // ランニング
     if (tag.contains('ウォーキング') || tag.contains('歩')) return '🚶'; // ウォーキング

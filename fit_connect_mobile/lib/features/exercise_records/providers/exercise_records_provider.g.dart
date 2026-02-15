@@ -380,6 +380,315 @@ class _WeeklyExerciseDataProviderElement
   DateTime get endDate => (origin as WeeklyExerciseDataProvider).endDate;
 }
 
+String _$exerciseRecordCountsHash() =>
+    r'3440f37e8ccb40cf768124dbc88f3aa047a65d01';
+
+/// 月カレンダー用の日別運動回数を取得するProvider
+///
+/// Copied from [exerciseRecordCounts].
+@ProviderFor(exerciseRecordCounts)
+const exerciseRecordCountsProvider = ExerciseRecordCountsFamily();
+
+/// 月カレンダー用の日別運動回数を取得するProvider
+///
+/// Copied from [exerciseRecordCounts].
+class ExerciseRecordCountsFamily
+    extends Family<AsyncValue<Map<DateTime, int>>> {
+  /// 月カレンダー用の日別運動回数を取得するProvider
+  ///
+  /// Copied from [exerciseRecordCounts].
+  const ExerciseRecordCountsFamily();
+
+  /// 月カレンダー用の日別運動回数を取得するProvider
+  ///
+  /// Copied from [exerciseRecordCounts].
+  ExerciseRecordCountsProvider call({
+    required DateTime startDate,
+    required DateTime endDate,
+  }) {
+    return ExerciseRecordCountsProvider(
+      startDate: startDate,
+      endDate: endDate,
+    );
+  }
+
+  @override
+  ExerciseRecordCountsProvider getProviderOverride(
+    covariant ExerciseRecordCountsProvider provider,
+  ) {
+    return call(
+      startDate: provider.startDate,
+      endDate: provider.endDate,
+    );
+  }
+
+  static const Iterable<ProviderOrFamily>? _dependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
+
+  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
+
+  @override
+  String? get name => r'exerciseRecordCountsProvider';
+}
+
+/// 月カレンダー用の日別運動回数を取得するProvider
+///
+/// Copied from [exerciseRecordCounts].
+class ExerciseRecordCountsProvider
+    extends AutoDisposeFutureProvider<Map<DateTime, int>> {
+  /// 月カレンダー用の日別運動回数を取得するProvider
+  ///
+  /// Copied from [exerciseRecordCounts].
+  ExerciseRecordCountsProvider({
+    required DateTime startDate,
+    required DateTime endDate,
+  }) : this._internal(
+          (ref) => exerciseRecordCounts(
+            ref as ExerciseRecordCountsRef,
+            startDate: startDate,
+            endDate: endDate,
+          ),
+          from: exerciseRecordCountsProvider,
+          name: r'exerciseRecordCountsProvider',
+          debugGetCreateSourceHash:
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$exerciseRecordCountsHash,
+          dependencies: ExerciseRecordCountsFamily._dependencies,
+          allTransitiveDependencies:
+              ExerciseRecordCountsFamily._allTransitiveDependencies,
+          startDate: startDate,
+          endDate: endDate,
+        );
+
+  ExerciseRecordCountsProvider._internal(
+    super._createNotifier, {
+    required super.name,
+    required super.dependencies,
+    required super.allTransitiveDependencies,
+    required super.debugGetCreateSourceHash,
+    required super.from,
+    required this.startDate,
+    required this.endDate,
+  }) : super.internal();
+
+  final DateTime startDate;
+  final DateTime endDate;
+
+  @override
+  Override overrideWith(
+    FutureOr<Map<DateTime, int>> Function(ExerciseRecordCountsRef provider)
+        create,
+  ) {
+    return ProviderOverride(
+      origin: this,
+      override: ExerciseRecordCountsProvider._internal(
+        (ref) => create(ref as ExerciseRecordCountsRef),
+        from: from,
+        name: null,
+        dependencies: null,
+        allTransitiveDependencies: null,
+        debugGetCreateSourceHash: null,
+        startDate: startDate,
+        endDate: endDate,
+      ),
+    );
+  }
+
+  @override
+  AutoDisposeFutureProviderElement<Map<DateTime, int>> createElement() {
+    return _ExerciseRecordCountsProviderElement(this);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is ExerciseRecordCountsProvider &&
+        other.startDate == startDate &&
+        other.endDate == endDate;
+  }
+
+  @override
+  int get hashCode {
+    var hash = _SystemHash.combine(0, runtimeType.hashCode);
+    hash = _SystemHash.combine(hash, startDate.hashCode);
+    hash = _SystemHash.combine(hash, endDate.hashCode);
+
+    return _SystemHash.finish(hash);
+  }
+}
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+mixin ExerciseRecordCountsRef
+    on AutoDisposeFutureProviderRef<Map<DateTime, int>> {
+  /// The parameter `startDate` of this provider.
+  DateTime get startDate;
+
+  /// The parameter `endDate` of this provider.
+  DateTime get endDate;
+}
+
+class _ExerciseRecordCountsProviderElement
+    extends AutoDisposeFutureProviderElement<Map<DateTime, int>>
+    with ExerciseRecordCountsRef {
+  _ExerciseRecordCountsProviderElement(super.provider);
+
+  @override
+  DateTime get startDate => (origin as ExerciseRecordCountsProvider).startDate;
+  @override
+  DateTime get endDate => (origin as ExerciseRecordCountsProvider).endDate;
+}
+
+String _$exerciseTotalCaloriesHash() =>
+    r'333f89ca6897a48fcb5468b46930caf59356052b';
+
+/// 期間内の消費カロリー合計を取得するProvider
+///
+/// Copied from [exerciseTotalCalories].
+@ProviderFor(exerciseTotalCalories)
+const exerciseTotalCaloriesProvider = ExerciseTotalCaloriesFamily();
+
+/// 期間内の消費カロリー合計を取得するProvider
+///
+/// Copied from [exerciseTotalCalories].
+class ExerciseTotalCaloriesFamily extends Family<AsyncValue<double>> {
+  /// 期間内の消費カロリー合計を取得するProvider
+  ///
+  /// Copied from [exerciseTotalCalories].
+  const ExerciseTotalCaloriesFamily();
+
+  /// 期間内の消費カロリー合計を取得するProvider
+  ///
+  /// Copied from [exerciseTotalCalories].
+  ExerciseTotalCaloriesProvider call({
+    PeriodFilter period = PeriodFilter.month,
+  }) {
+    return ExerciseTotalCaloriesProvider(
+      period: period,
+    );
+  }
+
+  @override
+  ExerciseTotalCaloriesProvider getProviderOverride(
+    covariant ExerciseTotalCaloriesProvider provider,
+  ) {
+    return call(
+      period: provider.period,
+    );
+  }
+
+  static const Iterable<ProviderOrFamily>? _dependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
+
+  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
+
+  @override
+  String? get name => r'exerciseTotalCaloriesProvider';
+}
+
+/// 期間内の消費カロリー合計を取得するProvider
+///
+/// Copied from [exerciseTotalCalories].
+class ExerciseTotalCaloriesProvider extends AutoDisposeFutureProvider<double> {
+  /// 期間内の消費カロリー合計を取得するProvider
+  ///
+  /// Copied from [exerciseTotalCalories].
+  ExerciseTotalCaloriesProvider({
+    PeriodFilter period = PeriodFilter.month,
+  }) : this._internal(
+          (ref) => exerciseTotalCalories(
+            ref as ExerciseTotalCaloriesRef,
+            period: period,
+          ),
+          from: exerciseTotalCaloriesProvider,
+          name: r'exerciseTotalCaloriesProvider',
+          debugGetCreateSourceHash:
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$exerciseTotalCaloriesHash,
+          dependencies: ExerciseTotalCaloriesFamily._dependencies,
+          allTransitiveDependencies:
+              ExerciseTotalCaloriesFamily._allTransitiveDependencies,
+          period: period,
+        );
+
+  ExerciseTotalCaloriesProvider._internal(
+    super._createNotifier, {
+    required super.name,
+    required super.dependencies,
+    required super.allTransitiveDependencies,
+    required super.debugGetCreateSourceHash,
+    required super.from,
+    required this.period,
+  }) : super.internal();
+
+  final PeriodFilter period;
+
+  @override
+  Override overrideWith(
+    FutureOr<double> Function(ExerciseTotalCaloriesRef provider) create,
+  ) {
+    return ProviderOverride(
+      origin: this,
+      override: ExerciseTotalCaloriesProvider._internal(
+        (ref) => create(ref as ExerciseTotalCaloriesRef),
+        from: from,
+        name: null,
+        dependencies: null,
+        allTransitiveDependencies: null,
+        debugGetCreateSourceHash: null,
+        period: period,
+      ),
+    );
+  }
+
+  @override
+  AutoDisposeFutureProviderElement<double> createElement() {
+    return _ExerciseTotalCaloriesProviderElement(this);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is ExerciseTotalCaloriesProvider && other.period == period;
+  }
+
+  @override
+  int get hashCode {
+    var hash = _SystemHash.combine(0, runtimeType.hashCode);
+    hash = _SystemHash.combine(hash, period.hashCode);
+
+    return _SystemHash.finish(hash);
+  }
+}
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+mixin ExerciseTotalCaloriesRef on AutoDisposeFutureProviderRef<double> {
+  /// The parameter `period` of this provider.
+  PeriodFilter get period;
+}
+
+class _ExerciseTotalCaloriesProviderElement
+    extends AutoDisposeFutureProviderElement<double>
+    with ExerciseTotalCaloriesRef {
+  _ExerciseTotalCaloriesProviderElement(super.provider);
+
+  @override
+  PeriodFilter get period => (origin as ExerciseTotalCaloriesProvider).period;
+}
+
 String _$exerciseRecordsHash() => r'0b2b24856e71ba0d72ca39f3cb70fba27935cb45';
 
 abstract class _$ExerciseRecords

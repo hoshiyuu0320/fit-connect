@@ -137,3 +137,37 @@ Future<Map<DateTime, List<String>>> weeklyExerciseData(
     endDate: endDate,
   );
 }
+
+/// 月カレンダー用の日別運動回数を取得するProvider
+@riverpod
+Future<Map<DateTime, int>> exerciseRecordCounts(
+  ExerciseRecordCountsRef ref, {
+  required DateTime startDate,
+  required DateTime endDate,
+}) async {
+  final clientId = ref.watch(currentClientIdProvider);
+  if (clientId == null) return {};
+
+  final repository = ref.watch(exerciseRepositoryProvider);
+  return repository.getExerciseRecordCounts(
+    clientId: clientId,
+    startDate: startDate,
+    endDate: endDate,
+  );
+}
+
+/// 期間内の消費カロリー合計を取得するProvider
+@riverpod
+Future<double> exerciseTotalCalories(
+  ExerciseTotalCaloriesRef ref, {
+  PeriodFilter period = PeriodFilter.month,
+}) async {
+  final clientId = ref.watch(currentClientIdProvider);
+  if (clientId == null) return 0;
+
+  final repository = ref.watch(exerciseRepositoryProvider);
+  return repository.getTotalCalories(
+    clientId: clientId,
+    period: period,
+  );
+}

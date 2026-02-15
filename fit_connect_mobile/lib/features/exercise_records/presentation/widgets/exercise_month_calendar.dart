@@ -3,34 +3,55 @@ import 'package:flutter/widget_previews.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
-import 'package:fit_connect_mobile/features/meal_records/providers/meal_records_provider.dart';
-import 'package:intl/intl.dart';
+import 'package:fit_connect_mobile/features/exercise_records/providers/exercise_records_provider.dart';
 
-/// 月カレンダー（7列×複数行のグリッド）
-class MealMonthCalendar extends ConsumerWidget {
-  final void Function(DateTime date, int mealCount)? onDayTap;
-
-  const MealMonthCalendar({
-    super.key,
-    this.onDayTap,
-  });
+/// 月カレンダー（運動記録）
+class ExerciseMonthCalendar extends ConsumerStatefulWidget {
+  const ExerciseMonthCalendar({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ExerciseMonthCalendar> createState() =>
+      _ExerciseMonthCalendarState();
+}
+
+class _ExerciseMonthCalendarState extends ConsumerState<ExerciseMonthCalendar> {
+  late DateTime _currentMonth;
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _currentMonth = DateTime(now.year, now.month, 1);
+  }
+
+  void _previousMonth() {
+    setState(() {
+      _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1, 1);
+    });
+  }
+
+  void _nextMonth() {
+    final now = DateTime.now();
+    final nextMonth = DateTime(_currentMonth.year, _currentMonth.month + 1, 1);
+    if (!nextMonth.isAfter(DateTime(now.year, now.month, 1))) {
+      setState(() {
+        _currentMonth = nextMonth;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
+    final startOfMonth = _currentMonth;
+    final endOfMonth = DateTime(_currentMonth.year, _currentMonth.month + 1, 0);
 
-    // Current month range
-    final startOfMonth = DateTime(today.year, today.month, 1);
-    final endOfMonth = DateTime(today.year, today.month + 1, 0);
-
-    final mealCountsAsync = ref.watch(
-      mealRecordCountsProvider(startDate: startOfMonth, endDate: endOfMonth),
-    );
-
-    // Calculate total meals this month
-    final totalMeals = mealCountsAsync.whenOrNull(
-      data: (counts) => counts.values.fold<int>(0, (sum, v) => sum + v),
+    final countsAsync = ref.watch(
+      exerciseRecordCountsProvider(
+        startDate: startOfMonth,
+        endDate: endOfMonth,
+      ),
     );
 
     return Container(
@@ -49,41 +70,47 @@ class MealMonthCalendar extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
+          // ヘッダー（←  2026年2月  →）
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              IconButton(
+                icon: const Icon(Icons.chevron_left, color: AppColors.slate400),
+                onPressed: _previousMonth,
+              ),
               Text(
-                DateFormat('MMMM yyyy').format(today),
+                '${_currentMonth.year}年${_currentMonth.month}月',
                 style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
                   color: AppColors.slate800,
                 ),
               ),
-              if (totalMeals != null)
-                Text(
-                  '合計: ${totalMeals}食',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppColors.slate500,
-                  ),
+              IconButton(
+                icon: Icon(
+                  Icons.chevron_right,
+                  color: _currentMonth.year == now.year &&
+                          _currentMonth.month == now.month
+                      ? AppColors.slate200
+                      : AppColors.slate400,
                 ),
+                onPressed: _nextMonth,
+              ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
 
-          // Day headers
+          // 曜日ヘッダー
           _buildDayHeaders(),
           const SizedBox(height: 6),
 
-          // Calendar grid
-          mealCountsAsync.when(
-            data: (mealCounts) => _buildCalendarGrid(
+          // カレンダーグリッド
+          countsAsync.when(
+            data: (counts) => _buildCalendarGrid(
               today,
               startOfMonth,
               endOfMonth,
-              mealCounts,
+              counts,
             ),
             loading: () => const SizedBox(
               height: 200,
@@ -92,7 +119,7 @@ class MealMonthCalendar extends ConsumerWidget {
             error: (e, _) => Text('Error: $e'),
           ),
 
-          // Legend
+          // 凡例
           const SizedBox(height: 12),
           _buildLegend(),
         ],
@@ -101,7 +128,7 @@ class MealMonthCalendar extends ConsumerWidget {
   }
 
   Widget _buildDayHeaders() {
-    const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    const dayLabels = ['月', '火', '水', '木', '金', '土', '日'];
     return Row(
       children: dayLabels.map((label) {
         return Expanded(
@@ -124,7 +151,7 @@ class MealMonthCalendar extends ConsumerWidget {
     DateTime today,
     DateTime startOfMonth,
     DateTime endOfMonth,
-    Map<DateTime, int> mealCounts,
+    Map<DateTime, int> counts,
   ) {
     // Calculate first day offset (Monday = 0)
     final firstDayOffset = (startOfMonth.weekday - 1) % 7;
@@ -147,15 +174,16 @@ class MealMonthCalendar extends ConsumerWidget {
                 return Expanded(child: Container());
               }
 
-              final date = DateTime(startOfMonth.year, startOfMonth.month, dayNumber);
-              final count = mealCounts[date] ?? 0;
+              final date =
+                  DateTime(startOfMonth.year, startOfMonth.month, dayNumber);
+              final count = counts[date] ?? 0;
               final isToday = date == today;
               final isFuture = date.isAfter(today);
 
               return Expanded(
                 child: _buildDayCell(
                   date: date,
-                  mealCount: count,
+                  count: count,
                   isToday: isToday,
                   isFuture: isFuture,
                 ),
@@ -169,38 +197,33 @@ class MealMonthCalendar extends ConsumerWidget {
 
   Widget _buildDayCell({
     required DateTime date,
-    required int mealCount,
+    required int count,
     required bool isToday,
     required bool isFuture,
   }) {
-    final color = isFuture ? Colors.transparent : _getGrassColor(mealCount);
+    final color = isFuture ? Colors.transparent : _getGrassColor(count);
     final textColor = isFuture
         ? AppColors.slate300
-        : (mealCount >= 2 ? Colors.white : AppColors.slate600);
+        : (count >= 2 ? Colors.white : AppColors.slate600);
 
-    return GestureDetector(
-      onTap: !isFuture && onDayTap != null
-          ? () => onDayTap!(date, mealCount)
-          : null,
-      child: AspectRatio(
-        aspectRatio: 1,
-        child: Container(
-          margin: const EdgeInsets.all(2),
-          decoration: BoxDecoration(
-            color: isFuture ? Colors.transparent : color,
-            borderRadius: BorderRadius.circular(12),
-            border: isToday
-                ? Border.all(color: AppColors.primary600, width: 3)
-                : null,
-          ),
-          child: Center(
-            child: Text(
-              '${date.day}',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: textColor,
-              ),
+    return AspectRatio(
+      aspectRatio: 1,
+      child: Container(
+        margin: const EdgeInsets.all(2),
+        decoration: BoxDecoration(
+          color: isFuture ? Colors.transparent : color,
+          borderRadius: BorderRadius.circular(12),
+          border: isToday
+              ? Border.all(color: AppColors.primary600, width: 3)
+              : null,
+        ),
+        child: Center(
+          child: Text(
+            '${date.day}',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: textColor,
             ),
           ),
         ),
@@ -212,13 +235,13 @@ class MealMonthCalendar extends ConsumerWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        _buildLegendItem(AppColors.grassLevel3, '3'),
+        _buildLegendItem(_blueLevel3, '3+'),
         const SizedBox(width: 8),
-        _buildLegendItem(AppColors.grassLevel2, '2'),
+        _buildLegendItem(_blueLevel2, '2'),
         const SizedBox(width: 8),
-        _buildLegendItem(AppColors.grassLevel1, '1'),
+        _buildLegendItem(_blueLevel1, '1'),
         const SizedBox(width: 8),
-        _buildLegendItem(AppColors.grassLevel0, '0'),
+        _buildLegendItem(_blueLevel0, '0'),
       ],
     );
   }
@@ -246,16 +269,21 @@ class MealMonthCalendar extends ConsumerWidget {
     );
   }
 
-  Color _getGrassColor(int mealCount) {
-    switch (mealCount) {
+  static const Color _blueLevel0 = Color(0xFFE2E8F0); // slate200相当
+  static const Color _blueLevel1 = Color(0xFFBFDBFE); // primary200相当
+  static const Color _blueLevel2 = Color(0xFF60A5FA); // primary400相当
+  static const Color _blueLevel3 = Color(0xFF2563EB); // primary600相当
+
+  Color _getGrassColor(int count) {
+    switch (count) {
       case 0:
-        return AppColors.grassLevel0;
+        return _blueLevel0;
       case 1:
-        return AppColors.grassLevel1;
+        return _blueLevel1;
       case 2:
-        return AppColors.grassLevel2;
+        return _blueLevel2;
       default:
-        return AppColors.grassLevel3;
+        return _blueLevel3;
     }
   }
 }
@@ -264,8 +292,8 @@ class MealMonthCalendar extends ConsumerWidget {
 // Previews
 // ============================================
 
-@Preview(name: 'MealMonthCalendar - Static Preview')
-Widget previewMealMonthCalendarStatic() {
+@Preview(name: 'ExerciseMonthCalendar - Static Preview')
+Widget previewExerciseMonthCalendarStatic() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
@@ -273,35 +301,61 @@ Widget previewMealMonthCalendarStatic() {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
-          child: _PreviewMealMonthCalendar(),
+          child: _PreviewExerciseMonthCalendar(),
         ),
       ),
     ),
   );
 }
 
-class _PreviewMealMonthCalendar extends StatelessWidget {
+class _PreviewExerciseMonthCalendar extends StatefulWidget {
+  @override
+  State<_PreviewExerciseMonthCalendar> createState() =>
+      _PreviewExerciseMonthCalendarState();
+}
+
+class _PreviewExerciseMonthCalendarState
+    extends State<_PreviewExerciseMonthCalendar> {
+  late DateTime _currentMonth;
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _currentMonth = DateTime(now.year, now.month, 1);
+  }
+
+  void _previousMonth() {
+    setState(() {
+      _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1, 1);
+    });
+  }
+
+  void _nextMonth() {
+    final now = DateTime.now();
+    final nextMonth = DateTime(_currentMonth.year, _currentMonth.month + 1, 1);
+    if (!nextMonth.isAfter(DateTime(now.year, now.month, 1))) {
+      setState(() {
+        _currentMonth = nextMonth;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final startOfMonth = DateTime(today.year, today.month, 1);
-    final endOfMonth = DateTime(today.year, today.month + 1, 0);
+    final startOfMonth = _currentMonth;
+    final endOfMonth = DateTime(_currentMonth.year, _currentMonth.month + 1, 0);
 
-    // Mock data
-    final mockMealCounts = <DateTime, int>{};
+    // Mock data - pattern based on day % 4
+    final mockCounts = <DateTime, int>{};
     for (int day = 1; day <= endOfMonth.day; day++) {
-      final date = DateTime(today.year, today.month, day);
+      final date = DateTime(_currentMonth.year, _currentMonth.month, day);
       if (!date.isAfter(today)) {
-        mockMealCounts[date] = (day + today.month) % 4;
+        mockCounts[date] = (day % 4);
       }
     }
-    // Ensure some variety
-    mockMealCounts[DateTime(today.year, today.month, 1)] = 2;
-    mockMealCounts[DateTime(today.year, today.month, 3)] = 3;
-    mockMealCounts[DateTime(today.year, today.month, 5)] = 1;
-
-    final totalMeals = mockMealCounts.values.fold<int>(0, (sum, v) => sum + v);
 
     // Calculate first day offset
     final firstDayOffset = (startOfMonth.weekday - 1) % 7;
@@ -309,7 +363,7 @@ class _PreviewMealMonthCalendar extends StatelessWidget {
     final totalCells = firstDayOffset + daysInMonth;
     final rows = (totalCells / 7).ceil();
 
-    const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    const dayLabels = ['月', '火', '水', '木', '金', '土', '日'];
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -328,30 +382,37 @@ class _PreviewMealMonthCalendar extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
+          // ヘッダー（←  2026年2月  →）
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              IconButton(
+                icon: const Icon(Icons.chevron_left, color: AppColors.slate400),
+                onPressed: _previousMonth,
+              ),
               Text(
-                DateFormat('MMMM yyyy').format(today),
+                '${_currentMonth.year}年${_currentMonth.month}月',
                 style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
                   color: AppColors.slate800,
                 ),
               ),
-              Text(
-                '合計: ${totalMeals}食',
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppColors.slate500,
+              IconButton(
+                icon: Icon(
+                  Icons.chevron_right,
+                  color: _currentMonth.year == now.year &&
+                          _currentMonth.month == now.month
+                      ? AppColors.slate200
+                      : AppColors.slate400,
                 ),
+                onPressed: _nextMonth,
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
 
-          // Day headers
+          // 曜日ヘッダー
           Row(
             children: dayLabels.map((label) {
               return Expanded(
@@ -370,7 +431,7 @@ class _PreviewMealMonthCalendar extends StatelessWidget {
           ),
           const SizedBox(height: 6),
 
-          // Calendar grid
+          // カレンダーグリッド
           ...List.generate(rows, (rowIndex) {
             return Padding(
               padding: const EdgeInsets.only(bottom: 6),
@@ -383,12 +444,14 @@ class _PreviewMealMonthCalendar extends StatelessWidget {
                     return Expanded(child: Container());
                   }
 
-                  final date = DateTime(startOfMonth.year, startOfMonth.month, dayNumber);
-                  final count = mockMealCounts[date] ?? 0;
+                  final date = DateTime(
+                      startOfMonth.year, startOfMonth.month, dayNumber);
+                  final count = mockCounts[date] ?? 0;
                   final isToday = date == today;
                   final isFuture = date.isAfter(today);
 
-                  final color = isFuture ? Colors.transparent : _getGrassColor(count);
+                  final color =
+                      isFuture ? Colors.transparent : _getGrassColor(count);
                   final textColor = isFuture
                       ? AppColors.slate300
                       : (count >= 2 ? Colors.white : AppColors.slate600);
@@ -402,7 +465,8 @@ class _PreviewMealMonthCalendar extends StatelessWidget {
                           color: isFuture ? Colors.transparent : color,
                           borderRadius: BorderRadius.circular(12),
                           border: isToday
-                              ? Border.all(color: AppColors.primary600, width: 3)
+                              ? Border.all(
+                                  color: AppColors.primary600, width: 3)
                               : null,
                         ),
                         child: Center(
@@ -423,18 +487,18 @@ class _PreviewMealMonthCalendar extends StatelessWidget {
             );
           }),
 
-          // Legend
+          // 凡例
           const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              _buildLegendItem(AppColors.grassLevel3, '3'),
+              _buildLegendItem(const Color(0xFF2563EB), '3+'),
               const SizedBox(width: 8),
-              _buildLegendItem(AppColors.grassLevel2, '2'),
+              _buildLegendItem(const Color(0xFF60A5FA), '2'),
               const SizedBox(width: 8),
-              _buildLegendItem(AppColors.grassLevel1, '1'),
+              _buildLegendItem(const Color(0xFFBFDBFE), '1'),
               const SizedBox(width: 8),
-              _buildLegendItem(AppColors.grassLevel0, '0'),
+              _buildLegendItem(const Color(0xFFE2E8F0), '0'),
             ],
           ),
         ],
@@ -468,13 +532,13 @@ class _PreviewMealMonthCalendar extends StatelessWidget {
   Color _getGrassColor(int count) {
     switch (count) {
       case 0:
-        return AppColors.grassLevel0;
+        return const Color(0xFFE2E8F0);
       case 1:
-        return AppColors.grassLevel1;
+        return const Color(0xFFBFDBFE);
       case 2:
-        return AppColors.grassLevel2;
+        return const Color(0xFF60A5FA);
       default:
-        return AppColors.grassLevel3;
+        return const Color(0xFF2563EB);
     }
   }
 }

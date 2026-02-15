@@ -118,7 +118,7 @@ class ExerciseWeekCalendar extends ConsumerWidget {
     // Pick the icon to display (prioritize strength_training)
     String? icon;
     if (exerciseTypes.contains('strength_training')) {
-      icon = '💪';
+      icon = '🏋️';
     } else if (exerciseTypes.any((type) =>
         type == 'cardio' ||
         type == 'running' ||
@@ -269,7 +269,7 @@ class _PreviewExerciseWeekCalendar extends StatelessWidget {
 
               String? icon;
               if (exerciseTypes.contains('strength_training')) {
-                icon = '💪';
+                icon = '🏋️';
               } else if (exerciseTypes.any((type) =>
                   type == 'cardio' ||
                   type == 'running' ||

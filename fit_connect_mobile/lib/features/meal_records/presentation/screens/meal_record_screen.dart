@@ -36,9 +36,11 @@ class _MealRecordScreenState extends ConsumerState<MealRecordScreen> {
         _buildPeriodFilter(),
         const SizedBox(height: 24),
 
-        // Summary Card
-        _buildSummaryCard(recordsAsync, todayCountAsync),
-        const SizedBox(height: 16),
+        // Summary Card (Today only)
+        if (_selectedPeriod == PeriodFilter.today) ...[
+          _buildSummaryCard(recordsAsync, todayCountAsync),
+          const SizedBox(height: 16),
+        ],
 
         // Calendar - show week calendar for week, month calendar for month
         if (_selectedPeriod == PeriodFilter.week) ...[
@@ -128,8 +130,8 @@ class _MealRecordScreenState extends ConsumerState<MealRecordScreen> {
             children: [
               Text(
                 _selectedPeriod == PeriodFilter.today
-                    ? "Today's Summary"
-                    : "${_selectedPeriod.label} Summary",
+                    ? "今日のサマリー"
+                    : "${_selectedPeriod.label}のサマリー",
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -147,13 +149,13 @@ class _MealRecordScreenState extends ConsumerState<MealRecordScreen> {
                       loading: () => '-',
                       error: (_, __) => '-',
                     ),
-                    label: 'Meals',
+                    label: '食事',
                     color: AppColors.primary600,
                   ),
                   _buildSummaryItem(
                     icon: LucideIcons.camera,
                     value: '$photosCount',
-                    label: 'Photos',
+                    label: '写真',
                     color: AppColors.emerald500,
                   ),
                   _buildSummaryItem(
@@ -222,12 +224,12 @@ class _MealRecordScreenState extends ConsumerState<MealRecordScreen> {
                   Icon(LucideIcons.utensils, size: 48, color: AppColors.slate300),
                   const SizedBox(height: 12),
                   const Text(
-                    'No meal records yet',
+                    '食事記録がありません',
                     style: TextStyle(color: AppColors.slate400),
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Start logging your meals!',
+                    '食事を記録しましょう！',
                     style: TextStyle(color: AppColors.slate300, fontSize: 12),
                   ),
                 ],
@@ -292,12 +294,17 @@ class _MealRecordScreenState extends ConsumerState<MealRecordScreen> {
     final yesterday = today.subtract(const Duration(days: 1));
 
     if (date == today) {
-      return 'Today';
+      return '今日';
     } else if (date == yesterday) {
-      return 'Yesterday';
+      return '昨日';
     } else {
-      return DateFormat('MMM d (E)').format(date);
+      return '${date.month}/${date.day}（${_weekdayLabel(date.weekday)}）';
     }
+  }
+
+  String _weekdayLabel(int weekday) {
+    const labels = ['月', '火', '水', '木', '金', '土', '日'];
+    return labels[weekday - 1];
   }
 }
 
@@ -372,7 +379,7 @@ Widget previewMealRecordScreenEmpty() {
                     Icon(LucideIcons.utensils, size: 48, color: AppColors.slate300),
                     const SizedBox(height: 12),
                     const Text(
-                      'No meal records yet',
+                      '食事記録がありません',
                       style: TextStyle(color: AppColors.slate400),
                     ),
                   ],
@@ -398,7 +405,7 @@ class _PreviewPeriodFilter extends StatelessWidget {
         border: Border.all(color: AppColors.slate100),
       ),
       child: Row(
-        children: ['Today', 'Week', 'Month', '3M', 'All'].asMap().entries.map((entry) {
+        children: ['今日', '週', '月', '3ヶ月', '全期間'].asMap().entries.map((entry) {
           final isActive = entry.key == 0;
           return Expanded(
             child: Container(
@@ -439,15 +446,15 @@ class _PreviewSummaryCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            "Today's Summary",
+            "今日のサマリー",
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.slate800),
           ),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildItem(LucideIcons.utensils, '3/3', 'Meals', AppColors.primary600),
-              _buildItem(LucideIcons.camera, '4', 'Photos', AppColors.emerald500),
+              _buildItem(LucideIcons.utensils, '3/3', '食事', AppColors.primary600),
+              _buildItem(LucideIcons.camera, '4', '写真', AppColors.emerald500),
               _buildItem(LucideIcons.flame, '1,100', 'kcal', AppColors.orange500),
             ],
           ),
@@ -486,15 +493,15 @@ class _PreviewSummaryCardEmpty extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            "Today's Summary",
+            "今日のサマリー",
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.slate800),
           ),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _PreviewSummaryCard()._buildItem(LucideIcons.utensils, '0/3', 'Meals', AppColors.primary600),
-              _PreviewSummaryCard()._buildItem(LucideIcons.camera, '0', 'Photos', AppColors.emerald500),
+              _PreviewSummaryCard()._buildItem(LucideIcons.utensils, '0/3', '食事', AppColors.primary600),
+              _PreviewSummaryCard()._buildItem(LucideIcons.camera, '0', '写真', AppColors.emerald500),
               _PreviewSummaryCard()._buildItem(LucideIcons.flame, '0', 'kcal', AppColors.orange500),
             ],
           ),
@@ -510,7 +517,7 @@ class _PreviewRecordsList extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Today', style: TextStyle(color: AppColors.slate800, fontSize: 14, fontWeight: FontWeight.bold)),
+        const Text('今日', style: TextStyle(color: AppColors.slate800, fontSize: 14, fontWeight: FontWeight.bold)),
         const Divider(height: 24, color: AppColors.slate100),
         ..._mockMealRecords.map((record) => MealCard(record: record)),
       ],

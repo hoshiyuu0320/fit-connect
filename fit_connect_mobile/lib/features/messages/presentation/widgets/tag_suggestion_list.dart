@@ -132,7 +132,7 @@ class TagSuggestionList extends StatelessWidget {
       // 運動
       const TagSuggestion(
           label: '#運動:筋トレ',
-          icon: '💪',
+          icon: '🏋️',
           tag: '#運動:筋トレ',
           keywords: ['運動', '筋トレ', 'exercise', 'workout', 'strength'],
           example: '例: #運動:筋トレ ベンチプレス 60分 350kcal'),
@@ -163,7 +163,7 @@ class TagSuggestionList extends StatelessWidget {
             example: '#食事:朝食 / 昼食 / 夕食 / 間食 から選択'),
         const TagSuggestion(
             label: '#運動',
-            icon: '💪',
+            icon: '🏋️',
             tag: '#運動',
             keywords: [],
             addSpace: false,

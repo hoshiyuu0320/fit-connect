@@ -153,6 +153,47 @@ class ExerciseRepository {
     await _supabase.from('exercise_records').delete().eq('id', id);
   }
 
+  /// 月カレンダー用の日別運動回数を取得
+  Future<Map<DateTime, int>> getExerciseRecordCounts({
+    required String clientId,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async {
+    final response = await _supabase
+        .from('exercise_records')
+        .select('recorded_at')
+        .eq('client_id', clientId)
+        .gte('recorded_at', startDate.toUtc().toIso8601String())
+        .lte('recorded_at', endDate.toUtc().toIso8601String());
+
+    final counts = <DateTime, int>{};
+    for (final row in (response as List)) {
+      final recordedAt = DateTime.parse(row['recorded_at'] as String).toLocal();
+      final date = DateTime(recordedAt.year, recordedAt.month, recordedAt.day);
+      counts[date] = (counts[date] ?? 0) + 1;
+    }
+    return counts;
+  }
+
+  /// 期間内の消費カロリー合計を取得
+  Future<double> getTotalCalories({
+    required String clientId,
+    required PeriodFilter period,
+  }) async {
+    final records = await getExerciseRecords(
+      clientId: clientId,
+      period: period,
+    );
+
+    double total = 0;
+    for (final record in records) {
+      if (record.calories != null) {
+        total += record.calories!;
+      }
+    }
+    return total;
+  }
+
   /// 今週の運動回数を取得
   Future<int> getWeeklyExerciseCount(String clientId) async {
     final now = DateTime.now();

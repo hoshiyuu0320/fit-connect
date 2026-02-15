@@ -20,7 +20,7 @@ class WeightRecordScreen extends ConsumerStatefulWidget {
 }
 
 class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
-  PeriodFilter _selectedPeriod = PeriodFilter.month;
+  PeriodFilter _selectedPeriod = PeriodFilter.week;
 
   @override
   Widget build(BuildContext context) {
@@ -59,7 +59,7 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
-        children: PeriodFilter.values.map((period) {
+        children: PeriodFilter.values.where((p) => p != PeriodFilter.today).map((period) {
           final isSelected = period == _selectedPeriod;
           return Padding(
             padding: const EdgeInsets.only(right: 8),

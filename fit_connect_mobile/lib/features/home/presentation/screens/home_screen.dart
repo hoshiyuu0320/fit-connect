@@ -52,10 +52,10 @@ class HomeScreen extends ConsumerWidget {
               // Daily Summary
               DailySummaryCard(
                 onMealsTap: onNavigateToRecordsTab != null
-                    ? () => onNavigateToRecordsTab!(0)
+                    ? () => onNavigateToRecordsTab!(1)
                     : null,
                 onWeightTap: onNavigateToRecordsTab != null
-                    ? () => onNavigateToRecordsTab!(1)
+                    ? () => onNavigateToRecordsTab!(0)
                     : null,
                 onActivityTap: onNavigateToRecordsTab != null
                     ? () => onNavigateToRecordsTab!(2)
