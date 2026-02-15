@@ -14,6 +14,7 @@ export type Client = {
   target_weight: number
   purpose: 'diet' | 'contest' | 'body_make' | 'health_improvement' | 'mental_improvement' | 'performance_improvement'
   goal_description: string | null
+  goal_deadline: string | null
   profile_image_url: string | null
   line_user_id: string | null
   created_at: string

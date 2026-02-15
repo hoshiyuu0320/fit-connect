@@ -71,6 +71,15 @@ export default function ClientDetailPage() {
     }
   }
 
+  const refetchClient = async () => {
+    try {
+      const clientData = await getClientDetail(clientId)
+      setClient(clientData)
+    } catch (error) {
+      console.error('クライアント再取得エラー:', error)
+    }
+  }
+
   if (loading) {
     return (
       <div className="h-[calc(100vh-48px)] flex items-center justify-center bg-gray-50">
@@ -91,7 +100,7 @@ export default function ClientDetailPage() {
     <div className="h-[calc(100vh-48px)] overflow-y-auto bg-gray-50">
       <div className="max-w-6xl mx-auto p-6 space-y-6">
         {/* ヘッダー */}
-        <ClientHeader client={client} />
+        <ClientHeader client={client} onClientUpdated={refetchClient} />
 
         {/* タブ */}
         <Tabs defaultValue="summary" className="w-full">

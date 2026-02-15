@@ -1,16 +1,20 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { ProfileAvatar } from '@/components/clients/ProfileAvatar'
 import { ClientDetail, GENDER_OPTIONS, PURPOSE_OPTIONS } from '@/types/client'
+import EditClientModal from './EditClientModal'
 
 type ClientHeaderProps = {
   client: ClientDetail
+  onClientUpdated: () => void
 }
 
-export function ClientHeader({ client }: ClientHeaderProps) {
+export function ClientHeader({ client, onClientUpdated }: ClientHeaderProps) {
   const router = useRouter()
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 
   return (
     <div className="space-y-4">
@@ -23,12 +27,20 @@ export function ClientHeader({ client }: ClientHeaderProps) {
           <span>←</span>
           <span>顧客リストに戻る</span>
         </button>
-        <button
-          onClick={() => router.push(`/message?clientId=${client.client_id}`)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          メッセージ
-        </button>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setIsEditModalOpen(true)}
+            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            編集
+          </button>
+          <button
+            onClick={() => router.push(`/message?clientId=${client.client_id}`)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            メッセージ
+          </button>
+        </div>
       </div>
 
       {/* Profile Card */}
@@ -89,6 +101,13 @@ export function ClientHeader({ client }: ClientHeaderProps) {
           </div>
         </CardContent>
       </Card>
+
+      <EditClientModal
+        open={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+        client={client}
+        onUpdated={onClientUpdated}
+      />
     </div>
   )
 }
