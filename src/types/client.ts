@@ -91,6 +91,42 @@ export type Ticket = {
   created_at: string
 }
 
+// カルテ（トレーナーノート）
+export type ClientNote = {
+  id: string
+  client_id: string
+  trainer_id: string
+  title: string
+  content: string
+  file_urls: string[]
+  is_shared: boolean
+  shared_at: string | null
+  session_number: number | null
+  created_at: string
+  updated_at: string
+}
+
+// カルテ作成パラメータ
+export type CreateClientNoteParams = {
+  clientId: string
+  trainerId: string
+  title: string
+  content: string
+  fileUrls?: string[]
+  isShared?: boolean
+  sessionNumber?: number | null
+}
+
+// カルテ更新パラメータ
+export type UpdateClientNoteParams = {
+  id: string
+  title?: string
+  content?: string
+  fileUrls?: string[]
+  isShared?: boolean
+  sessionNumber?: number | null
+}
+
 // ================================================
 // 定数定義
 // ================================================

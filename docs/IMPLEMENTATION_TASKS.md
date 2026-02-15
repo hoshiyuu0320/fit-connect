@@ -1,9 +1,9 @@
 # FIT-CONNECT Web - 実装タスク一覧
 
 **作成日**: 2026年2月1日
-**バージョン**: 1.5
-**進捗状況**: 全体 82% 完了
-**最終更新**: 2026年2月13日 - 顧客詳細画面タブベースUI改修
+**バージョン**: 1.6
+**進捗状況**: 全体 85% 完了
+**最終更新**: 2026年2月14日 - カルテ（トレーナーノート）機能実装
 
 ---
 
@@ -58,7 +58,8 @@
 - ✅ サイドバーレイアウト（ホバー展開）
 - ✅ データベース操作関数（24ファイル）
 - ✅ 体重グラフ表示（recharts折れ線グラフ）
-- ✅ 顧客詳細タブUI（サマリー/食事/体重/運動）
+- ✅ 顧客詳細タブUI（サマリー/食事/体重/運動/カルテ）
+- ✅ カルテ（トレーナーノート）機能（CRUD、ファイルアップロード、共有管理）
 
 ### 未実装項目
 - 🚧 クライアント編集機能
@@ -72,6 +73,24 @@
 ---
 
 ## 最新の変更履歴
+
+### 2026年2月14日
+
+- カルテ（トレーナーノート）機能を実装（フェーズ3.5完了）
+  - `client_notes` テーブル作成（RLS付き）
+  - `client-notes` Storageバケット作成（PDF/画像対応、最大10MB）
+  - `ClientNote`, `CreateClientNoteParams`, `UpdateClientNoteParams` 型定義追加
+  - `getClientNotes.ts` - カルテ一覧取得関数
+  - `uploadNoteFile.ts` - ファイルアップロード関数（JPEG, PNG, WebP, PDF対応）
+  - `deleteNoteFile.ts` - ファイル削除関数
+  - `POST /api/client-notes` - カルテ作成API
+  - `PUT /api/client-notes/[id]` - カルテ更新API
+  - `DELETE /api/client-notes/[id]` - カルテ削除API（Storage連携削除）
+  - `NotesTab.tsx` - カルテ一覧タブ（カード形式表示）
+  - `CreateNoteModal.tsx` - カルテ作成モーダル（タイトル、セッション番号、内容、ファイル添付、共有チェック）
+  - `EditNoteModal.tsx` - カルテ編集モーダル（既存ファイル管理、新規ファイル追加）
+  - `DeleteNoteDialog.tsx` - 削除確認ダイアログ
+  - 顧客詳細ページに「カルテ」タブ追加（5タブ構成）
 
 ### 2026年2月13日
 
@@ -333,6 +352,20 @@ interface WeightChartProps {
 | 3.1.5.6 | ExerciseTab 新規作成 | ✅ | 月カレンダー+選択日運動記録 |
 | 3.1.5.7 | page.tsx 統合 | ✅ | 741行→113行にリファクタリング |
 
+#### 3.5 カルテ（トレーナーノート）機能 ✅ 完了
+
+| # | タスク | 状態 | 詳細 |
+|---|--------|------|------|
+| 3.5.1 | DBテーブル・Storage基盤 | ✅ | `client_notes`テーブル、RLS、`client-notes`バケット |
+| 3.5.2 | 型定義追加 | ✅ | `ClientNote`, `CreateClientNoteParams`, `UpdateClientNoteParams` |
+| 3.5.3 | Query関数作成 | ✅ | `getClientNotes.ts`, `uploadNoteFile.ts`, `deleteNoteFile.ts` |
+| 3.5.4 | API Route作成 | ✅ | `POST /api/client-notes`, `PUT/DELETE /api/client-notes/[id]` |
+| 3.5.5 | NotesTab コンポーネント | ✅ | カルテ一覧（カード形式）、追加/編集/削除ボタン |
+| 3.5.6 | CreateNoteModal コンポーネント | ✅ | 作成モーダル（タイトル、セッション番号、内容、ファイル、共有） |
+| 3.5.7 | EditNoteModal コンポーネント | ✅ | 編集モーダル（既存ファイル管理、新規ファイル追加） |
+| 3.5.8 | DeleteNoteDialog コンポーネント | ✅ | 削除確認ダイアログ（Storage連携削除） |
+| 3.5.9 | 顧客詳細ページ統合 | ✅ | 5タブ構成（サマリー/食事/体重/運動/カルテ） |
+
 #### 3.2 クライアント編集機能
 
 | # | タスク | 状態 | 詳細 |
@@ -541,9 +574,13 @@ import QRCode from 'qrcode.react';
 src/
 ├── app/
 │   ├── api/
-│   │   └── messages/
-│   │       └── edit/
-│   │           └── route.ts          # メッセージ編集API ✅
+│   │   ├── messages/
+│   │   │   └── edit/
+│   │   │       └── route.ts          # メッセージ編集API ✅
+│   │   └── client-notes/
+│   │       ├── route.ts              # カルテ作成API ✅
+│   │       └── [id]/
+│   │           └── route.ts          # カルテ更新・削除API ✅
 │   └── (user_console)/
 │       ├── clients/
 │       │   └── [client_id]/
@@ -573,6 +610,9 @@ src/
 │       ├── uploadMessageImage.ts     # 画像アップロード ✅
 │       ├── editMessage.ts            # メッセージ編集 ✅
 │       ├── getMessageById.ts         # メッセージ取得 ✅
+│       ├── getClientNotes.ts         # カルテ一覧取得 ✅
+│       ├── uploadNoteFile.ts         # カルテファイルアップロード ✅
+│       ├── deleteNoteFile.ts         # カルテファイル削除 ✅
 │       ├── updateClient.ts           # クライアント更新
 │       └── createTicket.ts           # チケット作成
 └── types/
@@ -600,4 +640,4 @@ src/
 
 ---
 
-**最終更新**: 2026年2月11日 - 体重グラフ表示機能実装（v1.4）
+**最終更新**: 2026年2月14日 - カルテ（トレーナーノート）機能実装（v1.6）
