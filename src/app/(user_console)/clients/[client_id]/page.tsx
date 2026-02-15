@@ -97,8 +97,8 @@ export default function ClientDetailPage() {
         <Tabs defaultValue="summary" className="w-full">
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="summary">サマリー</TabsTrigger>
-            <TabsTrigger value="meal">食事</TabsTrigger>
             <TabsTrigger value="weight">体重</TabsTrigger>
+            <TabsTrigger value="meal">食事</TabsTrigger>
             <TabsTrigger value="exercise">運動</TabsTrigger>
             <TabsTrigger value="notes">カルテ</TabsTrigger>
           </TabsList>
