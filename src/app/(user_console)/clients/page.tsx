@@ -4,13 +4,17 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { searchClients } from '@/lib/supabase/searchClients'
 import { ClientCard } from '@/components/clients/ClientCard'
+import ClientInviteModal from '@/components/clients/ClientInviteModal'
 import type { Client } from '@/types/client'
 import { AGE_RANGE_OPTIONS, PURPOSE_OPTIONS, GENDER_OPTIONS } from '@/types/client'
+import { QrCode } from 'lucide-react'
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [trainerId, setTrainerId] = useState<string | null>(null)
+
+  const [inviteModalOpen, setInviteModalOpen] = useState(false)
 
   // フィルター状態
   const [searchQuery, setSearchQuery] = useState('')
@@ -67,9 +71,18 @@ export default function ClientsPage() {
     <div className="h-[calc(100vh-48px)] overflow-y-auto bg-gray-50">
       <div className="max-w-7xl mx-auto p-6">
         {/* ヘッダー */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">顧客管理</h1>
-          <p className="text-gray-600 mt-1">担当する顧客の一覧を表示しています</p>
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">顧客管理</h1>
+            <p className="text-gray-600 mt-1">担当する顧客の一覧を表示しています</p>
+          </div>
+          <button
+            onClick={() => setInviteModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+          >
+            <QrCode className="h-4 w-4" />
+            クライアントを招待
+          </button>
         </div>
 
         {/* 検索バー */}
@@ -169,6 +182,14 @@ export default function ClientsPage() {
           </div>
         )}
       </div>
+
+      {trainerId && (
+        <ClientInviteModal
+          open={inviteModalOpen}
+          onOpenChange={setInviteModalOpen}
+          trainerId={trainerId}
+        />
+      )}
     </div>
   )
 }
