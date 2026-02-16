@@ -115,8 +115,11 @@ class _InviteCodeScreenState extends ConsumerState<InviteCodeScreen> {
         elevation: 0,
         title: const Text('招待コード入力'),
       ),
-      body: SafeArea(
-        child: LayoutBuilder(
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        behavior: HitTestBehavior.opaque,
+        child: SafeArea(
+          child: LayoutBuilder(
           builder: (context, constraints) {
             return SingleChildScrollView(
               padding: const EdgeInsets.all(24.0),
@@ -297,6 +300,7 @@ class _InviteCodeScreenState extends ConsumerState<InviteCodeScreen> {
               ),
             );
           },
+        ),
         ),
       ),
     );
