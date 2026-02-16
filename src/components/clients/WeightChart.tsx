@@ -17,16 +17,27 @@ import type { WeightRecord } from '@/types/client'
 interface WeightChartProps {
   weightRecords: WeightRecord[]
   targetWeight: number
+  showPeriodFilter?: boolean
 }
 
 type PeriodFilter = 'week' | 'month' | '3months' | 'all'
 
-export function WeightChart({ weightRecords, targetWeight }: WeightChartProps) {
+export function WeightChart({ weightRecords, targetWeight, showPeriodFilter = true }: WeightChartProps) {
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all')
 
   // フィルター後のデータを計算
   const filteredData = useMemo(() => {
     if (weightRecords.length === 0) return []
+
+    // showPeriodFilter=false の場合は親がフィルター済みなので全データ表示
+    if (!showPeriodFilter) {
+      return weightRecords
+        .sort((a, b) => new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime())
+        .map((record) => ({
+          date: new Date(record.recorded_at),
+          weight: record.weight,
+        }))
+    }
 
     const now = new Date()
     let startDate: Date
@@ -54,7 +65,7 @@ export function WeightChart({ weightRecords, targetWeight }: WeightChartProps) {
         date: new Date(record.recorded_at),
         weight: record.weight,
       }))
-  }, [weightRecords, periodFilter])
+  }, [weightRecords, periodFilter, showPeriodFilter])
 
   // Y軸のドメインを計算
   const yAxisDomain = useMemo(() => {
@@ -78,23 +89,25 @@ export function WeightChart({ weightRecords, targetWeight }: WeightChartProps) {
   return (
     <div className="space-y-4">
       {/* 期間フィルター */}
-      <div className="flex justify-end">
-        <div className="flex space-x-2">
-          {periodButtons.map((button) => (
-            <button
-              key={button.value}
-              onClick={() => setPeriodFilter(button.value)}
-              className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                periodFilter === button.value
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              {button.label}
-            </button>
-          ))}
+      {showPeriodFilter && (
+        <div className="flex justify-end" data-pdf-hide>
+          <div className="flex bg-gray-100 rounded-lg p-0.5">
+            {periodButtons.map((button) => (
+              <button
+                key={button.value}
+                onClick={() => setPeriodFilter(button.value)}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                  periodFilter === button.value
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {button.label}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* グラフ */}
       {filteredData.length === 0 ? (
