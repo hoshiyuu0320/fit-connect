@@ -234,7 +234,7 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) => Center(child: Text('エラー: $e')),
       ),
     );
   }
@@ -378,7 +378,7 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Error: $e')),
+      error: (e, _) => Center(child: Text('エラー: $e')),
     );
   }
 
@@ -1132,7 +1132,7 @@ final _mockExerciseRecords = [
     id: '1',
     clientId: 'client-1',
     exerciseType: 'strength_training',
-    memo: 'Full Body Workout - Squats, Deadlifts, Bench Press',
+    memo: '全身トレーニング - スクワット、デッドリフト、ベンチプレス',
     images: null,
     duration: 45,
     distance: null,
@@ -1147,7 +1147,7 @@ final _mockExerciseRecords = [
     id: '2',
     clientId: 'client-1',
     exerciseType: 'cardio',
-    memo: 'Morning Jog in the Park',
+    memo: '朝の公園ジョギング',
     images: null,
     duration: 30,
     distance: 5.0,
@@ -1162,7 +1162,7 @@ final _mockExerciseRecords = [
     id: '3',
     clientId: 'client-1',
     exerciseType: 'strength_training',
-    memo: 'Upper Body - Pull-ups, Rows, Curls',
+    memo: '上半身トレーニング - 懸垂、ローイング、カール',
     images: null,
     duration: 40,
     distance: null,

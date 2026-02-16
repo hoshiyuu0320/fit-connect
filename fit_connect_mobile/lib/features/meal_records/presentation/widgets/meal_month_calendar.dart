@@ -89,7 +89,7 @@ class MealMonthCalendar extends ConsumerWidget {
               height: 200,
               child: Center(child: CircularProgressIndicator()),
             ),
-            error: (e, _) => Text('Error: $e'),
+            error: (e, _) => Text('エラー: $e'),
           ),
 
           // Legend

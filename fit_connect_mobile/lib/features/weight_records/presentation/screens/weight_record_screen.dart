@@ -184,11 +184,11 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
               );
             },
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(child: Text('Error: $e')),
+            error: (e, _) => Center(child: Text('エラー: $e')),
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) => Center(child: Text('エラー: $e')),
       ),
     );
   }
@@ -418,7 +418,7 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) => Center(child: Text('エラー: $e')),
       ),
     );
   }
@@ -500,7 +500,7 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Error: $e')),
+      error: (e, _) => Center(child: Text('エラー: $e')),
     );
   }
 

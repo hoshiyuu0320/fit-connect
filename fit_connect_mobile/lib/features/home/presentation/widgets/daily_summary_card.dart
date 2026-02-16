@@ -190,7 +190,7 @@ class DailySummaryCard extends ConsumerWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '$percentage% Logged',
+                    '$percentage% 記録済み',
                     style: const TextStyle(
                       color: AppColors.slate400,
                       fontSize: 10,
@@ -312,7 +312,7 @@ class DailySummaryCard extends ConsumerWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                '$percentage% Logged',
+                '$percentage% 記録済み',
                 style: const TextStyle(
                   color: AppColors.slate400,
                   fontSize: 10,
@@ -805,7 +805,7 @@ class _PreviewDailySummaryCard extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                '$percentage% Logged',
+                '$percentage% 記録済み',
                 style: const TextStyle(
                   color: AppColors.slate400,
                   fontSize: 10,
