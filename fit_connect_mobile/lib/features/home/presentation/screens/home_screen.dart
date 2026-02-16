@@ -87,7 +87,7 @@ class HomeScreen extends ConsumerWidget {
           const SizedBox(height: 4),
           clientAsync.when(
             data: (client) => Text(
-              'Hello, ${client?.name ?? 'there'} 👋',
+              'こんにちは、${client?.name ?? ''}さん 👋',
               style: const TextStyle(
                 color: AppColors.slate800,
                 fontSize: 24,
@@ -95,7 +95,7 @@ class HomeScreen extends ConsumerWidget {
               ),
             ),
             loading: () => const Text(
-              'Hello 👋',
+              'こんにちは 👋',
               style: TextStyle(
                 color: AppColors.slate800,
                 fontSize: 24,
@@ -103,7 +103,7 @@ class HomeScreen extends ConsumerWidget {
               ),
             ),
             error: (_, __) => const Text(
-              'Hello 👋',
+              'こんにちは 👋',
               style: TextStyle(
                 color: AppColors.slate800,
                 fontSize: 24,
@@ -113,7 +113,7 @@ class HomeScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 4),
           const Text(
-            "Let's keep the momentum going!",
+            '今日も頑張りましょう！',
             style: TextStyle(
               color: AppColors.slate600,
               fontSize: 14,
@@ -195,7 +195,7 @@ class HomeScreen extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'No Goal Set',
+            '目標未設定',
             style: TextStyle(
               color: Colors.white,
               fontSize: 18,
@@ -204,7 +204,7 @@ class HomeScreen extends ConsumerWidget {
           ),
           SizedBox(height: 8),
           Text(
-            'Ask your trainer to set a goal for you!',
+            'トレーナーに目標を設定してもらいましょう！',
             style: TextStyle(
               color: Colors.white70,
               fontSize: 14,
@@ -233,30 +233,22 @@ class HomeScreen extends ConsumerWidget {
   }
 
   String _formatDateTop(DateTime date) {
-    const days = [
-      'Sunday',
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday'
-    ];
+    const days = ['日', '月', '火', '水', '木', '金', '土'];
     const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec'
+      '1月',
+      '2月',
+      '3月',
+      '4月',
+      '5月',
+      '6月',
+      '7月',
+      '8月',
+      '9月',
+      '10月',
+      '11月',
+      '12月'
     ];
-    return '${days[date.weekday % 7]}, ${months[date.month - 1]} ${date.day}';
+    return '${months[date.month - 1]}${date.day}日（${days[date.weekday % 7]}）';
   }
 }
 
@@ -322,31 +314,23 @@ class _PreviewGreeting extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    const days = [
-      'Sunday',
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday'
-    ];
+    const days = ['日', '月', '火', '水', '木', '金', '土'];
     const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec'
+      '1月',
+      '2月',
+      '3月',
+      '4月',
+      '5月',
+      '6月',
+      '7月',
+      '8月',
+      '9月',
+      '10月',
+      '11月',
+      '12月'
     ];
     final dateStr =
-        '${days[now.weekday % 7]}, ${months[now.month - 1]} ${now.day}';
+        '${months[now.month - 1]}${now.day}日（${days[now.weekday % 7]}）';
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4.0),
@@ -363,7 +347,7 @@ class _PreviewGreeting extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           const Text(
-            'Hello, Alex 👋',
+            'こんにちは、太郎さん 👋',
             style: TextStyle(
               color: AppColors.slate800,
               fontSize: 24,
@@ -372,7 +356,7 @@ class _PreviewGreeting extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           const Text(
-            "Let's keep the momentum going!",
+            '今日も頑張りましょう！',
             style: TextStyle(
               color: AppColors.slate600,
               fontSize: 14,
@@ -413,7 +397,7 @@ class _PreviewNoGoalCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'No Goal Set',
+            '目標未設定',
             style: TextStyle(
               color: Colors.white,
               fontSize: 18,
@@ -422,7 +406,7 @@ class _PreviewNoGoalCard extends StatelessWidget {
           ),
           SizedBox(height: 8),
           Text(
-            'Ask your trainer to set a goal for you!',
+            'トレーナーに目標を設定してもらいましょう！',
             style: TextStyle(
               color: Colors.white70,
               fontSize: 14,
@@ -452,7 +436,7 @@ class _PreviewDailySummaryCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Daily Summary',
+                '今日のまとめ',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -497,7 +481,7 @@ class _PreviewDailySummaryCard extends StatelessWidget {
                   child: const Icon(Icons.restaurant, color: AppColors.orange500, size: 16),
                 ),
                 const SizedBox(width: 10),
-                const Text('Meals', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.slate700, fontSize: 14)),
+                const Text('食事', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.slate700, fontSize: 14)),
               ],
             ),
             RichText(
@@ -526,7 +510,7 @@ class _PreviewDailySummaryCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              Text('$percentage% Logged', style: const TextStyle(color: AppColors.slate400, fontSize: 10)),
+              Text('$percentage% 記録済み', style: const TextStyle(color: AppColors.slate400, fontSize: 10)),
             ],
           ),
         ),
@@ -553,8 +537,8 @@ class _PreviewDailySummaryCard extends StatelessWidget {
             const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Activity', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.slate700, fontSize: 14)),
-                Text('This week', style: TextStyle(color: AppColors.slate400, fontSize: 10)),
+                Text('運動', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.slate700, fontSize: 14)),
+                Text('今週', style: TextStyle(color: AppColors.slate400, fontSize: 10)),
               ],
             ),
           ],
@@ -563,7 +547,7 @@ class _PreviewDailySummaryCard extends StatelessWidget {
           text: TextSpan(
             children: [
               TextSpan(text: '$count ', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.slate800, fontSize: 14)),
-              const TextSpan(text: '/ 7 Days', style: TextStyle(color: AppColors.slate400, fontSize: 12)),
+              const TextSpan(text: '/ 7日', style: TextStyle(color: AppColors.slate400, fontSize: 12)),
             ],
           ),
         ),
@@ -587,7 +571,7 @@ class _PreviewDailySummaryCard extends StatelessWidget {
               child: const Icon(Icons.monitor_weight, color: AppColors.emerald500, size: 16),
             ),
             const SizedBox(width: 10),
-            const Text('Weight', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.slate700, fontSize: 14)),
+            const Text('体重', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.slate700, fontSize: 14)),
           ],
         ),
         Column(
@@ -602,7 +586,7 @@ class _PreviewDailySummaryCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
-                '${change > 0 ? '+' : ''}${change.toStringAsFixed(1)}kg vs yest.',
+                '${change > 0 ? '+' : ''}${change.toStringAsFixed(1)}kg 前日比',
                 style: TextStyle(color: change < 0 ? AppColors.emerald500 : AppColors.rose800, fontSize: 10, fontWeight: FontWeight.bold),
               ),
             ),

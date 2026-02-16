@@ -483,7 +483,7 @@ class _ChatInputState extends State<ChatInput> {
                             minLines: 1,
                             enabled: !_isUploading,
                             decoration: const InputDecoration(
-                              hintText: 'Message... (# for tags)',
+                              hintText: 'メッセージ... (#でタグ入力)',
                               border: InputBorder.none,
                               contentPadding: EdgeInsets.symmetric(
                                   horizontal: 4, vertical: 10),

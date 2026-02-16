@@ -415,7 +415,7 @@ Widget previewGoalCardBothStates() {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              const Text('In Progress',
+              const Text('進行中',
                   style:
                       TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
@@ -426,7 +426,7 @@ Widget previewGoalCardBothStates() {
                 targetDate: DateTime(2026, 3, 15),
               ),
               const SizedBox(height: 24),
-              const Text('Achieved',
+              const Text('達成',
                   style:
                       TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),

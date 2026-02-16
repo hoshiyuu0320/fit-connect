@@ -101,9 +101,9 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildNavItem(0, LucideIcons.home, 'Home'),
-                    _buildNavItem(1, LucideIcons.messageSquare, 'Message', badgeCount: unreadCount),
-                    _buildNavItem(2, LucideIcons.barChart2, 'Records'),
+                    _buildNavItem(0, LucideIcons.home, 'ホーム'),
+                    _buildNavItem(1, LucideIcons.messageSquare, 'メッセージ', badgeCount: unreadCount),
+                    _buildNavItem(2, LucideIcons.barChart2, '記録'),
                     _buildNavItem(3, LucideIcons.settings, '設定'),
                   ],
                 ),

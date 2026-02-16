@@ -170,7 +170,7 @@ class _MealRecordScreenState extends ConsumerState<MealRecordScreen> {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) => Center(child: Text('エラー: $e')),
       ),
     );
   }
@@ -270,7 +270,7 @@ class _MealRecordScreenState extends ConsumerState<MealRecordScreen> {
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Error: $e')),
+      error: (e, _) => Center(child: Text('エラー: $e')),
     );
   }
 
