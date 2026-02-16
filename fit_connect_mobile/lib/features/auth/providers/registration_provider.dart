@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:fit_connect_mobile/services/supabase_service.dart';
+import 'package:fit_connect_mobile/services/storage_service.dart';
 
 part 'registration_provider.g.dart';
 
@@ -9,6 +11,9 @@ class RegistrationState {
   final String? trainerName;
   final String? trainerImageUrl;
   final String? clientName;
+  final int? clientAge;
+  final String? clientGender; // 'male' / 'female' / 'other'
+  final File? profileImageFile;
   final bool isRegistrationComplete;
 
   const RegistrationState({
@@ -16,6 +21,9 @@ class RegistrationState {
     this.trainerName,
     this.trainerImageUrl,
     this.clientName,
+    this.clientAge,
+    this.clientGender,
+    this.profileImageFile,
     this.isRegistrationComplete = false,
   });
 
@@ -24,6 +32,9 @@ class RegistrationState {
     String? trainerName,
     String? trainerImageUrl,
     String? clientName,
+    int? clientAge,
+    String? clientGender,
+    File? Function()? profileImageFile,
     bool? isRegistrationComplete,
   }) {
     return RegistrationState(
@@ -31,6 +42,9 @@ class RegistrationState {
       trainerName: trainerName ?? this.trainerName,
       trainerImageUrl: trainerImageUrl ?? this.trainerImageUrl,
       clientName: clientName ?? this.clientName,
+      clientAge: clientAge ?? this.clientAge,
+      clientGender: clientGender ?? this.clientGender,
+      profileImageFile: profileImageFile != null ? profileImageFile() : this.profileImageFile,
       isRegistrationComplete: isRegistrationComplete ?? this.isRegistrationComplete,
     );
   }
@@ -66,6 +80,21 @@ class RegistrationNotifier extends _$RegistrationNotifier {
     state = state.copyWith(clientName: name);
   }
 
+  /// クライアント年齢をセット
+  void setClientAge(int age) {
+    state = state.copyWith(clientAge: age);
+  }
+
+  /// クライアント性別をセット
+  void setClientGender(String gender) {
+    state = state.copyWith(clientGender: gender);
+  }
+
+  /// プロフィール画像をセット
+  void setProfileImage(File? file) {
+    state = state.copyWith(profileImageFile: () => file);
+  }
+
   /// 登録完了フラグをセット
   void setRegistrationComplete(bool value) {
     state = state.copyWith(isRegistrationComplete: value);
@@ -95,6 +124,9 @@ class RegistrationNotifier extends _$RegistrationNotifier {
         trainerName: response['name'] as String?,
         trainerImageUrl: response['profile_image_url'] as String?,
         clientName: state.clientName,
+        clientAge: state.clientAge,
+        clientGender: state.clientGender,
+        profileImageFile: state.profileImageFile,
       );
       return true;
     } catch (e) {
@@ -122,7 +154,23 @@ class RegistrationNotifier extends _$RegistrationNotifier {
       'trainer_id': trainerId,
       'name': state.clientName?.isNotEmpty == true ? state.clientName : '新規クライアント',
       'email': userEmail,
+      if (state.clientAge != null) 'age': state.clientAge,
+      if (state.clientGender != null) 'gender': state.clientGender,
     }, onConflict: 'client_id');
+
+    // プロフィール画像をアップロード（選択されている場合）
+    if (state.profileImageFile != null) {
+      final imageUrl = await StorageService.uploadProfileImage(
+        state.profileImageFile!,
+        userId,
+      );
+      if (imageUrl != null) {
+        await SupabaseService.client
+            .from('clients')
+            .update({'profile_image_url': imageUrl})
+            .eq('client_id', userId);
+      }
+    }
 
     // 注意: ここでcurrentClientProviderをinvalidateしない
     // invalidateすると_AuthLoadingScreenが再ビルドされ、即座にMainScreenに遷移してしまう
