@@ -291,7 +291,6 @@ Send message from trainer to client.
 5. Clean up subscription on unmount
 
 # 開発フロー
-- レイアウトは既存のレイアウトを踏襲すること
 
 ## Subagents（専門エージェント）
 
@@ -299,13 +298,13 @@ Send message from trainer to client.
 
 ### 利用可能なサブエージェント
 
-| エージェント | ファイル | 用途 |
-|-------------|---------|------|
+| エージェント         | ファイル                      | 用途                                       |
+| -------------------- | ----------------------------- | ------------------------------------------ |
 | **Next.js UI Agent** | `.claude/agents/nextjs-ui.md` | Page/Component作成、Tailwind CSS、Radix UI |
-| **Supabase Agent** | `.claude/agents/supabase.md` | クエリ関数、API Route、Realtime購読 |
-| **Zustand Agent** | `.claude/agents/zustand.md` | Store作成、グローバル状態管理 |
-| **Explore Agent** | `.claude/agents/explore.md` | コードベース調査・探索、実装箇所特定 |
-| **Plan Agent** | `.claude/agents/plan.md` | 複雑なタスクの計画・設計、タスク分解 |
+| **Supabase Agent**   | `.claude/agents/supabase.md`  | クエリ関数、API Route、Realtime購読        |
+| **Zustand Agent**    | `.claude/agents/zustand.md`   | Store作成、グローバル状態管理              |
+| **Explore Agent**    | `.claude/agents/explore.md`   | コードベース調査・探索、実装箇所特定       |
+| **Plan Agent**       | `.claude/agents/plan.md`      | 複雑なタスクの計画・設計、タスク分解       |
 
 ### 使用方法
 
@@ -379,14 +378,14 @@ Send message from trainer to client.
 
 ### エージェント委託のパターン
 
-| タスク種別 | 委託先 (subagent_type) | 用途 |
-|-----------|----------------------|------|
-| Page/Component作成・修正 | `nextjs-ui` | Tailwind CSS + Radix UIによるUI実装 |
-| Supabaseクエリ・API Route | `supabase` | DB操作関数、API Route、Realtime購読、RLS |
-| Zustand Store操作 | `zustand` | Store作成・拡張、状態の永続化 |
-| コードベース調査 | `explore` | 実装箇所の特定、依存関係の解析 |
-| 実装計画の作成 | `plan` | 複雑なタスクの計画・設計・タスク分解 |
-| ビルド・テスト・Git操作 | `Bash` | コマンド実行、ビルド確認 |
+| タスク種別                | 委託先 (subagent_type) | 用途                                     |
+| ------------------------- | ---------------------- | ---------------------------------------- |
+| Page/Component作成・修正  | `nextjs-ui`            | Tailwind CSS + Radix UIによるUI実装      |
+| Supabaseクエリ・API Route | `supabase`             | DB操作関数、API Route、Realtime購読、RLS |
+| Zustand Store操作         | `zustand`              | Store作成・拡張、状態の永続化            |
+| コードベース調査          | `explore`              | 実装箇所の特定、依存関係の解析           |
+| 実装計画の作成            | `plan`                 | 複雑なタスクの計画・設計・タスク分解     |
+| ビルド・テスト・Git操作   | `Bash`                 | コマンド実行、ビルド確認                 |
 
 ### 委託時の必須情報
 
@@ -435,3 +434,18 @@ Send message from trainer to client.
 
 5. 全体の動作確認・IMPLEMENTATION_TASKS.md更新
 ```
+
+### セッション継続
+
+作業を再開するときは、まず以下を読むこと
+
+- `docs/tasks/IMPLEMENTATION_TASKS.md` - 未着手タスクと進捗
+- `docs/tasks/lessons.md` - 過去の失敗と学び
+
+変更があった場合、上記を更新すること。
+
+### チーム編成
+
+セッション継続の情報をもとに、チーム編成（最大3人）を行い並列作業せよ
+
+複数のエージェントで同一タスクを同時に実行する場合は、同時に同じファイルを触らないこと（上書きを発生させないこと）
