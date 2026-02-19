@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { getTrainerDetail } from '@/lib/supabase/getTrainerDetail'
 import { useUserStore } from '@/store/userStore'
 import { ProfileSection } from '@/components/settings/ProfileSection'
+import { ScheduleSection } from '@/components/settings/ScheduleSection'
 import { NotificationSection } from '@/components/settings/NotificationSection'
 import { AccountSection } from '@/components/settings/AccountSection'
 import type { Trainer } from '@/types/trainer'
@@ -84,6 +85,9 @@ export default function SettingsPage() {
 
         {/* プロフィール情報 */}
         <ProfileSection trainer={trainer} onUpdate={handleUpdate} />
+
+        {/* 対応スケジュール */}
+        <ScheduleSection trainer={trainer} />
 
         {/* 通知設定 */}
         <NotificationSection />
