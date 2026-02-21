@@ -8,6 +8,8 @@ import 'package:fit_connect_mobile/features/goals/providers/goal_provider.dart';
 import 'package:fit_connect_mobile/features/weight_records/providers/weight_records_provider.dart';
 import 'package:fit_connect_mobile/features/home/presentation/widgets/goal_card.dart';
 import 'package:fit_connect_mobile/features/home/presentation/widgets/daily_summary_card.dart';
+import 'package:fit_connect_mobile/features/schedules/providers/trainer_schedule_provider.dart';
+import 'package:fit_connect_mobile/features/schedules/presentation/widgets/trainer_status_card.dart';
 
 class HomeScreen extends ConsumerWidget {
   final void Function(int tabIndex)? onNavigateToRecordsTab;
@@ -26,6 +28,8 @@ class HomeScreen extends ConsumerWidget {
     final goalAsync = ref.watch(currentGoalProvider);
     final latestWeightAsync = ref.watch(latestWeightRecordProvider);
     final achievementRateAsync = ref.watch(achievementRateProvider);
+    final trainerProfile = ref.watch(trainerProfileProvider);
+    final isTrainerOnline = ref.watch(trainerCurrentStatusProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -47,7 +51,16 @@ class HomeScreen extends ConsumerWidget {
                 achievementRateAsync,
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
+
+              // Trainer Status Card
+              TrainerStatusCard(
+                trainerName: trainerProfile.valueOrNull?.name ?? 'トレーナー',
+                isOnline: isTrainerOnline,
+                profileImageUrl: trainerProfile.valueOrNull?.profileImageUrl,
+              ),
+
+              const SizedBox(height: 16),
 
               // Daily Summary
               DailySummaryCard(
@@ -273,7 +286,13 @@ Widget previewHomeScreenStatic() {
               const SizedBox(height: 24),
               // Goal Card Preview
               _PreviewGoalCard(),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
+              // Trainer Status Card Preview
+              const TrainerStatusCard(
+                trainerName: '山田トレーナー',
+                isOnline: true,
+              ),
+              const SizedBox(height: 16),
               // Daily Summary Preview
               _PreviewDailySummaryCard(),
             ],
@@ -299,7 +318,12 @@ Widget previewHomeScreenNoGoal() {
               _PreviewGreeting(),
               const SizedBox(height: 24),
               _PreviewNoGoalCard(),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
+              const TrainerStatusCard(
+                trainerName: '山田トレーナー',
+                isOnline: false,
+              ),
+              const SizedBox(height: 16),
               _PreviewDailySummaryCard(),
             ],
           ),
