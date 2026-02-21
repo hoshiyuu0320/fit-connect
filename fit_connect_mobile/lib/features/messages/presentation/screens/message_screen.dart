@@ -12,6 +12,7 @@ import 'package:fit_connect_mobile/features/auth/providers/auth_provider.dart';
 import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
+import 'package:fit_connect_mobile/features/schedules/providers/trainer_schedule_provider.dart';
 
 class MessageScreen extends ConsumerStatefulWidget {
   const MessageScreen({super.key});
@@ -219,14 +220,36 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
     final currentUser = ref.watch(authNotifierProvider).valueOrNull;
     final trainerProfile = ref.watch(trainerProfileProvider).valueOrNull;
     final trainerName = trainerProfile?.name ?? 'トレーナー';
+    final isTrainerOnline = ref.watch(trainerCurrentStatusProvider);
 
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
         backgroundColor: AppColors.slate50,
-        appBar: _buildAppBar(trainerName),
+        appBar: _buildAppBar(trainerName, isTrainerOnline, trainerProfile?.profileImageUrl),
         body: Column(
           children: [
+            if (!isTrainerOnline)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                color: const Color(0xFFFFFBEB),
+                child: Row(
+                  children: [
+                    Icon(LucideIcons.clock, size: 16, color: AppColors.amber700),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'トレーナーは現在オフライン時間帯です。返信が遅くなる場合があります。',
+                        style: TextStyle(
+                          color: AppColors.slate700,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             Expanded(
               child: stateAsync.when(
                 data: (paginatedState) {
@@ -277,7 +300,7 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
     );
   }
 
-  PreferredSizeWidget _buildAppBar(String trainerName) {
+  PreferredSizeWidget _buildAppBar(String trainerName, bool isOnline, String? profileImageUrl) {
     return AppBar(
       backgroundColor: Colors.white,
       elevation: 0,
@@ -295,22 +318,32 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
                     color: AppColors.slate200,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(LucideIcons.user, color: AppColors.slate400),
+                  child: profileImageUrl != null
+                      ? ClipOval(
+                          child: Image.network(
+                            profileImageUrl,
+                            width: 40,
+                            height: 40,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Icon(LucideIcons.user, color: AppColors.slate400),
+                          ),
+                        )
+                      : const Icon(LucideIcons.user, color: AppColors.slate400),
                 ),
-                // TODO: オンラインステータス表示は後で実装する
-                // Positioned(
-                //   bottom: 0,
-                //   right: 0,
-                //   child: Container(
-                //     width: 12,
-                //     height: 12,
-                //     decoration: BoxDecoration(
-                //       color: AppColors.success,
-                //       shape: BoxShape.circle,
-                //       border: Border.all(color: Colors.white, width: 2),
-                //     ),
-                //   ),
-                // ),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: isOnline ? AppColors.success : AppColors.slate300,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                  ),
+                ),
               ],
             ),
             const SizedBox(width: 12),
@@ -325,15 +358,14 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                // TODO: オンラインステータス表示は後で実装する
-                // Text(
-                //   'Online',
-                //   style: TextStyle(
-                //     color: AppColors.success,
-                //     fontSize: 10,
-                //     fontWeight: FontWeight.w500,
-                //   ),
-                // ),
+                Text(
+                  isOnline ? 'オンライン' : 'オフライン',
+                  style: TextStyle(
+                    color: isOnline ? AppColors.success : AppColors.slate400,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ],
             ),
           ],
@@ -465,6 +497,7 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
                 isSystem: false,
                 isEdited: message.isEdited,
                 isRead: isUser && message.readAt != null,
+                trainerProfileImageUrl: trainerProfile?.profileImageUrl,
                 onReply: () => _setReplyTarget(message),
                 onEdit: isUser ? () => _setEditTarget(message) : null,
               );

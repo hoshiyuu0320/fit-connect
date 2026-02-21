@@ -20,6 +20,7 @@ class MessageBubble extends StatelessWidget {
   final VoidCallback? onEdit;
   final bool isEdited;
   final bool isRead;
+  final String? trainerProfileImageUrl;
 
   const MessageBubble({
     super.key,
@@ -36,6 +37,7 @@ class MessageBubble extends StatelessWidget {
     this.onEdit,
     this.isEdited = false,
     this.isRead = false,
+    this.trainerProfileImageUrl,
   });
 
   /// メッセージからタグ部分を除去した本文を取得
@@ -129,11 +131,19 @@ class MessageBubble extends StatelessWidget {
                 decoration: const BoxDecoration(
                   color: AppColors.slate200,
                   shape: BoxShape.circle,
-                  image: DecorationImage(
-                    image: NetworkImage('https://picsum.photos/seed/trainer/100/100'),
-                    fit: BoxFit.cover,
-                  ),
                 ),
+                child: trainerProfileImageUrl != null
+                    ? ClipOval(
+                        child: Image.network(
+                          trainerProfileImageUrl!,
+                          width: 32,
+                          height: 32,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(LucideIcons.user, size: 18, color: AppColors.slate400),
+                        ),
+                      )
+                    : const Icon(LucideIcons.user, size: 18, color: AppColors.slate400),
               ),
             ],
 
