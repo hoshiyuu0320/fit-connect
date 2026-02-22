@@ -46,13 +46,13 @@ FIT-CONNECT Mobile is a Flutter-based fitness management app connecting trainers
 
 ### エージェント委託のパターン
 
-| タスク種別 | 委託先 | 指示例 |
-|-----------|--------|--------|
+| タスク種別        | 委託先           | 指示例                                                  |
+| ----------------- | ---------------- | ------------------------------------------------------- |
 | Widget/Screen作成 | Flutter UI Agent | 「〇〇画面を作成。AppColorsを使用、プレビュー関数必須」 |
-| Provider作成 | Riverpod Agent | 「〇〇Providerを作成。AsyncNotifierパターンで」 |
-| DB変更 | Supabase Agent | 「〇〇テーブルにカラム追加のマイグレーション作成」 |
-| 調査・探索 | Explore Agent | 「〇〇の実装箇所を特定」 |
-| 複雑なタスク | Plan Agent | 「〇〇機能の実装計画を作成」 |
+| Provider作成      | Riverpod Agent   | 「〇〇Providerを作成。AsyncNotifierパターンで」         |
+| DB変更            | Supabase Agent   | 「〇〇テーブルにカラム追加のマイグレーション作成」      |
+| 調査・探索        | Explore Agent    | 「〇〇の実装箇所を特定」                                |
+| 複雑なタスク      | Plan Agent       | 「〇〇機能の実装計画を作成」                            |
 
 ### 委託時の必須情報
 
@@ -227,14 +227,14 @@ await SupabaseService.initialize();
 
 **Key Tables:**
 
-| Table              | Purpose             | Key Features                                        |
-| ------------------ | ------------------- | --------------------------------------------------- |
-| `trainers`         | Trainer profiles    | Auth integration, name, email, profile_image_url    |
+| Table              | Purpose             | Key Features                                           |
+| ------------------ | ------------------- | ------------------------------------------------------ |
+| `trainers`         | Trainer profiles    | Auth integration, name, email, profile_image_url       |
 | `clients`          | Client records      | Goal tracking, biometrics, trainer relationship, email |
-| `messages`         | Trainer-client chat | Tags, replies, 5-min edit window, image attachments |
-| `weight_records`   | Weight logs         | Message integration, auto goal tracking             |
-| `meal_records`     | Meal logs           | Nutrition tracking, message-sourced records         |
-| `exercise_records` | Exercise logs       | 9 exercise types, image attachments                 |
+| `messages`         | Trainer-client chat | Tags, replies, 5-min edit window, image attachments    |
+| `weight_records`   | Weight logs         | Message integration, auto goal tracking                |
+| `meal_records`     | Meal logs           | Nutrition tracking, message-sourced records            |
+| `exercise_records` | Exercise logs       | 9 exercise types, image attachments                    |
 
 **Database Functions:**
 - `check_goal_achievement(client_id, weight)` - Returns true if client reached target
@@ -479,13 +479,13 @@ supabase functions deploy parse-message-tags --no-verify-jwt
 
 ### 利用可能なサブエージェント
 
-| エージェント | ファイル | 用途 |
-|-------------|---------|------|
+| エージェント         | ファイル                       | 用途                                  |
+| -------------------- | ------------------------------ | ------------------------------------- |
 | **Flutter UI Agent** | `.claude/agents/flutter-ui.md` | Widget/Screen作成、プレビュー関数生成 |
-| **Supabase Agent** | `.claude/agents/supabase.md` | マイグレーション、Edge Functions、RLS |
-| **Riverpod Agent** | `.claude/agents/riverpod.md` | Provider作成、状態管理パターン |
-| **Explore Agent** | `.claude/agents/explore.md` | コードベース調査・探索、実装箇所特定 |
-| **Plan Agent** | `.claude/agents/plan.md` | 複雑なタスクの計画・設計、タスク分解 |
+| **Supabase Agent**   | `.claude/agents/supabase.md`   | マイグレーション、Edge Functions、RLS |
+| **Riverpod Agent**   | `.claude/agents/riverpod.md`   | Provider作成、状態管理パターン        |
+| **Explore Agent**    | `.claude/agents/explore.md`    | コードベース調査・探索、実装箇所特定  |
+| **Plan Agent**       | `.claude/agents/plan.md`       | 複雑なタスクの計画・設計、タスク分解  |
 
 ### 使用方法
 
@@ -515,3 +515,12 @@ supabase functions deploy parse-message-tags --no-verify-jwt
 - 実装計画の作成プロセス
 - タスク分解の基準
 - 担当エージェントの割り当て
+
+### セッション継続
+
+作業を再開するときは、まず以下を読むこと
+
+- `docs/tasks/IMPLEMENTATION_TASKS.md` - 未着手タスクと進捗
+- `docs/tasks/lessons.md` - 過去の失敗と学び
+
+変更があった場合、上記を更新すること。

@@ -7,9 +7,66 @@ import 'package:fit_connect_mobile/features/exercise_records/models/exercise_rec
 import 'package:fit_connect_mobile/features/exercise_records/providers/exercise_records_provider.dart';
 import 'package:fit_connect_mobile/features/exercise_records/presentation/widgets/exercise_week_calendar.dart';
 import 'package:fit_connect_mobile/features/exercise_records/presentation/widgets/exercise_month_calendar.dart';
+import 'package:fit_connect_mobile/features/workout/providers/workout_provider.dart';
+import 'package:fit_connect_mobile/features/workout/models/workout_assignment_model.dart';
+import 'package:fit_connect_mobile/features/workout/models/workout_assignment_exercise_model.dart';
+import 'package:fit_connect_mobile/features/workout/models/actual_set_model.dart';
+import 'package:fit_connect_mobile/features/exercise_records/presentation/widgets/completed_workout_card.dart';
 import 'package:fit_connect_mobile/shared/models/period_filter.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
+
+// 統合表示用のラッパー型
+sealed class _ActivityItem {
+  DateTime get date;
+  Widget buildCard(_ExerciseRecordScreenState state);
+}
+
+class _ExerciseRecordItem extends _ActivityItem {
+  final ExerciseRecord record;
+  _ExerciseRecordItem(this.record);
+
+  @override
+  DateTime get date => DateTime(
+        record.recordedAt.year,
+        record.recordedAt.month,
+        record.recordedAt.day,
+      );
+
+  @override
+  Widget buildCard(_ExerciseRecordScreenState state) =>
+      state._buildExerciseCard(record);
+}
+
+class _WorkoutAssignmentItem extends _ActivityItem {
+  final WorkoutAssignment assignment;
+  _WorkoutAssignmentItem(this.assignment);
+
+  @override
+  DateTime get date {
+    if (assignment.finishedAt != null) {
+      return DateTime(
+        assignment.finishedAt!.year,
+        assignment.finishedAt!.month,
+        assignment.finishedAt!.day,
+      );
+    }
+    // fallback: assignedDate を parse
+    final parts = assignment.assignedDate.split('-');
+    if (parts.length == 3) {
+      return DateTime(
+        int.parse(parts[0]),
+        int.parse(parts[1]),
+        int.parse(parts[2]),
+      );
+    }
+    return DateTime.now();
+  }
+
+  @override
+  Widget buildCard(_ExerciseRecordScreenState state) =>
+      CompletedWorkoutCard(assignment: assignment);
+}
 
 class ExerciseRecordScreen extends ConsumerStatefulWidget {
   const ExerciseRecordScreen({super.key});
@@ -37,6 +94,9 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
     final caloriesAsync = ref.watch(
       exerciseTotalCaloriesProvider(period: _selectedPeriod),
     );
+    final workoutsAsync = ref.watch(
+      completedWorkoutAssignmentsProvider(period: _selectedPeriod),
+    );
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -63,8 +123,8 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
           const SizedBox(height: 16),
         ],
 
-        // Exercise Records List
-        _buildRecordsList(recordsAsync),
+        // Exercise Records List (with workout assignments)
+        _buildRecordsList(recordsAsync, workoutsAsync),
       ],
     );
   }
@@ -318,83 +378,103 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
     );
   }
 
-  Widget _buildRecordsList(AsyncValue<List<ExerciseRecord>> recordsAsync) {
-    return recordsAsync.when(
-      data: (records) {
-        if (records.isEmpty) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(40),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(LucideIcons.dumbbell,
-                      size: 48, color: AppColors.slate300),
-                  const SizedBox(height: 12),
-                  const Text(
-                    '運動記録がありません',
-                    style: TextStyle(color: AppColors.slate400),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    '運動を記録しましょう！',
-                    style: TextStyle(color: AppColors.slate300, fontSize: 12),
-                  ),
-                ],
+  Widget _buildRecordsList(
+    AsyncValue<List<ExerciseRecord>> recordsAsync,
+    AsyncValue<List<WorkoutAssignment>> workoutsAsync,
+  ) {
+    // どちらかがロード中の場合はローディング表示
+    if (recordsAsync.isLoading || workoutsAsync.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    // エラーハンドリング（recordsを優先）
+    if (recordsAsync.hasError) {
+      return Center(child: Text('エラー: ${recordsAsync.error}'));
+    }
+
+    final records = recordsAsync.valueOrNull ?? [];
+    final allWorkouts = workoutsAsync.valueOrNull ?? [];
+
+    // TypeFilterに応じてワークアウト表示を切り替える
+    // cardio フィルター選択時はワークアウトを非表示
+    // すべて or strength_training のときはワークアウトも表示
+    final showWorkouts = _selectedType != 'cardio';
+    final filteredWorkouts = showWorkouts ? allWorkouts : <WorkoutAssignment>[];
+
+    // 統合アイテムリストを作成
+    final List<_ActivityItem> items = [
+      ...records.map(_ExerciseRecordItem.new),
+      ...filteredWorkouts.map(_WorkoutAssignmentItem.new),
+    ];
+
+    // 両データソースが空の場合のみ空状態を表示
+    if (items.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(LucideIcons.dumbbell,
+                  size: 48, color: AppColors.slate300),
+              const SizedBox(height: 12),
+              const Text(
+                '運動記録がありません',
+                style: TextStyle(color: AppColors.slate400),
               ),
-            ),
-          );
-        }
+              const SizedBox(height: 8),
+              const Text(
+                '運動を記録しましょう！',
+                style: TextStyle(color: AppColors.slate300, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
-        // Group records by date
-        final groupedRecords = _groupRecordsByDate(records);
+    // 日付降順でソート
+    items.sort((a, b) => b.date.compareTo(a.date));
 
+    // 日付グルーピング
+    final Map<DateTime, List<_ActivityItem>> grouped = {};
+    for (final item in items) {
+      grouped.putIfAbsent(item.date, () => []);
+      grouped[item.date]!.add(item);
+    }
+
+    // 日付キーを降順にソート
+    final sortedDates = grouped.keys.toList()
+      ..sort((a, b) => b.compareTo(a));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: sortedDates.map((date) {
+        final dateItems = grouped[date]!;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: groupedRecords.entries.map((entry) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Date Header
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12.0),
-                  child: Text(
-                    _formatDateHeader(entry.key),
-                    style: const TextStyle(
-                      color: AppColors.slate800,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+          children: [
+            // Date Header
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12.0),
+              child: Text(
+                _formatDateHeader(date),
+                style: const TextStyle(
+                  color: AppColors.slate800,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
                 ),
-                const Divider(height: 1, color: AppColors.slate100),
-                const SizedBox(height: 16),
-                // Exercise Cards
-                ...entry.value.map((record) => _buildExerciseCard(record)),
-                const SizedBox(height: 8),
-              ],
-            );
-          }).toList(),
+              ),
+            ),
+            const Divider(height: 1, color: AppColors.slate100),
+            const SizedBox(height: 16),
+            // Activity Cards
+            ...dateItems.map((item) => item.buildCard(this)),
+            const SizedBox(height: 8),
+          ],
         );
-      },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('エラー: $e')),
+      }).toList(),
     );
-  }
-
-  Map<DateTime, List<ExerciseRecord>> _groupRecordsByDate(
-      List<ExerciseRecord> records) {
-    final Map<DateTime, List<ExerciseRecord>> grouped = {};
-    for (final record in records) {
-      final date = DateTime(
-        record.recordedAt.year,
-        record.recordedAt.month,
-        record.recordedAt.day,
-      );
-      grouped.putIfAbsent(date, () => []);
-      grouped[date]!.add(record);
-    }
-    return grouped;
   }
 
   String _formatDateHeader(DateTime date) {
@@ -559,7 +639,7 @@ Widget previewExerciseRecordScreenStatic() {
             _PreviewWeekCalendar(),
             const SizedBox(height: 16),
 
-            // Records List Preview
+            // Records List Preview (with workout cards)
             _PreviewRecordsList(),
           ],
         ),
@@ -904,16 +984,33 @@ class _PreviewRecordsList extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        // Today section
+        Text(
           '今日',
-          style: TextStyle(
+          style: const TextStyle(
             color: AppColors.slate800,
             fontSize: 14,
             fontWeight: FontWeight.bold,
           ),
         ),
         const Divider(height: 24, color: AppColors.slate100),
-        ..._mockExerciseRecords.map((record) => _buildExerciseCard(record)),
+        _buildExerciseCard(_mockExerciseRecords[0]),
+        CompletedWorkoutCard(assignment: _mockWorkoutAssignment),
+        const SizedBox(height: 8),
+
+        // Yesterday section
+        Text(
+          '昨日',
+          style: const TextStyle(
+            color: AppColors.slate800,
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const Divider(height: 24, color: AppColors.slate100),
+        _buildExerciseCard(_mockExerciseRecords[1]),
+        _buildExerciseCard(_mockExerciseRecords[2]),
+        const SizedBox(height: 8),
       ],
     );
   }
@@ -1152,7 +1249,7 @@ final _mockExerciseRecords = [
     duration: 30,
     distance: 5.0,
     calories: 280,
-    recordedAt: DateTime.now().subtract(const Duration(hours: 8)),
+    recordedAt: DateTime.now().subtract(const Duration(days: 1, hours: 8)),
     source: 'message',
     messageId: 'msg-1',
     createdAt: DateTime.now(),
@@ -1174,3 +1271,36 @@ final _mockExerciseRecords = [
     updatedAt: DateTime.now(),
   ),
 ];
+
+final _mockWorkoutAssignment = WorkoutAssignment(
+  id: 'preview-wa-1',
+  clientId: 'client-1',
+  trainerId: 'trainer-1',
+  planId: 'plan-1',
+  assignedDate: '2026-02-22',
+  status: 'completed',
+  finishedAt: DateTime.now().subtract(const Duration(hours: 4)),
+  planInfo: const WorkoutPlanInfo(
+    title: '上半身トレーニング',
+    category: '上半身',
+    estimatedMinutes: 45,
+    planType: 'self_guided',
+  ),
+  exercises: [
+    WorkoutAssignmentExercise(
+      id: 'preview-ex-1',
+      assignmentId: 'preview-wa-1',
+      exerciseName: 'ベンチプレス',
+      targetSets: 3,
+      targetReps: 10,
+      targetWeight: 60.0,
+      orderIndex: 0,
+      isCompleted: true,
+      actualSets: const [
+        ActualSet(setNumber: 1, reps: 10, weight: 60.0, done: true),
+        ActualSet(setNumber: 2, reps: 8, weight: 65.0, done: true),
+        ActualSet(setNumber: 3, reps: 8, weight: 60.0, done: true),
+      ],
+    ),
+  ],
+);
