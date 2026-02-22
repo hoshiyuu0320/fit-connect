@@ -10,6 +10,7 @@ import 'package:fit_connect_mobile/features/goals/providers/goal_achievement_pro
 import 'package:fit_connect_mobile/features/goals/presentation/widgets/goal_achievement_overlay.dart';
 import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
 import 'package:fit_connect_mobile/features/messages/providers/messages_provider.dart';
+import 'package:fit_connect_mobile/features/workout/presentation/screens/workout_screen.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 class MainScreen extends ConsumerStatefulWidget {
@@ -26,7 +27,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
   void _navigateToRecordsTab(int tabIndex) {
     setState(() {
-      _currentIndex = 2;
+      _currentIndex = 3;
       _recordsTabIndex = tabIndex;
     });
   }
@@ -36,6 +37,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
       onNavigateToRecordsTab: _navigateToRecordsTab,
     ),
     const MessageScreen(),
+    const WorkoutScreen(),
     RecordsScreen(
       initialTabIndex: _recordsTabIndex,
       onTabChanged: (index) => _recordsTabIndex = index,
@@ -103,8 +105,9 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                   children: [
                     _buildNavItem(0, LucideIcons.home, 'ホーム'),
                     _buildNavItem(1, LucideIcons.messageSquare, 'メッセージ', badgeCount: unreadCount),
-                    _buildNavItem(2, LucideIcons.barChart2, '記録'),
-                    _buildNavItem(3, LucideIcons.settings, '設定'),
+                    _buildNavItem(2, LucideIcons.dumbbell, 'プラン'),
+                    _buildNavItem(3, LucideIcons.barChart2, '記録'),
+                    _buildNavItem(4, LucideIcons.settings, '設定'),
                   ],
                 ),
               ),

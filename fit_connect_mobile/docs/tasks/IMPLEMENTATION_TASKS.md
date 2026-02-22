@@ -1,9 +1,9 @@
 # FIT-CONNECT Mobile - 実装タスク一覧
 
 **作成日**: 2025年12月30日
-**バージョン**: 3.5
+**バージョン**: 3.6
 **進捗状況**: 全体 99% 完了
-**最終更新**: 2026年2月15日 - カルテ（クライアントノート）閲覧機能実装完了
+**最終更新**: 2026年2月23日 - ワークアウト機能実装完了
 
 ---
 
@@ -157,6 +157,20 @@
   - ✅ MessageScreenで編集機能統合
   - ✅ 5分以内編集可能、期限切れエラー表示
   - ✅ UIプレビュー関数追加
+- ✅ **ワークアウト機能実装**
+  - ✅ DBマイグレーション（workout_plans, workout_assignments, workout_assignment_exercises テーブル）
+  - ✅ データモデル作成（WorkoutAssignment, WorkoutAssignmentExercise, WorkoutPlanInfo, ActualSet, WorkoutScreenState）
+  - ✅ WorkoutRepository実装（今日/期限切れ/週間/完了済み取得、種目完了トグル、セット記録更新、完了報告、スキップ、日付変更）
+  - ✅ WorkoutScreenNotifier実装（画面状態管理、楽観的更新）
+  - ✅ ワークアウト画面実装（今日のワークアウト、種目チェック、セット記録、完了報告）
+  - ✅ 期限切れアサインメント自動表示（OverdueAssignmentCard）
+  - ✅ アクションボタン（今日やる / スキップ / 日付変更）
+  - ✅ スキップ確認モーダル
+  - ✅ 週間ミニカレンダー（WeeklyMiniCalendar）
+  - ✅ カレンダー日付タップ → ボトムシートで種目詳細表示
+  - ✅ 完了済みワークアウトを運動記録タブに統合表示（CompletedWorkoutCard）
+  - ✅ auto-skip Edge Function デプロイ
+  - ✅ UIプレビュー関数作成
 - ✅ **プッシュ通知機能実装**
   - ✅ DBマイグレーション（fcm_tokenカラム追加）
   - ✅ NotificationService完全実装（FCMトークン管理・通知表示・タップハンドリング）
@@ -170,6 +184,85 @@
 ---
 
 ## 最新の変更履歴
+
+### 2026年2月23日
+
+#### 15. ワークアウト機能実装
+
+**目的**: トレーナーが作成したワークアウトプランをクライアントが実行・記録・管理できるようにする。期限切れアサインメントの自動表示、週間カレンダー、完了済みワークアウトの運動記録タブ統合を含む。
+
+**新規作成ファイル**:
+- `supabase/migrations/20260221000000_create_workout_tables.sql` — DBマイグレーション（workout_plans, workout_assignments, workout_assignment_exercises）
+- `lib/features/workout/models/workout_assignment_model.dart` — WorkoutAssignment + WorkoutPlanInfo モデル
+- `lib/features/workout/models/workout_assignment_exercise_model.dart` — WorkoutAssignmentExercise モデル
+- `lib/features/workout/models/actual_set_model.dart` — ActualSet モデル
+- `lib/features/workout/models/workout_screen_state.dart` — 画面状態（overdue, today, weekly）
+- `lib/features/workout/data/workout_repository.dart` — Supabaseクエリ（8メソッド）
+- `lib/features/workout/providers/workout_provider.dart` — WorkoutScreenNotifier + completedWorkoutAssignmentsProvider
+- `lib/features/workout/presentation/screens/workout_screen.dart` — ワークアウト画面
+- `lib/features/workout/presentation/widgets/weekly_mini_calendar.dart` — 週間ミニカレンダー（日付タップ→ボトムシート付き）
+- `lib/features/workout/presentation/widgets/overdue_assignment_card.dart` — 期限切れカード（3アクションボタン）
+- `lib/features/workout/presentation/widgets/reschedule_date_picker.dart` — 日付変更ダイアログ
+- `lib/features/workout/presentation/widgets/workout_completion_overlay.dart` — 完了報告オーバーレイ
+- `lib/features/exercise_records/presentation/widgets/completed_workout_card.dart` — 完了済みワークアウトカード（運動記録タブ用）
+- `supabase/functions/auto-skip-workouts/index.ts` — 自動スキップEdge Function
+
+**改修ファイル**:
+- `lib/features/home/presentation/screens/main_screen.dart` — ワークアウトタブ追加
+- `lib/features/exercise_records/presentation/screens/exercise_record_screen.dart` — 完了済みワークアウト統合表示
+
+**実装内容**:
+
+1. **DBスキーマ**
+   - `workout_plans`: トレーナーが作成するワークアウトプラン（title, category, estimated_minutes, plan_type）
+   - `workout_assignments`: クライアントへの日別割り当て（assigned_date, status: pending/completed/skipped）
+   - `workout_assignment_exercises`: 各種目の詳細（exercise_name, target_sets/reps/weight, actual_sets JSON, is_completed）
+   - RLSポリシー設定済み
+
+2. **ワークアウト画面（WorkoutScreen）**
+   - 週間ミニカレンダー → 期限切れセクション → 今日のワークアウト の3段構成
+   - 種目チェック（トグル）、セット記録入力、完了報告フロー
+   - WorkoutScreenNotifier で overdue/today/weekly の3クエリを `Future.wait` で並列取得
+
+3. **期限切れアサインメント（OverdueAssignmentCard）**
+   - 過去日の pending アサインメントを自動検出して表示
+   - 3つのアクションボタン:
+     - 「今日やる」→ assigned_date を今日に変更 + 画面全体更新（`ref.invalidateSelf()`）
+     - 「スキップ」→ 確認モーダル表示 → status='skipped' に更新
+     - 「日付変更」→ CalendarDatePicker で新しい日付選択 → 画面全体更新
+
+4. **週間ミニカレンダー（WeeklyMiniCalendar）**
+   - 月曜始まりの7日間表示、今日はprimary600ボーダー
+   - ステータス別アイコン・色: completed→✅emerald, pending+future→🏋️indigo, pending+past→⏳orange, skipped→⏭slate
+   - 日付タップ → ボトムシートでワークアウト詳細表示（種目一覧、目標セット/レップ/重量、実績セット）
+
+5. **運動記録タブ統合（ExerciseRecordScreen）**
+   - `sealed class _ActivityItem` で ExerciseRecord と WorkoutAssignment を統合
+   - `completedWorkoutAssignmentsProvider` で完了済みワークアウトを期間フィルタ付きで取得
+   - 日付降順で混在表示、TypeFilter対応（cardioではワークアウト非表示）
+
+6. **auto-skip Edge Function**
+   - 3日以上前の pending アサインメントを自動的に skipped に更新
+   - Supabase Edge Functionとしてデプロイ済み（verify_jwt: false）
+
+**画面遷移フロー**:
+```
+MainScreen (BottomNav)
+  └── ワークアウトタブ (WorkoutScreen)
+        ├── WeeklyMiniCalendar
+        │     └── [日付タップ] → BottomSheet（種目詳細表示）
+        ├── _OverdueSection
+        │     └── OverdueAssignmentCard
+        │           ├── [今日やる] → DB更新 + 画面全体更新
+        │           ├── [スキップ] → 確認モーダル → DB更新
+        │           └── [日付変更] → RescheduleDatePicker → DB更新 + 画面全体更新
+        └── 今日のワークアウト
+              ├── [種目チェック] → toggleExercise
+              ├── [セット記録] → updateExerciseSets
+              └── [完了報告] → submitCompletion → WorkoutCompletionOverlay
+```
+
+---
 
 ### 2026年2月15日
 
@@ -971,6 +1064,51 @@ class Trainer {
 
 ---
 
+### 📌 フェーズ8: ワークアウト機能 ✅ 完了
+
+**目的**: トレーナーが作成したワークアウトプランをクライアントが実行・記録・管理できるようにする
+
+#### タスク
+
+- [x] **8.1 DBスキーマ作成** ✅ 完了（2026/02/21）
+  - [x] workout_plans テーブル作成
+  - [x] workout_assignments テーブル作成（status: pending/completed/skipped）
+  - [x] workout_assignment_exercises テーブル作成（actual_sets JSON）
+  - [x] RLSポリシー設定
+
+- [x] **8.2 データモデル・Repository** ✅ 完了（2026/02/21）
+  - [x] WorkoutAssignment + WorkoutPlanInfo モデル
+  - [x] WorkoutAssignmentExercise + ActualSet モデル
+  - [x] WorkoutRepository（8メソッド: 今日/期限切れ/週間/完了済み取得、種目トグル、セット更新、完了報告、スキップ、日付変更）
+
+- [x] **8.3 ワークアウト画面** ✅ 完了（2026/02/21）
+  - [x] WorkoutScreenNotifier（overdue/today/weekly 並列取得）
+  - [x] WorkoutScreen（種目チェック、セット記録、完了報告）
+  - [x] WorkoutCompletionOverlay（完了報告オーバーレイ）
+  - [x] MainScreenにワークアウトタブ追加
+
+- [x] **8.4 期限切れ・週間カレンダー** ✅ 完了（2026/02/23）
+  - [x] OverdueAssignmentCard（今日やる/スキップ/日付変更）
+  - [x] スキップ確認モーダル
+  - [x] RescheduleDatePicker
+  - [x] WeeklyMiniCalendar（ステータス別アイコン・色）
+  - [x] カレンダー日付タップ → ボトムシートで種目詳細表示
+  - [x] 画面更新対応（今日やる・日付変更時に `ref.invalidateSelf()`）
+
+- [x] **8.5 運動記録タブ統合** ✅ 完了（2026/02/23）
+  - [x] completedWorkoutAssignmentsProvider（期間フィルタ付き）
+  - [x] CompletedWorkoutCard Widget
+  - [x] ExerciseRecordScreen統合（sealed class _ActivityItem パターン）
+  - [x] TypeFilter対応
+
+- [x] **8.6 auto-skip Edge Function** ✅ デプロイ完了（2026/02/23）
+  - [x] 3日以上前のpendingアサインメントを自動スキップ
+  - [x] Supabase Edge Functionデプロイ
+
+**期待される成果**: クライアントがワークアウトプランを実行・記録でき、期限切れの管理と週間カレンダーで進捗を確認可能 ✅ 達成
+
+---
+
 ## 既知の問題・要調査
 
 ### ✅ 新規登録後の不具合（2026/02/01 報告 → 2026/02/04 修正完了）
@@ -1113,4 +1251,4 @@ supabase/
 
 ---
 
-**最終更新**: 2026年2月10日 - 画像ギャラリー実装完了（v3.4）
+**最終更新**: 2026年2月23日 - ワークアウト機能実装完了（v3.6）
