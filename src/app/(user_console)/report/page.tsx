@@ -12,6 +12,7 @@ import { StatCards } from '@/components/report/StatCards'
 import { MealStatistics } from '@/components/report/MealStatistics'
 import { ExerciseStatistics } from '@/components/report/ExerciseStatistics'
 import { WeightChart } from '@/components/clients/WeightChart'
+import { GoalAchievementChart } from '@/components/report/GoalAchievementChart'
 import { exportCSV } from '@/lib/export/exportCSV'
 import { exportPDF } from '@/lib/export/exportPDF'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
@@ -291,6 +292,17 @@ export default function ReportPage() {
               mealCount={filteredData.mealRecords.length}
               exerciseCount={filteredData.exerciseRecords.length}
               totalExerciseMinutes={filteredData.totalExerciseMinutes}
+            />
+
+            {/* 目標達成率推移グラフ */}
+            <GoalAchievementChart
+              weightRecords={filteredData.weightRecords}
+              allWeightRecords={weightRecords}
+              mealRecords={filteredData.mealRecords}
+              exerciseRecords={filteredData.exerciseRecords}
+              startDate={startDate}
+              endDate={endDate}
+              targetWeight={selectedClient?.target_weight || 0}
             />
 
             {/* 体重推移グラフ */}
