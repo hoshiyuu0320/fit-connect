@@ -10,9 +10,11 @@ import EditClientModal from './EditClientModal'
 type ClientHeaderProps = {
   client: ClientDetail
   onClientUpdated: () => void
+  mode: 'info' | 'session'
+  onModeChange: (mode: 'info' | 'session') => void
 }
 
-export function ClientHeader({ client, onClientUpdated }: ClientHeaderProps) {
+export function ClientHeader({ client, onClientUpdated, mode, onModeChange }: ClientHeaderProps) {
   const router = useRouter()
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 
@@ -27,24 +29,53 @@ export function ClientHeader({ client, onClientUpdated }: ClientHeaderProps) {
           <span>←</span>
           <span>顧客リストに戻る</span>
         </button>
-        <div className="flex items-center space-x-2">
+
+        {/* モード切替トグル */}
+        <div className="inline-flex rounded-lg border p-1 bg-gray-100">
           <button
-            onClick={() => setIsEditModalOpen(true)}
-            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            onClick={() => onModeChange('info')}
+            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+              mode === 'info'
+                ? 'bg-white shadow-sm text-gray-900'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
           >
-            編集
+            情報
           </button>
           <button
-            onClick={() => router.push(`/message?clientId=${client.client_id}`)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            onClick={() => onModeChange('session')}
+            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+              mode === 'session'
+                ? 'bg-white shadow-sm text-gray-900'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
           >
-            メッセージ
+            セッション
           </button>
         </div>
+
+        {mode === 'info' ? (
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setIsEditModalOpen(true)}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              編集
+            </button>
+            <button
+              onClick={() => router.push(`/message?clientId=${client.client_id}`)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              メッセージ
+            </button>
+          </div>
+        ) : (
+          <div className="w-[180px]" />
+        )}
       </div>
 
-      {/* Profile Card */}
-      <Card>
+      {/* Profile Card - 情報モードのみ表示 */}
+      {mode === 'info' && <Card>
         <CardContent className="pt-6">
           <div className="flex items-start space-x-6">
             {/* Avatar */}
@@ -100,7 +131,7 @@ export function ClientHeader({ client, onClientUpdated }: ClientHeaderProps) {
             </div>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
 
       <EditClientModal
         open={isEditModalOpen}

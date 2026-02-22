@@ -1,9 +1,9 @@
 # FIT-CONNECT Web - 実装タスク一覧
 
 **作成日**: 2026年2月1日
-**バージョン**: 2.0
-**進捗状況**: 全体 95% 完了
-**最終更新**: 2026年2月19日 - トレーナー週間スケジュール設定
+**バージョン**: 2.2
+**進捗状況**: 全体 99% 完了
+**最終更新**: 2026年2月22日 - ワークアウト機能強化（チケット連携、運動タブ統合、Edge Functionバグ修正）
 
 ---
 
@@ -35,7 +35,7 @@
 | **メッセージ基本機能** | 100% | 🟢 完了 |
 | **スケジュール管理** | 100% | 🟢 完了 |
 | **レポート機能** | 100% | 🟢 完了 |
-| **ワークアウトプラン** | 0% | 🔴 未着手 |
+| **ワークアウトプラン** | 100% | 🟢 完了 |
 | **設定画面** | 100% | 🟢 完了 |
 | **クライアント招待（QR）** | 100% | 🟢 完了 |
 | **チケット管理** | 100% | 🟢 完了 |
@@ -67,14 +67,74 @@
 - ✅ レポート・分析機能（統計グラフ、食事・運動統計、CSV/PDFエクスポート）
 - ✅ 設定画面（プロフィール編集、パスワード変更、通知設定、ログアウト）
 - ✅ トレーナー週間スケジュール設定（曜日別の対応可能時間帯管理）
+- ✅ ワークアウトプラン管理（テンプレートCRUD、D&Dカレンダー、セッション実行記録、ステータスバッジ）
 
 ### 未実装項目
 - 🚧 プッシュ通知
-- 🚧 ワークアウトプラン
 
 ---
 
 ## 最新の変更履歴
+
+### 2026年2月22日
+
+- ワークアウト機能強化を実装（フェーズ5.6完了）
+  - **チケット連携**: セッション種別ワークアウトをカレンダーにD&Dした際、チケット選択モーダル（`TicketSelectModal.tsx`）を表示。チケット消費 + セッション自動作成 + スケジュール画面に反映
+  - **DBマイグレーション**: `workout_assignments` テーブルに `session_id` カラム追加（`sessions` テーブルへの外部キー）
+  - **API Route拡張**: `POST /api/workout-assignments` に `ticketId`, `sessionTime`, `createSession` パラメータ追加。セッション作成 + チケット消費をアトミックに処理
+  - **TicketSelectModal新規作成**: Radix UI Dialog、有効チケット一覧表示、時刻指定入力、「チケットを使用しない」オプション
+  - **workoutplan/page.tsx拡張**: `pendingDrop` ステート追加、session/self_guided の分岐処理
+- バグ修正
+  - **チケット期限表示修正**: `SummaryTab.tsx` で `isAfter`/`isBefore` のタイムゾーン問題を文字列比較に修正（UTC midnight → JST 9AM の誤判定防止）
+  - **Edge Function `parse-message-tags` バグ修正**: `notes.includes('ラン')` が `ワークアウトプラン` にマッチする問題を正規表現（否定先読み/後読み）に修正。`#運動:完了` タグ時のデフォルトを `strength_training` に変更
+  - **exercise_records データ修正**: 誤って `running` になっていた4件を `strength_training` に更新
+- 運動タブ強化
+  - **ExerciseTab拡張**: `workoutAssignments` プロパティ追加。`workout_assignments` の種目・セット詳細（重量×回数×完了チェック）を表示
+  - **統合一覧化**: ワークアウト実績とその他の運動を日付ごとの統合一覧に変更（`MergedExerciseItem` ユニオン型で統一的に処理）
+  - **page.tsx拡張**: `getClientAssignments` を追加取得し、ExerciseTab に渡すよう変更
+- セッションタブ整理
+  - **SessionTab**: `plan_type === 'session'` のみ表示するようフィルタ追加（宿題は運動タブで確認）
+- 設計書作成
+  - **`docs/DESIGN_EXERCISE_TAB_ENHANCEMENT.md`**: Web側 運動タブ強化 + Edge Functionバグ修正 + モバイル改善案の設計書
+  - **モバイル側設計書**: `DESIGN_WORKOUT_COMPLETION_FIX.md`（完了メッセージのタグ除去 + client_feedback フィードバック機能）
+
+### 2026年2月21日
+
+- セッション機能強化を実装（フェーズ5.5完了）
+  - **DBマイグレーション**: `workout_assignments` テーブルに `trainer_note`, `client_feedback`, `started_at`, `finished_at` カラム追加
+  - **型定義拡張**: `WorkoutAssignment` に4フィールド追加、`UpdateAssignmentParams` にオプショナルフィールド追加
+  - **GET APIバグ修正**: `workout_assignments` GET に `exercises:workout_assignment_exercises(*)` JOIN追加（種目が表示されないバグ修正）
+  - **GET API拡張**: `includeHistory=true` パラメータで過去30日分のデータ取得に対応（前回データ参照用）
+  - **PATCH API拡張**: `trainerNote`, `clientFeedback`, `startedAt`, `finishedAt` の更新に対応
+  - **SessionTimerBar新規作成**: セッション開始/経過時間カウンター/終了の3状態表示、リロード後も `started_at` から復元
+  - **SessionSummaryModal新規作成**: Radix UI Dialog、種目実績一覧、所要時間、トレーナーノート/クライアントフィードバック入力
+  - **SessionTab全機能統合**:
+    - SessionTimerBar / SessionSummaryModal を組み込み
+    - 前回データ取得ロジック（同 `plan_id` の直前 `completed` アサインメントから `actual_sets` を参照）
+    - `SetInputRow` に `previousSet` を接続（「前回: Xkg × Y」表示）
+    - 種目ごとのメモ入力欄（textarea、onBlurで自動保存）
+    - タイマー開始/終了ハンドラ（PATCH APIで `started_at`/`finished_at` を保存）
+    - セッション終了時にサマリーモーダル自動表示
+
+- ワークアウトプラン管理機能を実装（フェーズ5完了）
+  - **DBマイグレーション**: `workout_assignments`, `workout_assignment_exercises` テーブル新規作成、`client_workout_plans` テーブル削除、`workout_plans` に `estimated_minutes` カラム追加、RLS設定
+  - **型定義**: `src/types/workout.ts` 新規作成（WorkoutPlan, WorkoutExercise, WorkoutAssignment, WorkoutAssignmentExercise, ActualSet 等）
+  - **Supabase クエリ関数**: `getWorkoutPlans.ts`, `getWorkoutExercises.ts`, `getWeeklyAssignments.ts`, `getClientAssignments.ts`, `getUndonePlanCount.ts`, `getClientWorkoutStatuses.ts`
+  - **API Routes**: `workout-plans/route.ts` (GET/POST), `workout-plans/[id]/route.ts` (PUT/DELETE), `workout-assignments/route.ts` (GET/POST), `workout-assignments/[id]/route.ts` (PATCH/DELETE), `workout-assignment-exercises/[id]/route.ts` (PATCH)
+  - **ワークアウトプランページ**: `/workoutplan` プレースホルダーを全面書き換え
+    - @dnd-kit によるドラッグ＆ドロップ対応2ペインレイアウト
+    - 左ペイン: テンプレート一覧（作成/編集/削除/検索/種目プレビュー）
+    - 右ペイン: 週間カレンダー（週ナビゲーション、ステータスバッジ）
+    - テンプレート→日付にD&Dでアサイン、日付間移動対応
+    - クライアント選択（Radix UI Select）
+  - **コンポーネント**: `ClientSelector.tsx`, `PlanFormModal.tsx`, `ExerciseListModal.tsx`, `TemplatePanel.tsx`, `WeeklyCalendar.tsx`, `CalendarDayCell.tsx`
+  - **セッション実行タブ**: 顧客詳細に「セッション」タブ追加（7タブ構成）
+    - `SessionTab.tsx` - 日付選択、種目一覧、セット入力
+    - `SetInputRow.tsx` - タップ領域広い +/- ボタンで重量・回数入力、前回データ表示
+    - `SupersetBadge.tsx` - スーパーセット連結表示
+  - **ステータスバッジ**: ダッシュボードに今週未実施プランアラート追加、顧客一覧にワークアウトステータスバッジ追加
+  - **サイドバー**: ワークアウトプランメニュー追加（クリップボード+ダンベルアイコン）
+  - **パッケージ追加**: `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities`
 
 ### 2026年2月19日
 
@@ -524,18 +584,66 @@ import QRCode from 'qrcode.react';
 
 ---
 
-### 📌 フェーズ5: ワークアウトプラン 🔴 未着手
+### 📌 フェーズ5: ワークアウトプラン ✅ 完了
 
-**目的**: トレーニングメニューの作成・管理
+**目的**: トレーニングメニューの作成・管理・セッション記録
 
-#### 5.1 プラン管理
+#### 5.1 DB基盤・バックエンド
 
 | # | タスク | 状態 | 詳細 |
 |---|--------|------|------|
-| 5.1.1 | ワークアウトプラン画面作成 | 🔴 | `/workoutplan` プレースホルダー置き換え |
-| 5.1.2 | プランテンプレート作成 | 🔴 | 種目、セット数、回数、メモ |
-| 5.1.3 | クライアントへのプラン割り当て | 🔴 | プラン選択・適用 |
-| 5.1.4 | データベーステーブル設計 | 🔴 | `workout_plans`, `workout_exercises` |
+| 5.1.1 | DBマイグレーション | ✅ | `workout_assignments`, `workout_assignment_exercises` テーブル作成、RLS設定 |
+| 5.1.2 | 型定義 | ✅ | `src/types/workout.ts` 新規作成 |
+| 5.1.3 | Supabaseクエリ関数 | ✅ | 6ファイル（テンプレート、アサインメント、ステータス取得） |
+| 5.1.4 | API Routes | ✅ | 5ルート（プランCRUD、アサインメントCRUD、種目更新） |
+
+#### 5.2 D&Dカレンダーページ
+
+| # | タスク | 状態 | 詳細 |
+|---|--------|------|------|
+| 5.2.1 | テンプレートCRUDモーダル | ✅ | `PlanFormModal.tsx` - React Hook Form + Zod |
+| 5.2.2 | テンプレート一覧パネル | ✅ | `TemplatePanel.tsx` - D&D対応カード |
+| 5.2.3 | 週間カレンダー | ✅ | `WeeklyCalendar.tsx` - 週ナビゲーション |
+| 5.2.4 | 日付セル（ドロップゾーン） | ✅ | `CalendarDayCell.tsx` - @dnd-kit/core |
+| 5.2.5 | ワークアウトプランページ | ✅ | `/workoutplan` - DndContext統合 |
+| 5.2.6 | サイドバーメニュー追加 | ✅ | `layout.tsx` にアイコン付きメニュー追加 |
+
+#### 5.3 セッション実行タブ
+
+| # | タスク | 状態 | 詳細 |
+|---|--------|------|------|
+| 5.3.1 | セット入力コンポーネント | ✅ | `SetInputRow.tsx` - +/- ボタン、前回データ表示 |
+| 5.3.2 | スーパーセット連結UI | ✅ | `SupersetBadge.tsx` |
+| 5.3.3 | セッション実行タブ | ✅ | `SessionTab.tsx` - 日付選択、種目入力 |
+| 5.3.4 | 顧客詳細タブ追加 | ✅ | 7タブ構成（+セッション） |
+
+#### 5.4 ステータスバッジ
+
+| # | タスク | 状態 | 詳細 |
+|---|--------|------|------|
+| 5.4.1 | ダッシュボードアラート | ✅ | 今週未実施プランアラート |
+| 5.4.2 | 顧客一覧バッジ | ✅ | 完了/一部完了/未実施 |
+
+#### 5.5 セッション機能強化 ✅ 完了
+
+| # | タスク | 状態 | 詳細 |
+|---|--------|------|------|
+| 5.5.1 | SessionTimerBar | ✅ | セッション開始/経過カウンター/終了の3状態表示 |
+| 5.5.2 | SessionSummaryModal | ✅ | 種目実績一覧、所要時間、トレーナーノート/フィードバック |
+| 5.5.3 | 前回データ参照 | ✅ | 同plan_idの直前completedアサインメントからactual_sets参照 |
+| 5.5.4 | 種目メモ入力 | ✅ | textarea、onBlurで自動保存 |
+
+#### 5.6 チケット連携・運動タブ統合 ✅ 完了
+
+| # | タスク | 状態 | 詳細 |
+|---|--------|------|------|
+| 5.6.1 | TicketSelectModal新規作成 | ✅ | セッション種別D&D時のチケット選択・時刻指定モーダル |
+| 5.6.2 | API Route拡張（セッション＋チケット消費） | ✅ | `POST /api/workout-assignments` でアトミック処理 |
+| 5.6.3 | session_id DBマイグレーション | ✅ | `workout_assignments` に `session_id` カラム追加 |
+| 5.6.4 | Edge Function バグ修正 | ✅ | `parse-message-tags` の `ラン` 部分一致修正（正規表現化） |
+| 5.6.5 | 運動タブ統合表示 | ✅ | `workout_assignments` + `exercise_records` の日付統合一覧 |
+| 5.6.6 | セッションタブ plan_type フィルタ | ✅ | `session` タイプのみ表示 |
+| 5.6.7 | チケット期限表示バグ修正 | ✅ | SummaryTab のタイムゾーン問題修正 |
 
 ---
 
@@ -708,4 +816,4 @@ src/
 
 ---
 
-**最終更新**: 2026年2月16日 - 設定画面実装（v2.1）
+**最終更新**: 2026年2月22日 - ワークアウト機能強化（v2.2）

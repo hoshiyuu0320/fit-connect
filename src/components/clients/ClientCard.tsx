@@ -6,6 +6,7 @@ import { GENDER_OPTIONS, PURPOSE_OPTIONS } from '@/types/client'
 
 type ClientCardProps = {
   client: Client
+  workoutStatus?: 'completed' | 'partial' | 'pending' | null
 }
 
 const genderBorderColors = {
@@ -14,7 +15,7 @@ const genderBorderColors = {
   other: 'border-l-yellow-500',
 }
 
-export function ClientCard({ client }: ClientCardProps) {
+export function ClientCard({ client, workoutStatus }: ClientCardProps) {
   const router = useRouter()
 
   const handleClick = () => {
@@ -42,10 +43,21 @@ export function ClientCard({ client }: ClientCardProps) {
               <span>•</span>
               <span>{client.age}歳</span>
             </div>
-            <div className="mt-1">
+            <div className="mt-1 flex items-center gap-2 flex-wrap">
               <span className="inline-block px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700">
                 {PURPOSE_OPTIONS[client.purpose]}
               </span>
+              {workoutStatus && (
+                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                  workoutStatus === 'completed' ? 'bg-green-100 text-green-800' :
+                  workoutStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' :
+                  'bg-gray-100 text-gray-600'
+                }`}>
+                  {workoutStatus === 'completed' ? '完了' :
+                   workoutStatus === 'partial' ? '一部完了' :
+                   '未実施'}
+                </span>
+              )}
             </div>
           </div>
         </div>

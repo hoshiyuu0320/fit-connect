@@ -65,6 +65,23 @@ export default function Sidebar({ children }: { children: React.ReactNode }) {
             ),
         },
         {
+            label: 'ワークアウト',
+            href: '/workoutplan',
+            icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+                    <path d="M200,32H184V24a8,8,0,0,0-8-8H80a8,8,0,0,0-8,8v8H56A16,16,0,0,0,40,48V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V48A16,16,0,0,0,200,32ZM88,32h80V48H88ZM200,216H56V48H72V56a8,8,0,0,0,8,8h96a8,8,0,0,0,8-8V48h16Z"/>
+                    <rect x="66" y="102" width="10" height="16" rx="3"/>
+                    <rect x="76" y="96" width="10" height="28" rx="2"/>
+                    <rect x="86" y="82" width="22" height="56" rx="4"/>
+                    <rect x="108" y="100" width="40" height="20" rx="4"/>
+                    <rect x="148" y="82" width="22" height="56" rx="4"/>
+                    <rect x="170" y="96" width="10" height="28" rx="2"/>
+                    <rect x="180" y="102" width="10" height="16" rx="3"/>
+                    <path d="M164.24,160.24l-24,24a6,6,0,0,1-8.49,0l-12-12a6,6,0,0,1,8.49-8.49L136,171.51l19.76-19.76a6,6,0,0,1,8.48,8.49Z"/>
+                </svg>
+            ),
+        },
+        {
             label: 'スケジュール',
             href: '/schedule',
             icon: (
