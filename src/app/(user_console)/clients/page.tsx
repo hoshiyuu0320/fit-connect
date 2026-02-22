@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { searchClients } from '@/lib/supabase/searchClients'
+import { getClientWorkoutStatuses } from '@/lib/supabase/getClientWorkoutStatuses'
 import { ClientCard } from '@/components/clients/ClientCard'
 import ClientInviteModal from '@/components/clients/ClientInviteModal'
 import type { Client } from '@/types/client'
@@ -13,6 +14,7 @@ export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [trainerId, setTrainerId] = useState<string | null>(null)
+  const [workoutStatuses, setWorkoutStatuses] = useState<Record<string, 'completed' | 'partial' | 'pending' | null>>({})
 
   const [inviteModalOpen, setInviteModalOpen] = useState(false)
 
@@ -44,6 +46,16 @@ export default function ClientsPage() {
     }
   }, [searchQuery, genderFilter, ageRangeFilter, purposeFilter])
 
+  // ワークアウトステータス取得
+  const loadWorkoutStatuses = useCallback(async (userId: string) => {
+    try {
+      const statuses = await getClientWorkoutStatuses(userId)
+      setWorkoutStatuses(statuses)
+    } catch (error) {
+      console.error('ワークアウトステータス取得エラー:', error)
+    }
+  }, [])
+
   // 初回データ取得
   useEffect(() => {
     const fetchClients = async () => {
@@ -53,12 +65,12 @@ export default function ClientsPage() {
 
       if (user) {
         setTrainerId(user.id)
-        await loadClients(user.id)
+        await Promise.all([loadClients(user.id), loadWorkoutStatuses(user.id)])
       }
       setLoading(false)
     }
     fetchClients()
-  }, [loadClients])
+  }, [loadClients, loadWorkoutStatuses])
 
   // フィルター変更時に再検索
   useEffect(() => {
@@ -151,7 +163,11 @@ export default function ClientsPage() {
         {!loading && clients.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {clients.map((client) => (
-              <ClientCard key={client.client_id} client={client} />
+              <ClientCard
+                key={client.client_id}
+                client={client}
+                workoutStatus={workoutStatuses[client.client_id] ?? null}
+              />
             ))}
           </div>
         )}

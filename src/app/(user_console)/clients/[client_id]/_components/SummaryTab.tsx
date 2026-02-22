@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import Image from 'next/image'
-import { subMonths, format, isAfter, isBefore } from 'date-fns'
+import { subMonths, format } from 'date-fns'
 import { WeightChart } from '@/components/clients/WeightChart'
 import type { WeightRecord, MealRecord, ExerciseRecord, Ticket } from '@/types/client'
 import { MEAL_TYPE_OPTIONS } from '@/types/client'
@@ -32,6 +32,7 @@ export function SummaryTab({
   // 統計データの計算
   const stats = useMemo(() => {
     const now = new Date()
+    const todayStr = format(now, 'yyyy-MM-dd')
     const thirtyDaysAgo = subMonths(now, 1)
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
 
@@ -48,12 +49,12 @@ export function SummaryTab({
     // 運動記録（直近7日）
     const recentExercises = exerciseRecords.filter((record) => new Date(record.recorded_at) >= sevenDaysAgo).length
 
-    // チケット情報
+    // チケット情報（日付文字列比較でタイムゾーン問題を回避）
     const validTickets = tickets.filter(
       (ticket) =>
         ticket.remaining_sessions > 0 &&
-        isAfter(new Date(ticket.valid_until), now) &&
-        isBefore(new Date(ticket.valid_from), now)
+        ticket.valid_until >= todayStr &&
+        ticket.valid_from <= todayStr
     )
     const totalRemainingSessions = validTickets.reduce((sum, ticket) => sum + ticket.remaining_sessions, 0)
 
@@ -76,15 +77,15 @@ export function SummaryTab({
 
   // チケットリスト（有効期限順）
   const sortedTickets = useMemo(() => {
-    const now = new Date()
+    const todayStr = format(new Date(), 'yyyy-MM-dd')
     return [...tickets]
       .sort((a, b) => new Date(a.valid_until).getTime() - new Date(b.valid_until).getTime())
       .map((ticket) => ({
         ...ticket,
         isExpired:
           ticket.remaining_sessions <= 0 ||
-          isAfter(new Date(ticket.valid_from), now) ||
-          isBefore(new Date(ticket.valid_until), now),
+          ticket.valid_from > todayStr ||
+          ticket.valid_until < todayStr,
       }))
   }, [tickets])
 

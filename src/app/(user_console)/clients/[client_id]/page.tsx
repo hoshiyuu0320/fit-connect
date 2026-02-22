@@ -9,8 +9,10 @@ import { getMealRecords } from '@/lib/supabase/getMealRecords'
 import { getExerciseRecords } from '@/lib/supabase/getExerciseRecords'
 import { getTickets } from '@/lib/supabase/getTickets'
 import { getClientNotes } from '@/lib/supabase/getClientNotes'
+import { getClientAssignments } from '@/lib/supabase/getClientAssignments'
 import { supabase } from '@/lib/supabase'
 import type { ClientDetail, WeightRecord, MealRecord, ExerciseRecord, Ticket, ClientNote } from '@/types/client'
+import type { WorkoutAssignment } from '@/types/workout'
 import { ClientHeader } from './_components/ClientHeader'
 import { SummaryTab } from './_components/SummaryTab'
 import { MealTab } from './_components/MealTab'
@@ -18,6 +20,7 @@ import { WeightTab } from './_components/WeightTab'
 import { ExerciseTab } from './_components/ExerciseTab'
 import { NotesTab } from './_components/NotesTab'
 import { TicketsTab } from './_components/TicketsTab'
+import { SessionTab } from './_components/SessionTab'
 
 export default function ClientDetailPage() {
   const params = useParams()
@@ -29,8 +32,10 @@ export default function ClientDetailPage() {
   const [exerciseRecords, setExerciseRecords] = useState<ExerciseRecord[]>([])
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [notes, setNotes] = useState<ClientNote[]>([])
+  const [workoutAssignments, setWorkoutAssignments] = useState<WorkoutAssignment[]>([])
   const [trainerId, setTrainerId] = useState<string>('')
   const [loading, setLoading] = useState(true)
+  const [mode, setMode] = useState<'info' | 'session'>('info')
 
   useEffect(() => {
     const fetchData = async () => {
@@ -40,13 +45,14 @@ export default function ClientDetailPage() {
           setTrainerId(user.id)
         }
 
-        const [clientData, weights, meals, exercises, ticketsData, notesData] = await Promise.all([
+        const [clientData, weights, meals, exercises, ticketsData, notesData, assignmentsData] = await Promise.all([
           getClientDetail(clientId),
           getWeightRecords(clientId),
           getMealRecords({ clientId, limit: 100 }),
           getExerciseRecords({ clientId, limit: 100 }),
           getTickets(clientId),
           getClientNotes(clientId),
+          getClientAssignments(clientId),
         ])
         setClient(clientData)
         setWeightRecords(weights)
@@ -54,6 +60,7 @@ export default function ClientDetailPage() {
         setExerciseRecords(exercises.data)
         setTickets(ticketsData)
         setNotes(notesData)
+        setWorkoutAssignments(assignmentsData)
       } catch (error) {
         console.error('データ取得エラー：', error)
       } finally {
@@ -101,57 +108,61 @@ export default function ClientDetailPage() {
     <div className="h-[calc(100vh-48px)] overflow-y-auto bg-gray-50">
       <div className="max-w-6xl mx-auto p-6 space-y-6">
         {/* ヘッダー */}
-        <ClientHeader client={client} onClientUpdated={refetchClient} />
+        <ClientHeader client={client} onClientUpdated={refetchClient} mode={mode} onModeChange={setMode} />
 
-        {/* タブ */}
-        <Tabs defaultValue="summary" className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="summary">サマリー</TabsTrigger>
-            <TabsTrigger value="weight">体重</TabsTrigger>
-            <TabsTrigger value="meal">食事</TabsTrigger>
-            <TabsTrigger value="exercise">運動</TabsTrigger>
-            <TabsTrigger value="notes">カルテ</TabsTrigger>
-            <TabsTrigger value="tickets">チケット</TabsTrigger>
-          </TabsList>
+        {/* モード別コンテンツ */}
+        {mode === 'info' ? (
+          <Tabs defaultValue="summary" className="w-full">
+            <TabsList className="grid w-full grid-cols-6">
+              <TabsTrigger value="summary">サマリー</TabsTrigger>
+              <TabsTrigger value="weight">体重</TabsTrigger>
+              <TabsTrigger value="meal">食事</TabsTrigger>
+              <TabsTrigger value="exercise">運動</TabsTrigger>
+              <TabsTrigger value="notes">カルテ</TabsTrigger>
+              <TabsTrigger value="tickets">チケット</TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="summary">
-            <SummaryTab
-              weightRecords={weightRecords}
-              mealRecords={mealRecords}
-              exerciseRecords={exerciseRecords}
-              tickets={tickets}
-              targetWeight={client.target_weight || 0}
-            />
-          </TabsContent>
+            <TabsContent value="summary">
+              <SummaryTab
+                weightRecords={weightRecords}
+                mealRecords={mealRecords}
+                exerciseRecords={exerciseRecords}
+                tickets={tickets}
+                targetWeight={client.target_weight || 0}
+              />
+            </TabsContent>
 
-          <TabsContent value="meal">
-            <MealTab mealRecords={mealRecords} />
-          </TabsContent>
+            <TabsContent value="meal">
+              <MealTab mealRecords={mealRecords} />
+            </TabsContent>
 
-          <TabsContent value="weight">
-            <WeightTab
-              weightRecords={weightRecords}
-              targetWeight={client.target_weight || 0}
-            />
-          </TabsContent>
+            <TabsContent value="weight">
+              <WeightTab
+                weightRecords={weightRecords}
+                targetWeight={client.target_weight || 0}
+              />
+            </TabsContent>
 
-          <TabsContent value="exercise">
-            <ExerciseTab exerciseRecords={exerciseRecords} />
-          </TabsContent>
+            <TabsContent value="exercise">
+              <ExerciseTab exerciseRecords={exerciseRecords} workoutAssignments={workoutAssignments} />
+            </TabsContent>
 
-          <TabsContent value="notes">
-            <NotesTab
-              notes={notes}
-              clientId={clientId}
-              trainerId={trainerId}
-              onRefetch={refetchNotes}
-            />
-          </TabsContent>
+            <TabsContent value="notes">
+              <NotesTab
+                notes={notes}
+                clientId={clientId}
+                trainerId={trainerId}
+                onRefetch={refetchNotes}
+              />
+            </TabsContent>
 
-          <TabsContent value="tickets">
-            <TicketsTab tickets={tickets} />
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="tickets">
+              <TicketsTab tickets={tickets} />
+            </TabsContent>
+          </Tabs>
+        ) : (
+          <SessionTab clientId={clientId} trainerId={trainerId} />
+        )}
       </div>
     </div>
   )

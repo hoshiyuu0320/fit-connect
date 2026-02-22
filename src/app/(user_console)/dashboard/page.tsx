@@ -10,6 +10,7 @@ import { getActiveClientCount } from '@/lib/supabase/getActiveClientCount'
 import { getExpiringTickets } from '@/lib/supabase/getExpiringTickets'
 import { getInactiveClients } from '@/lib/supabase/getInactiveClients'
 import { getTodaysSessions } from '@/lib/supabase/getTodaysSessions'
+import { getUndonePlanCount } from '@/lib/supabase/getUndonePlanCount'
 import { useUserStore } from '@/store/userStore'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { MessagePreviewList } from '@/components/dashboard/MessagePreviewList'
@@ -82,6 +83,7 @@ export default function DashboardPage() {
             expiringTickets,
             inactiveClients,
             sessions,
+            undonePlans,
           ] = await Promise.all([
             getClientCount(user.id),
             getRecentMessageCount(user.id),
@@ -90,6 +92,7 @@ export default function DashboardPage() {
             getExpiringTickets(user.id),
             getInactiveClients(user.id),
             getTodaysSessions(user.id),
+            getUndonePlanCount(user.id),
           ])
 
           setClientCount(clients)
@@ -123,6 +126,15 @@ export default function DashboardPage() {
               severity: 'medium',
             })
           })
+
+          // 未実施プランのアラート
+          if (undonePlans > 0) {
+            alertList.push({
+              type: 'workout_undone',
+              message: `今週 ${undonePlans} 件のワークアウトプランが未実施です`,
+              severity: 'medium',
+            })
+          }
 
           setAlerts(alertList)
         } catch (err) {

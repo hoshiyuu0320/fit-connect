@@ -2,7 +2,7 @@ import React from 'react';
 // import { DndContext, closestCenter } from '@dnd-kit/core';
 // import { SortableContext } from '@dnd-kit/sortable';
 
-export default function WorkoutPlanCalendar({ clientId }) {
+export default function WorkoutPlanCalendar({ clientId }: { clientId: string }) {
     return (
         <div className="flex h-screen bg-gray-50 overflow-hidden">
             {/* ========================================
