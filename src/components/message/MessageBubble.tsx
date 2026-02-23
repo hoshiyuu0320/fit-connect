@@ -163,7 +163,12 @@ export function MessageBubble({
 
           {/* Record card or normal message bubble */}
           {recordCardData ? (
-            <RecordCard data={recordCardData} clientId={clientId} />
+            <RecordCard
+              data={recordCardData}
+              clientId={clientId}
+              imageUrls={message.image_urls ?? undefined}
+              onImageClick={onImageClick}
+            />
           ) : (
             <div
               className={`px-4 py-2.5 rounded-2xl ${

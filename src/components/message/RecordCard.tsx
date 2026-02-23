@@ -15,6 +15,8 @@ const tabMap: Record<RecordCardType, string> = {
 interface RecordCardProps {
   data: RecordCardData
   clientId?: string
+  imageUrls?: string[]
+  onImageClick?: (url: string) => void
 }
 
 // 種別ごとのスタイル定義
@@ -143,7 +145,7 @@ const iconMap: Record<RecordCardType, () => React.ReactNode> = {
   achievement: AchievementIcon,
 }
 
-export function RecordCard({ data, clientId }: RecordCardProps) {
+export function RecordCard({ data, clientId, imageUrls, onImageClick }: RecordCardProps) {
   const style = styleMap[data.type]
   const Icon = iconMap[data.type]
 
@@ -170,13 +172,39 @@ export function RecordCard({ data, clientId }: RecordCardProps) {
       </div>
 
       {/* ボディ: details を1行ずつ表示 */}
-      <div className="space-y-0.5">
-        {data.details.map((line, index) => (
-          <p key={index} className="text-sm text-gray-700 break-words">
-            {line}
-          </p>
-        ))}
-      </div>
+      {data.details.length > 0 && (
+        <div className="space-y-0.5">
+          {data.details.map((line, index) => (
+            <p key={index} className="text-sm text-gray-700 break-words">
+              {line}
+            </p>
+          ))}
+        </div>
+      )}
+
+      {/* 添付画像（食事記録など） */}
+      {imageUrls && imageUrls.length > 0 && (
+        <div className="flex flex-wrap gap-2 mt-2">
+          {imageUrls.map((url, imgIndex) => (
+            <button
+              key={imgIndex}
+              type="button"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                onImageClick?.(url)
+              }}
+              className="block"
+            >
+              <img
+                src={url}
+                alt={`添付画像 ${imgIndex + 1}`}
+                className="w-24 h-24 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+              />
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 

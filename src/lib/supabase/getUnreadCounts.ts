@@ -1,14 +1,11 @@
 import { supabase } from '@/lib/supabase';
 
-// トレーナー（受信者）のクライアント別未読メッセージ数を取得
-// 戻り値: Map<string, number> (sender_id → 未読件数)
+// トレーナーのクライアント別未読メッセージ数を取得（RPC使用）
+// clientsテーブルに存在するクライアントのみカウント
+// 戻り値: Map<string, number> (client_id → 未読件数)
 export async function getUnreadCounts(trainerId: string): Promise<Map<string, number>> {
   const { data, error } = await supabase
-    .from('messages')
-    .select('sender_id')
-    .eq('receiver_id', trainerId)
-    .is('read_at', null)
-    .eq('sender_type', 'client');
+    .rpc('get_unread_counts_for_trainer', { p_trainer_id: trainerId });
 
   if (error) {
     console.error('Error fetching unread counts:', error);
@@ -16,9 +13,9 @@ export async function getUnreadCounts(trainerId: string): Promise<Map<string, nu
   }
 
   const countMap = new Map<string, number>();
-  data?.forEach((msg) => {
-    const current = countMap.get(msg.sender_id) || 0;
-    countMap.set(msg.sender_id, current + 1);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data?.forEach((row: any) => {
+    countMap.set(row.sender_id, Number(row.unread_count));
   });
 
   return countMap;

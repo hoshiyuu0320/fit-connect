@@ -33,15 +33,14 @@ export function parseRecordMessage(content: string): RecordCardData | null {
   // --- 体重 ---
   const weightMatch = content.match(/^#体重\s+(.+)$/)
   if (weightMatch) {
-    const value = weightMatch[1].trim()
     return {
       type: 'weight',
       label: '体重記録',
-      details: [`${value} kg`],
+      details: [weightMatch[1].trim()],
     }
   }
 
-  // --- 食事 ---
+  // --- 食事（テキスト付き）---
   const mealMatch = content.match(/^#食事:([^\s]+)\s+(.+)$/)
   if (mealMatch) {
     const mealType = mealMatch[1].trim()
@@ -50,6 +49,17 @@ export function parseRecordMessage(content: string): RecordCardData | null {
       type: 'meal',
       label: `食事記録 ─ ${mealType}`,
       details: [description],
+    }
+  }
+
+  // --- 食事（テキストなし、画像のみ）---
+  const mealOnlyMatch = content.match(/^#食事:([^\s]+)$/)
+  if (mealOnlyMatch) {
+    const mealType = mealOnlyMatch[1].trim()
+    return {
+      type: 'meal',
+      label: `食事記録 ─ ${mealType}`,
+      details: [],
     }
   }
 

@@ -1,12 +1,66 @@
 // components/Layout.tsx
 "use client";
 
+import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useRouter } from "next/navigation";
+import { supabase } from '@/lib/supabase';
+import { getUnreadCounts } from '@/lib/supabase/getUnreadCounts';
 
 export default function Sidebar({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const router = useRouter();
+    const [totalUnread, setTotalUnread] = useState(0);
+
+    // 未読数取得 + Realtime購読
+    useEffect(() => {
+        let channel: ReturnType<typeof supabase.channel> | null = null;
+        let debounceTimer: NodeJS.Timeout | null = null;
+
+        const fetchUnread = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const refreshCount = () => {
+                getUnreadCounts(user.id).then((counts) => {
+                    let total = 0;
+                    counts.forEach((count) => { total += count; });
+                    setTotalUnread(total);
+                });
+            };
+
+            refreshCount();
+
+            channel = supabase
+                .channel('sidebar-unread')
+                .on('postgres_changes', {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'messages',
+                    filter: `receiver_id=eq.${user.id}`,
+                }, () => {
+                    setTotalUnread((prev) => prev + 1);
+                })
+                .on('postgres_changes', {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'messages',
+                    filter: `receiver_id=eq.${user.id}`,
+                }, () => {
+                    // 既読更新は複数メッセージ同時に発生するためデバウンス
+                    if (debounceTimer) clearTimeout(debounceTimer);
+                    debounceTimer = setTimeout(refreshCount, 500);
+                })
+                .subscribe();
+        };
+
+        fetchUnread();
+
+        return () => {
+            if (channel) supabase.removeChannel(channel);
+            if (debounceTimer) clearTimeout(debounceTimer);
+        };
+    }, []);
 
     const menuItems = [
         {
@@ -123,7 +177,14 @@ export default function Sidebar({ children }: { children: React.ReactNode }) {
                                     key={item.href}
                                     onClick={() => router.push(item.href)}
                                     className={`flex items-center space-x-2 p-2 w-full rounded-xl transition-colors ${isActive ? 'bg-gray-200' : 'hover:bg-[#f0f2f4]'} `}>
-                                    <div className="min-w-[32px] flex justify-center">{item.icon}</div>
+                                    <div className="min-w-[32px] flex justify-center relative">
+                                        {item.icon}
+                                        {item.href === '/message' && totalUnread > 0 && (
+                                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                                                {totalUnread > 99 ? '99+' : totalUnread}
+                                            </span>
+                                        )}
+                                    </div>
                                     <span className="ml-3 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">{item.label}</span>
                                 </button>
                             );
