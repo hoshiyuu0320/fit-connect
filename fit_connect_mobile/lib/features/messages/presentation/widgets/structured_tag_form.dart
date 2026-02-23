@@ -521,177 +521,177 @@ class _ExerciseTagFormState extends State<ExerciseTagForm> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ヘッダー行
-          Row(
-            children: [
-              const Text('🏃', style: TextStyle(fontSize: 16)),
-              const SizedBox(width: 6),
-              Text(
-                '運動を記録',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: colors.textPrimary,
+            // ヘッダー行
+            Row(
+              children: [
+                const Text('🏃', style: TextStyle(fontSize: 16)),
+                const SizedBox(width: 6),
+                Text(
+                  '運動を記録',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: colors.textPrimary,
+                  ),
                 ),
-              ),
-              const Spacer(),
-              GestureDetector(
-                onTap: widget.onClose,
-                child: Icon(LucideIcons.x, size: 20, color: colors.textHint),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // セグメントコントロール
-          _SegmentControl(
-            items: _exerciseTypes,
-            selected: _selectedType,
-            onChanged: (value) => setState(() => _selectedType = value),
-            colors: colors,
-          ),
-          const SizedBox(height: 8),
-
-          // 種目入力
-          TextField(
-            controller: _nameController,
-            onChanged: (_) => setState(() {}),
-            decoration: InputDecoration(
-              hintText: '運動内容やコメントを入力',
-              hintStyle: TextStyle(color: colors.textHint),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: colors.border),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: colors.border),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide:
-                    const BorderSide(color: AppColors.primary, width: 2),
-              ),
-              filled: true,
-              fillColor: colors.surface,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 10,
-              ),
+                const Spacer(),
+                GestureDetector(
+                  onTap: widget.onClose,
+                  child: Icon(LucideIcons.x, size: 20, color: colors.textHint),
+                ),
+              ],
             ),
-            style: TextStyle(color: colors.textPrimary, fontSize: 14),
-          ),
-          const SizedBox(height: 8),
+            const SizedBox(height: 12),
 
-          // 時間・カロリー入力行
-          Row(
-            children: [
-              SizedBox(
-                width: 80,
-                child: TextField(
-                  controller: _minutesController,
-                  keyboardType: TextInputType.number,
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    hintText: '30',
-                    hintStyle: TextStyle(color: colors.textHint),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: colors.border),
+            // セグメントコントロール
+            _SegmentControl(
+              items: _exerciseTypes,
+              selected: _selectedType,
+              onChanged: (value) => setState(() => _selectedType = value),
+              colors: colors,
+            ),
+            const SizedBox(height: 8),
+
+            // 種目入力
+            TextField(
+              controller: _nameController,
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                hintText: '運動内容やコメントを入力',
+                hintStyle: TextStyle(color: colors.textHint),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: colors.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: colors.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide:
+                      const BorderSide(color: AppColors.primary, width: 2),
+                ),
+                filled: true,
+                fillColor: colors.surface,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+              ),
+              style: TextStyle(color: colors.textPrimary, fontSize: 14),
+            ),
+            const SizedBox(height: 8),
+
+            // 時間・カロリー入力行
+            Row(
+              children: [
+                SizedBox(
+                  width: 80,
+                  child: TextField(
+                    controller: _minutesController,
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => setState(() {}),
+                    decoration: InputDecoration(
+                      hintText: '30',
+                      hintStyle: TextStyle(color: colors.textHint),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: colors.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: colors.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide:
+                            const BorderSide(color: AppColors.primary, width: 2),
+                      ),
+                      filled: true,
+                      fillColor: colors.surface,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
                     ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: colors.border),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide:
-                          const BorderSide(color: AppColors.primary, width: 2),
-                    ),
-                    filled: true,
-                    fillColor: colors.surface,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
+                    style: TextStyle(color: colors.textPrimary, fontSize: 14),
                   ),
-                  style: TextStyle(color: colors.textPrimary, fontSize: 14),
                 ),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                '分',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: colors.textSecondary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(width: 16),
-              SizedBox(
-                width: 80,
-                child: TextField(
-                  controller: _kcalController,
-                  keyboardType: TextInputType.number,
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    hintText: '150',
-                    hintStyle: TextStyle(color: colors.textHint),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: colors.border),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: colors.border),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide:
-                          const BorderSide(color: AppColors.primary, width: 2),
-                    ),
-                    filled: true,
-                    fillColor: colors.surface,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
+                const SizedBox(width: 6),
+                Text(
+                  '分',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: colors.textSecondary,
+                    fontWeight: FontWeight.w500,
                   ),
-                  style: TextStyle(color: colors.textPrimary, fontSize: 14),
                 ),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                'kcal',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: colors.textSecondary,
-                  fontWeight: FontWeight.w500,
+                const SizedBox(width: 16),
+                SizedBox(
+                  width: 80,
+                  child: TextField(
+                    controller: _kcalController,
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => setState(() {}),
+                    decoration: InputDecoration(
+                      hintText: '150',
+                      hintStyle: TextStyle(color: colors.textHint),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: colors.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: colors.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide:
+                            const BorderSide(color: AppColors.primary, width: 2),
+                      ),
+                      filled: true,
+                      fillColor: colors.surface,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                    ),
+                    style: TextStyle(color: colors.textPrimary, fontSize: 14),
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
+                const SizedBox(width: 6),
+                Text(
+                  'kcal',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: colors.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
 
-          // 画像ピッカー行
-          _ImagePickerRow(
-            images: widget.selectedImages,
-            onPick: widget.onPickImage,
-            onRemove: widget.onRemoveImage,
-            colors: colors,
-          ),
-          const SizedBox(height: 10),
+            // 画像ピッカー行
+            _ImagePickerRow(
+              images: widget.selectedImages,
+              onPick: widget.onPickImage,
+              onRemove: widget.onRemoveImage,
+              colors: colors,
+            ),
+            const SizedBox(height: 10),
 
-          // プレビュー行
-          _PreviewRow(
-            previewText: _previewText,
-            isValid: _isValid,
-            onInsert: _handleInsert,
-            colors: colors,
-          ),
-        ],
-      ),
-    );
+            // プレビュー行
+            _PreviewRow(
+              previewText: _previewText,
+              isValid: _isValid,
+              onInsert: _handleInsert,
+              colors: colors,
+            ),
+          ],
+        ),
+      );
   }
 }
 

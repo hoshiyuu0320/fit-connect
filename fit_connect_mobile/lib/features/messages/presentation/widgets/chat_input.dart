@@ -479,6 +479,7 @@ class _ChatInputState extends State<ChatInput> {
         // 画像プレビュー（フォーム非表示時のみ通常位置に表示）
         if (_activeFormType == null && _selectedImages.isNotEmpty)
           _buildImagePreview(insideForm: false),
+        if (_activeFormType == null)
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
