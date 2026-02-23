@@ -16,8 +16,7 @@ class ProfileSetupScreen extends ConsumerStatefulWidget {
   const ProfileSetupScreen({super.key});
 
   @override
-  ConsumerState<ProfileSetupScreen> createState() =>
-      _ProfileSetupScreenState();
+  ConsumerState<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
 }
 
 class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
@@ -99,6 +98,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
   Widget _buildGenderOption(String value, String label, IconData icon) {
     final isSelected = _selectedGender == value;
+    final colors = AppColors.of(context);
     return Expanded(
       child: GestureDetector(
         onTap: () {
@@ -109,10 +109,10 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.primary50 : AppColors.slate50,
+            color: isSelected ? AppColors.primary50 : colors.surfaceDim,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isSelected ? AppColors.primary600 : AppColors.slate200,
+              color: isSelected ? AppColors.primary600 : colors.border,
               width: isSelected ? 2 : 1,
             ),
           ),
@@ -121,7 +121,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
               Icon(
                 icon,
                 size: 20,
-                color: isSelected ? AppColors.primary600 : AppColors.slate400,
+                color: isSelected ? AppColors.primary600 : colors.textHint,
               ),
               const SizedBox(height: 4),
               Text(
@@ -129,7 +129,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                  color: isSelected ? AppColors.primary600 : AppColors.slate500,
+                  color:
+                      isSelected ? AppColors.primary600 : colors.textSecondary,
                 ),
               ),
             ],
@@ -141,11 +142,11 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.slate800,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        foregroundColor: colors.textPrimary,
         elevation: 0,
       ),
       body: GestureDetector(
@@ -153,262 +154,268 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         behavior: HitTestBehavior.opaque,
         child: SafeArea(
           child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight - 48,
-                ),
-                child: IntrinsicHeight(
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const Spacer(),
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(24.0),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: constraints.maxHeight - 48,
+                  ),
+                  child: IntrinsicHeight(
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Spacer(),
 
-                        // プロフィール画像選択
-                        Center(
-                          child: GestureDetector(
-                            onTap: _pickProfileImage,
-                            child: Stack(
-                              children: [
-                                Container(
-                                  width: 80,
-                                  height: 80,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary50,
-                                    shape: BoxShape.circle,
-                                    image: _selectedImage != null
-                                        ? DecorationImage(
-                                            image: FileImage(_selectedImage!),
-                                            fit: BoxFit.cover,
+                          // プロフィール画像選択
+                          Center(
+                            child: GestureDetector(
+                              onTap: _pickProfileImage,
+                              child: Stack(
+                                children: [
+                                  Container(
+                                    width: 80,
+                                    height: 80,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary50,
+                                      shape: BoxShape.circle,
+                                      image: _selectedImage != null
+                                          ? DecorationImage(
+                                              image: FileImage(_selectedImage!),
+                                              fit: BoxFit.cover,
+                                            )
+                                          : null,
+                                    ),
+                                    child: _selectedImage == null
+                                        ? const Icon(
+                                            LucideIcons.user,
+                                            size: 40,
+                                            color: AppColors.primary600,
                                           )
                                         : null,
                                   ),
-                                  child: _selectedImage == null
-                                      ? const Icon(
-                                          LucideIcons.user,
-                                          size: 40,
-                                          color: AppColors.primary600,
-                                        )
-                                      : null,
-                                ),
-                                Positioned(
-                                  right: 0,
-                                  bottom: 0,
-                                  child: Container(
-                                    width: 28,
-                                    height: 28,
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primary600,
-                                      shape: BoxShape.circle,
-                                      border: Border.all(color: Colors.white, width: 2),
-                                    ),
-                                    child: const Icon(
-                                      LucideIcons.camera,
-                                      size: 14,
-                                      color: Colors.white,
+                                  Positioned(
+                                    right: 0,
+                                    bottom: 0,
+                                    child: Container(
+                                      width: 28,
+                                      height: 28,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary600,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                            color: colors.surface, width: 2),
+                                      ),
+                                      child: const Icon(
+                                        LucideIcons.camera,
+                                        size: 14,
+                                        color: Colors.white,
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'タップして写真を設定',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.primary600,
-                          ),
-                        ),
-                        const Text(
-                          'あとで設定できます',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: AppColors.slate400,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-
-                        // タイトル
-                        const Text(
-                          'プロフィール設定',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.slate800,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-
-                        // 説明文
-                        const Text(
-                          'あなたの基本情報を入力してください',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: AppColors.slate500,
-                            height: 1.5,
-                          ),
-                        ),
-
-                        const SizedBox(height: 48),
-
-                        // 名前入力フィールド
-                        Container(
-                          decoration: BoxDecoration(
-                            color: AppColors.slate50,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.slate200),
-                          ),
-                          child: TextFormField(
-                            controller: _nameController,
-                            style: const TextStyle(color: AppColors.slate800),
-                            decoration: const InputDecoration(
-                              labelText: 'お名前',
-                              labelStyle: TextStyle(color: AppColors.slate500),
-                              hintText: '例: 山田 太郎',
-                              hintStyle: TextStyle(color: AppColors.slate400),
-                              border: InputBorder.none,
-                              prefixIcon: Icon(
-                                LucideIcons.user,
-                                color: AppColors.slate400,
-                              ),
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 16,
-                              ),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return '名前を入力してください';
-                              }
-                              if (value.trim().length > 50) {
-                                return '名前は50文字以内で入力してください';
-                              }
-                              return null;
-                            },
-                            onFieldSubmitted: (_) => _handleSubmit(),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-
-                        // 性別セクション
-                        const Align(
-                          alignment: Alignment.centerLeft,
-                          child: Padding(
-                            padding: EdgeInsets.only(left: 4, bottom: 8),
-                            child: Text(
-                              '性別',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.slate600,
+                                ],
                               ),
                             ),
                           ),
-                        ),
-                        Row(
-                          children: [
-                            _buildGenderOption('male', '男性', LucideIcons.user),
-                            const SizedBox(width: 8),
-                            _buildGenderOption('female', '女性', LucideIcons.user),
-                            const SizedBox(width: 8),
-                            _buildGenderOption('other', 'その他', LucideIcons.users),
-                          ],
-                        ),
-
-                        const SizedBox(height: 20),
-
-                        // 年齢入力フィールド
-                        Container(
-                          decoration: BoxDecoration(
-                            color: AppColors.slate50,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.slate200),
-                          ),
-                          child: TextFormField(
-                            controller: _ageController,
-                            keyboardType: TextInputType.number,
-                            style: const TextStyle(color: AppColors.slate800),
-                            decoration: const InputDecoration(
-                              labelText: '年齢',
-                              labelStyle: TextStyle(color: AppColors.slate500),
-                              hintText: '例: 30',
-                              hintStyle: TextStyle(color: AppColors.slate400),
-                              border: InputBorder.none,
-                              prefixIcon: Icon(
-                                LucideIcons.cake,
-                                color: AppColors.slate400,
-                              ),
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 16,
-                              ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'タップして写真を設定',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.primary600,
                             ),
-                            validator: (value) {
-                              if (value != null && value.trim().isNotEmpty) {
-                                final age = int.tryParse(value.trim());
-                                if (age == null || age < 1 || age > 149) {
-                                  return '正しい年齢を入力してください';
-                                }
-                              }
-                              return null;
-                            },
                           ),
-                        ),
-                        const SizedBox(height: 32),
+                          Text(
+                            'あとで設定できます',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: colors.textHint,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
 
-                        // 登録完了ボタン
-                        ElevatedButton(
-                          onPressed: _isLoading ? null : _handleSubmit,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary600,
-                            foregroundColor: Colors.white,
-                            disabledBackgroundColor: AppColors.primary200,
-                            disabledForegroundColor: Colors.white,
-                            padding:
-                                const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
+                          // タイトル
+                          Text(
+                            'プロフィール設定',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                              color: colors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+
+                          // 説明文
+                          Text(
+                            'あなたの基本情報を入力してください',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: colors.textSecondary,
+                              height: 1.5,
+                            ),
+                          ),
+
+                          const SizedBox(height: 48),
+
+                          // 名前入力フィールド
+                          Container(
+                            decoration: BoxDecoration(
+                              color: colors.surfaceDim,
                               borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: colors.border),
                             ),
-                            elevation: 0,
-                          ),
-                          child: _isLoading
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Text(
-                                  '登録を完了する',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                            child: TextFormField(
+                              controller: _nameController,
+                              style: TextStyle(color: colors.textPrimary),
+                              decoration: InputDecoration(
+                                labelText: 'お名前',
+                                labelStyle:
+                                    TextStyle(color: colors.textSecondary),
+                                hintText: '例: 山田 太郎',
+                                hintStyle: TextStyle(color: colors.textHint),
+                                border: InputBorder.none,
+                                prefixIcon: Icon(
+                                  LucideIcons.user,
+                                  color: colors.textHint,
                                 ),
-                        ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 16,
+                                ),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return '名前を入力してください';
+                                }
+                                if (value.trim().length > 50) {
+                                  return '名前は50文字以内で入力してください';
+                                }
+                                return null;
+                              },
+                              onFieldSubmitted: (_) => _handleSubmit(),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
 
-                        const Spacer(),
-                      ],
+                          // 性別セクション
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Padding(
+                              padding:
+                                  const EdgeInsets.only(left: 4, bottom: 8),
+                              child: Text(
+                                '性別',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: colors.textSecondary,
+                                ),
+                              ),
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              _buildGenderOption(
+                                  'male', '男性', LucideIcons.user),
+                              const SizedBox(width: 8),
+                              _buildGenderOption(
+                                  'female', '女性', LucideIcons.user),
+                              const SizedBox(width: 8),
+                              _buildGenderOption(
+                                  'other', 'その他', LucideIcons.users),
+                            ],
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          // 年齢入力フィールド
+                          Container(
+                            decoration: BoxDecoration(
+                              color: colors.surfaceDim,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: colors.border),
+                            ),
+                            child: TextFormField(
+                              controller: _ageController,
+                              keyboardType: TextInputType.number,
+                              style: TextStyle(color: colors.textPrimary),
+                              decoration: InputDecoration(
+                                labelText: '年齢',
+                                labelStyle:
+                                    TextStyle(color: colors.textSecondary),
+                                hintText: '例: 30',
+                                hintStyle: TextStyle(color: colors.textHint),
+                                border: InputBorder.none,
+                                prefixIcon: Icon(
+                                  LucideIcons.cake,
+                                  color: colors.textHint,
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 16,
+                                ),
+                              ),
+                              validator: (value) {
+                                if (value != null && value.trim().isNotEmpty) {
+                                  final age = int.tryParse(value.trim());
+                                  if (age == null || age < 1 || age > 149) {
+                                    return '正しい年齢を入力してください';
+                                  }
+                                }
+                                return null;
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 32),
+
+                          // 登録完了ボタン
+                          ElevatedButton(
+                            onPressed: _isLoading ? null : _handleSubmit,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary600,
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor: AppColors.primary200,
+                              disabledForegroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: _isLoading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Text(
+                                    '登録を完了する',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                          ),
+
+                          const Spacer(),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            );
-          },
-        ),
+              );
+            },
+          ),
         ),
       ),
     );
@@ -466,6 +473,7 @@ class _PreviewProfileSetupFormState extends State<_PreviewProfileSetupForm> {
 
   Widget _buildGenderOption(String value, String label, IconData icon) {
     final isSelected = _selectedGender == value;
+    final colors = AppColors.of(context);
     return Expanded(
       child: GestureDetector(
         onTap: () {
@@ -476,10 +484,10 @@ class _PreviewProfileSetupFormState extends State<_PreviewProfileSetupForm> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.primary50 : AppColors.slate50,
+            color: isSelected ? AppColors.primary50 : colors.surfaceDim,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isSelected ? AppColors.primary600 : AppColors.slate200,
+              color: isSelected ? AppColors.primary600 : colors.border,
               width: isSelected ? 2 : 1,
             ),
           ),
@@ -488,7 +496,7 @@ class _PreviewProfileSetupFormState extends State<_PreviewProfileSetupForm> {
               Icon(
                 icon,
                 size: 20,
-                color: isSelected ? AppColors.primary600 : AppColors.slate400,
+                color: isSelected ? AppColors.primary600 : colors.textHint,
               ),
               const SizedBox(height: 4),
               Text(
@@ -496,7 +504,8 @@ class _PreviewProfileSetupFormState extends State<_PreviewProfileSetupForm> {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                  color: isSelected ? AppColors.primary600 : AppColors.slate500,
+                  color:
+                      isSelected ? AppColors.primary600 : colors.textSecondary,
                 ),
               ),
             ],
@@ -508,6 +517,7 @@ class _PreviewProfileSetupFormState extends State<_PreviewProfileSetupForm> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -522,7 +532,9 @@ class _PreviewProfileSetupFormState extends State<_PreviewProfileSetupForm> {
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
-                  color: widget.hasImage ? AppColors.slate300 : AppColors.primary50,
+                  color: widget.hasImage
+                      ? colors.textHint
+                      : AppColors.primary50,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -540,7 +552,7 @@ class _PreviewProfileSetupFormState extends State<_PreviewProfileSetupForm> {
                   decoration: BoxDecoration(
                     color: AppColors.primary600,
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
+                    border: Border.all(color: colors.surface, width: 2),
                   ),
                   child: const Icon(
                     LucideIcons.camera,
@@ -561,35 +573,35 @@ class _PreviewProfileSetupFormState extends State<_PreviewProfileSetupForm> {
             color: AppColors.primary600,
           ),
         ),
-        const Text(
+        Text(
           'あとで設定できます',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 11,
-            color: AppColors.slate400,
+            color: colors.textHint,
           ),
         ),
         const SizedBox(height: 16),
 
         // タイトル
-        const Text(
+        Text(
           'プロフィール設定',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.bold,
-            color: AppColors.slate800,
+            color: colors.textPrimary,
           ),
         ),
         const SizedBox(height: 8),
 
         // 説明文
-        const Text(
+        Text(
           'あなたの基本情報を入力してください',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 14,
-            color: AppColors.slate500,
+            color: colors.textSecondary,
             height: 1.5,
           ),
         ),
@@ -599,28 +611,28 @@ class _PreviewProfileSetupFormState extends State<_PreviewProfileSetupForm> {
         // 名前入力フィールド
         Container(
           decoration: BoxDecoration(
-            color: AppColors.slate50,
+            color: colors.surfaceDim,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: widget.validationError != null
                   ? AppColors.rose800
-                  : AppColors.slate200,
+                  : colors.border,
             ),
           ),
           child: TextField(
             controller: _nameController,
-            style: const TextStyle(color: AppColors.slate800),
-            decoration: const InputDecoration(
+            style: TextStyle(color: colors.textPrimary),
+            decoration: InputDecoration(
               labelText: 'お名前',
-              labelStyle: TextStyle(color: AppColors.slate500),
+              labelStyle: TextStyle(color: colors.textSecondary),
               hintText: '例: 山田 太郎',
-              hintStyle: TextStyle(color: AppColors.slate400),
+              hintStyle: TextStyle(color: colors.textHint),
               border: InputBorder.none,
               prefixIcon: Icon(
                 LucideIcons.user,
-                color: AppColors.slate400,
+                color: colors.textHint,
               ),
-              contentPadding: EdgeInsets.symmetric(
+              contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 16,
               ),
@@ -643,16 +655,16 @@ class _PreviewProfileSetupFormState extends State<_PreviewProfileSetupForm> {
         const SizedBox(height: 20),
 
         // 性別セクション
-        const Align(
+        Align(
           alignment: Alignment.centerLeft,
           child: Padding(
-            padding: EdgeInsets.only(left: 4, bottom: 8),
+            padding: const EdgeInsets.only(left: 4, bottom: 8),
             child: Text(
               '性別',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppColors.slate600,
+                color: colors.textSecondary,
               ),
             ),
           ),
@@ -672,25 +684,25 @@ class _PreviewProfileSetupFormState extends State<_PreviewProfileSetupForm> {
         // 年齢入力フィールド
         Container(
           decoration: BoxDecoration(
-            color: AppColors.slate50,
+            color: colors.surfaceDim,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.slate200),
+            border: Border.all(color: colors.border),
           ),
           child: TextField(
             controller: _ageController,
             keyboardType: TextInputType.number,
-            style: const TextStyle(color: AppColors.slate800),
-            decoration: const InputDecoration(
+            style: TextStyle(color: colors.textPrimary),
+            decoration: InputDecoration(
               labelText: '年齢',
-              labelStyle: TextStyle(color: AppColors.slate500),
+              labelStyle: TextStyle(color: colors.textSecondary),
               hintText: '例: 30',
-              hintStyle: TextStyle(color: AppColors.slate400),
+              hintStyle: TextStyle(color: colors.textHint),
               border: InputBorder.none,
               prefixIcon: Icon(
                 LucideIcons.cake,
-                color: AppColors.slate400,
+                color: colors.textHint,
               ),
-              contentPadding: EdgeInsets.symmetric(
+              contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 16,
               ),
@@ -744,16 +756,13 @@ Widget previewProfileSetupScreenEmpty() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.slate800,
         elevation: 0,
       ),
-      body: SafeArea(
+      body: const SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: const _PreviewProfileSetupForm(),
+          padding: EdgeInsets.all(24.0),
+          child: _PreviewProfileSetupForm(),
         ),
       ),
     ),
@@ -766,16 +775,13 @@ Widget previewProfileSetupScreenWithName() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.slate800,
         elevation: 0,
       ),
-      body: SafeArea(
+      body: const SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: const _PreviewProfileSetupForm(
+          padding: EdgeInsets.all(24.0),
+          child: _PreviewProfileSetupForm(
             nameText: '山田 太郎',
             ageText: '30',
             selectedGender: 'male',
@@ -792,16 +798,13 @@ Widget previewProfileSetupScreenLoading() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.slate800,
         elevation: 0,
       ),
-      body: SafeArea(
+      body: const SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: const _PreviewProfileSetupForm(
+          padding: EdgeInsets.all(24.0),
+          child: _PreviewProfileSetupForm(
             nameText: '山田 太郎',
             ageText: '30',
             selectedGender: 'female',
@@ -819,16 +822,13 @@ Widget previewProfileSetupScreenWithImage() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.slate800,
         elevation: 0,
       ),
-      body: SafeArea(
+      body: const SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: const _PreviewProfileSetupForm(
+          padding: EdgeInsets.all(24.0),
+          child: _PreviewProfileSetupForm(
             nameText: '山田 太郎',
             ageText: '30',
             selectedGender: 'male',
@@ -846,16 +846,13 @@ Widget previewProfileSetupScreenValidationError() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.slate800,
         elevation: 0,
       ),
-      body: SafeArea(
+      body: const SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: const _PreviewProfileSetupForm(
+          padding: EdgeInsets.all(24.0),
+          child: _PreviewProfileSetupForm(
             nameText: '',
             validationError: '名前を入力してください',
           ),

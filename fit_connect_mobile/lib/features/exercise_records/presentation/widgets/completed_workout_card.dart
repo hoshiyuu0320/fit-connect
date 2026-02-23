@@ -21,6 +21,7 @@ class CompletedWorkoutCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     final plan = assignment.planInfo;
     final exercises = List<WorkoutAssignmentExercise>.from(assignment.exercises)
       ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
@@ -28,18 +29,18 @@ class CompletedWorkoutCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.slate100),
+        border: Border.all(color: colors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header
-          _buildHeader(plan),
+          _buildHeader(context, plan),
 
           // Divider
-          const Divider(height: 1, thickness: 1, color: AppColors.slate100),
+          Divider(height: 1, thickness: 1, color: colors.border),
 
           // Exercise Sections
           if (exercises.isNotEmpty)
@@ -48,7 +49,7 @@ class CompletedWorkoutCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: exercises
-                    .map((exercise) => _buildExerciseSection(exercise))
+                    .map((exercise) => _buildExerciseSection(context, exercise))
                     .toList(),
               ),
             ),
@@ -57,7 +58,8 @@ class CompletedWorkoutCard extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(WorkoutPlanInfo? plan) {
+  Widget _buildHeader(BuildContext context, WorkoutPlanInfo? plan) {
+    final colors = AppColors.of(context);
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -83,10 +85,10 @@ class CompletedWorkoutCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   plan?.title ?? 'ワークアウト',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.slate800,
+                    color: colors.textPrimary,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -95,8 +97,7 @@ class CompletedWorkoutCard extends StatelessWidget {
               const SizedBox(width: 8),
               // Completed Badge
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: AppColors.emerald100,
                   borderRadius: BorderRadius.circular(8),
@@ -129,27 +130,26 @@ class CompletedWorkoutCard extends StatelessWidget {
               children: [
                 Text(
                   plan.category,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
-                    color: AppColors.slate500,
+                    color: colors.textSecondary,
                   ),
                 ),
                 if (plan.estimatedMinutes != null) ...[
-                  const Text(
+                  Text(
                     ' • ',
                     style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.slate400,
+                      color: colors.textHint,
                     ),
                   ),
-                  Icon(LucideIcons.clock,
-                      size: 12, color: AppColors.slate400),
+                  Icon(LucideIcons.clock, size: 12, color: colors.textHint),
                   const SizedBox(width: 3),
                   Text(
                     '${plan.estimatedMinutes}分',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.slate500,
+                      color: colors.textSecondary,
                     ),
                   ),
                 ],
@@ -161,14 +161,16 @@ class CompletedWorkoutCard extends StatelessWidget {
     );
   }
 
-  Widget _buildExerciseSection(WorkoutAssignmentExercise exercise) {
+  Widget _buildExerciseSection(
+      BuildContext context, WorkoutAssignmentExercise exercise) {
+    final colors = AppColors.of(context);
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.slate50,
+        color: colors.surfaceDim,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.slate100),
+        border: Border.all(color: colors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -179,40 +181,42 @@ class CompletedWorkoutCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   exercise.exerciseName,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.slate800,
+                    color: colors.textPrimary,
                   ),
                 ),
               ),
               const SizedBox(width: 8),
-              _buildExerciseBadge(exercise.isCompleted),
+              _buildExerciseBadge(context, exercise.isCompleted),
             ],
           ),
           const SizedBox(height: 6),
 
           // Target row
-          _buildTargetRow(exercise),
+          _buildTargetRow(context, exercise),
 
           // Actual sets
           if (exercise.actualSets != null &&
               exercise.actualSets!.isNotEmpty) ...[
             const SizedBox(height: 8),
-            const Divider(height: 1, thickness: 1, color: AppColors.slate200),
+            Divider(height: 1, thickness: 1, color: colors.border),
             const SizedBox(height: 8),
-            ...exercise.actualSets!.map((set) => _buildActualSetRow(set)),
+            ...exercise.actualSets!
+                .map((set) => _buildActualSetRow(context, set)),
           ],
         ],
       ),
     );
   }
 
-  Widget _buildExerciseBadge(bool isCompleted) {
+  Widget _buildExerciseBadge(BuildContext context, bool isCompleted) {
+    final colors = AppColors.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
-        color: isCompleted ? AppColors.emerald100 : AppColors.slate100,
+        color: isCompleted ? AppColors.emerald100 : colors.surfaceDim,
         borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
@@ -228,7 +232,7 @@ class CompletedWorkoutCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w600,
-              color: isCompleted ? AppColors.emerald600 : AppColors.slate500,
+              color: isCompleted ? AppColors.emerald600 : colors.textHint,
             ),
           ),
         ],
@@ -236,7 +240,9 @@ class CompletedWorkoutCard extends StatelessWidget {
     );
   }
 
-  Widget _buildTargetRow(WorkoutAssignmentExercise exercise) {
+  Widget _buildTargetRow(
+      BuildContext context, WorkoutAssignmentExercise exercise) {
+    final colors = AppColors.of(context);
     final parts = <String>[
       '${exercise.targetSets}セット × ${exercise.targetReps}回',
     ];
@@ -246,20 +252,21 @@ class CompletedWorkoutCard extends StatelessWidget {
 
     return Row(
       children: [
-        Icon(LucideIcons.target, size: 11, color: AppColors.slate400),
+        Icon(LucideIcons.target, size: 11, color: colors.textHint),
         const SizedBox(width: 4),
         Text(
           '目標: ${parts.join(' ')}',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
-            color: AppColors.slate500,
+            color: colors.textSecondary,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildActualSetRow(ActualSet set) {
+  Widget _buildActualSetRow(BuildContext context, ActualSet set) {
+    final colors = AppColors.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: Row(
@@ -268,18 +275,18 @@ class CompletedWorkoutCard extends StatelessWidget {
             width: 44,
             child: Text(
               'Set ${set.setNumber}:',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: AppColors.slate600,
+                color: colors.textSecondary,
               ),
             ),
           ),
           Text(
             '${_formatWeight(set.weight)}kg × ${set.reps}回',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
-              color: AppColors.slate700,
+              color: colors.textPrimary,
             ),
           ),
           if (set.done) ...[
@@ -406,7 +413,6 @@ Widget previewCompletedWorkoutCardWithSets() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -422,7 +428,6 @@ Widget previewCompletedWorkoutCardNoSets() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),

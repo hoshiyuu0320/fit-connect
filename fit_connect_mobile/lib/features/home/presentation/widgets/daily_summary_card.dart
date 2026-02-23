@@ -23,6 +23,7 @@ class DailySummaryCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = AppColors.of(context);
     final todayMealCountAsync = ref.watch(todayMealCountProvider);
     final weeklyExerciseCountAsync = ref.watch(weeklyExerciseCountProvider);
     final latestWeightAsync = ref.watch(latestWeightRecordProvider);
@@ -32,12 +33,12 @@ class DailySummaryCard extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.slate100),
+        border: Border.all(color: colors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: colors.shadow,
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -46,12 +47,12 @@ class DailySummaryCard extends ConsumerWidget {
       child: Column(
         children: [
           // Header
-          const Text(
+          Text(
             '今日のまとめ',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: AppColors.slate800,
+              color: colors.textPrimary,
             ),
           ),
 
@@ -59,24 +60,28 @@ class DailySummaryCard extends ConsumerWidget {
 
           // Meal Section
           _buildTappableSection(
+            context: context,
             onTap: onMealsTap,
-            child: _buildMealSection(todayMealCountAsync),
+            child: _buildMealSection(context, todayMealCountAsync),
           ),
 
           const SizedBox(height: 16),
 
           // Workout Section
           _buildTappableSection(
+            context: context,
             onTap: onActivityTap,
-            child: _buildWorkoutSection(weeklyExerciseCountAsync),
+            child: _buildWorkoutSection(context, weeklyExerciseCountAsync),
           ),
 
-          const Divider(height: 32, color: AppColors.slate50),
+          Divider(height: 32, color: colors.surfaceDim),
 
           // Weight Section
           _buildTappableSection(
+            context: context,
             onTap: onWeightTap,
-            child: _buildWeightSection(latestWeightAsync, weightStatsAsync),
+            child: _buildWeightSection(
+                context, latestWeightAsync, weightStatsAsync),
           ),
         ],
       ),
@@ -84,27 +89,29 @@ class DailySummaryCard extends ConsumerWidget {
   }
 
   Widget _buildTappableSection({
+    required BuildContext context,
     required VoidCallback? onTap,
     required Widget child,
   }) {
+    final colors = AppColors.of(context);
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         splashColor: AppColors.primary100,
-        highlightColor: AppColors.slate50,
+        highlightColor: colors.surfaceDim,
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
           child: Row(
             children: [
               Expanded(child: child),
               if (onTap != null)
-                const Padding(
-                  padding: EdgeInsets.only(left: 8),
+                Padding(
+                  padding: const EdgeInsets.only(left: 8),
                   child: Icon(
                     LucideIcons.chevronRight,
-                    color: AppColors.slate300,
+                    color: colors.border,
                     size: 18,
                   ),
                 ),
@@ -115,131 +122,17 @@ class DailySummaryCard extends ConsumerWidget {
     );
   }
 
-  Widget _buildMealSection(AsyncValue<int> todayMealCountAsync) {
+  Widget _buildMealSection(
+      BuildContext context, AsyncValue<int> todayMealCountAsync) {
     return todayMealCountAsync.when(
-      data: (count) {
-        final progress = count / 3;
-        final percentage = (progress * 100).toInt();
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: const BoxDecoration(
-                        color: AppColors.orange100,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(LucideIcons.utensils,
-                          color: AppColors.orange500, size: 16),
-                    ),
-                    const SizedBox(width: 10),
-                    const Text(
-                      '食事',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.slate700,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-                RichText(
-                  text: TextSpan(
-                    children: [
-                      TextSpan(
-                        text: '$count',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.slate800,
-                          fontSize: 14,
-                        ),
-                      ),
-                      const TextSpan(
-                        text: '/3',
-                        style: TextStyle(
-                          color: AppColors.slate400,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.only(left: 42),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: progress.clamp(0.0, 1.0),
-                      backgroundColor: AppColors.slate100,
-                      valueColor: const AlwaysStoppedAnimation<Color>(
-                          AppColors.orange500),
-                      minHeight: 8,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '$percentage% 記録済み',
-                    style: const TextStyle(
-                      color: AppColors.slate400,
-                      fontSize: 10,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        );
-      },
-      loading: () => _buildMealSectionLoading(),
-      error: (_, __) => _buildMealSectionStatic(0),
+      data: (count) => _buildMealSectionData(context, count),
+      loading: () => _buildMealSectionLoading(context),
+      error: (_, __) => _buildMealSectionData(context, 0),
     );
   }
 
-  Widget _buildMealSectionLoading() {
-    return Row(
-      children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: const BoxDecoration(
-            color: AppColors.orange100,
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(LucideIcons.utensils,
-              color: AppColors.orange500, size: 16),
-        ),
-        const SizedBox(width: 10),
-        const Text(
-          '食事',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: AppColors.slate700,
-            fontSize: 14,
-          ),
-        ),
-        const Spacer(),
-        const SizedBox(
-          width: 16,
-          height: 16,
-          child: CircularProgressIndicator(strokeWidth: 2),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMealSectionStatic(int count) {
+  Widget _buildMealSectionData(BuildContext context, int count) {
+    final colors = AppColors.of(context);
     final progress = count / 3;
     final percentage = (progress * 100).toInt();
     return Column(
@@ -261,11 +154,11 @@ class DailySummaryCard extends ConsumerWidget {
                       color: AppColors.orange500, size: 16),
                 ),
                 const SizedBox(width: 10),
-                const Text(
+                Text(
                   '食事',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: AppColors.slate700,
+                    color: colors.textSecondary,
                     fontSize: 14,
                   ),
                 ),
@@ -276,16 +169,16 @@ class DailySummaryCard extends ConsumerWidget {
                 children: [
                   TextSpan(
                     text: '$count',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: AppColors.slate800,
+                      color: colors.textPrimary,
                       fontSize: 14,
                     ),
                   ),
-                  const TextSpan(
+                  TextSpan(
                     text: '/3',
                     style: TextStyle(
-                      color: AppColors.slate400,
+                      color: colors.textHint,
                       fontSize: 12,
                     ),
                   ),
@@ -304,7 +197,7 @@ class DailySummaryCard extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
                   value: progress.clamp(0.0, 1.0),
-                  backgroundColor: AppColors.slate100,
+                  backgroundColor: colors.border,
                   valueColor:
                       const AlwaysStoppedAnimation<Color>(AppColors.orange500),
                   minHeight: 8,
@@ -313,8 +206,8 @@ class DailySummaryCard extends ConsumerWidget {
               const SizedBox(height: 4),
               Text(
                 '$percentage% 記録済み',
-                style: const TextStyle(
-                  color: AppColors.slate400,
+                style: TextStyle(
+                  color: colors.textHint,
                   fontSize: 10,
                 ),
               ),
@@ -325,117 +218,50 @@ class DailySummaryCard extends ConsumerWidget {
     );
   }
 
-  Widget _buildWorkoutSection(AsyncValue<int> weeklyExerciseCountAsync) {
-    return weeklyExerciseCountAsync.when(
-      data: (count) => Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: const BoxDecoration(
-                  color: AppColors.primary100,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(LucideIcons.dumbbell,
-                    color: AppColors.primary500, size: 16),
-              ),
-              const SizedBox(width: 10),
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '運動',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.slate700,
-                      fontSize: 14,
-                      height: 1.2,
-                    ),
-                  ),
-                  Text(
-                    '今週',
-                    style: TextStyle(
-                      color: AppColors.slate400,
-                      fontSize: 10,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+  Widget _buildMealSectionLoading(BuildContext context) {
+    final colors = AppColors.of(context);
+    return Row(
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          decoration: const BoxDecoration(
+            color: AppColors.orange100,
+            shape: BoxShape.circle,
           ),
-          RichText(
-            text: TextSpan(
-              children: [
-                TextSpan(
-                  text: '$count ',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.slate800,
-                    fontSize: 14,
-                  ),
-                ),
-                const TextSpan(
-                  text: '/ 7日',
-                  style: TextStyle(
-                    color: AppColors.slate400,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
+          child: const Icon(LucideIcons.utensils,
+              color: AppColors.orange500, size: 16),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          '食事',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: colors.textSecondary,
+            fontSize: 14,
           ),
-        ],
-      ),
-      loading: () => Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: const BoxDecoration(
-              color: AppColors.primary100,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(LucideIcons.dumbbell,
-                color: AppColors.primary500, size: 16),
-          ),
-          const SizedBox(width: 10),
-          const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '運動',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.slate700,
-                  fontSize: 14,
-                  height: 1.2,
-                ),
-              ),
-              Text(
-                '今週',
-                style: TextStyle(
-                  color: AppColors.slate400,
-                  fontSize: 10,
-                ),
-              ),
-            ],
-          ),
-          const Spacer(),
-          const SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ],
-      ),
-      error: (_, __) => _buildWorkoutSectionStatic(0),
+        ),
+        const Spacer(),
+        const SizedBox(
+          width: 16,
+          height: 16,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      ],
     );
   }
 
-  Widget _buildWorkoutSectionStatic(int count) {
+  Widget _buildWorkoutSection(
+      BuildContext context, AsyncValue<int> weeklyExerciseCountAsync) {
+    return weeklyExerciseCountAsync.when(
+      data: (count) => _buildWorkoutSectionData(context, count),
+      loading: () => _buildWorkoutSectionLoading(context),
+      error: (_, __) => _buildWorkoutSectionData(context, 0),
+    );
+  }
+
+  Widget _buildWorkoutSectionData(BuildContext context, int count) {
+    final colors = AppColors.of(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -452,14 +278,14 @@ class DailySummaryCard extends ConsumerWidget {
                   color: AppColors.primary500, size: 16),
             ),
             const SizedBox(width: 10),
-            const Column(
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   '運動',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: AppColors.slate700,
+                    color: colors.textSecondary,
                     fontSize: 14,
                     height: 1.2,
                   ),
@@ -467,7 +293,7 @@ class DailySummaryCard extends ConsumerWidget {
                 Text(
                   '今週',
                   style: TextStyle(
-                    color: AppColors.slate400,
+                    color: colors.textHint,
                     fontSize: 10,
                   ),
                 ),
@@ -480,16 +306,16 @@ class DailySummaryCard extends ConsumerWidget {
             children: [
               TextSpan(
                 text: '$count ',
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  color: AppColors.slate800,
+                  color: colors.textPrimary,
                   fontSize: 14,
                 ),
               ),
-              const TextSpan(
+              TextSpan(
                 text: '/ 7日',
                 style: TextStyle(
-                  color: AppColors.slate400,
+                  color: colors.textHint,
                   fontSize: 12,
                 ),
               ),
@@ -500,117 +326,77 @@ class DailySummaryCard extends ConsumerWidget {
     );
   }
 
+  Widget _buildWorkoutSectionLoading(BuildContext context) {
+    final colors = AppColors.of(context);
+    return Row(
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          decoration: const BoxDecoration(
+            color: AppColors.primary100,
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(LucideIcons.dumbbell,
+              color: AppColors.primary500, size: 16),
+        ),
+        const SizedBox(width: 10),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '運動',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: colors.textSecondary,
+                fontSize: 14,
+                height: 1.2,
+              ),
+            ),
+            Text(
+              '今週',
+              style: TextStyle(
+                color: colors.textHint,
+                fontSize: 10,
+              ),
+            ),
+          ],
+        ),
+        const Spacer(),
+        const SizedBox(
+          width: 16,
+          height: 16,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      ],
+    );
+  }
+
   Widget _buildWeightSection(
+    BuildContext context,
     AsyncValue latestWeightAsync,
     AsyncValue<Map<String, double>> weightStatsAsync,
   ) {
     return latestWeightAsync.when(
       data: (latestWeight) {
         if (latestWeight == null) {
-          return _buildWeightSectionNoData();
+          return _buildWeightSectionNoData(context);
         }
 
         final change = weightStatsAsync.whenOrNull(
           data: (stats) => stats['change'],
         );
 
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: const BoxDecoration(
-                    color: AppColors.emerald100,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(LucideIcons.scale,
-                      color: AppColors.emerald500, size: 16),
-                ),
-                const SizedBox(width: 10),
-                const Text(
-                  '体重',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.slate700,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '${latestWeight.weight.toStringAsFixed(1)} kg',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.slate800,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                if (change != null && change != 0)
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color:
-                          change < 0 ? AppColors.emerald50 : AppColors.rose100,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      '${change > 0 ? '+' : ''}${change.toStringAsFixed(1)}kg 今週',
-                      style: TextStyle(
-                        color: change < 0
-                            ? AppColors.emerald500
-                            : AppColors.rose800,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ],
-        );
+        return _buildWeightSectionData(context, latestWeight.weight, change);
       },
-      loading: () => Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: const BoxDecoration(
-              color: AppColors.emerald100,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(LucideIcons.scale,
-                color: AppColors.emerald500, size: 16),
-          ),
-          const SizedBox(width: 10),
-          const Text(
-            '体重',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: AppColors.slate700,
-              fontSize: 14,
-            ),
-          ),
-          const Spacer(),
-          const SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ],
-      ),
-      error: (_, __) => _buildWeightSectionNoData(),
+      loading: () => _buildWeightSectionLoading(context),
+      error: (_, __) => _buildWeightSectionNoData(context),
     );
   }
 
-  Widget _buildWeightSectionNoData() {
+  Widget _buildWeightSectionData(
+      BuildContext context, double weight, double? change) {
+    final colors = AppColors.of(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -627,20 +413,116 @@ class DailySummaryCard extends ConsumerWidget {
                   color: AppColors.emerald500, size: 16),
             ),
             const SizedBox(width: 10),
-            const Text(
+            Text(
               '体重',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                color: AppColors.slate700,
+                color: colors.textSecondary,
                 fontSize: 14,
               ),
             ),
           ],
         ),
-        const Text(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              '${weight.toStringAsFixed(1)} kg',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: colors.textPrimary,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 4),
+            if (change != null && change != 0)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: change < 0 ? AppColors.emerald50 : AppColors.rose100,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  '${change > 0 ? '+' : ''}${change.toStringAsFixed(1)}kg 今週',
+                  style: TextStyle(
+                    color:
+                        change < 0 ? AppColors.emerald500 : AppColors.rose800,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWeightSectionLoading(BuildContext context) {
+    final colors = AppColors.of(context);
+    return Row(
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          decoration: const BoxDecoration(
+            color: AppColors.emerald100,
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(LucideIcons.scale,
+              color: AppColors.emerald500, size: 16),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          '体重',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: colors.textSecondary,
+            fontSize: 14,
+          ),
+        ),
+        const Spacer(),
+        const SizedBox(
+          width: 16,
+          height: 16,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWeightSectionNoData(BuildContext context) {
+    final colors = AppColors.of(context);
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: const BoxDecoration(
+                color: AppColors.emerald100,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(LucideIcons.scale,
+                  color: AppColors.emerald500, size: 16),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              '体重',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: colors.textSecondary,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+        Text(
           'データなし',
           style: TextStyle(
-            color: AppColors.slate400,
+            color: colors.textHint,
             fontSize: 12,
           ),
         ),
@@ -658,7 +540,6 @@ Widget previewDailySummaryCardStatic() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -674,7 +555,6 @@ Widget previewDailySummaryCardEmpty() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -689,15 +569,16 @@ Widget previewDailySummaryCardEmpty() {
 class _PreviewDailySummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.slate100),
+        border: Border.all(color: colors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: colors.shadow,
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -706,33 +587,34 @@ class _PreviewDailySummaryCard extends StatelessWidget {
       child: Column(
         children: [
           // Header
-          const Text(
+          Text(
             '今日のまとめ',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: AppColors.slate800,
+              color: colors.textPrimary,
             ),
           ),
           const SizedBox(height: 24),
 
           // Meal Section (2/3)
-          _buildTappableRow(child: _buildMealRow(2)),
+          _buildTappableRow(context: context, child: _buildMealRow(context, 2)),
           const SizedBox(height: 16),
 
           // Activity Section (3/7)
-          _buildTappableRow(child: _buildActivityRow(3)),
+          _buildTappableRow(context: context, child: _buildActivityRow(context, 3)),
 
-          const Divider(height: 32, color: AppColors.slate50),
+          Divider(height: 32, color: colors.surfaceDim),
 
           // Weight Section
-          _buildTappableRow(child: _buildWeightRow(65.2, -0.6)),
+          _buildTappableRow(context: context, child: _buildWeightRow(context, 65.2, -0.6)),
         ],
       ),
     );
   }
 
-  Widget _buildMealRow(int count) {
+  Widget _buildMealRow(BuildContext context, int count) {
+    final colors = AppColors.of(context);
     final progress = count / 3;
     final percentage = (progress * 100).toInt();
     return Column(
@@ -754,11 +636,11 @@ class _PreviewDailySummaryCard extends StatelessWidget {
                       color: AppColors.orange500, size: 16),
                 ),
                 const SizedBox(width: 10),
-                const Text(
+                Text(
                   '食事',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: AppColors.slate700,
+                    color: colors.textSecondary,
                     fontSize: 14,
                   ),
                 ),
@@ -769,16 +651,16 @@ class _PreviewDailySummaryCard extends StatelessWidget {
                 children: [
                   TextSpan(
                     text: '$count',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: AppColors.slate800,
+                      color: colors.textPrimary,
                       fontSize: 14,
                     ),
                   ),
-                  const TextSpan(
+                  TextSpan(
                     text: '/3',
                     style: TextStyle(
-                      color: AppColors.slate400,
+                      color: colors.textHint,
                       fontSize: 12,
                     ),
                   ),
@@ -797,7 +679,7 @@ class _PreviewDailySummaryCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
                   value: progress,
-                  backgroundColor: AppColors.slate100,
+                  backgroundColor: colors.border,
                   valueColor:
                       const AlwaysStoppedAnimation<Color>(AppColors.orange500),
                   minHeight: 8,
@@ -806,8 +688,8 @@ class _PreviewDailySummaryCard extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 '$percentage% 記録済み',
-                style: const TextStyle(
-                  color: AppColors.slate400,
+                style: TextStyle(
+                  color: colors.textHint,
                   fontSize: 10,
                 ),
               ),
@@ -818,7 +700,8 @@ class _PreviewDailySummaryCard extends StatelessWidget {
     );
   }
 
-  Widget _buildActivityRow(int count) {
+  Widget _buildActivityRow(BuildContext context, int count) {
+    final colors = AppColors.of(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -835,14 +718,14 @@ class _PreviewDailySummaryCard extends StatelessWidget {
                   color: AppColors.primary500, size: 16),
             ),
             const SizedBox(width: 10),
-            const Column(
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   '運動',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: AppColors.slate700,
+                    color: colors.textSecondary,
                     fontSize: 14,
                     height: 1.2,
                   ),
@@ -850,7 +733,7 @@ class _PreviewDailySummaryCard extends StatelessWidget {
                 Text(
                   '今週',
                   style: TextStyle(
-                    color: AppColors.slate400,
+                    color: colors.textHint,
                     fontSize: 10,
                   ),
                 ),
@@ -863,16 +746,16 @@ class _PreviewDailySummaryCard extends StatelessWidget {
             children: [
               TextSpan(
                 text: '$count ',
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  color: AppColors.slate800,
+                  color: colors.textPrimary,
                   fontSize: 14,
                 ),
               ),
-              const TextSpan(
+              TextSpan(
                 text: '/ 7日',
                 style: TextStyle(
-                  color: AppColors.slate400,
+                  color: colors.textHint,
                   fontSize: 12,
                 ),
               ),
@@ -883,7 +766,8 @@ class _PreviewDailySummaryCard extends StatelessWidget {
     );
   }
 
-  Widget _buildWeightRow(double weight, double change) {
+  Widget _buildWeightRow(BuildContext context, double weight, double change) {
+    final colors = AppColors.of(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -900,11 +784,11 @@ class _PreviewDailySummaryCard extends StatelessWidget {
                   color: AppColors.emerald500, size: 16),
             ),
             const SizedBox(width: 10),
-            const Text(
+            Text(
               '体重',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                color: AppColors.slate700,
+                color: colors.textSecondary,
                 fontSize: 14,
               ),
             ),
@@ -915,9 +799,9 @@ class _PreviewDailySummaryCard extends StatelessWidget {
           children: [
             Text(
               '${weight.toStringAsFixed(1)} kg',
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.bold,
-                color: AppColors.slate800,
+                color: colors.textPrimary,
                 fontSize: 14,
               ),
             ),
@@ -943,17 +827,18 @@ class _PreviewDailySummaryCard extends StatelessWidget {
     );
   }
 
-  Widget _buildTappableRow({required Widget child}) {
+  Widget _buildTappableRow({required BuildContext context, required Widget child}) {
+    final colors = AppColors.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
       child: Row(
         children: [
           Expanded(child: child),
-          const Padding(
-            padding: EdgeInsets.only(left: 8),
+          Padding(
+            padding: const EdgeInsets.only(left: 8),
             child: Icon(
               LucideIcons.chevronRight,
-              color: AppColors.slate300,
+              color: colors.border,
               size: 18,
             ),
           ),
@@ -967,15 +852,16 @@ class _PreviewDailySummaryCard extends StatelessWidget {
 class _PreviewDailySummaryCardEmpty extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.slate100),
+        border: Border.all(color: colors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: colors.shadow,
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -984,31 +870,34 @@ class _PreviewDailySummaryCardEmpty extends StatelessWidget {
       child: Column(
         children: [
           // Header
-          const Text(
+          Text(
             '今日のまとめ',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: AppColors.slate800,
+              color: colors.textPrimary,
             ),
           ),
           const SizedBox(height: 24),
 
           // Meal Section (0/3)
           _PreviewDailySummaryCard()._buildTappableRow(
-            child: _PreviewDailySummaryCard()._buildMealRow(0),
+            context: context,
+            child: _PreviewDailySummaryCard()._buildMealRow(context, 0),
           ),
           const SizedBox(height: 16),
 
           // Activity Section (0/7)
           _PreviewDailySummaryCard()._buildTappableRow(
-            child: _PreviewDailySummaryCard()._buildActivityRow(0),
+            context: context,
+            child: _PreviewDailySummaryCard()._buildActivityRow(context, 0),
           ),
 
-          const Divider(height: 32, color: AppColors.slate50),
+          Divider(height: 32, color: colors.surfaceDim),
 
           // Weight Section - No data
           _PreviewDailySummaryCard()._buildTappableRow(
+            context: context,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -1025,20 +914,20 @@ class _PreviewDailySummaryCardEmpty extends StatelessWidget {
                           color: AppColors.emerald500, size: 16),
                     ),
                     const SizedBox(width: 10),
-                    const Text(
+                    Text(
                       '体重',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: AppColors.slate700,
+                        color: colors.textSecondary,
                         fontSize: 14,
                       ),
                     ),
                   ],
                 ),
-                const Text(
+                Text(
                   'データなし',
                   style: TextStyle(
-                    color: AppColors.slate400,
+                    color: colors.textHint,
                     fontSize: 12,
                   ),
                 ),

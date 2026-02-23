@@ -33,20 +33,22 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   }
 
   List<Widget> get _screens => [
-    HomeScreen(
-      onNavigateToRecordsTab: _navigateToRecordsTab,
-    ),
-    const MessageScreen(),
-    const WorkoutScreen(),
-    RecordsScreen(
-      initialTabIndex: _recordsTabIndex,
-      onTabChanged: (index) => _recordsTabIndex = index,
-    ),
-    const SettingsScreen(),
-  ];
+        HomeScreen(
+          onNavigateToRecordsTab: _navigateToRecordsTab,
+        ),
+        const MessageScreen(),
+        const WorkoutScreen(),
+        RecordsScreen(
+          initialTabIndex: _recordsTabIndex,
+          onTabChanged: (index) => _recordsTabIndex = index,
+        ),
+        const SettingsScreen(),
+      ];
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+
     // Watch unread message count
     final unreadCount = ref.watch(unreadMessageCountProvider).valueOrNull ?? 0;
 
@@ -85,11 +87,11 @@ class _MainScreenState extends ConsumerState<MainScreen> {
           body: _screens[_currentIndex],
           bottomNavigationBar: Container(
             decoration: BoxDecoration(
-              color: Colors.white,
-              border: const Border(top: BorderSide(color: AppColors.slate100)),
+              color: colors.surface,
+              border: Border(top: BorderSide(color: colors.border)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: colors.shadow,
                   blurRadius: 10,
                   offset: const Offset(0, -5),
                 ),
@@ -104,7 +106,8 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     _buildNavItem(0, LucideIcons.home, 'ホーム'),
-                    _buildNavItem(1, LucideIcons.messageSquare, 'メッセージ', badgeCount: unreadCount),
+                    _buildNavItem(1, LucideIcons.messageSquare, 'メッセージ',
+                        badgeCount: unreadCount),
                     _buildNavItem(2, LucideIcons.dumbbell, 'プラン'),
                     _buildNavItem(3, LucideIcons.barChart2, '記録'),
                     _buildNavItem(4, LucideIcons.settings, '設定'),
@@ -129,7 +132,9 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     );
   }
 
-  Widget _buildNavItem(int index, IconData icon, String label, {int? badgeCount}) {
+  Widget _buildNavItem(int index, IconData icon, String label,
+      {int? badgeCount}) {
+    final colors = AppColors.of(context);
     final isSelected = _currentIndex == index;
     return InkWell(
       onTap: () => setState(() => _currentIndex = index),
@@ -150,7 +155,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
               children: [
                 Icon(
                   icon,
-                  color: isSelected ? AppColors.primary600 : AppColors.slate400,
+                  color: isSelected ? AppColors.primary600 : colors.textHint,
                   size: 24,
                 ),
                 if (badgeCount != null && badgeCount > 0)
@@ -158,8 +163,10 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                     top: -6,
                     right: -10,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                      constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 4, vertical: 1),
+                      constraints:
+                          const BoxConstraints(minWidth: 16, minHeight: 16),
                       decoration: BoxDecoration(
                         color: AppColors.rose800,
                         borderRadius: BorderRadius.circular(8),
@@ -181,7 +188,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
             Text(
               label,
               style: TextStyle(
-                color: isSelected ? AppColors.primary600 : AppColors.slate400,
+                color: isSelected ? AppColors.primary600 : colors.textHint,
                 fontSize: 10,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
               ),

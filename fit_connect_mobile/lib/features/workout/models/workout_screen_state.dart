@@ -22,6 +22,5 @@ class WorkoutScreenState {
       [...overdueAssignments, ...todayAssignments];
 
   /// 空判定
-  bool get isEmpty =>
-      overdueAssignments.isEmpty && todayAssignments.isEmpty;
+  bool get isEmpty => overdueAssignments.isEmpty && todayAssignments.isEmpty;
 }

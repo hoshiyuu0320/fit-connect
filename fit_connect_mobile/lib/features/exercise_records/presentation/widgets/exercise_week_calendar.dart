@@ -17,6 +17,7 @@ class ExerciseWeekCalendar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = AppColors.of(context);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
@@ -32,7 +33,7 @@ class ExerciseWeekCalendar extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -48,10 +49,10 @@ class ExerciseWeekCalendar extends ConsumerWidget {
           // Header
           Text(
             '${DateFormat('M月').format(startOfWeek)} ${DateFormat('yyyy').format(today)}（週間）',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: AppColors.slate800,
+              color: colors.textPrimary,
             ),
             textAlign: TextAlign.center,
           ),
@@ -60,6 +61,7 @@ class ExerciseWeekCalendar extends ConsumerWidget {
           // Week days grid
           exerciseDataAsync.when(
             data: (exerciseData) => _buildWeekGrid(
+              context,
               today,
               startOfWeek,
               exerciseData,
@@ -76,6 +78,7 @@ class ExerciseWeekCalendar extends ConsumerWidget {
   }
 
   Widget _buildWeekGrid(
+    BuildContext context,
     DateTime today,
     DateTime startOfWeek,
     Map<DateTime, List<String>> exerciseData,
@@ -93,6 +96,7 @@ class ExerciseWeekCalendar extends ConsumerWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 2.5),
             child: _buildDayCell(
+              context: context,
               dayLabel: dayLabels[index],
               date: date,
               exerciseTypes: exerciseTypes,
@@ -106,14 +110,16 @@ class ExerciseWeekCalendar extends ConsumerWidget {
   }
 
   Widget _buildDayCell({
+    required BuildContext context,
     required String dayLabel,
     required DateTime date,
     required List<String> exerciseTypes,
     required bool isToday,
     required bool isFuture,
   }) {
+    final colors = AppColors.of(context);
     final hasRecord = exerciseTypes.isNotEmpty;
-    final backgroundColor = hasRecord ? AppColors.indigo50 : AppColors.slate50;
+    final backgroundColor = hasRecord ? colors.accentIndigo : colors.surfaceDim;
 
     // Pick the icon to display (prioritize strength_training)
     String? icon;
@@ -134,9 +140,9 @@ class ExerciseWeekCalendar extends ConsumerWidget {
           // Day label
           Text(
             dayLabel,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
-              color: AppColors.slate400,
+              color: colors.textHint,
             ),
           ),
           const SizedBox(height: 6),
@@ -145,7 +151,7 @@ class ExerciseWeekCalendar extends ConsumerWidget {
             aspectRatio: 1,
             child: Container(
               decoration: BoxDecoration(
-                color: isFuture ? AppColors.slate50 : backgroundColor,
+                color: isFuture ? colors.surfaceDim : backgroundColor,
                 borderRadius: BorderRadius.circular(12),
                 border: isToday
                     ? Border.all(color: AppColors.primary600, width: 3)
@@ -170,7 +176,7 @@ class ExerciseWeekCalendar extends ConsumerWidget {
                         style: TextStyle(
                           fontSize: 12,
                           color:
-                              isFuture ? AppColors.slate400 : AppColors.slate600,
+                              isFuture ? colors.textHint : colors.textSecondary,
                         ),
                       ),
                     ],
@@ -194,7 +200,6 @@ Widget previewExerciseWeekCalendarStatic() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -208,6 +213,7 @@ Widget previewExerciseWeekCalendarStatic() {
 class _PreviewExerciseWeekCalendar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final daysFromMonday = (today.weekday - 1) % 7;
@@ -233,7 +239,7 @@ class _PreviewExerciseWeekCalendar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -249,10 +255,10 @@ class _PreviewExerciseWeekCalendar extends StatelessWidget {
         children: [
           Text(
             '${DateFormat('M月').format(startOfWeek)} ${DateFormat('yyyy').format(today)}（週間）',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: AppColors.slate800,
+              color: colors.textPrimary,
             ),
             textAlign: TextAlign.center,
           ),
@@ -265,7 +271,7 @@ class _PreviewExerciseWeekCalendar extends StatelessWidget {
               final isFuture = date.isAfter(today);
               final hasRecord = exerciseTypes.isNotEmpty;
               final backgroundColor =
-                  hasRecord ? AppColors.indigo50 : AppColors.slate50;
+                  hasRecord ? colors.accentIndigo : colors.surfaceDim;
 
               String? icon;
               if (exerciseTypes.contains('strength_training')) {
@@ -285,15 +291,15 @@ class _PreviewExerciseWeekCalendar extends StatelessWidget {
                     children: [
                       Text(
                         dayLabels[index],
-                        style: const TextStyle(
-                            fontSize: 11, color: AppColors.slate400),
+                        style: TextStyle(fontSize: 11, color: colors.textHint),
                       ),
                       const SizedBox(height: 6),
                       AspectRatio(
                         aspectRatio: 1,
                         child: Container(
                           decoration: BoxDecoration(
-                            color: isFuture ? AppColors.slate50 : backgroundColor,
+                            color:
+                                isFuture ? colors.surfaceDim : backgroundColor,
                             borderRadius: BorderRadius.circular(12),
                             border: isToday
                                 ? Border.all(
@@ -317,8 +323,8 @@ class _PreviewExerciseWeekCalendar extends StatelessWidget {
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: isFuture
-                                          ? AppColors.slate400
-                                          : AppColors.slate600,
+                                          ? colors.textHint
+                                          : colors.textSecondary,
                                     ),
                                   ),
                                 ],

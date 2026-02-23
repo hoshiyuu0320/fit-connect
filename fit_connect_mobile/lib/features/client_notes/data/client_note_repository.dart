@@ -15,9 +15,7 @@ class ClientNoteRepository {
         .eq('is_shared', true)
         .order('created_at', ascending: false);
 
-    return (response as List)
-        .map((json) => ClientNote.fromJson(json))
-        .toList();
+    return (response as List).map((json) => ClientNote.fromJson(json)).toList();
   }
 
   /// 共有済みカルテ件数を取得（Home画面サマリー用、将来実装）

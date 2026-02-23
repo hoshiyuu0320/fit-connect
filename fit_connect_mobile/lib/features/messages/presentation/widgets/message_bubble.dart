@@ -51,13 +51,15 @@ class MessageBubble extends StatelessWidget {
   void _showContextMenu(BuildContext context) {
     if (onReply == null && onEdit == null) return;
 
+    final colors = AppColors.of(context);
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         margin: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: colors.surface,
           borderRadius: BorderRadius.circular(16),
         ),
         child: SafeArea(
@@ -75,7 +77,8 @@ class MessageBubble extends StatelessWidget {
                 ),
               if (isUser && onEdit != null)
                 ListTile(
-                  leading: Icon(LucideIcons.pencil, color: AppColors.primary600),
+                  leading:
+                      Icon(LucideIcons.pencil, color: AppColors.primary600),
                   title: const Text('編集'),
                   onTap: () {
                     Navigator.pop(context);
@@ -91,6 +94,8 @@ class MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+
     if (isSystem) {
       return Center(
         child: Container(
@@ -116,11 +121,14 @@ class MessageBubble extends StatelessWidget {
     final displayMessage = _messageWithoutTags;
 
     return GestureDetector(
-      onLongPress: (onReply != null || onEdit != null) ? () => _showContextMenu(context) : null,
+      onLongPress: (onReply != null || onEdit != null)
+          ? () => _showContextMenu(context)
+          : null,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 4.0),
         child: Row(
-          mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+          mainAxisAlignment:
+              isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (!isUser) ...[
@@ -128,8 +136,8 @@ class MessageBubble extends StatelessWidget {
                 width: 32,
                 height: 32,
                 margin: const EdgeInsets.only(right: 8, top: 2),
-                decoration: const BoxDecoration(
-                  color: AppColors.slate200,
+                decoration: BoxDecoration(
+                  color: colors.surfaceDim,
                   shape: BoxShape.circle,
                 ),
                 child: trainerProfileImageUrl != null
@@ -139,22 +147,24 @@ class MessageBubble extends StatelessWidget {
                           width: 32,
                           height: 32,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              const Icon(LucideIcons.user, size: 18, color: AppColors.slate400),
+                          errorBuilder: (context, error, stackTrace) => Icon(
+                              LucideIcons.user,
+                              size: 18,
+                              color: colors.textHint),
                         ),
                       )
-                    : const Icon(LucideIcons.user, size: 18, color: AppColors.slate400),
+                    : Icon(LucideIcons.user, size: 18, color: colors.textHint),
               ),
             ],
-
             Flexible(
               child: Column(
-                crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                crossAxisAlignment:
+                    isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                 children: [
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: isUser ? AppColors.primary600 : Colors.white,
+                      color: isUser ? AppColors.primary600 : colors.surface,
                       borderRadius: BorderRadius.only(
                         topLeft: const Radius.circular(16),
                         topRight: const Radius.circular(16),
@@ -168,13 +178,14 @@ class MessageBubble extends StatelessWidget {
                           offset: const Offset(0, 2),
                         ),
                       ],
-                      border: isUser ? null : Border.all(color: AppColors.slate100),
+                      border: isUser ? null : Border.all(color: colors.border),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // ReplyQuote（返信がある場合に最初に表示）
-                        if (replyToContent != null && replyToSenderName != null) ...[
+                        if (replyToContent != null &&
+                            replyToSenderName != null) ...[
                           ReplyQuote(
                             senderName: replyToSenderName!,
                             messageContent: replyToContent!,
@@ -187,9 +198,12 @@ class MessageBubble extends StatelessWidget {
                           Wrap(
                             spacing: 6,
                             runSpacing: 6,
-                            children: tags!.map((tag) => _buildTag(tag, isUser)).toList(),
+                            children: tags!
+                                .map((tag) => _buildTag(tag, isUser))
+                                .toList(),
                           ),
-                          if (displayMessage.isNotEmpty) const SizedBox(height: 8),
+                          if (displayMessage.isNotEmpty)
+                            const SizedBox(height: 8),
                         ],
 
                         // メッセージ本文（タグを除去して表示）
@@ -197,7 +211,7 @@ class MessageBubble extends StatelessWidget {
                           Text(
                             displayMessage,
                             style: TextStyle(
-                              color: isUser ? Colors.white : AppColors.slate800,
+                              color: isUser ? Colors.white : colors.textPrimary,
                               fontSize: 14,
                               height: 1.4,
                             ),
@@ -212,7 +226,8 @@ class MessageBubble extends StatelessWidget {
                               scrollDirection: Axis.horizontal,
                               shrinkWrap: true,
                               itemCount: images!.length,
-                              separatorBuilder: (_, __) => const SizedBox(width: 4),
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(width: 4),
                               itemBuilder: (context, index) {
                                 return GestureDetector(
                                   onTap: () {
@@ -244,41 +259,41 @@ class MessageBubble extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (isUser && isRead) ...[
-                        const Text(
+                        Text(
                           '既読',
                           style: TextStyle(
-                            color: AppColors.slate400,
+                            color: colors.textHint,
                             fontSize: 10,
                           ),
                         ),
-                        const Text(
+                        Text(
                           ' ・ ',
                           style: TextStyle(
-                            color: AppColors.slate400,
+                            color: colors.textHint,
                             fontSize: 10,
                           ),
                         ),
                       ],
                       if (isEdited) ...[
-                        const Text(
+                        Text(
                           '編集済み',
                           style: TextStyle(
-                            color: AppColors.slate400,
+                            color: colors.textHint,
                             fontSize: 10,
                           ),
                         ),
-                        const Text(
+                        Text(
                           ' ・ ',
                           style: TextStyle(
-                            color: AppColors.slate400,
+                            color: colors.textHint,
                             fontSize: 10,
                           ),
                         ),
                       ],
                       Text(
                         timestamp,
-                        style: const TextStyle(
-                          color: AppColors.slate400,
+                        style: TextStyle(
+                          color: colors.textHint,
                           fontSize: 10,
                         ),
                       ),
@@ -351,7 +366,6 @@ Widget previewMessageBubbleUser() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: AppColors.slate50,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -373,7 +387,6 @@ Widget previewMessageBubbleTrainer() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: AppColors.slate50,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -394,7 +407,6 @@ Widget previewMessageBubbleWithReply() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: AppColors.slate50,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -430,7 +442,6 @@ Widget previewMessageBubbleWithTags() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: AppColors.slate50,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -452,7 +463,6 @@ Widget previewMessageBubbleSystem() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: AppColors.slate50,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -473,7 +483,6 @@ Widget previewMessageBubbleWithImages() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: AppColors.slate50,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -500,7 +509,6 @@ Widget previewMessageBubbleEdited() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: AppColors.slate50,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -535,46 +543,50 @@ Widget previewMessageBubbleEditMenu() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: AppColors.slate50,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text(
-                '長押しでメニュー表示（自分のメッセージ）',
-                style: TextStyle(
-                  color: AppColors.slate600,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              MessageBubble(
-                message: 'このメッセージを長押ししてください',
-                isUser: true,
-                timestamp: '12:34',
-                onReply: () {},
-                onEdit: () {},
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                '長押しでメニュー表示（相手のメッセージ - 編集不可）',
-                style: TextStyle(
-                  color: AppColors.slate600,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              MessageBubble(
-                message: '返信のみ可能です',
-                isUser: false,
-                timestamp: '12:35',
-                onReply: () {},
-              ),
-            ],
+          child: Builder(
+            builder: (context) {
+              final colors = AppColors.of(context);
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    '長押しでメニュー表示（自分のメッセージ）',
+                    style: TextStyle(
+                      color: colors.textSecondary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  MessageBubble(
+                    message: 'このメッセージを長押ししてください',
+                    isUser: true,
+                    timestamp: '12:34',
+                    onReply: () {},
+                    onEdit: () {},
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    '長押しでメニュー表示（相手のメッセージ - 編集不可）',
+                    style: TextStyle(
+                      color: colors.textSecondary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  MessageBubble(
+                    message: '返信のみ可能です',
+                    isUser: false,
+                    timestamp: '12:35',
+                    onReply: () {},
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ),
@@ -587,7 +599,6 @@ Widget previewMessageBubbleReadReceipt() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: AppColors.slate50,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),

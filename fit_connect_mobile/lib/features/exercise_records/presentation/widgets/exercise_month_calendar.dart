@@ -42,6 +42,7 @@ class _ExerciseMonthCalendarState extends ConsumerState<ExerciseMonthCalendar> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final startOfMonth = _currentMonth;
@@ -57,7 +58,7 @@ class _ExerciseMonthCalendarState extends ConsumerState<ExerciseMonthCalendar> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -75,15 +76,15 @@ class _ExerciseMonthCalendarState extends ConsumerState<ExerciseMonthCalendar> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                icon: const Icon(Icons.chevron_left, color: AppColors.slate400),
+                icon: Icon(Icons.chevron_left, color: colors.textHint),
                 onPressed: _previousMonth,
               ),
               Text(
                 '${_currentMonth.year}年${_currentMonth.month}月',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.slate800,
+                  color: colors.textPrimary,
                 ),
               ),
               IconButton(
@@ -91,8 +92,8 @@ class _ExerciseMonthCalendarState extends ConsumerState<ExerciseMonthCalendar> {
                   Icons.chevron_right,
                   color: _currentMonth.year == now.year &&
                           _currentMonth.month == now.month
-                      ? AppColors.slate200
-                      : AppColors.slate400,
+                      ? colors.border
+                      : colors.textHint,
                 ),
                 onPressed: _nextMonth,
               ),
@@ -107,6 +108,7 @@ class _ExerciseMonthCalendarState extends ConsumerState<ExerciseMonthCalendar> {
           // カレンダーグリッド
           countsAsync.when(
             data: (counts) => _buildCalendarGrid(
+              context,
               today,
               startOfMonth,
               endOfMonth,
@@ -128,6 +130,7 @@ class _ExerciseMonthCalendarState extends ConsumerState<ExerciseMonthCalendar> {
   }
 
   Widget _buildDayHeaders() {
+    final colors = AppColors.of(context);
     const dayLabels = ['月', '火', '水', '木', '金', '土', '日'];
     return Row(
       children: dayLabels.map((label) {
@@ -135,10 +138,10 @@ class _ExerciseMonthCalendarState extends ConsumerState<ExerciseMonthCalendar> {
           child: Center(
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: AppColors.slate400,
+                color: colors.textHint,
               ),
             ),
           ),
@@ -148,6 +151,7 @@ class _ExerciseMonthCalendarState extends ConsumerState<ExerciseMonthCalendar> {
   }
 
   Widget _buildCalendarGrid(
+    BuildContext context,
     DateTime today,
     DateTime startOfMonth,
     DateTime endOfMonth,
@@ -182,6 +186,7 @@ class _ExerciseMonthCalendarState extends ConsumerState<ExerciseMonthCalendar> {
 
               return Expanded(
                 child: _buildDayCell(
+                  context: context,
                   date: date,
                   count: count,
                   isToday: isToday,
@@ -196,15 +201,17 @@ class _ExerciseMonthCalendarState extends ConsumerState<ExerciseMonthCalendar> {
   }
 
   Widget _buildDayCell({
+    required BuildContext context,
     required DateTime date,
     required int count,
     required bool isToday,
     required bool isFuture,
   }) {
-    final color = isFuture ? Colors.transparent : _getGrassColor(count);
+    final colors = AppColors.of(context);
+    final color = isFuture ? Colors.transparent : _getGrassColor(count, colors);
     final textColor = isFuture
-        ? AppColors.slate300
-        : (count >= 2 ? Colors.white : AppColors.slate600);
+        ? colors.textHint
+        : (count >= 2 ? Colors.white : colors.textSecondary);
 
     return AspectRatio(
       aspectRatio: 1,
@@ -232,6 +239,7 @@ class _ExerciseMonthCalendarState extends ConsumerState<ExerciseMonthCalendar> {
   }
 
   Widget _buildLegend() {
+    final colors = AppColors.of(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
@@ -241,12 +249,13 @@ class _ExerciseMonthCalendarState extends ConsumerState<ExerciseMonthCalendar> {
         const SizedBox(width: 8),
         _buildLegendItem(_blueLevel1, '1'),
         const SizedBox(width: 8),
-        _buildLegendItem(_blueLevel0, '0'),
+        _buildLegendItem(colors.calendarEmpty, '0'),
       ],
     );
   }
 
   Widget _buildLegendItem(Color color, String label) {
+    final colors = AppColors.of(context);
     return Row(
       children: [
         Container(
@@ -260,9 +269,9 @@ class _ExerciseMonthCalendarState extends ConsumerState<ExerciseMonthCalendar> {
         const SizedBox(width: 4),
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
-            color: AppColors.slate500,
+            color: colors.textSecondary,
           ),
         ),
       ],
@@ -274,10 +283,10 @@ class _ExerciseMonthCalendarState extends ConsumerState<ExerciseMonthCalendar> {
   static const Color _blueLevel2 = Color(0xFF60A5FA); // primary400相当
   static const Color _blueLevel3 = Color(0xFF2563EB); // primary600相当
 
-  Color _getGrassColor(int count) {
+  Color _getGrassColor(int count, AppColorsExtension colors) {
     switch (count) {
       case 0:
-        return _blueLevel0;
+        return colors.calendarEmpty;
       case 1:
         return _blueLevel1;
       case 2:
@@ -297,7 +306,6 @@ Widget previewExerciseMonthCalendarStatic() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -343,6 +351,7 @@ class _PreviewExerciseMonthCalendarState
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final startOfMonth = _currentMonth;
@@ -368,7 +377,7 @@ class _PreviewExerciseMonthCalendarState
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -387,15 +396,15 @@ class _PreviewExerciseMonthCalendarState
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                icon: const Icon(Icons.chevron_left, color: AppColors.slate400),
+                icon: Icon(Icons.chevron_left, color: colors.textHint),
                 onPressed: _previousMonth,
               ),
               Text(
                 '${_currentMonth.year}年${_currentMonth.month}月',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.slate800,
+                  color: colors.textPrimary,
                 ),
               ),
               IconButton(
@@ -403,8 +412,8 @@ class _PreviewExerciseMonthCalendarState
                   Icons.chevron_right,
                   color: _currentMonth.year == now.year &&
                           _currentMonth.month == now.month
-                      ? AppColors.slate200
-                      : AppColors.slate400,
+                      ? colors.border
+                      : colors.textHint,
                 ),
                 onPressed: _nextMonth,
               ),
@@ -419,10 +428,10 @@ class _PreviewExerciseMonthCalendarState
                 child: Center(
                   child: Text(
                     label,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.slate400,
+                      color: colors.textHint,
                     ),
                   ),
                 ),
@@ -451,9 +460,9 @@ class _PreviewExerciseMonthCalendarState
                   final isFuture = date.isAfter(today);
 
                   final color =
-                      isFuture ? Colors.transparent : _getGrassColor(count);
+                      isFuture ? Colors.transparent : _getGrassColor(count, colors);
                   final textColor = isFuture
-                      ? AppColors.slate300
+                      ? colors.textHint
                       : (count >= 2 ? Colors.white : AppColors.slate600);
 
                   return Expanded(
@@ -492,13 +501,13 @@ class _PreviewExerciseMonthCalendarState
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              _buildLegendItem(const Color(0xFF2563EB), '3+'),
+              _buildLegendItem(context, const Color(0xFF2563EB), '3+'),
               const SizedBox(width: 8),
-              _buildLegendItem(const Color(0xFF60A5FA), '2'),
+              _buildLegendItem(context, const Color(0xFF60A5FA), '2'),
               const SizedBox(width: 8),
-              _buildLegendItem(const Color(0xFFBFDBFE), '1'),
+              _buildLegendItem(context, const Color(0xFFBFDBFE), '1'),
               const SizedBox(width: 8),
-              _buildLegendItem(const Color(0xFFE2E8F0), '0'),
+              _buildLegendItem(context, colors.calendarEmpty, '0'),
             ],
           ),
         ],
@@ -506,7 +515,8 @@ class _PreviewExerciseMonthCalendarState
     );
   }
 
-  Widget _buildLegendItem(Color color, String label) {
+  Widget _buildLegendItem(BuildContext context, Color color, String label) {
+    final colors = AppColors.of(context);
     return Row(
       children: [
         Container(
@@ -520,19 +530,19 @@ class _PreviewExerciseMonthCalendarState
         const SizedBox(width: 4),
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
-            color: AppColors.slate500,
+            color: colors.textSecondary,
           ),
         ),
       ],
     );
   }
 
-  Color _getGrassColor(int count) {
+  Color _getGrassColor(int count, AppColorsExtension colors) {
     switch (count) {
       case 0:
-        return const Color(0xFFE2E8F0);
+        return colors.calendarEmpty;
       case 1:
         return const Color(0xFFBFDBFE);
       case 2:

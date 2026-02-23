@@ -20,17 +20,20 @@ class _MealCardState extends State<MealCard> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     final record = widget.record;
-    final (typeColor, textColor, icon, typeLabel) = _getMealTypeStyle(record.mealType);
-    final hasMultipleImages = record.images != null && record.images!.length > 1;
+    final (typeColor, textColor, icon, typeLabel) =
+        _getMealTypeStyle(context, record.mealType);
+    final hasMultipleImages =
+        record.images != null && record.images!.length > 1;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.slate100),
+        border: Border.all(color: colors.border),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withAlpha(5),
@@ -47,7 +50,7 @@ class _MealCardState extends State<MealCard> {
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: AppColors.slate50,
+              color: colors.surfaceDim,
               borderRadius: BorderRadius.circular(12),
             ),
             child: record.images != null && record.images!.isNotEmpty
@@ -76,7 +79,8 @@ class _MealCardState extends State<MealCard> {
                                 record.images![index],
                                 fit: BoxFit.cover,
                                 errorBuilder: (_, __, ___) => Center(
-                                  child: Text(icon, style: const TextStyle(fontSize: 32)),
+                                  child: Text(icon,
+                                      style: const TextStyle(fontSize: 32)),
                                 ),
                               ),
                             );
@@ -96,7 +100,8 @@ class _MealCardState extends State<MealCard> {
                               (index) => Container(
                                 width: 6,
                                 height: 6,
-                                margin: const EdgeInsets.symmetric(horizontal: 2),
+                                margin:
+                                    const EdgeInsets.symmetric(horizontal: 2),
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   color: index == _currentImageIndex
@@ -115,7 +120,8 @@ class _MealCardState extends State<MealCard> {
                         ),
                     ],
                   )
-                : Center(child: Text(icon, style: const TextStyle(fontSize: 32))),
+                : Center(
+                    child: Text(icon, style: const TextStyle(fontSize: 32))),
           ),
 
           const SizedBox(width: 12),
@@ -128,7 +134,8 @@ class _MealCardState extends State<MealCard> {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: typeColor,
                         borderRadius: BorderRadius.circular(8),
@@ -146,15 +153,16 @@ class _MealCardState extends State<MealCard> {
                     if (hasMultipleImages) ...[
                       const SizedBox(width: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: AppColors.slate100,
+                          color: colors.border,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           '📷 ${record.images!.length}',
-                          style: const TextStyle(
-                            color: AppColors.slate500,
+                          style: TextStyle(
+                            color: colors.textSecondary,
                             fontSize: 10,
                           ),
                         ),
@@ -165,8 +173,8 @@ class _MealCardState extends State<MealCard> {
                 const SizedBox(height: 6),
                 Text(
                   record.notes ?? typeLabel,
-                  style: const TextStyle(
-                    color: AppColors.slate800,
+                  style: TextStyle(
+                    color: colors.textPrimary,
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
                   ),
@@ -179,8 +187,8 @@ class _MealCardState extends State<MealCard> {
                     const Text('⏰ ', style: TextStyle(fontSize: 10)),
                     Text(
                       DateFormat('HH:mm').format(record.recordedAt),
-                      style: const TextStyle(
-                        color: AppColors.slate500,
+                      style: TextStyle(
+                        color: colors.textSecondary,
                         fontSize: 12,
                       ),
                     ),
@@ -189,8 +197,8 @@ class _MealCardState extends State<MealCard> {
                       const Text('🔥 ', style: TextStyle(fontSize: 10)),
                       Text(
                         '${record.calories!.toInt()} kcal',
-                        style: const TextStyle(
-                          color: AppColors.slate500,
+                        style: TextStyle(
+                          color: colors.textSecondary,
                           fontSize: 12,
                         ),
                       ),
@@ -205,7 +213,9 @@ class _MealCardState extends State<MealCard> {
     );
   }
 
-  (Color, Color, String, String) _getMealTypeStyle(String mealType) {
+  (Color, Color, String, String) _getMealTypeStyle(
+      BuildContext context, String mealType) {
+    final colors = AppColors.of(context);
     switch (mealType.toLowerCase()) {
       case 'breakfast':
         return (AppColors.amber100, AppColors.amber800, '🍳', '朝食');
@@ -214,9 +224,9 @@ class _MealCardState extends State<MealCard> {
       case 'dinner':
         return (AppColors.rose100, AppColors.rose800, '🥩', '夕食');
       case 'snack':
-        return (AppColors.indigo100, AppColors.indigo800, '🍎', '間食');
+        return (colors.accentIndigoBorder, AppColors.indigo800, '🍎', '間食');
       default:
-        return (AppColors.slate100, AppColors.slate600, '🍽️', mealType);
+        return (colors.surfaceDim, colors.textSecondary, '🍽️', mealType);
     }
   }
 }
@@ -230,7 +240,6 @@ Widget previewMealCardBreakfast() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -246,7 +255,6 @@ Widget previewMealCardLunch() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -262,7 +270,6 @@ Widget previewMealCardAllTypes() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),

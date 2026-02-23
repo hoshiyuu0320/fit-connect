@@ -51,7 +51,8 @@ class _InviteCodeScreenState extends ConsumerState<InviteCodeScreen> {
     }
 
     // トレーナー情報を取得
-    final registrationNotifier = ref.read(registrationNotifierProvider.notifier);
+    final registrationNotifier =
+        ref.read(registrationNotifierProvider.notifier);
     final found = await registrationNotifier.fetchTrainerInfo(trainerId);
 
     if (!mounted) return;
@@ -107,11 +108,11 @@ class _InviteCodeScreenState extends ConsumerState<InviteCodeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.slate800,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        foregroundColor: colors.textPrimary,
         elevation: 0,
         title: const Text('招待コード入力'),
       ),
@@ -120,187 +121,187 @@ class _InviteCodeScreenState extends ConsumerState<InviteCodeScreen> {
         behavior: HitTestBehavior.opaque,
         child: SafeArea(
           child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight - 48,
-                ),
-                child: IntrinsicHeight(
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const SizedBox(height: 32),
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(24.0),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: constraints.maxHeight - 48,
+                  ),
+                  child: IntrinsicHeight(
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const SizedBox(height: 32),
 
-                        // アイコン
-                        Center(
-                          child: Container(
-                            width: 80,
-                            height: 80,
+                          // アイコン
+                          Center(
+                            child: Container(
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                color: AppColors.primary50,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: const Icon(
+                                LucideIcons.keyRound,
+                                size: 40,
+                                color: AppColors.primary600,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+
+                          // 説明テキスト
+                          Text(
+                            '招待コードを入力',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: colors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'トレーナーから受け取った\n招待コードを入力してください',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: colors.textSecondary,
+                              height: 1.6,
+                            ),
+                          ),
+
+                          const SizedBox(height: 48),
+
+                          // 入力フィールド
+                          TextFormField(
+                            controller: _codeController,
+                            enabled: !_isLoading,
+                            textCapitalization: TextCapitalization.none,
+                            autocorrect: false,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              letterSpacing: 2,
+                            ),
+                            decoration: InputDecoration(
+                              labelText: '招待コード',
+                              hintText: 'コードを入力',
+                              prefixIcon: const Icon(LucideIcons.hash),
+                              filled: true,
+                              fillColor: colors.surfaceDim,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: colors.border,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(
+                                  color: AppColors.primary500,
+                                  width: 2,
+                                ),
+                              ),
+                              errorBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(
+                                  color: AppColors.rose800,
+                                ),
+                              ),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return '招待コードを入力してください';
+                              }
+                              if (value.trim().length < 8) {
+                                return '招待コードは8文字以上です';
+                              }
+                              return null;
+                            },
+                            onFieldSubmitted: (_) => _submitCode(),
+                          ),
+
+                          const SizedBox(height: 24),
+
+                          // 送信ボタン
+                          ElevatedButton(
+                            onPressed: _isLoading ? null : _submitCode,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary600,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
+                              disabledBackgroundColor: colors.textHint,
+                            ),
+                            child: _isLoading
+                                ? const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Text(
+                                    '確認する',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                          ),
+
+                          const Spacer(),
+
+                          // ヘルプテキスト
+                          Container(
+                            padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: AppColors.primary50,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: const Icon(
-                              LucideIcons.keyRound,
-                              size: 40,
-                              color: AppColors.primary600,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // 説明テキスト
-                        const Text(
-                          '招待コードを入力',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.slate800,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'トレーナーから受け取った\n招待コードを入力してください',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: AppColors.slate500,
-                            height: 1.6,
-                          ),
-                        ),
-
-                        const SizedBox(height: 48),
-
-                        // 入力フィールド
-                        TextFormField(
-                          controller: _codeController,
-                          enabled: !_isLoading,
-                          textCapitalization: TextCapitalization.none,
-                          autocorrect: false,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            letterSpacing: 2,
-                          ),
-                          decoration: InputDecoration(
-                            labelText: '招待コード',
-                            hintText: 'コードを入力',
-                            prefixIcon: const Icon(LucideIcons.hash),
-                            filled: true,
-                            fillColor: AppColors.slate50,
-                            border: OutlineInputBorder(
+                              color: colors.surfaceDim,
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
+                              border: Border.all(color: colors.border),
                             ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                color: AppColors.slate200,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                color: AppColors.primary500,
-                                width: 2,
-                              ),
-                            ),
-                            errorBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                color: AppColors.rose800,
-                              ),
-                            ),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return '招待コードを入力してください';
-                            }
-                            if (value.trim().length < 8) {
-                              return '招待コードは8文字以上です';
-                            }
-                            return null;
-                          },
-                          onFieldSubmitted: (_) => _submitCode(),
-                        ),
-
-                        const SizedBox(height: 24),
-
-                        // 送信ボタン
-                        ElevatedButton(
-                          onPressed: _isLoading ? null : _submitCode,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary600,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: 0,
-                            disabledBackgroundColor: AppColors.slate300,
-                          ),
-                          child: _isLoading
-                              ? const SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Text(
-                                  '確認する',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
+                            child: Row(
+                              children: [
+                                Icon(
+                                  LucideIcons.helpCircle,
+                                  size: 20,
+                                  color: colors.textHint,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    '招待コードがわからない場合は、\nトレーナーにお問い合わせください。',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: colors.textSecondary,
+                                    ),
                                   ),
                                 ),
-                        ),
-
-                        const Spacer(),
-
-                        // ヘルプテキスト
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: AppColors.slate50,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.slate100),
+                              ],
+                            ),
                           ),
-                          child: const Row(
-                            children: [
-                              Icon(
-                                LucideIcons.helpCircle,
-                                size: 20,
-                                color: AppColors.slate400,
-                              ),
-                              SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  '招待コードがわからない場合は、\nトレーナーにお問い合わせください。',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.slate500,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
 
-                        const SizedBox(height: 16),
-                      ],
+                          const SizedBox(height: 16),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            );
-          },
-        ),
+              );
+            },
+          ),
         ),
       ),
     );

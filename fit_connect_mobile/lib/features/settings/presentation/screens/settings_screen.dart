@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
+import 'package:fit_connect_mobile/core/providers/theme_provider.dart';
 import 'package:fit_connect_mobile/features/auth/data/client_repository.dart';
 import 'package:fit_connect_mobile/features/auth/providers/auth_provider.dart';
 import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
@@ -16,14 +17,14 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final clientAsync = ref.watch(currentClientProvider);
     final trainerAsync = ref.watch(trainerProfileProvider);
+    final colors = AppColors.of(context);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('設定'),
-        backgroundColor: Colors.white,
+        backgroundColor: colors.surface,
         elevation: 0,
-        foregroundColor: AppColors.slate800,
+        foregroundColor: colors.textPrimary,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -32,6 +33,11 @@ class SettingsScreen extends ConsumerWidget {
             children: [
               // ユーザー情報セクション
               _buildUserInfoSection(context, ref, clientAsync, trainerAsync),
+
+              const SizedBox(height: 16),
+
+              // 外観セクション
+              _buildAppearanceSection(context, ref),
 
               const SizedBox(height: 16),
 
@@ -52,22 +58,23 @@ class SettingsScreen extends ConsumerWidget {
     AsyncValue clientAsync,
     AsyncValue trainerAsync,
   ) {
+    final colors = AppColors.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       margin: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.slate100),
+        border: Border.all(color: colors.border),
       ),
       child: clientAsync.when(
         data: (client) {
           if (client == null) {
-            return const Center(
+            return Center(
               child: Text(
                 'ユーザー情報を読み込めませんでした',
-                style: TextStyle(color: AppColors.slate500),
+                style: TextStyle(color: colors.textSecondary),
               ),
             );
           }
@@ -130,10 +137,10 @@ class SettingsScreen extends ConsumerWidget {
                 children: [
                   Text(
                     client.name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.slate800,
+                      color: colors.textPrimary,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -147,10 +154,10 @@ class SettingsScreen extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(16),
                     child: Container(
                       padding: const EdgeInsets.all(4),
-                      child: const Icon(
+                      child: Icon(
                         LucideIcons.pencil,
                         size: 16,
-                        color: AppColors.slate400,
+                        color: colors.textHint,
                       ),
                     ),
                   ),
@@ -164,17 +171,17 @@ class SettingsScreen extends ConsumerWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
+                    Icon(
                       LucideIcons.mail,
                       size: 14,
-                      color: AppColors.slate400,
+                      color: colors.textHint,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       client.email!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
-                        color: AppColors.slate600,
+                        color: colors.textSecondary,
                       ),
                     ),
                   ],
@@ -306,26 +313,86 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSettingsSection(BuildContext context, WidgetRef ref) {
+  Widget _buildAppearanceSection(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeModeNotifierProvider);
+    final colors = AppColors.of(context);
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.slate100),
+        border: Border.all(color: colors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Text(
+              '外観',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: colors.textSecondary,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: SegmentedButton<ThemeMode>(
+              segments: const [
+                ButtonSegment(
+                  value: ThemeMode.light,
+                  icon: Icon(LucideIcons.sun),
+                  label: Text('ライト'),
+                ),
+                ButtonSegment(
+                  value: ThemeMode.dark,
+                  icon: Icon(LucideIcons.moon),
+                  label: Text('ダーク'),
+                ),
+                ButtonSegment(
+                  value: ThemeMode.system,
+                  icon: Icon(LucideIcons.smartphone),
+                  label: Text('システム'),
+                ),
+              ],
+              selected: {themeMode},
+              onSelectionChanged: (Set<ThemeMode> selected) {
+                ref
+                    .read(themeModeNotifierProvider.notifier)
+                    .setThemeMode(selected.first);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingsSection(BuildContext context, WidgetRef ref) {
+    final colors = AppColors.of(context);
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // グループヘッダー
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Text(
               'アカウント',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
-                color: AppColors.slate500,
+                color: colors.textSecondary,
                 letterSpacing: 0.5,
               ),
             ),
@@ -353,10 +420,10 @@ class SettingsScreen extends ConsumerWidget {
                 color: AppColors.rose800,
               ),
             ),
-            trailing: const Icon(
+            trailing: Icon(
               LucideIcons.chevronRight,
               size: 20,
-              color: AppColors.slate400,
+              color: colors.textHint,
             ),
             onTap: () => _showLogoutDialog(context, ref),
           ),
@@ -399,9 +466,10 @@ class SettingsScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text(
+            child: Text(
               'キャンセル',
-              style: TextStyle(color: AppColors.slate600),
+              style:
+                  TextStyle(color: AppColors.of(dialogContext).textSecondary),
             ),
           ),
           TextButton(
@@ -413,9 +481,9 @@ class SettingsScreen extends ConsumerWidget {
 
               try {
                 await ref.read(clientRepositoryProvider).updateClientName(
-                  clientId,
-                  newName,
-                );
+                      clientId,
+                      newName,
+                    );
 
                 // Providerをinvalidateして再取得
                 ref.invalidate(currentClientProvider);
@@ -474,8 +542,7 @@ class SettingsScreen extends ConsumerWidget {
 
     try {
       // 画像をアップロード
-      final imageUrl =
-          await StorageService.uploadProfileImage(file, clientId);
+      final imageUrl = await StorageService.uploadProfileImage(file, clientId);
 
       if (imageUrl == null) {
         throw Exception('画像のアップロードに失敗しました');
@@ -483,9 +550,9 @@ class SettingsScreen extends ConsumerWidget {
 
       // DBを更新
       await ref.read(clientRepositoryProvider).updateProfileImageUrl(
-        clientId,
-        imageUrl,
-      );
+            clientId,
+            imageUrl,
+          );
 
       // Providerをinvalidateして再取得
       ref.invalidate(currentClientProvider);
@@ -517,20 +584,21 @@ class SettingsScreen extends ConsumerWidget {
   void _showLogoutDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('ログアウト'),
         content: const Text('ログアウトしますか？'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(
               'キャンセル',
-              style: TextStyle(color: AppColors.slate600),
+              style:
+                  TextStyle(color: AppColors.of(dialogContext).textSecondary),
             ),
           ),
           TextButton(
             onPressed: () async {
-              Navigator.of(context).pop(); // ダイアログを閉じる
+              Navigator.of(dialogContext).pop(); // ダイアログを閉じる
               try {
                 await ref.read(authNotifierProvider.notifier).signOut();
                 // ルーティングはapp.dartのStreamBuilderが自動処理
@@ -581,6 +649,8 @@ Widget previewSettingsScreenStatic() {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _PreviewUserInfoSection(),
+              const SizedBox(height: 16),
+              _PreviewAppearanceSection(),
               const SizedBox(height: 16),
               _PreviewSettingsSection(),
             ],
@@ -716,6 +786,62 @@ class _PreviewUserInfoSection extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PreviewAppearanceSection extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Text(
+              '外観',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: colors.textSecondary,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: SegmentedButton<ThemeMode>(
+              segments: const [
+                ButtonSegment(
+                  value: ThemeMode.light,
+                  icon: Icon(LucideIcons.sun),
+                  label: Text('ライト'),
+                ),
+                ButtonSegment(
+                  value: ThemeMode.dark,
+                  icon: Icon(LucideIcons.moon),
+                  label: Text('ダーク'),
+                ),
+                ButtonSegment(
+                  value: ThemeMode.system,
+                  icon: Icon(LucideIcons.smartphone),
+                  label: Text('システム'),
+                ),
+              ],
+              selected: const {ThemeMode.system},
+              onSelectionChanged: (_) {},
             ),
           ),
         ],

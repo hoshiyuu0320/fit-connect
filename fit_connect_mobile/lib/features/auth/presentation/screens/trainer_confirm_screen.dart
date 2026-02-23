@@ -11,13 +11,13 @@ class TrainerConfirmScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = AppColors.of(context);
     final registrationState = ref.watch(registrationNotifierProvider);
 
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.slate800,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        foregroundColor: colors.textPrimary,
         elevation: 0,
       ),
       body: SafeArea(
@@ -29,12 +29,12 @@ class TrainerConfirmScreen extends ConsumerWidget {
               const SizedBox(height: 16),
 
               // タイトル
-              const Text(
+              Text(
                 '担当トレーナー',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16,
-                  color: AppColors.slate500,
+                  color: colors.textSecondary,
                 ),
               ),
               const SizedBox(height: 32),
@@ -46,7 +46,7 @@ class TrainerConfirmScreen extends ConsumerWidget {
                   height: 120,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: AppColors.slate100,
+                    color: colors.border,
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withAlpha(26),
@@ -65,16 +65,16 @@ class TrainerConfirmScreen extends ConsumerWidget {
                                 strokeWidth: 2,
                               ),
                             ),
-                            errorWidget: (context, url, error) => const Icon(
+                            errorWidget: (context, url, error) => Icon(
                               LucideIcons.user,
                               size: 48,
-                              color: AppColors.slate400,
+                              color: colors.textHint,
                             ),
                           )
-                        : const Icon(
+                        : Icon(
                             LucideIcons.user,
                             size: 48,
-                            color: AppColors.slate400,
+                            color: colors.textHint,
                           ),
                   ),
                 ),
@@ -85,19 +85,19 @@ class TrainerConfirmScreen extends ConsumerWidget {
               Text(
                 registrationState.trainerName ?? '名前未設定',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.slate800,
+                  color: colors.textPrimary,
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'パーソナルトレーナー',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
-                  color: AppColors.slate500,
+                  color: colors.textSecondary,
                 ),
               ),
 
@@ -111,15 +111,15 @@ class TrainerConfirmScreen extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: AppColors.primary100),
                 ),
-                child: Column(
+                child: const Column(
                   children: [
-                    const Icon(
+                    Icon(
                       LucideIcons.userCheck,
                       size: 32,
                       color: AppColors.primary600,
                     ),
-                    const SizedBox(height: 12),
-                    const Text(
+                    SizedBox(height: 12),
+                    Text(
                       'このトレーナーの元で\nトレーニングを始めますか？',
                       textAlign: TextAlign.center,
                       style: TextStyle(
@@ -171,10 +171,10 @@ class TrainerConfirmScreen extends ConsumerWidget {
                   ref.read(registrationNotifierProvider.notifier).clear();
                   Navigator.of(context).pop();
                 },
-                child: const Text(
+                child: Text(
                   '別のトレーナーを選ぶ',
                   style: TextStyle(
-                    color: AppColors.slate500,
+                    color: colors.textSecondary,
                   ),
                 ),
               ),

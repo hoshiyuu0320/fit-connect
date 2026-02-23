@@ -31,7 +31,8 @@ class AuthNotifier extends _$AuthNotifier {
         // ユーザーIDが実際に変わった場合のみ再評価
         final newUserId = data.session?.user.id;
         if (newUserId != _lastUserId) {
-          print('[DEBUG] AuthNotifier: user changed from $_lastUserId to $newUserId, invalidating...');
+          print(
+              '[DEBUG] AuthNotifier: user changed from $_lastUserId to $newUserId, invalidating...');
           ref.invalidateSelf();
         }
       },

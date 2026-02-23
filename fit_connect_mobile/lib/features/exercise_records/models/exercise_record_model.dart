@@ -9,7 +9,8 @@ class ExerciseRecord {
   @JsonKey(name: 'client_id')
   final String clientId;
   @JsonKey(name: 'exercise_type')
-  final String exerciseType; // 'strength_training' | 'cardio' | 'walking' | 'running' | 'cycling' | 'swimming' | 'yoga' | 'pilates' | 'other'
+  final String
+      exerciseType; // 'strength_training' | 'cardio' | 'walking' | 'running' | 'cycling' | 'swimming' | 'yoga' | 'pilates' | 'other'
   final String? memo;
   final List<String>? images;
   final int? duration; // minutes

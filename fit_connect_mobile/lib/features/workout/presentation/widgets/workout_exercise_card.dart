@@ -179,9 +179,10 @@ class _WorkoutExerciseCardState extends State<WorkoutExerciseCard> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     final card = Card(
       elevation: 1,
-      color: AppColors.cardBackground,
+      color: colors.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
@@ -205,7 +206,7 @@ class _WorkoutExerciseCardState extends State<WorkoutExerciseCard> {
                     size: 24,
                     color: widget.isCompleted
                         ? AppColors.emerald500
-                        : AppColors.slate300,
+                        : colors.textHint,
                   ),
                   const SizedBox(width: 8),
 
@@ -219,11 +220,11 @@ class _WorkoutExerciseCardState extends State<WorkoutExerciseCard> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
+                            color: colors.textPrimary,
                             decoration: widget.isCompleted
                                 ? TextDecoration.lineThrough
                                 : TextDecoration.none,
-                            decorationColor: AppColors.textPrimary,
+                            decorationColor: colors.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -231,11 +232,11 @@ class _WorkoutExerciseCardState extends State<WorkoutExerciseCard> {
                           _buildSetsRepsText(),
                           style: TextStyle(
                             fontSize: 14,
-                            color: AppColors.slate500,
+                            color: colors.textSecondary,
                             decoration: widget.isCompleted
                                 ? TextDecoration.lineThrough
                                 : TextDecoration.none,
-                            decorationColor: AppColors.slate500,
+                            decorationColor: colors.textSecondary,
                           ),
                         ),
                         if (widget.memo != null && widget.memo!.isNotEmpty) ...[
@@ -244,12 +245,12 @@ class _WorkoutExerciseCardState extends State<WorkoutExerciseCard> {
                             widget.memo!,
                             style: TextStyle(
                               fontSize: 12,
-                              color: AppColors.slate400,
+                              color: colors.textHint,
                               fontStyle: FontStyle.italic,
                               decoration: widget.isCompleted
                                   ? TextDecoration.lineThrough
                                   : TextDecoration.none,
-                              decorationColor: AppColors.slate400,
+                              decorationColor: colors.textHint,
                             ),
                           ),
                         ],
@@ -263,7 +264,7 @@ class _WorkoutExerciseCardState extends State<WorkoutExerciseCard> {
                     child: Icon(
                       LucideIcons.dumbbell,
                       size: 18,
-                      color: AppColors.slate300,
+                      color: colors.textHint,
                     ),
                   ),
                   const SizedBox(width: 4),
@@ -272,7 +273,7 @@ class _WorkoutExerciseCardState extends State<WorkoutExerciseCard> {
                         ? LucideIcons.chevronUp
                         : LucideIcons.chevronDown,
                     size: 20,
-                    color: AppColors.slate400,
+                    color: colors.textHint,
                   ),
                   const SizedBox(width: 4),
                 ],
@@ -286,7 +287,7 @@ class _WorkoutExerciseCardState extends State<WorkoutExerciseCard> {
             curve: Curves.easeInOut,
             child: _isExpanded
                 ? Container(
-                    color: AppColors.slate100,
+                    color: colors.surfaceDim,
                     padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
                     child: Column(
                       children: [
@@ -303,7 +304,7 @@ class _WorkoutExerciseCardState extends State<WorkoutExerciseCard> {
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     fontSize: 11,
-                                    color: AppColors.slate500,
+                                    color: colors.textSecondary,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -318,7 +319,7 @@ class _WorkoutExerciseCardState extends State<WorkoutExerciseCard> {
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     fontSize: 11,
-                                    color: AppColors.slate500,
+                                    color: colors.textSecondary,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -328,7 +329,7 @@ class _WorkoutExerciseCardState extends State<WorkoutExerciseCard> {
                                 '完了',
                                 style: TextStyle(
                                   fontSize: 11,
-                                  color: AppColors.slate500,
+                                  color: colors.textSecondary,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -353,7 +354,7 @@ class _WorkoutExerciseCardState extends State<WorkoutExerciseCard> {
                                     style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
-                                      color: AppColors.slate600,
+                                      color: colors.textSecondary,
                                     ),
                                   ),
                                 ),
@@ -369,13 +370,13 @@ class _WorkoutExerciseCardState extends State<WorkoutExerciseCard> {
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       fontSize: 14,
-                                      color: AppColors.textPrimary,
+                                      color: colors.textPrimary,
                                     ),
                                     decoration: InputDecoration(
                                       suffixText: '回',
                                       suffixStyle: TextStyle(
                                         fontSize: 11,
-                                        color: AppColors.slate500,
+                                        color: colors.textSecondary,
                                       ),
                                       contentPadding:
                                           const EdgeInsets.symmetric(
@@ -384,22 +385,22 @@ class _WorkoutExerciseCardState extends State<WorkoutExerciseCard> {
                                       ),
                                       isDense: true,
                                       filled: true,
-                                      fillColor: AppColors.cardBackground,
+                                      fillColor: colors.surface,
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(8),
                                         borderSide: BorderSide(
-                                          color: AppColors.slate200,
+                                          color: colors.border,
                                         ),
                                       ),
                                       enabledBorder: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(8),
                                         borderSide: BorderSide(
-                                          color: AppColors.slate200,
+                                          color: colors.border,
                                         ),
                                       ),
                                       focusedBorder: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(8),
-                                        borderSide: BorderSide(
+                                        borderSide: const BorderSide(
                                           color: AppColors.primary,
                                           width: 1.5,
                                         ),
@@ -415,7 +416,7 @@ class _WorkoutExerciseCardState extends State<WorkoutExerciseCard> {
                                   '×',
                                   style: TextStyle(
                                     fontSize: 14,
-                                    color: AppColors.slate500,
+                                    color: colors.textSecondary,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -436,13 +437,13 @@ class _WorkoutExerciseCardState extends State<WorkoutExerciseCard> {
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       fontSize: 14,
-                                      color: AppColors.textPrimary,
+                                      color: colors.textPrimary,
                                     ),
                                     decoration: InputDecoration(
                                       suffixText: 'kg',
                                       suffixStyle: TextStyle(
                                         fontSize: 11,
-                                        color: AppColors.slate500,
+                                        color: colors.textSecondary,
                                       ),
                                       contentPadding:
                                           const EdgeInsets.symmetric(
@@ -451,22 +452,22 @@ class _WorkoutExerciseCardState extends State<WorkoutExerciseCard> {
                                       ),
                                       isDense: true,
                                       filled: true,
-                                      fillColor: AppColors.cardBackground,
+                                      fillColor: colors.surface,
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(8),
                                         borderSide: BorderSide(
-                                          color: AppColors.slate200,
+                                          color: colors.border,
                                         ),
                                       ),
                                       enabledBorder: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(8),
                                         borderSide: BorderSide(
-                                          color: AppColors.slate200,
+                                          color: colors.border,
                                         ),
                                       ),
                                       focusedBorder: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(8),
-                                        borderSide: BorderSide(
+                                        borderSide: const BorderSide(
                                           color: AppColors.primary,
                                           width: 1.5,
                                         ),

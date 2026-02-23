@@ -11,10 +11,8 @@ class MealRepository {
     PeriodFilter? period,
     String? mealType,
   }) async {
-    var query = _supabase
-        .from('meal_records')
-        .select()
-        .eq('client_id', clientId);
+    var query =
+        _supabase.from('meal_records').select().eq('client_id', clientId);
 
     // 期間フィルタを適用
     if (period != null && period != PeriodFilter.all) {
@@ -28,9 +26,7 @@ class MealRepository {
     }
 
     final response = await query.order('recorded_at', ascending: false);
-    return (response as List)
-        .map((json) => MealRecord.fromJson(json))
-        .toList();
+    return (response as List).map((json) => MealRecord.fromJson(json)).toList();
   }
 
   /// 指定日の食事記録数を取得（カレンダー表示用）
@@ -46,9 +42,8 @@ class MealRepository {
         .gte('recorded_at', startDate.toIso8601String())
         .lte('recorded_at', endDate.toIso8601String());
 
-    final records = (response as List)
-        .map((json) => MealRecord.fromJson(json))
-        .toList();
+    final records =
+        (response as List).map((json) => MealRecord.fromJson(json)).toList();
 
     // 日付ごとにグループ化
     final counts = <DateTime, int>{};

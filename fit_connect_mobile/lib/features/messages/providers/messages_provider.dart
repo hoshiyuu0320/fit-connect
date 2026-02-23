@@ -59,7 +59,9 @@ class PaginatedMessages extends _$PaginatedMessages {
   /// 古いメッセージを追加ロード
   Future<void> loadMore() async {
     final currentState = state.valueOrNull;
-    if (currentState == null || !currentState.hasMore || currentState.isLoadingMore) {
+    if (currentState == null ||
+        !currentState.hasMore ||
+        currentState.isLoadingMore) {
       return;
     }
 
@@ -86,7 +88,8 @@ class PaginatedMessages extends _$PaginatedMessages {
 
       // 重複排除（安全策）
       final existingIds = latestState.messages.map((m) => m.id).toSet();
-      final newMessages = olderMessages.where((m) => !existingIds.contains(m.id)).toList();
+      final newMessages =
+          olderMessages.where((m) => !existingIds.contains(m.id)).toList();
 
       state = AsyncData(latestState.copyWith(
         messages: [...newMessages, ...latestState.messages],
@@ -184,7 +187,8 @@ class PaginatedMessages extends _$PaginatedMessages {
         if (currentState == null) return;
 
         // 重複チェック（楽観的更新済みの自分のメッセージ）
-        final alreadyExists = currentState.messages.any((m) => m.id == message.id);
+        final alreadyExists =
+            currentState.messages.any((m) => m.id == message.id);
         if (alreadyExists) return;
 
         state = AsyncData(currentState.copyWith(

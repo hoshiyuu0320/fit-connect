@@ -11,8 +11,8 @@ class WelcomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Scaffold(
-      backgroundColor: Colors.white,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -48,25 +48,25 @@ class WelcomeScreen extends StatelessWidget {
                       const SizedBox(height: 32),
 
                       // Title
-                      const Text(
+                      Text(
                         'FIT-CONNECT',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 32,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.slate800,
+                          color: colors.textPrimary,
                           letterSpacing: 1.5,
                         ),
                       ),
                       const SizedBox(height: 16),
 
                       // Subtitle
-                      const Text(
+                      Text(
                         'トレーナーとつながって目標を達成しよう',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 16,
-                          color: AppColors.slate500,
+                          color: colors.textSecondary,
                           height: 1.6,
                         ),
                       ),
@@ -75,18 +75,21 @@ class WelcomeScreen extends StatelessWidget {
 
                       // Features
                       _buildFeatureItem(
+                        context: context,
                         icon: LucideIcons.messageSquare,
                         title: 'メッセージで記録',
                         description: '体重・食事・運動をかんたんに報告',
                       ),
                       const SizedBox(height: 16),
                       _buildFeatureItem(
+                        context: context,
                         icon: LucideIcons.target,
                         title: '目標を管理',
                         description: 'トレーナーと一緒に目標達成を目指す',
                       ),
                       const SizedBox(height: 16),
                       _buildFeatureItem(
+                        context: context,
                         icon: LucideIcons.barChart3,
                         title: '進捗を可視化',
                         description: 'グラフとカレンダーで成果を確認',
@@ -127,11 +130,11 @@ class WelcomeScreen extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Text(
+                          Text(
                             'すでにアカウントをお持ちの方　',
                             style: TextStyle(
                               fontSize: 14,
-                              color: AppColors.slate500,
+                              color: colors.textSecondary,
                             ),
                           ),
                           TextButton(
@@ -174,16 +177,18 @@ class WelcomeScreen extends StatelessWidget {
   }
 
   Widget _buildFeatureItem({
+    required BuildContext context,
     required IconData icon,
     required String title,
     required String description,
   }) {
+    final colors = AppColors.of(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.slate50,
+        color: colors.surfaceDim,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.slate100),
+        border: Border.all(color: colors.border),
       ),
       child: Row(
         children: [
@@ -207,17 +212,17 @@ class WelcomeScreen extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: AppColors.slate800,
+                    color: colors.textPrimary,
                     fontSize: 14,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   description,
-                  style: const TextStyle(
-                    color: AppColors.slate500,
+                  style: TextStyle(
+                    color: colors.textSecondary,
                     fontSize: 12,
                   ),
                 ),

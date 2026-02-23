@@ -201,6 +201,7 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     final stateAsync = ref.watch(paginatedMessagesProvider);
 
     // 自動既読処理: 受信メッセージに未読があれば既読化（新着メッセージ到着時）
@@ -225,18 +226,20 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
-        backgroundColor: AppColors.slate50,
-        appBar: _buildAppBar(trainerName, isTrainerOnline, trainerProfile?.profileImageUrl),
+        appBar: _buildAppBar(context, trainerName, isTrainerOnline,
+            trainerProfile?.profileImageUrl),
         body: Column(
           children: [
             if (!isTrainerOnline)
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 color: const Color(0xFFFFFBEB),
                 child: Row(
                   children: [
-                    Icon(LucideIcons.clock, size: 16, color: AppColors.amber700),
+                    Icon(LucideIcons.clock,
+                        size: 16, color: AppColors.amber700),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -254,10 +257,11 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
               child: stateAsync.when(
                 data: (paginatedState) {
                   if (paginatedState.messages.isEmpty) {
-                    return _buildEmptyState();
+                    return _buildEmptyState(colors);
                   }
 
-                  return _buildMessageList(paginatedState, currentUser?.id);
+                  return _buildMessageList(
+                      paginatedState, currentUser?.id, colors);
                 },
                 loading: () => const Center(
                   child: CircularProgressIndicator(),
@@ -271,7 +275,7 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
                       const SizedBox(height: 16),
                       Text(
                         'メッセージの読み込みに失敗しました',
-                        style: TextStyle(color: AppColors.slate600),
+                        style: TextStyle(color: colors.textSecondary),
                       ),
                       const SizedBox(height: 8),
                       TextButton(
@@ -300,9 +304,11 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
     );
   }
 
-  PreferredSizeWidget _buildAppBar(String trainerName, bool isOnline, String? profileImageUrl) {
+  PreferredSizeWidget _buildAppBar(BuildContext context, String trainerName,
+      bool isOnline, String? profileImageUrl) {
+    final colors = AppColors.of(context);
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: colors.surface,
       elevation: 0,
       titleSpacing: 0,
       title: Padding(
@@ -314,8 +320,8 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
                 Container(
                   width: 40,
                   height: 40,
-                  decoration: const BoxDecoration(
-                    color: AppColors.slate200,
+                  decoration: BoxDecoration(
+                    color: colors.surfaceDim,
                     shape: BoxShape.circle,
                   ),
                   child: profileImageUrl != null
@@ -326,10 +332,10 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
                             height: 40,
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) =>
-                                const Icon(LucideIcons.user, color: AppColors.slate400),
+                                Icon(LucideIcons.user, color: colors.textHint),
                           ),
                         )
-                      : const Icon(LucideIcons.user, color: AppColors.slate400),
+                      : Icon(LucideIcons.user, color: colors.textHint),
                 ),
                 Positioned(
                   bottom: 0,
@@ -338,9 +344,9 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
                     width: 12,
                     height: 12,
                     decoration: BoxDecoration(
-                      color: isOnline ? AppColors.success : AppColors.slate300,
+                      color: isOnline ? AppColors.success : colors.textHint,
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
+                      border: Border.all(color: colors.surface, width: 2),
                     ),
                   ),
                 ),
@@ -352,8 +358,8 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
               children: [
                 Text(
                   trainerName,
-                  style: const TextStyle(
-                    color: AppColors.slate800,
+                  style: TextStyle(
+                    color: colors.textPrimary,
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
                   ),
@@ -361,7 +367,7 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
                 Text(
                   isOnline ? 'オンライン' : 'オフライン',
                   style: TextStyle(
-                    color: isOnline ? AppColors.success : AppColors.slate400,
+                    color: isOnline ? AppColors.success : colors.textHint,
                     fontSize: 10,
                     fontWeight: FontWeight.w500,
                   ),
@@ -373,36 +379,36 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
       ),
       actions: [
         IconButton(
-          icon: const Icon(LucideIcons.chevronDown, color: AppColors.slate400),
+          icon: Icon(LucideIcons.chevronDown, color: colors.textHint),
           onPressed: () {},
         ),
       ],
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(1),
-        child: Container(color: AppColors.slate100, height: 1),
+        child: Container(color: colors.border, height: 1),
       ),
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(AppColorsExtension colors) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(LucideIcons.messageCircle, size: 64, color: AppColors.slate300),
+          Icon(LucideIcons.messageCircle, size: 64, color: colors.textHint),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'メッセージはまだありません',
             style: TextStyle(
-              color: AppColors.slate500,
+              color: colors.textSecondary,
               fontSize: 16,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'トレーナーにメッセージを送りましょう！',
             style: TextStyle(
-              color: AppColors.slate400,
+              color: colors.textHint,
               fontSize: 14,
             ),
           ),
@@ -411,8 +417,8 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
     );
   }
 
-  Widget _buildMessageList(
-      PaginatedMessagesState paginatedState, String? currentUserId) {
+  Widget _buildMessageList(PaginatedMessagesState paginatedState,
+      String? currentUserId, AppColorsExtension colors) {
     final messages = paginatedState.messages;
     final trainerProfile = ref.watch(trainerProfileProvider).valueOrNull;
     final trainerName = trainerProfile?.name ?? 'トレーナー';
@@ -454,13 +460,13 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
             );
           }
           if (!paginatedState.hasMore) {
-            return const Padding(
-              padding: EdgeInsets.symmetric(vertical: 16),
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
               child: Center(
                 child: Text(
                   'これ以上メッセージはありません',
                   style: TextStyle(
-                    color: AppColors.slate400,
+                    color: colors.textHint,
                     fontSize: 12,
                   ),
                 ),
@@ -477,7 +483,7 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
         return Column(
           children: [
             // Date divider
-            _buildDateDivider(date),
+            _buildDateDivider(date, colors),
             // Messages for this date
             ...dayMessages.map((message) {
               final replyMessage = findMessageById(message.replyToMessageId);
@@ -492,7 +498,9 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
                 images: message.imageUrls,
                 replyToContent: replyMessage?.content,
                 replyToSenderName: replyMessage != null
-                    ? (replyMessage.senderId == currentUserId ? '自分' : trainerName)
+                    ? (replyMessage.senderId == currentUserId
+                        ? '自分'
+                        : trainerName)
                     : null,
                 isSystem: false,
                 isEdited: message.isEdited,
@@ -508,7 +516,7 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
     );
   }
 
-  Widget _buildDateDivider(DateTime date) {
+  Widget _buildDateDivider(DateTime date, AppColorsExtension colors) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
@@ -529,14 +537,14 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: colors.surface,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.slate100),
+            border: Border.all(color: colors.border),
           ),
           child: Text(
             dateText,
-            style: const TextStyle(
-              color: AppColors.slate400,
+            style: TextStyle(
+              color: colors.textHint,
               fontSize: 10,
               fontWeight: FontWeight.bold,
             ),
@@ -556,7 +564,6 @@ Widget previewMessageScreenStatic() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: AppColors.slate50,
       body: SafeArea(
         child: _PreviewMessageScreen(),
       ),
@@ -567,6 +574,7 @@ Widget previewMessageScreenStatic() {
 class _PreviewMessageScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     final mockMessages = [
       _MockMessage(
         content: 'こんにちは！今日の調子はいかがですか？',
@@ -609,7 +617,7 @@ class _PreviewMessageScreen extends StatelessWidget {
       children: [
         // AppBar
         Container(
-          color: Colors.white,
+          color: colors.surface,
           padding: const EdgeInsets.all(8),
           child: SafeArea(
             bottom: false,
@@ -621,11 +629,10 @@ class _PreviewMessageScreen extends StatelessWidget {
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: AppColors.slate200,
+                        color: colors.surfaceDim,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(LucideIcons.user,
-                          color: AppColors.slate400),
+                      child: Icon(LucideIcons.user, color: colors.textHint),
                     ),
                     Positioned(
                       bottom: 0,
@@ -636,20 +643,20 @@ class _PreviewMessageScreen extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: AppColors.success,
                           shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
+                          border: Border.all(color: colors.surface, width: 2),
                         ),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(width: 12),
-                const Column(
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Coach Sarah',
                       style: TextStyle(
-                        color: AppColors.slate800,
+                        color: colors.textPrimary,
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
                       ),
@@ -665,12 +672,12 @@ class _PreviewMessageScreen extends StatelessWidget {
                   ],
                 ),
                 const Spacer(),
-                Icon(LucideIcons.chevronDown, color: AppColors.slate400),
+                Icon(LucideIcons.chevronDown, color: colors.textHint),
               ],
             ),
           ),
         ),
-        Container(color: AppColors.slate100, height: 1),
+        Container(color: colors.border, height: 1),
 
         // Messages
         Expanded(
@@ -683,14 +690,14 @@ class _PreviewMessageScreen extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: colors.surface,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.slate100),
+                    border: Border.all(color: colors.border),
                   ),
-                  child: const Text(
+                  child: Text(
                     '今日',
                     style: TextStyle(
-                      color: AppColors.slate400,
+                      color: colors.textHint,
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
                     ),
@@ -716,8 +723,8 @@ class _PreviewMessageScreen extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border(top: BorderSide(color: AppColors.slate100)),
+            color: colors.surface,
+            border: Border(top: BorderSide(color: colors.border)),
           ),
           child: Row(
             children: [
@@ -726,13 +733,13 @@ class _PreviewMessageScreen extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
-                    color: AppColors.slate50,
+                    color: colors.surfaceDim,
                     borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: AppColors.slate200),
+                    border: Border.all(color: colors.border),
                   ),
-                  child: const Text(
+                  child: Text(
                     'メッセージを入力...',
-                    style: TextStyle(color: AppColors.slate400),
+                    style: TextStyle(color: colors.textHint),
                   ),
                 ),
               ),

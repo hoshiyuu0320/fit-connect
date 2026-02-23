@@ -20,12 +20,13 @@ class MealSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Container(
       padding: const EdgeInsets.all(20),
       margin: const EdgeInsets.only(bottom: 24),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.primary50, AppColors.indigo50],
+        gradient: LinearGradient(
+          colors: [AppColors.primary50, colors.accentIndigo],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -40,8 +41,8 @@ class MealSummaryCard extends StatelessWidget {
               const Text('📊 ', style: TextStyle(fontSize: 14)),
               Text(
                 title,
-                style: const TextStyle(
-                  color: AppColors.slate800,
+                style: TextStyle(
+                  color: colors.textPrimary,
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
                 ),
@@ -49,35 +50,38 @@ class MealSummaryCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-
-          _buildRow(LucideIcons.utensils, '食事', meals),
+          _buildRow(context, LucideIcons.utensils, '食事', meals),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Divider(height: 1, color: AppColors.primary200.withOpacity(0.5)),
+            child: Divider(
+                height: 1, color: AppColors.primary200.withOpacity(0.5)),
           ),
-          _buildRow(LucideIcons.image, '写真', photos),
+          _buildRow(context, LucideIcons.image, '写真', photos),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Divider(height: 1, color: AppColors.primary200.withOpacity(0.5)),
+            child: Divider(
+                height: 1, color: AppColors.primary200.withOpacity(0.5)),
           ),
-          _buildRow(LucideIcons.flame, 'カロリー', calories),
+          _buildRow(context, LucideIcons.flame, 'カロリー', calories),
         ],
       ),
     );
   }
 
-  Widget _buildRow(IconData icon, String label, String value) {
+  Widget _buildRow(
+      BuildContext context, IconData icon, String label, String value) {
+    final colors = AppColors.of(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Row(
           children: [
-            Icon(icon, size: 14, color: AppColors.slate500),
+            Icon(icon, size: 14, color: colors.textSecondary),
             const SizedBox(width: 8),
             Text(
               label,
-              style: const TextStyle(
-                color: AppColors.slate500,
+              style: TextStyle(
+                color: colors.textSecondary,
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
               ),
@@ -86,8 +90,8 @@ class MealSummaryCard extends StatelessWidget {
         ),
         Text(
           value,
-          style: const TextStyle(
-            color: AppColors.slate800,
+          style: TextStyle(
+            color: colors.textPrimary,
             fontSize: 14,
             fontWeight: FontWeight.bold,
           ),
@@ -106,7 +110,6 @@ Widget previewMealSummaryCardToday() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -127,7 +130,6 @@ Widget previewMealSummaryCardWeek() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -148,7 +150,6 @@ Widget previewMealSummaryCardEmpty() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),

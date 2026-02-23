@@ -17,6 +17,7 @@ class ReplyQuote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.only(left: 8),
@@ -51,7 +52,7 @@ class ReplyQuote extends StatelessWidget {
             style: TextStyle(
               color: isUserMessage
                   ? Colors.white.withOpacity(0.7)
-                  : AppColors.slate500,
+                  : colors.textSecondary,
               fontSize: 12,
             ),
           ),
@@ -70,21 +71,25 @@ Widget previewReplyQuoteTrainer() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: AppColors.slate50,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const ReplyQuote(
-              senderName: 'トレーナー',
-              messageContent: '今日のトレーニングお疲れ様でした！',
-              isUserMessage: false,
-            ),
+          child: Builder(
+            builder: (context) {
+              final colors = AppColors.of(context);
+              return Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const ReplyQuote(
+                  senderName: 'トレーナー',
+                  messageContent: '今日のトレーニングお疲れ様でした！',
+                  isUserMessage: false,
+                ),
+              );
+            },
           ),
         ),
       ),
@@ -97,7 +102,6 @@ Widget previewReplyQuoteUser() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: AppColors.slate50,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -124,22 +128,26 @@ Widget previewReplyQuoteLong() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: AppColors.slate50,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const ReplyQuote(
-              senderName: 'トレーナー',
-              messageContent:
-                  'これは非常に長いメッセージです。複数行にわたって表示されるはずですが、2行で省略されます。テストメッセージテストメッセージテストメッセージ。',
-              isUserMessage: false,
-            ),
+          child: Builder(
+            builder: (context) {
+              final colors = AppColors.of(context);
+              return Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const ReplyQuote(
+                  senderName: 'トレーナー',
+                  messageContent:
+                      'これは非常に長いメッセージです。複数行にわたって表示されるはずですが、2行で省略されます。テストメッセージテストメッセージテストメッセージ。',
+                  isUserMessage: false,
+                ),
+              );
+            },
           ),
         ),
       ),

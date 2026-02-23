@@ -81,11 +81,11 @@ class _RegistrationCompleteScreenState
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     final registrationState = ref.watch(registrationNotifierProvider);
 
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: Colors.white,
         body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -94,10 +94,10 @@ class _RegistrationCompleteScreenState
                 color: AppColors.primary600,
               ),
               const SizedBox(height: 24),
-              const Text(
+              Text(
                 '登録を完了しています...',
                 style: TextStyle(
-                  color: AppColors.slate600,
+                  color: colors.textSecondary,
                   fontSize: 16,
                 ),
               ),
@@ -150,7 +150,7 @@ class _RegistrationCompleteScreenState
                     child: Container(
                       padding: const EdgeInsets.all(32),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: colors.surface,
                         borderRadius: BorderRadius.circular(24),
                         boxShadow: [
                           BoxShadow(
@@ -194,12 +194,12 @@ class _RegistrationCompleteScreenState
                           const SizedBox(height: 24),
 
                           // タイトル
-                          const Text(
+                          Text(
                             '登録完了！',
                             style: TextStyle(
                               fontSize: 28,
                               fontWeight: FontWeight.bold,
-                              color: AppColors.slate800,
+                              color: colors.textPrimary,
                             ),
                           ),
                           const SizedBox(height: 16),
@@ -238,12 +238,12 @@ class _RegistrationCompleteScreenState
                           ],
 
                           // 説明テキスト
-                          const Text(
+                          Text(
                             'トレーニングを始める準備ができました。\n一緒に目標を達成しましょう！',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 14,
-                              color: AppColors.slate500,
+                              color: colors.textSecondary,
                               height: 1.6,
                             ),
                           ),

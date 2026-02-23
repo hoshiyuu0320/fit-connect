@@ -80,7 +80,6 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
         appBar: AppBar(title: const Text('ワークアウト')),
-        backgroundColor: AppColors.background,
         body: Stack(
           children: [
             screenStateAsync.when(
@@ -90,7 +89,8 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
                   padding: const EdgeInsets.all(24),
                   child: Text(
                     'エラーが発生しました: $e',
-                    style: const TextStyle(color: AppColors.slate500),
+                    style:
+                        TextStyle(color: AppColors.of(context).textSecondary),
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -219,27 +219,28 @@ class _OverdueSection extends StatelessWidget {
 class _TodayEmptyHint extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 32),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(LucideIcons.calendarCheck, size: 40, color: AppColors.slate300),
+          Icon(LucideIcons.calendarCheck, size: 40, color: colors.textHint),
           const SizedBox(height: 12),
-          const Text(
+          Text(
             '今日のプランはありません',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w500,
-              color: AppColors.slate400,
+              color: colors.textHint,
             ),
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             '上の未完了プランを「今日やる」で\n実行できます',
             style: TextStyle(
               fontSize: 12,
-              color: AppColors.slate300,
+              color: colors.textHint,
             ),
             textAlign: TextAlign.center,
           ),
@@ -259,10 +260,10 @@ class _DateHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       '${today.year}年${today.month}月${today.day}日',
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.w600,
-        color: AppColors.slate600,
+        color: AppColors.of(context).textSecondary,
       ),
     );
   }
@@ -272,6 +273,7 @@ class _DateHeader extends StatelessWidget {
 class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 64),
       child: Column(
@@ -280,23 +282,23 @@ class _EmptyState extends StatelessWidget {
           Icon(
             LucideIcons.calendarOff,
             size: 56,
-            color: AppColors.slate300,
+            color: colors.textHint,
           ),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             '本日のプランはありません',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w500,
-              color: AppColors.slate400,
+              color: colors.textHint,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'トレーナーがプランを設定すると\nここに表示されます',
             style: TextStyle(
               fontSize: 13,
-              color: AppColors.slate300,
+              color: colors.textHint,
             ),
             textAlign: TextAlign.center,
           ),
@@ -309,8 +311,9 @@ class _EmptyState extends StatelessWidget {
 // アサインメントセクションWidget
 class _AssignmentSection extends StatelessWidget {
   final WorkoutAssignment assignment;
-  final void Function(String assignmentId, String exerciseId,
-      List<ActualSet> sets) onSetsUpdated;
+  final void Function(
+          String assignmentId, String exerciseId, List<ActualSet> sets)
+      onSetsUpdated;
   final VoidCallback onSubmit;
 
   const _AssignmentSection({
@@ -321,6 +324,7 @@ class _AssignmentSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     final exercises = assignment.exercises;
     final completedCount = exercises.where((e) => e.isCompleted).length;
     final totalCount = exercises.length;
@@ -342,10 +346,10 @@ class _AssignmentSection extends StatelessWidget {
         // プランタイトル
         Text(
           planTitle,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
+            color: colors.textPrimary,
           ),
         ),
 
@@ -354,9 +358,9 @@ class _AssignmentSection extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             planDescription,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
-              color: AppColors.slate500,
+              color: colors.textSecondary,
             ),
           ),
         ],
@@ -386,11 +390,11 @@ class _AssignmentSection extends StatelessWidget {
             onPressed: (allDone && !isCompleted) ? onSubmit : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: isCompleted
-                  ? AppColors.slate200
-                  : (allDone ? AppColors.emerald500 : AppColors.slate200),
-              foregroundColor: isCompleted ? AppColors.slate400 : Colors.white,
-              disabledBackgroundColor: AppColors.slate200,
-              disabledForegroundColor: AppColors.slate400,
+                  ? colors.border
+                  : (allDone ? AppColors.emerald500 : colors.border),
+              foregroundColor: isCompleted ? colors.textHint : Colors.white,
+              disabledBackgroundColor: colors.border,
+              disabledForegroundColor: colors.textHint,
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -439,7 +443,8 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
           children: [
             Text(
               '感想やコンディションを入力してください（任意）',
-              style: const TextStyle(fontSize: 14, color: AppColors.slate500),
+              style: TextStyle(
+                  fontSize: 14, color: AppColors.of(context).textSecondary),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -486,10 +491,10 @@ class _PreviewDateHeaderStatic extends StatelessWidget {
     final today = DateTime.now();
     return Text(
       '${today.year}年${today.month}月${today.day}日',
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.w600,
-        color: AppColors.slate600,
+        color: AppColors.of(context).textSecondary,
       ),
     );
   }
@@ -527,9 +532,12 @@ class _PreviewExerciseListStatic extends StatelessWidget {
           isCompleted: allCompleted,
           actualSets: allCompleted
               ? [
-                  const ActualSet(setNumber: 1, reps: 10, weight: 60, done: true),
-                  const ActualSet(setNumber: 2, reps: 10, weight: 60, done: true),
-                  const ActualSet(setNumber: 3, reps: 10, weight: 60, done: true),
+                  const ActualSet(
+                      setNumber: 1, reps: 10, weight: 60, done: true),
+                  const ActualSet(
+                      setNumber: 2, reps: 10, weight: 60, done: true),
+                  const ActualSet(
+                      setNumber: 3, reps: 10, weight: 60, done: true),
                 ]
               : null,
           onSetsUpdated: (_) {},
@@ -562,9 +570,12 @@ class _PreviewExerciseListStatic extends StatelessWidget {
           isCompleted: allCompleted,
           actualSets: allCompleted
               ? [
-                  const ActualSet(setNumber: 1, reps: 15, weight: 0, done: true),
-                  const ActualSet(setNumber: 2, reps: 15, weight: 0, done: true),
-                  const ActualSet(setNumber: 3, reps: 15, weight: 0, done: true),
+                  const ActualSet(
+                      setNumber: 1, reps: 15, weight: 0, done: true),
+                  const ActualSet(
+                      setNumber: 2, reps: 15, weight: 0, done: true),
+                  const ActualSet(
+                      setNumber: 3, reps: 15, weight: 0, done: true),
                 ]
               : null,
           onSetsUpdated: (_) {},
@@ -591,11 +602,12 @@ class _PreviewCompletionButtonStatic extends StatelessWidget {
         onPressed: enabled ? () {} : null,
         style: ElevatedButton.styleFrom(
           backgroundColor: completed
-              ? AppColors.slate200
-              : (enabled ? AppColors.emerald500 : AppColors.slate200),
-          foregroundColor: completed ? AppColors.slate400 : Colors.white,
-          disabledBackgroundColor: AppColors.slate200,
-          disabledForegroundColor: AppColors.slate400,
+              ? AppColors.of(context).border
+              : (enabled ? AppColors.emerald500 : AppColors.of(context).border),
+          foregroundColor:
+              completed ? AppColors.of(context).textHint : Colors.white,
+          disabledBackgroundColor: AppColors.of(context).border,
+          disabledForegroundColor: AppColors.of(context).textHint,
           padding: const EdgeInsets.symmetric(vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -706,27 +718,28 @@ class _PreviewOverdueSection extends StatelessWidget {
 class _PreviewTodayEmptyHint extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 32),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(LucideIcons.calendarCheck, size: 40, color: AppColors.slate300),
+          Icon(LucideIcons.calendarCheck, size: 40, color: colors.textHint),
           const SizedBox(height: 12),
-          const Text(
+          Text(
             '今日のプランはありません',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w500,
-              color: AppColors.slate400,
+              color: colors.textHint,
             ),
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             '上の未完了プランを「今日やる」で\n実行できます',
             style: TextStyle(
               fontSize: 12,
-              color: AppColors.slate300,
+              color: colors.textHint,
             ),
             textAlign: TextAlign.center,
           ),
@@ -742,38 +755,39 @@ Widget previewWorkoutScreenWithData() {
     theme: AppTheme.lightTheme,
     home: Scaffold(
       appBar: AppBar(title: const Text('ワークアウト')),
-      backgroundColor: AppColors.background,
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _PreviewWeeklyCalendar(),
-            const SizedBox(height: 16),
-            _PreviewDateHeaderStatic(),
-            const SizedBox(height: 16),
-            _PreviewProgressBarStatic(completed: 1, total: 3),
-            const SizedBox(height: 16),
-            const Text(
-              '上半身トレーニング',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
+        child: Builder(
+          builder: (context) => ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              _PreviewWeeklyCalendar(),
+              const SizedBox(height: 16),
+              _PreviewDateHeaderStatic(),
+              const SizedBox(height: 16),
+              _PreviewProgressBarStatic(completed: 1, total: 3),
+              const SizedBox(height: 16),
+              Text(
+                '上半身トレーニング',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.of(context).textPrimary,
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              '胸・肩・上腕三頭筋を中心に鍛えるメニュー',
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.slate500,
+              const SizedBox(height: 4),
+              Text(
+                '胸・肩・上腕三頭筋を中心に鍛えるメニュー',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.of(context).textSecondary,
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            _PreviewExerciseListStatic(allCompleted: false),
-            const SizedBox(height: 8),
-            _PreviewCompletionButtonStatic(enabled: false),
-          ],
+              const SizedBox(height: 12),
+              _PreviewExerciseListStatic(allCompleted: false),
+              const SizedBox(height: 8),
+              _PreviewCompletionButtonStatic(enabled: false),
+            ],
+          ),
         ),
       ),
     ),
@@ -786,47 +800,53 @@ Widget previewWorkoutScreenEmpty() {
     theme: AppTheme.lightTheme,
     home: Scaffold(
       appBar: AppBar(title: const Text('ワークアウト')),
-      backgroundColor: AppColors.background,
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _PreviewWeeklyCalendar(),
-            const SizedBox(height: 16),
-            _PreviewDateHeaderStatic(),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 64),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    LucideIcons.calendarOff,
-                    size: 56,
-                    color: AppColors.slate300,
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    '本日のプランはありません',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.slate400,
+        child: Builder(
+          builder: (context) => ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              _PreviewWeeklyCalendar(),
+              const SizedBox(height: 16),
+              _PreviewDateHeaderStatic(),
+              const SizedBox(height: 16),
+              Builder(
+                builder: (context) {
+                  final colors = AppColors.of(context);
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 64),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          LucideIcons.calendarOff,
+                          size: 56,
+                          color: colors.textHint,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          '本日のプランはありません',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: colors.textHint,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'トレーナーがプランを設定すると\nここに表示されます',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: colors.textHint,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'トレーナーがプランを設定すると\nここに表示されます',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: AppColors.slate300,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+                  );
+                },
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     ),
@@ -839,38 +859,39 @@ Widget previewWorkoutScreenCompleted() {
     theme: AppTheme.lightTheme,
     home: Scaffold(
       appBar: AppBar(title: const Text('ワークアウト')),
-      backgroundColor: AppColors.background,
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _PreviewWeeklyCalendar(),
-            const SizedBox(height: 16),
-            _PreviewDateHeaderStatic(),
-            const SizedBox(height: 16),
-            _PreviewProgressBarStatic(completed: 3, total: 3),
-            const SizedBox(height: 16),
-            const Text(
-              '上半身トレーニング',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
+        child: Builder(
+          builder: (context) => ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              _PreviewWeeklyCalendar(),
+              const SizedBox(height: 16),
+              _PreviewDateHeaderStatic(),
+              const SizedBox(height: 16),
+              _PreviewProgressBarStatic(completed: 3, total: 3),
+              const SizedBox(height: 16),
+              Text(
+                '上半身トレーニング',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.of(context).textPrimary,
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              '胸・肩・上腕三頭筋を中心に鍛えるメニュー',
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.slate500,
+              const SizedBox(height: 4),
+              Text(
+                '胸・肩・上腕三頭筋を中心に鍛えるメニュー',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.of(context).textSecondary,
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            _PreviewExerciseListStatic(allCompleted: true),
-            const SizedBox(height: 8),
-            _PreviewCompletionButtonStatic(enabled: false, completed: true),
-          ],
+              const SizedBox(height: 12),
+              _PreviewExerciseListStatic(allCompleted: true),
+              const SizedBox(height: 8),
+              _PreviewCompletionButtonStatic(enabled: false, completed: true),
+            ],
+          ),
         ),
       ),
     ),
@@ -883,7 +904,6 @@ Widget previewWorkoutScreenWithOverdue() {
     theme: AppTheme.lightTheme,
     home: Scaffold(
       appBar: AppBar(title: const Text('ワークアウト')),
-      backgroundColor: AppColors.background,
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),

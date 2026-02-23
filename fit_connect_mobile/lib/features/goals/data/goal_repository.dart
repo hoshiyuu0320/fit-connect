@@ -62,7 +62,8 @@ class GoalRepository {
     if (goalDeadline != null) {
       updateData['goal_deadline'] = goalDeadline.toIso8601String();
     }
-    if (goalDescription != null) updateData['goal_description'] = goalDescription;
+    if (goalDescription != null)
+      updateData['goal_description'] = goalDescription;
 
     // 目標を更新した場合は goal_set_at を更新し、達成フラグをクリア
     if (updateData.isNotEmpty) {
@@ -84,8 +85,7 @@ class GoalRepository {
   Future<void> clearGoalAchievement(String clientId) async {
     await _supabase
         .from('clients')
-        .update({'goal_achieved_at': null})
-        .eq('client_id', clientId);
+        .update({'goal_achieved_at': null}).eq('client_id', clientId);
   }
 
   /// 目標達成までの残り日数を計算

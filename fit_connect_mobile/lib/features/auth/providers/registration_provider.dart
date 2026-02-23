@@ -44,8 +44,10 @@ class RegistrationState {
       clientName: clientName ?? this.clientName,
       clientAge: clientAge ?? this.clientAge,
       clientGender: clientGender ?? this.clientGender,
-      profileImageFile: profileImageFile != null ? profileImageFile() : this.profileImageFile,
-      isRegistrationComplete: isRegistrationComplete ?? this.isRegistrationComplete,
+      profileImageFile:
+          profileImageFile != null ? profileImageFile() : this.profileImageFile,
+      isRegistrationComplete:
+          isRegistrationComplete ?? this.isRegistrationComplete,
     );
   }
 
@@ -152,7 +154,8 @@ class RegistrationNotifier extends _$RegistrationNotifier {
     await SupabaseService.client.from('clients').upsert({
       'client_id': userId,
       'trainer_id': trainerId,
-      'name': state.clientName?.isNotEmpty == true ? state.clientName : '新規クライアント',
+      'name':
+          state.clientName?.isNotEmpty == true ? state.clientName : '新規クライアント',
       'email': userEmail,
       if (state.clientAge != null) 'age': state.clientAge,
       if (state.clientGender != null) 'gender': state.clientGender,
@@ -167,8 +170,7 @@ class RegistrationNotifier extends _$RegistrationNotifier {
       if (imageUrl != null) {
         await SupabaseService.client
             .from('clients')
-            .update({'profile_image_url': imageUrl})
-            .eq('client_id', userId);
+            .update({'profile_image_url': imageUrl}).eq('client_id', userId);
       }
     }
 

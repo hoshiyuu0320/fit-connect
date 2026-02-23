@@ -16,18 +16,19 @@ class ReplyPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: AppColors.slate100,
+        color: colors.surfaceDim,
         border: Border(
-          top: BorderSide(color: AppColors.slate200),
-          bottom: BorderSide(color: AppColors.slate200),
+          top: BorderSide(color: colors.border),
+          bottom: BorderSide(color: colors.border),
         ),
       ),
       child: Row(
         children: [
-          Icon(LucideIcons.reply, size: 16, color: AppColors.slate500),
+          Icon(LucideIcons.reply, size: 16, color: colors.textSecondary),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -37,7 +38,7 @@ class ReplyPreview extends StatelessWidget {
                 Text(
                   '返信先',
                   style: TextStyle(
-                    color: AppColors.slate500,
+                    color: colors.textSecondary,
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                   ),
@@ -47,7 +48,7 @@ class ReplyPreview extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: AppColors.slate600,
+                    color: colors.textSecondary,
                     fontSize: 12,
                   ),
                 ),
@@ -55,7 +56,7 @@ class ReplyPreview extends StatelessWidget {
             ),
           ),
           IconButton(
-            icon: Icon(LucideIcons.x, size: 16, color: AppColors.slate400),
+            icon: Icon(LucideIcons.x, size: 16, color: colors.textHint),
             onPressed: onCancel,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
@@ -98,7 +99,8 @@ Widget previewReplyPreviewLong() {
         child: Column(
           children: [
             ReplyPreview(
-              messageContent: 'これは非常に長いメッセージで、1行に収まりきらないため省略されるはずです。テストメッセージです。',
+              messageContent:
+                  'これは非常に長いメッセージで、1行に収まりきらないため省略されるはずです。テストメッセージです。',
               onCancel: () {},
             ),
           ],

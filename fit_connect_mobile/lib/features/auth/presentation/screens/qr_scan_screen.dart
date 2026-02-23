@@ -67,7 +67,8 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
     }
 
     // トレーナー情報を取得
-    final registrationNotifier = ref.read(registrationNotifierProvider.notifier);
+    final registrationNotifier =
+        ref.read(registrationNotifierProvider.notifier);
     final found = await registrationNotifier.fetchTrainerInfo(trainerId);
 
     if (!mounted) return;
