@@ -1,9 +1,9 @@
 # FIT-CONNECT Web - 実装タスク一覧
 
 **作成日**: 2026年2月1日
-**バージョン**: 2.2
+**バージョン**: 2.3
 **進捗状況**: 全体 100% 完了
-**最終更新**: 2026年2月23日 - プッシュ通知機能の実装（フェーズ7完了）
+**最終更新**: 2026年2月23日 - ダッシュボード・メッセージUI全面ブラッシュアップ
 
 ---
 
@@ -76,6 +76,29 @@
 ## 最新の変更履歴
 
 ### 2026年2月23日
+
+- ダッシュボード・メッセージUI全面ブラッシュアップ
+  - **ダッシュボード**
+    - `StatCard.tsx`: 色分け（blue/purple/green/red）+ border-l-4 + SVGアイコン + Linkラッパー（各ページ遷移対応）
+    - `AlertItem.tsx`: 絵文字→CSSカラードット + border-l-2アクセント
+    - `AlertList.tsx`: セクションヘッダーデザイン統一 + SVGアイコン
+    - `MessagePreviewItem.tsx`: 絵文字→イニシャルアバター（bg-blue-100）
+    - `MessagePreviewList.tsx`: セクションヘッダーデザイン統一
+    - `QuickActions.tsx`: disabled解除（レポート・スケジュール有効化）+ SVGアイコン + サブテキスト
+    - `TodaysSchedule.tsx`: ヘッダーデザイン統一 + 空状態UI改善（スケジュールリンク付き）+ 件数バッジ
+    - `SessionItem.tsx`: デザイン改善（時刻・ステータスバッジ）
+    - `DashboardSkeleton.tsx` 新規作成: animate-pulseスケルトンUI（KPI+予定+メッセージ+アラート+クイックアクション）
+    - `page.tsx`: ローディング→スケルトンUI、StatCardにcolor/href/SVGアイコン追加
+  - **メッセージ**
+    - **DBマイグレーション**: `messages` テーブルに `is_read`（BOOLEAN、既存レコード=true、新規=false）、`read_at`（TIMESTAMPTZ）カラム追加 + `idx_messages_receiver_unread` インデックス
+    - `getUnreadCounts.ts` 新規作成: クライアント別未読メッセージ数取得
+    - `markMessagesAsRead.ts` 新規作成: 指定クライアントからの未読を既読化
+    - `MessageBubble.tsx` 新規作成: LINE風バブル（トレーナー→右寄せemerald、クライアント→左寄せ白 + プロフィール画像）、編集/返信ボタン、画像表示
+    - `ClientListItem.tsx` 新規作成: プロフィール画像 + 未読バッジ（赤丸） + 最新メッセージプレビュー + タイムスタンプ
+    - `ChatHeader.tsx` 新規作成: クライアントプロフィール画像 + 名前
+    - `MessageDateDivider.tsx` 新規作成: 日付区切り（「今日」「昨日」「YYYY年M月D日（曜日）」）
+    - `ReplyQuote.tsx` 修正: `inTrainerBubble` prop追加（emeraldバブル内での色調整）
+    - `message/page.tsx` 全面書き換え: LINE風レイアウト、サイドバーw-72（ClientListItem使用）、ChatHeader使用、MessageBubble使用、日付区切り、未読カウント表示、既読マーク（クライアント選択時に自動既読）、Realtime購読で未読カウント動的更新、プレースホルダー日本語化、送信ボタンemerald化
 
 - プッシュ通知機能を実装（フェーズ7完了）
   - **DBマイグレーション**: `push_subscriptions` テーブル新規作成（RLS、trainer_idインデックス）

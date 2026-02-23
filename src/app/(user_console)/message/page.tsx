@@ -4,15 +4,21 @@
 import { useEffect, useState, useRef, Suspense } from "react";
 import { useSearchParams } from 'next/navigation';
 import { getClientDetail } from '@/lib/supabase/getClientDetail'
-import { useUserStore } from '@/store/userStore';
+
 import { supabase } from '@/lib/supabase';
 import { getClients } from '@/lib/supabase/getClients';
 import { getMessages } from '@/lib/supabase/getMessages';
 import { uploadMessageImage } from '@/lib/supabase/uploadMessageImage';
+import { getUnreadCounts } from '@/lib/supabase/getUnreadCounts';
+import { markMessagesAsRead } from '@/lib/supabase/markMessagesAsRead';
+import { getLastMessagesForClients } from '@/lib/supabase/getLastMessagesForClients';
 import { ImageUploader } from '@/components/message/ImageUploader';
 import { ImageModal } from '@/components/message/ImageModal';
 import { ReplyPreview } from '@/components/message/ReplyPreview';
-import { ReplyQuote } from '@/components/message/ReplyQuote';
+import { MessageBubble } from '@/components/message/MessageBubble';
+import { ClientListItem } from '@/components/message/ClientListItem';
+import { ChatHeader } from '@/components/message/ChatHeader';
+import { MessageDateDivider } from '@/components/message/MessageDateDivider';
 import { getMessageById } from '@/lib/supabase/getMessageById';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import type { Client, Message } from '@/types/client'
@@ -26,10 +32,14 @@ function canEditMessage(createdAt: string): boolean {
     return diffMinutes <= EDIT_TIME_LIMIT_MINUTES;
 }
 
+interface LastMessageInfo {
+    content: string;
+    created_at: string;
+}
+
 function MessageContent() {
     const searchParams = useSearchParams()
     const client_id = searchParams.get("clientId")
-    const { userName } = useUserStore()
     const [userId, setUserId] = useState<string | null>(null);
     const [input, setInput] = useState('');
     const [clientList, setClientList] = useState<Client[]>([]);
@@ -43,8 +53,15 @@ function MessageContent() {
     const [editInput, setEditInput] = useState('');
     const [editSaving, setEditSaving] = useState(false);
     const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
+    const [unreadCounts, setUnreadCounts] = useState<Map<string, number>>(new Map());
+    const [lastMessages, setLastMessages] = useState<Map<string, LastMessageInfo>>(new Map());
     const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const editTextareaRef = useRef<HTMLTextAreaElement>(null);
+    const selectedClientRef = useRef<Client | null>(null);
+
+    // Keep ref in sync with state for use inside Realtime callbacks
+    useEffect(() => {
+        selectedClientRef.current = selectedClient;
+    }, [selectedClient]);
 
     const handleSend = async () => {
         const hasText = input.trim().length > 0;
@@ -55,7 +72,6 @@ function MessageContent() {
         setUploading(hasImages);
 
         try {
-            // 画像がある場合は並列アップロード
             let imageUrls: string[] = [];
             if (hasImages) {
                 imageUrls = await Promise.all(
@@ -78,22 +94,22 @@ function MessageContent() {
                     ...(replyToMessage && { reply_to_message_id: replyToMessage.id }),
                 }),
             });
-            console.log('Response status:', res.status);
             const text = await res.text();
-            console.log('Response text:', text);
             const data = text ? JSON.parse(text) : {};
             if (res.ok) {
-                setMessages([...messages, {
+                const newCreatedAt = data.created_at || new Date().toISOString();
+                const newMsg: Message = {
                     id: data.id,
                     sender: 'You',
                     content: input,
                     timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                    created_at: data.created_at || new Date().toISOString(),
+                    created_at: newCreatedAt,
                     senderType: 'trainer',
                     receiverType: 'client',
                     image_urls: imageUrls,
                     is_edited: false,
                     edited_at: null,
+                    read_at: null,
                     reply_to_message_id: replyToMessage?.id || null,
                     reply_to_message: replyToMessage ? {
                         id: replyToMessage.id,
@@ -101,15 +117,23 @@ function MessageContent() {
                         content: replyToMessage.content,
                         image_urls: replyToMessage.image_urls,
                     } : null,
-                }]);
+                };
+                setMessages((prev) => [...prev, newMsg]);
+                // Update last message for sidebar
+                setLastMessages((prev) => {
+                    const next = new Map(prev);
+                    next.set(selectedClient.client_id, {
+                        content: input || (imageUrls.length > 0 ? '画像' : ''),
+                        created_at: newCreatedAt,
+                    });
+                    return next;
+                });
                 setSelectedImages([]);
                 setReplyToMessage(null);
             } else {
                 alert('送信に失敗しました' + data.error);
             }
 
-            setLoading(false);
-            setUploading(false);
             setInput('');
             if (textareaRef.current) {
                 textareaRef.current.style.height = 'auto';
@@ -173,7 +197,6 @@ function MessageContent() {
 
     const handleReplyStart = (msg: Message) => {
         setReplyToMessage(msg);
-        // 入力欄にフォーカス
         textareaRef.current?.focus();
     };
 
@@ -181,7 +204,7 @@ function MessageContent() {
         setReplyToMessage(null);
     };
 
-    // 顧客一覧の取得
+    // 顧客一覧の取得 + 未読カウント取得
     useEffect(() => {
         const fetchClients = async () => {
             const {
@@ -191,14 +214,21 @@ function MessageContent() {
             if (user) {
                 setUserId(user.id);
                 const clients = await getClients(user.id)
-                console.log("user.id" + user.id)
                 setClientList(clients as unknown as Client[])
+
+                // 未読カウント + 最終メッセージ取得
+                const [counts, lastMsgs] = await Promise.all([
+                    getUnreadCounts(user.id),
+                    getLastMessagesForClients(user.id),
+                ]);
+                setUnreadCounts(counts);
+                setLastMessages(lastMsgs);
             }
         }
         fetchClients();
     }, []);
 
-    // 顧客情報の取得
+    // URLパラメータによるクライアント自動選択
     useEffect(() => {
         if (!client_id) return;
         const fetchClientInfo = async () => {
@@ -207,14 +237,24 @@ function MessageContent() {
                 setSelectedClient(clientInfo as Client)
             } catch (error) {
                 console.error('顧客情報取得エラー:', error);
-            } finally {
-                setLoading(false);
             }
         }
         fetchClientInfo();
     }, [client_id]);
 
-    // メッセージ取得処理
+    // 既読マーク: クライアント選択時
+    useEffect(() => {
+        if (!selectedClient || !userId) return;
+        markMessagesAsRead(userId, selectedClient.client_id);
+        // 未読カウントをリセット
+        setUnreadCounts((prev) => {
+            const next = new Map(prev);
+            next.set(selectedClient.client_id, 0);
+            return next;
+        });
+    }, [selectedClient, userId]);
+
+    // メッセージ取得 + Realtime購読
     useEffect(() => {
         if (!selectedClient) return;
 
@@ -227,12 +267,10 @@ function MessageContent() {
 
             if (!user) return;
 
-            // 初期取得処理
             const rawMessages = await getMessages({
                 senderId: user.id,
                 receiverId: selectedClient.client_id,
             });
-            console.log("rawMessages", rawMessages);
 
             const formattedMessages: Message[] = await Promise.all(
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -266,14 +304,27 @@ function MessageContent() {
                         image_urls: msg.image_urls || [],
                         is_edited: msg.is_edited || false,
                         edited_at: msg.edited_at || null,
+                        read_at: msg.read_at || null,
                         reply_to_message_id: msg.reply_to_message_id || null,
                         reply_to_message: replyToMessageData,
                     };
                 })
             );
-            console.log("formattedMessages", formattedMessages);
 
             setMessages(formattedMessages);
+
+            // Update last message for this client in sidebar
+            if (formattedMessages.length > 0) {
+                const last = formattedMessages[formattedMessages.length - 1];
+                setLastMessages((prev) => {
+                    const next = new Map(prev);
+                    next.set(selectedClient.client_id, {
+                        content: last.content || (last.image_urls && last.image_urls.length > 0 ? '画像' : ''),
+                        created_at: last.created_at,
+                    });
+                    return next;
+                });
+            }
 
             // 既に存在する同名チャンネルを削除
             const existingChannel = supabase
@@ -294,28 +345,53 @@ function MessageContent() {
                     },
                     (payload) => {
                         const msg = payload.new;
+                        const currentSelected = selectedClientRef.current;
 
-                        // 送信者と受信者が一致する場合にのみ反映
-                        if (msg.receiver_id !== user.id || msg.sender_id !== selectedClient.client_id) return;
+                        // Update last message for sidebar
+                        setLastMessages((prev) => {
+                            const next = new Map(prev);
+                            next.set(msg.sender_id, {
+                                content: msg.content || (msg.image_urls?.length > 0 ? '画像' : ''),
+                                created_at: msg.created_at,
+                            });
+                            return next;
+                        });
 
-                        const newMsg: Message = {
-                            id: msg.id,
-                            sender: selectedClient.name,
-                            content: msg.content,
-                            timestamp: new Date(msg.created_at).toLocaleTimeString([], {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                            }),
-                            created_at: msg.created_at,
-                            senderType: msg.sender_type,
-                            receiverType: msg.receiver_type,
-                            image_urls: msg.image_urls || [],
-                            is_edited: msg.is_edited || false,
-                            edited_at: msg.edited_at || null,
-                            reply_to_message_id: msg.reply_to_message_id || null,
-                            reply_to_message: null,  // Realtime時は簡易対応
-                        };
-                        setMessages((prev) => [...prev, newMsg]);
+                        // 現在選択中のクライアントからのメッセージ
+                        if (currentSelected && msg.sender_id === currentSelected.client_id) {
+                            const newMsg: Message = {
+                                id: msg.id,
+                                sender: currentSelected.name,
+                                content: msg.content,
+                                timestamp: new Date(msg.created_at).toLocaleTimeString([], {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                }),
+                                created_at: msg.created_at,
+                                senderType: msg.sender_type,
+                                receiverType: msg.receiver_type,
+                                image_urls: msg.image_urls || [],
+                                is_edited: msg.is_edited || false,
+                                edited_at: msg.edited_at || null,
+                                read_at: msg.read_at || null,
+                                reply_to_message_id: msg.reply_to_message_id || null,
+                                reply_to_message: null,
+                            };
+                            setMessages((prev) => [...prev, newMsg]);
+                            // 即既読
+                            if (user) {
+                                markMessagesAsRead(user.id, currentSelected.client_id);
+                            }
+                            // 未読カウント増やさない
+                        } else {
+                            // 別クライアントからのメッセージ → 未読カウント+1
+                            setUnreadCounts((prev) => {
+                                const next = new Map(prev);
+                                const current = next.get(msg.sender_id) || 0;
+                                next.set(msg.sender_id, current + 1);
+                                return next;
+                            });
+                        }
                     }
                 )
                 .on(
@@ -336,6 +412,7 @@ function MessageContent() {
                                         content: msg.content,
                                         is_edited: msg.is_edited || false,
                                         edited_at: msg.edited_at || null,
+                                        read_at: msg.read_at || null,
                                     }
                                     : m
                             )
@@ -350,160 +427,73 @@ function MessageContent() {
         };
     }, [selectedClient]);
 
+    // Build reversed array for flex-col-reverse rendering
+    const reversedMessages = [...messages].reverse();
+
     return (
-        <div className="flex h-[calc(100vh-48px)]  bg-gray-50 text-gray-900 overflow-hidden">
+        <div className="flex h-[calc(100vh-48px)] bg-gray-50 text-gray-900 overflow-hidden">
 
             {/* Sidebar */}
-            <aside className="w-64 bg-white border-r p-4 space-y-2">
-                <h2 className="text-lg font-semibold mb-4">Clients</h2>
-                <ul className="space-y-1">
-                    {clientList.map((client) => (
-                        <li
-                            key={client.client_id}
-                            className={`cursor-pointer p-2 rounded ${selectedClient?.client_id === client.client_id ? 'bg-blue-100' : ''
-                                }`}
-                            onClick={() => {
-                                setSelectedClient(
-                                    client as Client
-                                )
-                            }
-                            }
-                        >
-                            👤 {client.name}
-                        </li>
-                    ))}
-                </ul>
+            <aside className="w-72 bg-white border-r flex flex-col">
+                <div className="px-4 py-4 border-b border-gray-200">
+                    <h2 className="text-base font-semibold text-gray-900">メッセージ</h2>
+                </div>
+                <div className="flex-1 overflow-y-auto">
+                    {clientList.map((client) => {
+                        const lastInfo = lastMessages.get(client.client_id);
+                        return (
+                            <ClientListItem
+                                key={client.client_id}
+                                client={client}
+                                isSelected={selectedClient?.client_id === client.client_id}
+                                unreadCount={unreadCounts.get(client.client_id) || 0}
+                                lastMessage={lastInfo?.content}
+                                lastMessageAt={lastInfo?.created_at}
+                                onClick={() => setSelectedClient(client as Client)}
+                            />
+                        );
+                    })}
+                </div>
             </aside>
 
             {/* Chat Area */}
             <div className="flex flex-col flex-1 overflow-hidden">
                 {/* Header */}
-                <header className="flex justify-between items-center px-4 py-3 border-b bg-white">
-                    <h1 className="text-lg font-semibold">{selectedClient?.name || ''}</h1>
-                    <div className="flex items-center space-x-3">
-                        <span className="text-sm">{userName}</span>
-                        <div className="w-8 h-8 bg-gray-300 rounded-full" />
-                    </div>
-                </header>
+                <ChatHeader client={selectedClient} />
 
                 {/* Messages */}
-                <main className="flex-1 overflow-y-auto p-6 flex flex-col-reverse gap-4">
-                    {[...messages].reverse().map((msg, index) => (
-                        <div key={index} className="flex items-start space-x-3">
-                            <div className="w-10 h-10 bg-gray-300 rounded-full" />
-                            <div className="flex-1 min-w-0">
-                                <div className='text-sm font-medium'>
-                                    {msg.sender}{' '}
-                                    <span className='text-gray-500 text-xs ml-2'>{msg.timestamp}</span>
-                                    {msg.is_edited && (
-                                        <span
-                                            className='text-gray-400 text-xs ml-2 cursor-default'
-                                            title={msg.edited_at ? `編集: ${new Date(msg.edited_at).toLocaleString()}` : '編集済み'}
-                                        >
-                                            編集済み
-                                        </span>
-                                    )}
-                                </div>
-                                {editingMessageId === msg.id ? (
-                                    <div className="mt-1 max-w-md">
-                                        <textarea
-                                            ref={editTextareaRef}
-                                            value={editInput}
-                                            onChange={(e) => setEditInput(e.target.value)}
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-                                                    e.preventDefault();
-                                                    handleEditSave();
-                                                }
-                                                if (e.key === 'Escape') {
-                                                    handleEditCancel();
-                                                }
-                                            }}
-                                            className="w-full border-2 border-blue-400 rounded p-3 outline-none focus:ring-2 focus:ring-blue-300 resize-none bg-white"
-                                            rows={2}
-                                            autoFocus
-                                        />
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <button
-                                                type="button"
-                                                onClick={handleEditCancel}
-                                                className="px-3 py-1 text-sm text-gray-600 rounded hover:bg-gray-100"
-                                            >
-                                                キャンセル
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={handleEditSave}
-                                                disabled={editSaving || !editInput.trim()}
-                                                className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                            >
-                                                {editSaving ? '保存中...' : '保存'}
-                                            </button>
-                                            <span className="text-xs text-gray-400">Enter で保存 / Esc でキャンセル</span>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="group relative inline-block max-w-md">
-                                        <div className={`p-3 rounded border mt-1 whitespace-pre-wrap ${msg.senderType === 'trainer' ? 'bg-blue-100' : 'bg-white'}`}>
-                                            {msg.reply_to_message && (
-                                                <ReplyQuote
-                                                    senderName={msg.reply_to_message.sender}
-                                                    content={msg.reply_to_message.content}
-                                                    isTrainerMessage={msg.senderType === 'trainer'}
-                                                />
-                                            )}
-                                            {msg.content}
-                                            {msg.image_urls && msg.image_urls.length > 0 && (
-                                                <div className="flex gap-2 mt-2">
-                                                    {msg.image_urls.map((url, imgIndex) => (
-                                                        <button
-                                                            key={imgIndex}
-                                                            type="button"
-                                                            onClick={() => setSelectedImageUrl(url)}
-                                                            className="block"
-                                                        >
-                                                            <img
-                                                                src={url}
-                                                                alt={`添付画像 ${imgIndex + 1}`}
-                                                                className="w-24 h-24 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
-                                                            />
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                        {msg.senderType === 'trainer' && canEditMessage(msg.created_at) && (
-                                            <button
-                                                type="button"
-                                                onClick={() => handleEditStart(msg)}
-                                                className="absolute -right-8 top-1 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-gray-200"
-                                                title="メッセージを編集"
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500">
-                                                    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-                                                    <path d="m15 5 4 4" />
-                                                </svg>
-                                            </button>
-                                        )}
-                                        {/* 返信ボタン - クライアントメッセージのみ表示 */}
-                                        {msg.senderType === 'client' && (
-                                            <button
-                                                type="button"
-                                                onClick={() => handleReplyStart(msg)}
-                                                className="absolute -right-8 top-1 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-gray-200"
-                                                title="返信"
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500">
-                                                    <polyline points="9 14 4 9 9 4"></polyline>
-                                                    <path d="M20 20v-7a4 4 0 0 0-4-4H4"></path>
-                                                </svg>
-                                            </button>
-                                        )}
-                                    </div>
+                <main className="flex-1 overflow-y-auto p-4 flex flex-col-reverse gap-1">
+                    {reversedMessages.map((msg, index) => {
+                        const currentDate = new Date(msg.created_at).toDateString();
+                        const prevDate = index < reversedMessages.length - 1
+                            ? new Date(reversedMessages[index + 1].created_at).toDateString()
+                            : null;
+                        const showDateDivider = currentDate !== prevDate;
+
+                        return (
+                            <div key={msg.id}>
+                                <MessageBubble
+                                    message={msg}
+                                    isTrainer={msg.senderType === 'trainer'}
+                                    clientName={selectedClient?.name || ''}
+                                    clientProfileImageUrl={selectedClient?.profile_image_url || null}
+                                    onEditStart={handleEditStart}
+                                    onReplyStart={handleReplyStart}
+                                    canEdit={msg.senderType === 'trainer' && canEditMessage(msg.created_at)}
+                                    isEditing={editingMessageId === msg.id}
+                                    editInput={editInput}
+                                    onEditInputChange={setEditInput}
+                                    onEditSave={handleEditSave}
+                                    onEditCancel={handleEditCancel}
+                                    editSaving={editSaving}
+                                    onImageClick={setSelectedImageUrl}
+                                />
+                                {showDateDivider && (
+                                    <MessageDateDivider date={msg.created_at} />
                                 )}
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </main>
 
                 {/* Input */}
@@ -513,7 +503,6 @@ function MessageContent() {
                         onImagesChange={setSelectedImages}
                         disabled={loading}
                     />
-                    {/* 返信プレビュー */}
                     {replyToMessage && (
                         <ReplyPreview
                             senderName={replyToMessage.sender}
@@ -540,14 +529,15 @@ function MessageContent() {
                                     handleSend();
                                 }
                             }}
-                            placeholder="Send a message..."
+                            placeholder="メッセージを入力..."
                             rows={1}
-                            className="flex-1 border rounded px-3 py-2 outline-none focus:ring-2 focus:ring-blue-300 resize-none overflow-y-auto"
+                            className="flex-1 border rounded px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-300 resize-none overflow-y-auto"
                             style={{ maxHeight: '120px' }}
                         />
                         <button
-                            onClick={handleSend} disabled={loading}
-                            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            onClick={handleSend}
+                            disabled={loading}
+                            className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
                             {uploading ? 'アップロード中...' : loading ? '送信中...' : '送信'}
                         </button>

@@ -70,6 +70,7 @@ export type Message = {
   image_urls: string[]
   is_edited: boolean
   edited_at: string | null
+  read_at: string | null
   reply_to_message_id: string | null
   reply_to_message?: {
     id: string
