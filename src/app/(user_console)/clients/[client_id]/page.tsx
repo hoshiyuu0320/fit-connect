@@ -41,6 +41,7 @@ export default function ClientDetailPage() {
   const [trainerId, setTrainerId] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [mode, setMode] = useState<'info' | 'session'>('info')
+  const [prevMode, setPrevMode] = useState<'info' | 'session'>('info')
 
   useEffect(() => {
     const fetchData = async () => {
@@ -74,6 +75,26 @@ export default function ClientDetailPage() {
     }
     fetchData()
   }, [clientId])
+
+  // セッションモードから情報モードに戻った時にデータを再取得
+  useEffect(() => {
+    if (prevMode === 'session' && mode === 'info') {
+      const refetch = async () => {
+        try {
+          const [exercises, assignmentsData] = await Promise.all([
+            getExerciseRecords({ clientId, limit: 100 }),
+            getClientAssignments(clientId),
+          ])
+          setExerciseRecords(exercises.data)
+          setWorkoutAssignments(assignmentsData)
+        } catch (error) {
+          console.error('データ再取得エラー:', error)
+        }
+      }
+      refetch()
+    }
+    setPrevMode(mode)
+  }, [mode])
 
   const refetchNotes = async () => {
     try {

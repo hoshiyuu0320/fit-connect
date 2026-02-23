@@ -19,12 +19,24 @@ export interface RecordCardData {
  */
 export function parseRecordMessage(content: string): RecordCardData | null {
   // --- ワークアウト達成（#なし現行モバイル形式）---
-  const workoutAchievementMatch = content.match(/^本日のワークアウトプラン「([^」]+)」を達成しました！$/)
+  const workoutAchievementMatch = content.match(/^本日のワークアウトプラン「([^」]+)」を達成しました！/)
   if (workoutAchievementMatch) {
+    const details: string[] = [`「${workoutAchievementMatch[1]}」を達成しました！`]
+
+    // カロリー・フィードバック行を抽出
+    const caloriesMatch = content.match(/🔥\s*消費カロリー:\s*(\d+)\s*kcal/)
+    if (caloriesMatch) {
+      details.push(`🔥 ${caloriesMatch[1]}kcal`)
+    }
+    const feedbackMatch = content.match(/💬\s*(.+)/)
+    if (feedbackMatch) {
+      details.push(`💬 ${feedbackMatch[1].trim()}`)
+    }
+
     return {
       type: 'achievement',
       label: 'ワークアウト達成！',
-      details: [`「${workoutAchievementMatch[1]}」を達成しました！`],
+      details,
     }
   }
 

@@ -136,6 +136,8 @@ export function ExerciseTab({ exerciseRecords, workoutAssignments }: ExerciseTab
     )
     const totalCalories = filteredExercises.reduce(
       (sum, e) => sum + (e.calories || 0), 0
+    ) + filteredAssignments.reduce(
+      (sum, a) => sum + (a.calories || 0), 0
     )
     return { totalExercises, totalDuration, totalCalories }
   }, [filteredExercises, period])
@@ -246,13 +248,13 @@ export function ExerciseTab({ exerciseRecords, workoutAssignments }: ExerciseTab
                               <span
                                 className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${statusColor.bg} ${statusColor.text}`}
                               >
-                                <span>{statusColor.icon}</span>
+                                <span className={`inline-block w-2 h-2 rounded-full ${statusColor.dot}`} />
                                 {ASSIGNMENT_STATUS_OPTIONS[assignment.status]}
                               </span>
                             </div>
 
                             {/* カテゴリ・目安時間 */}
-                            <div className="flex items-center gap-3 text-xs text-gray-500 mb-3">
+                            <div className="flex items-center gap-3 text-xs text-gray-500 mb-1">
                               {assignment.plan?.category && (
                                 <span>
                                   カテゴリ: {WORKOUT_CATEGORY_OPTIONS[assignment.plan.category as keyof typeof WORKOUT_CATEGORY_OPTIONS] ?? assignment.plan.category}
@@ -262,6 +264,17 @@ export function ExerciseTab({ exerciseRecords, workoutAssignments }: ExerciseTab
                                 <span>目安: {assignment.plan.estimated_minutes}分</span>
                               )}
                             </div>
+
+                            {/* カロリー */}
+                            {assignment.calories != null && (
+                              <div className="flex items-center gap-1 mb-3">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-orange-500">
+                                  <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
+                                </svg>
+                                <span className="text-xs text-orange-600 font-semibold">{assignment.calories}kcal</span>
+                              </div>
+                            )}
+                            {assignment.calories == null && <div className="mb-2" />}
 
                             {/* 種目リスト */}
                             {sortedExercises.length > 0 && (
@@ -281,7 +294,7 @@ export function ExerciseTab({ exerciseRecords, workoutAssignments }: ExerciseTab
                                           {exercise.exercise_name}
                                         </span>
                                         <span className={`text-xs font-medium ${isCompleted ? 'text-green-600' : 'text-gray-400'}`}>
-                                          {isCompleted ? '✅ 完了' : '未完了'}
+                                          {isCompleted ? <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="inline text-green-500" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg> 完了</> : '未完了'}
                                         </span>
                                       </div>
 
@@ -314,16 +327,39 @@ export function ExerciseTab({ exerciseRecords, workoutAssignments }: ExerciseTab
                                       ) : (
                                         <p className="text-xs text-gray-400 pt-1 border-t border-gray-200">実績なし</p>
                                       )}
+                                      {/* 種目メモ */}
+                                      {exercise.memo && (
+                                        <div className="flex items-start gap-1 mt-1.5 pt-1.5 border-t border-gray-200">
+                                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 flex-shrink-0 mt-0.5">
+                                            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                                          </svg>
+                                          <p className="text-xs text-gray-500 whitespace-pre-wrap">{exercise.memo}</p>
+                                        </div>
+                                      )}
                                     </div>
                                   )
                                 })}
                               </div>
                             )}
 
+                            {/* トレーナーノート */}
+                            {assignment.trainer_note && (
+                              <div className="mt-3 bg-blue-50 rounded-lg px-3 py-2 flex items-start gap-2">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400 flex-shrink-0 mt-0.5">
+                                  <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                                  <polyline points="14 2 14 8 20 8" />
+                                  <line x1="16" y1="13" x2="8" y2="13" />
+                                  <line x1="16" y1="17" x2="8" y2="17" />
+                                  <line x1="10" y1="9" x2="8" y2="9" />
+                                </svg>
+                                <p className="text-sm text-blue-700 whitespace-pre-wrap leading-tight">{assignment.trainer_note}</p>
+                              </div>
+                            )}
+
                             {/* クライアントフィードバック */}
                             {assignment.client_feedback && (
-                              <div className="mt-3 bg-gray-100 rounded-lg px-3 py-2 flex items-center gap-2">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 flex-shrink-0">
+                              <div className="mt-3 bg-gray-100 rounded-lg px-3 py-2 flex items-start gap-2">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 flex-shrink-0 mt-0.5">
                                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                                 </svg>
                                 <p className="text-sm text-gray-700 whitespace-pre-wrap leading-tight">{assignment.client_feedback}</p>
@@ -495,8 +531,8 @@ function WeekCalendar({ exercises, workoutAssignments }: { exercises: ExerciseRe
                         {a.plan?.title ?? 'ワークアウト'}
                       </p>
                       <div className="flex items-center gap-1 mt-0.5">
-                        <span className={`inline-block px-1 py-0.5 rounded text-[9px] font-medium ${statusColor.bg} ${statusColor.text}`}>
-                          {statusColor.icon} {ASSIGNMENT_STATUS_OPTIONS[a.status]}
+                        <span className={`inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-medium ${statusColor.bg} ${statusColor.text}`}>
+                          <span className={`inline-block w-1.5 h-1.5 rounded-full ${statusColor.dot}`} /> {ASSIGNMENT_STATUS_OPTIONS[a.status]}
                         </span>
                         {a.plan?.estimated_minutes && (
                           <span className="text-[9px] text-gray-400">{a.plan.estimated_minutes}分</span>
@@ -516,10 +552,21 @@ function WeekCalendar({ exercises, workoutAssignments }: { exercises: ExerciseRe
                           ))}
                         </div>
                       )}
+                      {a.calories != null && (
+                        <div className="flex items-center gap-0.5 mt-1">
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-orange-500">
+                            <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
+                          </svg>
+                          <span className="text-[9px] text-orange-500 font-medium">{a.calories}kcal</span>
+                        </div>
+                      )}
                       {a.client_feedback && (
-                        <p className="text-[9px] text-gray-500 mt-1 border-t border-gray-100 pt-1 line-clamp-2">
-                          💬 {a.client_feedback}
-                        </p>
+                        <div className="flex items-start gap-0.5 mt-1 border-t border-gray-100 pt-1">
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 flex-shrink-0 mt-px">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                          </svg>
+                          <p className="text-[9px] text-gray-500 line-clamp-2">{a.client_feedback}</p>
+                        </div>
                       )}
                     </div>
                   )
@@ -544,11 +591,16 @@ function WeekCalendar({ exercises, workoutAssignments }: { exercises: ExerciseRe
                     {exercise.distance !== null && (
                       <p className="text-[10px] text-gray-600">{exercise.distance}km</p>
                     )}
-                    {exercise.calories !== null && (
-                      <p className="text-[10px] text-orange-500 font-medium">{exercise.calories}kcal</p>
-                    )}
                     {exercise.memo && (
                       <p className="text-[9px] text-gray-500 mt-1 border-t border-gray-100 pt-1 line-clamp-2">{exercise.memo}</p>
+                    )}
+                    {exercise.calories !== null && (
+                      <div className="flex items-center gap-0.5 mt-1">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-orange-500">
+                          <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
+                        </svg>
+                        <span className="text-[9px] text-orange-500 font-medium">{exercise.calories}kcal</span>
+                      </div>
                     )}
                   </div>
                 ))}
@@ -581,12 +633,12 @@ function WeekCalendar({ exercises, workoutAssignments }: { exercises: ExerciseRe
                 <div className="flex items-start justify-between mb-2">
                   <span className="font-bold text-sm text-gray-800">{a.plan?.title ?? 'ワークアウト'}</span>
                   <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${statusColor.bg} ${statusColor.text}`}>
-                    <span>{statusColor.icon}</span>
+                    <span className={`inline-block w-2 h-2 rounded-full ${statusColor.dot}`} />
                     {ASSIGNMENT_STATUS_OPTIONS[a.status]}
                   </span>
                 </div>
                 {/* カテゴリ・目安時間 */}
-                <div className="flex items-center gap-3 text-xs text-gray-500 mb-3">
+                <div className="flex items-center gap-3 text-xs text-gray-500 mb-1">
                   {a.plan?.category && (
                     <span>カテゴリ: {WORKOUT_CATEGORY_OPTIONS[a.plan.category as keyof typeof WORKOUT_CATEGORY_OPTIONS] ?? a.plan.category}</span>
                   )}
@@ -594,6 +646,16 @@ function WeekCalendar({ exercises, workoutAssignments }: { exercises: ExerciseRe
                     <span>目安: {a.plan.estimated_minutes}分</span>
                   )}
                 </div>
+                {/* カロリー */}
+                {a.calories != null && (
+                  <div className="flex items-center gap-1 mb-2">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-orange-500">
+                      <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
+                    </svg>
+                    <span className="text-xs text-orange-600 font-semibold">{a.calories}kcal</span>
+                  </div>
+                )}
+                {a.calories == null && <div className="mb-2" />}
                 {/* 種目リスト */}
                 {sortedEx.length > 0 && (
                   <div className="space-y-2 mb-2">
@@ -604,7 +666,7 @@ function WeekCalendar({ exercises, workoutAssignments }: { exercises: ExerciseRe
                           <div className="flex items-center justify-between mb-1">
                             <span className="font-medium text-xs text-gray-800">{ex.exercise_name}</span>
                             <span className={`text-[10px] font-medium ${ex.is_completed ? 'text-green-600' : 'text-gray-400'}`}>
-                              {ex.is_completed ? '✅ 完了' : '未完了'}
+                              {ex.is_completed ? <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" className="inline text-green-500" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg> 完了</> : '未完了'}
                             </span>
                           </div>
                           <p className="text-[10px] text-gray-500 mb-1">
@@ -621,9 +683,30 @@ function WeekCalendar({ exercises, workoutAssignments }: { exercises: ExerciseRe
                               ))}
                             </div>
                           )}
+                          {ex.memo && (
+                            <div className="flex items-start gap-1 mt-1 pt-1 border-t border-gray-200">
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 flex-shrink-0 mt-0.5">
+                                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                              </svg>
+                              <p className="text-[10px] text-gray-500 whitespace-pre-wrap">{ex.memo}</p>
+                            </div>
+                          )}
                         </div>
                       )
                     })}
+                  </div>
+                )}
+                {/* トレーナーノート */}
+                {a.trainer_note && (
+                  <div className="bg-blue-50 rounded-lg px-3 py-2 flex items-start gap-2 mb-1">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400 flex-shrink-0 mt-0.5">
+                      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                      <polyline points="14 2 14 8 20 8" />
+                      <line x1="16" y1="13" x2="8" y2="13" />
+                      <line x1="16" y1="17" x2="8" y2="17" />
+                      <line x1="10" y1="9" x2="8" y2="9" />
+                    </svg>
+                    <p className="text-sm text-blue-700 whitespace-pre-wrap leading-tight">{a.trainer_note}</p>
                   </div>
                 )}
                 {/* フィードバック */}
@@ -791,11 +874,11 @@ function MonthCalendar({ exercises, workoutAssignments, displayMonth, setDisplay
                       {assignment.plan?.title ?? 'ワークアウト'}
                     </span>
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${statusColor.bg} ${statusColor.text}`}>
-                      <span>{statusColor.icon}</span>
+                      <span className={`inline-block w-2 h-2 rounded-full ${statusColor.dot}`} />
                       {ASSIGNMENT_STATUS_OPTIONS[assignment.status]}
                     </span>
                   </div>
-                  <div className="flex items-center gap-3 text-xs text-gray-500 mb-3">
+                  <div className="flex items-center gap-3 text-xs text-gray-500 mb-1">
                     {assignment.plan?.category && (
                       <span>カテゴリ: {WORKOUT_CATEGORY_OPTIONS[assignment.plan.category as keyof typeof WORKOUT_CATEGORY_OPTIONS] ?? assignment.plan.category}</span>
                     )}
@@ -803,6 +886,16 @@ function MonthCalendar({ exercises, workoutAssignments, displayMonth, setDisplay
                       <span>目安: {assignment.plan.estimated_minutes}分</span>
                     )}
                   </div>
+                  {/* カロリー */}
+                  {assignment.calories != null && (
+                    <div className="flex items-center gap-1 mb-3">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-orange-500">
+                        <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
+                      </svg>
+                      <span className="text-xs text-orange-600 font-semibold">{assignment.calories}kcal</span>
+                    </div>
+                  )}
+                  {assignment.calories == null && <div className="mb-2" />}
                   {sortedExercises.length > 0 && (
                     <div className="space-y-2">
                       {sortedExercises.map((exercise) => {
@@ -811,8 +904,8 @@ function MonthCalendar({ exercises, workoutAssignments, displayMonth, setDisplay
                           <div key={exercise.id} className="rounded-lg border border-gray-100 bg-gray-50 p-3">
                             <div className="flex items-center justify-between mb-1">
                               <span className="font-medium text-sm text-gray-800">{exercise.exercise_name}</span>
-                              <span className={`text-xs font-medium ${exercise.is_completed ? 'text-green-600' : 'text-gray-400'}`}>
-                                {exercise.is_completed ? '✅ 完了' : '未完了'}
+                              <span className={`text-xs font-medium flex items-center gap-0.5 ${exercise.is_completed ? 'text-green-600' : 'text-gray-400'}`}>
+                                {exercise.is_completed ? <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="text-green-500" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg> 完了</> : '未完了'}
                               </span>
                             </div>
                             <p className="text-xs text-gray-500 mb-2">
@@ -835,14 +928,34 @@ function MonthCalendar({ exercises, workoutAssignments, displayMonth, setDisplay
                             ) : (
                               <p className="text-xs text-gray-400 pt-1 border-t border-gray-200">実績なし</p>
                             )}
+                            {exercise.memo && (
+                              <div className="flex items-start gap-1 mt-1.5 pt-1.5 border-t border-gray-200">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 flex-shrink-0 mt-0.5">
+                                  <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                                </svg>
+                                <p className="text-xs text-gray-500 whitespace-pre-wrap">{exercise.memo}</p>
+                              </div>
+                            )}
                           </div>
                         )
                       })}
                     </div>
                   )}
+                  {assignment.trainer_note && (
+                    <div className="mt-3 bg-blue-50 rounded-lg px-3 py-2 flex items-start gap-2">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400 flex-shrink-0 mt-0.5">
+                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="16" y1="13" x2="8" y2="13" />
+                        <line x1="16" y1="17" x2="8" y2="17" />
+                        <line x1="10" y1="9" x2="8" y2="9" />
+                      </svg>
+                      <p className="text-sm text-blue-700 whitespace-pre-wrap leading-tight">{assignment.trainer_note}</p>
+                    </div>
+                  )}
                   {assignment.client_feedback && (
-                    <div className="mt-3 bg-gray-100 rounded-lg px-3 py-2 flex items-center gap-2">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 flex-shrink-0">
+                    <div className="mt-3 bg-gray-100 rounded-lg px-3 py-2 flex items-start gap-2">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 flex-shrink-0 mt-0.5">
                         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                       </svg>
                       <p className="text-sm text-gray-700 whitespace-pre-wrap leading-tight">{assignment.client_feedback}</p>
