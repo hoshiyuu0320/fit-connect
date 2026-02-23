@@ -514,6 +514,11 @@ async function sendMessageNotification(
       bodyText,
       { type: 'message', messageId: message.id }
     )
+
+    // Web Push通知（トレーナーが受信者の場合）
+    if (receiverType === 'trainer') {
+      await sendWebPushToTrainer(supabase, receiverId, senderName, bodyText, message.sender_id)
+    }
   } catch (e) {
     console.error('[FCM] Error sending message notification:', e)
   }
@@ -546,5 +551,65 @@ async function sendGoalAchievementNotification(
     )
   } catch (e) {
     console.error('[FCM] Error sending goal achievement notification:', e)
+  }
+}
+
+/**
+ * トレーナーにWeb Push通知を送信する
+ * push_subscriptions テーブルから購読情報を取得し、
+ * Next.js API Route (/api/push-notify) 経由で通知を送信する
+ */
+async function sendWebPushToTrainer(
+  supabase: any,
+  trainerId: string,
+  senderName: string,
+  bodyText: string,
+  senderId: string
+): Promise<void> {
+  try {
+    // push_subscriptions テーブルから購読情報を取得
+    const { data: subscriptions, error } = await supabase
+      .from('push_subscriptions')
+      .select('endpoint, p256dh, auth')
+      .eq('trainer_id', trainerId)
+
+    if (error || !subscriptions || subscriptions.length === 0) {
+      console.log('[WebPush] No web push subscriptions for trainer:', trainerId)
+      return
+    }
+
+    // 各購読に対してWeb Push送信をAPI Routeに委託
+    const appUrl = Deno.env.get('APP_URL')
+    if (!appUrl) {
+      console.log('[WebPush] APP_URL not set, skipping web push')
+      return
+    }
+
+    const pushApiKey = Deno.env.get('PUSH_API_KEY')
+
+    const response = await fetch(`${appUrl}/api/push-notify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(pushApiKey ? { 'x-api-key': pushApiKey } : {}),
+      },
+      body: JSON.stringify({
+        subscriptions: subscriptions.map((s: any) => ({
+          endpoint: s.endpoint,
+          keys: { p256dh: s.p256dh, auth: s.auth },
+        })),
+        title: `${senderName}からのメッセージ`,
+        body: bodyText,
+        url: `/message?clientId=${senderId}`,
+      }),
+    })
+
+    if (!response.ok) {
+      console.error('[WebPush] API Route error:', response.status, await response.text())
+    } else {
+      console.log('[WebPush] Notifications sent via API Route')
+    }
+  } catch (e) {
+    console.error('[WebPush] Error sending web push:', e)
   }
 }

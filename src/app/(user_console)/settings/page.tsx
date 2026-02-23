@@ -90,7 +90,7 @@ export default function SettingsPage() {
         <ScheduleSection trainer={trainer} />
 
         {/* 通知設定 */}
-        <NotificationSection />
+        <NotificationSection trainerId={trainer.id} />
 
         {/* アカウント管理 */}
         <AccountSection onLogout={handleLogout} />
