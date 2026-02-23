@@ -475,6 +475,7 @@ function MessageContent() {
                                 <MessageBubble
                                     message={msg}
                                     isTrainer={msg.senderType === 'trainer'}
+                                    clientId={selectedClient?.client_id || ''}
                                     clientName={selectedClient?.name || ''}
                                     clientProfileImageUrl={selectedClient?.profile_image_url || null}
                                     onEditStart={handleEditStart}

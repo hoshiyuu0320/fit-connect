@@ -2,11 +2,14 @@
 
 import { useRef } from 'react'
 import { ReplyQuote } from '@/components/message/ReplyQuote'
+import { RecordCard } from '@/components/message/RecordCard'
+import { parseRecordMessage } from '@/components/message/recordCardParser'
 import type { Message } from '@/types/client'
 
 interface MessageBubbleProps {
   message: Message
   isTrainer: boolean
+  clientId: string
   clientName: string
   clientProfileImageUrl: string | null
   onEditStart: (msg: Message) => void
@@ -24,6 +27,7 @@ interface MessageBubbleProps {
 export function MessageBubble({
   message,
   isTrainer,
+  clientId,
   clientName,
   clientProfileImageUrl,
   onEditStart,
@@ -38,6 +42,8 @@ export function MessageBubble({
   onImageClick,
 }: MessageBubbleProps) {
   const editTextareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const recordCardData = !isTrainer ? parseRecordMessage(message.content) : null
 
   const avatarInitial = clientName.charAt(0).toUpperCase()
 
@@ -155,49 +161,53 @@ export function MessageBubble({
             </div>
           )}
 
-          {/* Message bubble */}
-          <div
-            className={`px-4 py-2.5 rounded-2xl ${
-              isTrainer
-                ? 'bg-emerald-500 text-white rounded-tr-sm'
-                : 'bg-white border border-gray-200 text-gray-900 rounded-tl-sm'
-            }`}
-          >
-            {/* Reply quote */}
-            {message.reply_to_message && (
-              <ReplyQuote
-                senderName={message.reply_to_message.sender}
-                content={message.reply_to_message.content}
-                isTrainerMessage={isTrainer}
-                inTrainerBubble={isTrainer}
-              />
-            )}
+          {/* Record card or normal message bubble */}
+          {recordCardData ? (
+            <RecordCard data={recordCardData} clientId={clientId} />
+          ) : (
+            <div
+              className={`px-4 py-2.5 rounded-2xl ${
+                isTrainer
+                  ? 'bg-emerald-500 text-white rounded-tr-sm'
+                  : 'bg-white border border-gray-200 text-gray-900 rounded-tl-sm'
+              }`}
+            >
+              {/* Reply quote */}
+              {message.reply_to_message && (
+                <ReplyQuote
+                  senderName={message.reply_to_message.sender}
+                  content={message.reply_to_message.content}
+                  isTrainerMessage={isTrainer}
+                  inTrainerBubble={isTrainer}
+                />
+              )}
 
-            {/* Message text */}
-            {message.content && (
-              <p className="whitespace-pre-wrap break-words text-sm">{message.content}</p>
-            )}
+              {/* Message text */}
+              {message.content && (
+                <p className="whitespace-pre-wrap break-words text-sm">{message.content}</p>
+              )}
 
-            {/* Images */}
-            {message.image_urls && message.image_urls.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {message.image_urls.map((url, imgIndex) => (
-                  <button
-                    key={imgIndex}
-                    type="button"
-                    onClick={() => onImageClick(url)}
-                    className="block"
-                  >
-                    <img
-                      src={url}
-                      alt={`添付画像 ${imgIndex + 1}`}
-                      className="w-24 h-24 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
-                    />
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+              {/* Images */}
+              {message.image_urls && message.image_urls.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {message.image_urls.map((url, imgIndex) => (
+                    <button
+                      key={imgIndex}
+                      type="button"
+                      onClick={() => onImageClick(url)}
+                      className="block"
+                    >
+                      <img
+                        src={url}
+                        alt={`添付画像 ${imgIndex + 1}`}
+                        className="w-24 h-24 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Edit/Reply buttons for client bubble - shown on right */}
           {!isTrainer && (
