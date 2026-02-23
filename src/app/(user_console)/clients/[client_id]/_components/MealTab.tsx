@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useCallback } from 'react'
 import Image from 'next/image'
 import { startOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, format, isToday, isYesterday, eachDayOfInterval, isBefore } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { MEAL_TYPE_OPTIONS } from '@/types/client'
+import { ImageModal } from '@/components/message/ImageModal'
 import type { MealRecord } from '@/types/client'
 
 type MealPeriod = 'today' | 'week' | 'month' | '3months' | 'all'
@@ -13,8 +14,6 @@ const MEAL_PERIOD_BUTTONS: { label: string; value: MealPeriod }[] = [
   { label: '本日', value: 'today' },
   { label: '今週', value: 'week' },
   { label: '今月', value: 'month' },
-  { label: '3ヶ月', value: '3months' },
-  { label: '全期間', value: 'all' },
 ]
 
 const MEAL_EMOJI: Record<string, string> = {
@@ -33,6 +32,7 @@ interface MealTabProps {
 export function MealTab({ mealRecords }: MealTabProps) {
   const [period, setPeriod] = useState<MealPeriod>('today')
   const [displayMonth, setDisplayMonth] = useState(new Date())
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null)
 
   const filteredMeals = useMemo(() => {
     if (mealRecords.length === 0) return []
@@ -99,10 +99,7 @@ export function MealTab({ mealRecords }: MealTabProps) {
     const totalPhotos = filteredMeals.reduce(
       (sum, m) => sum + (m.images?.length || 0), 0
     )
-    const totalKcal = filteredMeals.reduce(
-      (sum, m) => sum + (m.calories || 0), 0
-    )
-    return { totalMeals, totalPhotos, totalKcal }
+    return { totalMeals, totalPhotos }
   }, [filteredMeals, period])
 
   return (
@@ -129,28 +126,28 @@ export function MealTab({ mealRecords }: MealTabProps) {
       {/* Today's Summary */}
       {summary && (
         <div className="rounded-xl bg-gray-50 border border-gray-100 p-4 mb-4">
-          <h4 className="font-bold text-sm mb-3">Today&apos;s Summary</h4>
-          <div className="grid grid-cols-3 text-center">
+          <h4 className="font-bold text-sm mb-3">本日のサマリー</h4>
+          <div className="grid grid-cols-2 text-center">
             <div>
               <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center mx-auto mb-1">
-                <span className="text-xl">🍴</span>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500">
+                  <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2" />
+                  <path d="M7 2v20" />
+                  <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7" />
+                </svg>
               </div>
               <p className="text-lg font-bold">{summary.totalMeals}</p>
-              <p className="text-xs text-gray-500">Meals</p>
+              <p className="text-xs text-gray-500">食事数</p>
             </div>
             <div>
               <div className="w-12 h-12 rounded-xl bg-green-50 flex items-center justify-center mx-auto mb-1">
-                <span className="text-xl">📷</span>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-500">
+                  <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+                  <circle cx="12" cy="13" r="3" />
+                </svg>
               </div>
               <p className="text-lg font-bold">{summary.totalPhotos}</p>
-              <p className="text-xs text-gray-500">Photos</p>
-            </div>
-            <div>
-              <div className="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center mx-auto mb-1">
-                <span className="text-xl">🔥</span>
-              </div>
-              <p className="text-lg font-bold">{summary.totalKcal}</p>
-              <p className="text-xs text-gray-500">kcal</p>
+              <p className="text-xs text-gray-500">写真数</p>
             </div>
           </div>
         </div>
@@ -162,8 +159,8 @@ export function MealTab({ mealRecords }: MealTabProps) {
       {/* 月カレンダー */}
       {period === 'month' && <MonthCalendar meals={mealRecords} displayMonth={displayMonth} setDisplayMonth={setDisplayMonth} />}
 
-      {/* 食事一覧（日付グループ） */}
-      {groupedMeals.length > 0 ? (
+      {/* 食事一覧（日付グループ）- 週・月カレンダー表示時は非表示 */}
+      {period !== 'week' && period !== 'month' && groupedMeals.length > 0 ? (
         <div className="max-h-[500px] overflow-y-auto custom-scrollbar space-y-6">
           {groupedMeals.map((group) => (
             <div key={group.dateKey}>
@@ -177,40 +174,47 @@ export function MealTab({ mealRecords }: MealTabProps) {
                 {group.meals.map((meal) => {
                   const hasImage = meal.images && meal.images.length > 0
                   return (
-                    <div key={meal.id} className="rounded-xl bg-white shadow-sm border border-gray-100 p-4 flex gap-4">
-                      <div className="flex-shrink-0">
-                        {hasImage ? (
-                          <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-gray-100">
-                            <Image
-                              src={meal.images![0]}
-                              alt="食事画像"
-                              fill
-                              className="object-cover"
-                              unoptimized
-                            />
-                          </div>
-                        ) : (
-                          <div className="w-20 h-20 rounded-lg bg-gray-100 flex items-center justify-center">
-                            <span className="text-3xl">{MEAL_EMOJI[meal.meal_type] || '🍽️'}</span>
-                          </div>
-                        )}
+                    <div key={meal.id} className="rounded-xl bg-white shadow-sm border border-gray-100 p-4">
+                      {/* 上段: 食事種別・時刻・コメント */}
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm">{MEAL_TYPE_OPTIONS[meal.meal_type]}</span>
+                        <span className="text-xs text-gray-500">
+                          {format(new Date(meal.recorded_at), 'H:mm')}
+                        </span>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-sm">{MEAL_TYPE_OPTIONS[meal.meal_type]}</span>
-                          <span className="text-xs text-gray-500">
-                            {format(new Date(meal.recorded_at), 'H:mm')}
-                          </span>
+                      {meal.notes && (
+                        <div className="mt-2 bg-gray-100 rounded-lg px-3 py-2 flex items-center gap-2">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 flex-shrink-0">
+                            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                          </svg>
+                          <p className="text-sm text-gray-700 whitespace-pre-wrap leading-tight">{meal.notes}</p>
                         </div>
-                        {meal.notes && (
-                          <p className="text-sm text-gray-800 mt-1 whitespace-pre-wrap">{meal.notes}</p>
-                        )}
-                        {meal.calories && (
-                          <span className="text-xs font-semibold text-orange-600 mt-1 inline-block">
-                            {meal.calories} kcal
-                          </span>
-                        )}
-                      </div>
+                      )}
+
+                      {/* 下段: 写真セクション（区切り線付き） */}
+                      {hasImage && (
+                        <>
+                          <div className="border-t border-dashed border-gray-200 mt-3 pt-3" />
+                          <div className="flex gap-2">
+                            {meal.images!.map((url, imgIndex) => (
+                              <button
+                                key={imgIndex}
+                                type="button"
+                                onClick={() => setSelectedImageUrl(url)}
+                                className="relative w-24 h-24 rounded-lg overflow-hidden bg-gray-100 cursor-pointer hover:opacity-80 transition-opacity"
+                              >
+                                <Image
+                                  src={url}
+                                  alt={`食事画像 ${imgIndex + 1}`}
+                                  fill
+                                  className="object-cover"
+                                  unoptimized
+                                />
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
                     </div>
                   )
                 })}
@@ -218,11 +222,12 @@ export function MealTab({ mealRecords }: MealTabProps) {
             </div>
           ))}
         </div>
-      ) : (
+      ) : period !== 'week' && period !== 'month' ? (
         <p className="text-gray-500">
           {mealRecords.length === 0 ? 'まだ食事記録がありません' : '選択した期間にデータがありません'}
         </p>
-      )}
+      ) : null}
+      <ImageModal imageUrl={selectedImageUrl} onClose={() => setSelectedImageUrl(null)} />
     </div>
   )
 }
@@ -236,6 +241,19 @@ function WeekCalendar({ meals }: { meals: MealRecord[] }) {
   const rangeLabel = `${format(weekStart, 'M月d日')}〜${format(weekEnd, 'M月d日')}`
   const [hoveredMeal, setHoveredMeal] = useState<MealRecord | null>(null)
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null)
+  const hoverTimeout = useRef<NodeJS.Timeout | null>(null)
+
+  const scheduleClosePopup = useCallback(() => {
+    hoverTimeout.current = setTimeout(() => setHoveredMeal(null), 150)
+  }, [])
+
+  const cancelClosePopup = useCallback(() => {
+    if (hoverTimeout.current) {
+      clearTimeout(hoverTimeout.current)
+      hoverTimeout.current = null
+    }
+  }, [])
 
   // 日別にグループ
   const mealsByDay = useMemo(() => {
@@ -255,6 +273,7 @@ function WeekCalendar({ meals }: { meals: MealRecord[] }) {
   }, [meals, days])
 
   const handleMouseEnter = (meal: MealRecord, e: React.MouseEvent) => {
+    cancelClosePopup()
     const rect = e.currentTarget.getBoundingClientRect()
     setHoverPos({ x: rect.left + rect.width / 2, y: rect.top })
     setHoveredMeal(meal)
@@ -283,12 +302,21 @@ function WeekCalendar({ meals }: { meals: MealRecord[] }) {
                       key={meal.id}
                       className={`rounded-md border p-1 cursor-pointer hover:shadow-md transition-shadow ${today ? 'border-blue-300' : 'border-gray-100'}`}
                       onMouseEnter={(e) => handleMouseEnter(meal, e)}
-                      onMouseLeave={() => setHoveredMeal(null)}
+                      onMouseLeave={scheduleClosePopup}
                     >
                       {hasImage ? (
-                        <div className="relative w-full aspect-square rounded overflow-hidden bg-gray-100">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedImageUrl(meal.images![0])}
+                          className="relative w-full aspect-square rounded overflow-hidden bg-gray-100 cursor-pointer hover:opacity-80 transition-opacity"
+                        >
                           <Image src={meal.images![0]} alt="" fill className="object-cover" unoptimized />
-                        </div>
+                          {meal.images!.length > 1 && (
+                            <span className="absolute bottom-1 right-1 bg-black/60 text-white text-[10px] font-bold rounded px-1 py-0.5">
+                              +{meal.images!.length - 1}
+                            </span>
+                          )}
+                        </button>
                       ) : (
                         <div className="w-full aspect-square rounded bg-gray-100 flex items-center justify-center">
                           <span className="text-2xl">{MEAL_EMOJI[meal.meal_type] || '🍽️'}</span>
@@ -310,12 +338,23 @@ function WeekCalendar({ meals }: { meals: MealRecord[] }) {
       {/* ホバーポップアップ */}
       {hoveredMeal && (
         <div
-          className="fixed z-50 bg-white rounded-xl shadow-xl border border-gray-200 p-3 w-72 pointer-events-none"
+          className="fixed z-50 bg-white rounded-xl shadow-xl border border-gray-200 p-3 w-72"
           style={{ left: Math.min(hoverPos.x - 144, window.innerWidth - 300), top: hoverPos.y - 10, transform: 'translateY(-100%)' }}
+          onMouseEnter={cancelClosePopup}
+          onMouseLeave={scheduleClosePopup}
         >
           {hoveredMeal.images && hoveredMeal.images.length > 0 && (
-            <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-gray-100 mb-2">
-              <Image src={hoveredMeal.images[0]} alt="" fill className="object-cover" unoptimized />
+            <div className="flex gap-1.5 mb-2">
+              {hoveredMeal.images.map((url, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setSelectedImageUrl(url)}
+                  className="relative flex-1 aspect-square rounded-lg overflow-hidden bg-gray-100 cursor-pointer hover:opacity-80 transition-opacity"
+                >
+                  <Image src={url} alt="" fill className="object-cover" unoptimized />
+                </button>
+              ))}
             </div>
           )}
           <p className="text-xs text-gray-500">
@@ -324,11 +363,9 @@ function WeekCalendar({ meals }: { meals: MealRecord[] }) {
           {hoveredMeal.notes && (
             <p className="text-sm font-bold mt-0.5">{hoveredMeal.notes}</p>
           )}
-          {hoveredMeal.calories && (
-            <p className="text-xs text-orange-600 mt-1">{hoveredMeal.calories} kcal</p>
-          )}
         </div>
       )}
+      <ImageModal imageUrl={selectedImageUrl} onClose={() => setSelectedImageUrl(null)} />
     </div>
   )
 }
@@ -337,18 +374,20 @@ function WeekCalendar({ meals }: { meals: MealRecord[] }) {
 function MonthCalendar({ meals, displayMonth, setDisplayMonth }: { meals: MealRecord[]; displayMonth: Date; setDisplayMonth: (d: Date | ((prev: Date) => Date)) => void }) {
   const now = new Date()
   const [selectedDate, setSelectedDate] = useState<string>(format(now, 'yyyy-MM-dd'))
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null)
 
   const monthStart = startOfMonth(displayMonth)
   const monthEnd = endOfMonth(displayMonth)
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd })
   const firstDayOfWeek = (monthStart.getDay() + 6) % 7
 
-  // 全食事データから日別カウント（表示月用）
-  const monthMealCount = useMemo(() => {
-    const map = new Map<string, number>()
+  // 全食事データから日別にグループ化（カウント＋画像取得用）
+  const monthMealsByDay = useMemo(() => {
+    const map = new Map<string, MealRecord[]>()
     for (const meal of meals) {
       const key = format(new Date(meal.recorded_at), 'yyyy-MM-dd')
-      map.set(key, (map.get(key) || 0) + 1)
+      if (!map.has(key)) map.set(key, [])
+      map.get(key)!.push(meal)
     }
     return map
   }, [meals])
@@ -378,82 +417,111 @@ function MonthCalendar({ meals, displayMonth, setDisplayMonth }: { meals: MealRe
   const selectedLabel = format(new Date(selectedDate + 'T00:00:00'), 'M月d日')
 
   return (
-    <div className="flex gap-4 mb-4">
-      {/* 左: カレンダー */}
-      <div className="rounded-xl bg-gray-50 border border-gray-100 p-3 flex-shrink-0" style={{ width: '280px' }}>
+    <div className="space-y-4 mb-4">
+      {/* 上段: カレンダー（全幅） */}
+      <div className="rounded-xl bg-gray-50 border border-gray-100 p-4">
         {/* ヘッダー */}
-        <div className="flex justify-between items-center mb-2">
-          <button onClick={prevMonth} className="text-gray-500 hover:text-gray-800 px-1">‹</button>
+        <div className="flex justify-between items-center mb-3">
+          <button onClick={prevMonth} className="text-gray-500 hover:text-gray-800 px-2 py-1">‹</button>
           <h4 className="font-bold text-sm">{format(displayMonth, 'yyyy年M月')}</h4>
-          <button onClick={nextMonth} className="text-gray-500 hover:text-gray-800 px-1">›</button>
+          <button onClick={nextMonth} className="text-gray-500 hover:text-gray-800 px-2 py-1">›</button>
         </div>
         {/* 曜日 */}
         <div className="grid grid-cols-7 text-center mb-1">
           {WEEKDAY_LABELS_SHORT.map((label, i) => (
-            <span key={i} className="text-[10px] text-gray-400 font-medium">{label}</span>
+            <span key={i} className="text-xs text-gray-400 font-medium">{label}</span>
           ))}
         </div>
         {/* 日付グリッド */}
-        <div className="grid grid-cols-7 gap-0.5">
+        <div className="grid grid-cols-7 gap-1">
           {Array.from({ length: firstDayOfWeek }).map((_, i) => (
             <div key={`empty-${i}`} />
           ))}
           {days.map((day) => {
             const key = format(day, 'yyyy-MM-dd')
-            const count = monthMealCount.get(key) || 0
+            const dayMeals = monthMealsByDay.get(key) || []
+            const count = dayMeals.length
             return (
               <button
                 key={key}
                 onClick={() => setSelectedDate(key)}
-                className={`aspect-square rounded-md flex items-center justify-center text-xs font-medium cursor-pointer transition-all ${getDayColor(count, day)}`}
+                className={`rounded-lg flex flex-col items-center justify-center p-1 cursor-pointer transition-all min-h-[60px] ${getDayColor(count, day)}`}
               >
-                {format(day, 'd')}
+                <span className="text-xs font-medium">{format(day, 'd')}</span>
+                {count > 0 && (
+                  <span className="text-[10px] mt-0.5 opacity-75">{count}食</span>
+                )}
               </button>
             )
           })}
         </div>
         {/* 凡例 */}
-        <div className="flex justify-end items-center gap-2 mt-2 text-[10px] text-gray-500">
-          <span className="flex items-center gap-0.5"><span className="w-2.5 h-2.5 rounded-sm bg-green-600 inline-block" /> 3+</span>
-          <span className="flex items-center gap-0.5"><span className="w-2.5 h-2.5 rounded-sm bg-green-500 inline-block" /> 2</span>
-          <span className="flex items-center gap-0.5"><span className="w-2.5 h-2.5 rounded-sm bg-green-200 inline-block" /> 1</span>
-          <span className="flex items-center gap-0.5"><span className="w-2.5 h-2.5 rounded-sm bg-gray-200 inline-block" /> 0</span>
+        <div className="flex justify-end items-center gap-3 mt-3 text-xs text-gray-500">
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-green-600 inline-block" /> 3+</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-green-500 inline-block" /> 2</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-green-200 inline-block" /> 1</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-gray-200 inline-block" /> 0</span>
         </div>
       </div>
 
-      {/* 右: 選択日の記録 */}
-      <div className="flex-1 min-w-0">
-        <h4 className="font-bold text-sm mb-2">{selectedLabel}の記録</h4>
+      {/* 下段: 選択日の記録リスト */}
+      <div>
+        <h4 className="font-bold text-base mb-3">{selectedLabel}の記録</h4>
         {selectedDayMeals.length > 0 ? (
-          <div className="space-y-2 max-h-[320px] overflow-y-auto custom-scrollbar">
+          <div className="space-y-3 max-h-[400px] overflow-y-auto custom-scrollbar">
             {selectedDayMeals.map((meal) => {
               const hasImage = meal.images && meal.images.length > 0
               return (
-                <div key={meal.id} className="rounded-lg bg-white shadow-sm border border-gray-100 p-3 flex gap-3">
-                  {hasImage ? (
-                    <div className="relative w-16 h-16 rounded-md overflow-hidden bg-gray-100 flex-shrink-0">
-                      <Image src={meal.images![0]} alt="" fill className="object-cover" unoptimized />
-                    </div>
-                  ) : (
-                    <div className="w-16 h-16 rounded-md bg-gray-100 flex items-center justify-center flex-shrink-0">
-                      <span className="text-2xl">{MEAL_EMOJI[meal.meal_type] || '🍽️'}</span>
+                <div key={meal.id} className="rounded-xl bg-white shadow-sm border border-gray-100 p-4">
+                  {/* 上段: 食事種別・時刻・コメント */}
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm">{MEAL_TYPE_OPTIONS[meal.meal_type]}</span>
+                    <span className="text-xs text-gray-500">
+                      {format(new Date(meal.recorded_at), 'H:mm')}
+                    </span>
+                  </div>
+                  {meal.notes && (
+                    <div className="mt-2 bg-gray-100 rounded-lg px-3 py-2 flex items-center gap-2">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 flex-shrink-0">
+                        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                      </svg>
+                      <p className="text-sm text-gray-700 whitespace-pre-wrap leading-tight">{meal.notes}</p>
                     </div>
                   )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-500">
-                      {MEAL_TYPE_OPTIONS[meal.meal_type]} {format(new Date(meal.recorded_at), 'H:mm')}
-                    </p>
-                    {meal.notes && <p className="text-sm font-medium mt-0.5 truncate">{meal.notes}</p>}
-                    {meal.calories && <p className="text-xs text-orange-600 mt-0.5">{meal.calories} kcal</p>}
-                  </div>
+
+                  {/* 下段: 写真セクション */}
+                  {hasImage && (
+                    <>
+                      <div className="border-t border-dashed border-gray-200 mt-3 pt-3" />
+                      <div className="flex gap-2">
+                        {meal.images!.map((url, imgIndex) => (
+                          <button
+                            key={imgIndex}
+                            type="button"
+                            onClick={() => setSelectedImageUrl(url)}
+                            className="relative w-24 h-24 rounded-lg overflow-hidden bg-gray-100 cursor-pointer hover:opacity-80 transition-opacity"
+                          >
+                            <Image
+                              src={url}
+                              alt={`食事画像 ${imgIndex + 1}`}
+                              fill
+                              className="object-cover"
+                              unoptimized
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
               )
             })}
           </div>
         ) : (
-          <p className="text-sm text-gray-400 mt-8">記録がありません</p>
+          <p className="text-sm text-gray-400">記録がありません</p>
         )}
       </div>
+      <ImageModal imageUrl={selectedImageUrl} onClose={() => setSelectedImageUrl(null)} />
     </div>
   )
 }

@@ -1,6 +1,9 @@
 'use client'
 
+import { useState } from 'react'
+import Image from 'next/image'
 import { WeightChart } from '@/components/clients/WeightChart'
+import { ImageModal } from '@/components/message/ImageModal'
 import type { WeightRecord } from '@/types/client'
 
 interface WeightTabProps {
@@ -9,6 +12,8 @@ interface WeightTabProps {
 }
 
 export function WeightTab({ weightRecords, targetWeight }: WeightTabProps) {
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null)
+
   if (weightRecords.length === 0) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -30,17 +35,18 @@ export function WeightTab({ weightRecords, targetWeight }: WeightTabProps) {
             .slice(-10)
             .reverse()
             .map((record) => {
-              // コメント抽出（notes内の数値以外のテキスト）
+              // コメント抽出（notes先頭の数値+kg部分を除去）
               const comment = record.notes
-                ?.split('\n')
-                .filter((line) => isNaN(Number(line.trim())) && line.trim() !== '')
-                .join('\n') || null
+                ?.replace(/^[\d.]+\s*(?:kg)?\s*/i, '')
+                .trim() || null
+              const hasImage = record.image_urls && record.image_urls.length > 0
 
               return (
                 <div
                   key={record.id}
                   className="rounded-xl bg-white shadow-sm border border-gray-100 p-4"
                 >
+                  {/* 上段: 日付・体重・コメント */}
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-800">
                       {new Date(record.recorded_at).toLocaleDateString('ja-JP', {
@@ -54,17 +60,45 @@ export function WeightTab({ weightRecords, targetWeight }: WeightTabProps) {
                   </div>
                   {comment && (
                     <div className="mt-2 bg-gray-100 rounded-lg px-3 py-2 flex items-center gap-2">
-                      <span className="text-gray-500 leading-none">💬</span>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 flex-shrink-0">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                      </svg>
                       <p className="text-sm text-gray-700 whitespace-pre-wrap leading-tight">
-                        コメント: {comment}
+                        {comment}
                       </p>
                     </div>
+                  )}
+
+                  {/* 下段: 写真セクション（区切り線付き） */}
+                  {hasImage && (
+                    <>
+                      <div className="border-t border-dashed border-gray-200 mt-3 pt-3" />
+                      <div className="flex gap-2">
+                        {record.image_urls!.map((url, imgIndex) => (
+                          <button
+                            key={imgIndex}
+                            type="button"
+                            onClick={() => setSelectedImageUrl(url)}
+                            className="relative w-24 h-24 rounded-lg overflow-hidden bg-gray-100 cursor-pointer hover:opacity-80 transition-opacity"
+                          >
+                            <Image
+                              src={url}
+                              alt={`体重記録画像 ${imgIndex + 1}`}
+                              fill
+                              className="object-cover"
+                              unoptimized
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </>
                   )}
                 </div>
               )
             })}
         </div>
       </div>
+      <ImageModal imageUrl={selectedImageUrl} onClose={() => setSelectedImageUrl(null)} />
     </div>
   )
 }

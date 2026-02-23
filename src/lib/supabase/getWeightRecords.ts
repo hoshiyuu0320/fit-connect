@@ -4,7 +4,7 @@ import type { WeightRecord } from '@/types/client'
 export const getWeightRecords = async (clientId: string): Promise<WeightRecord[]> => {
   const { data, error } = await supabase
     .from('weight_records')
-    .select('*')
+    .select('id, client_id, weight, notes, recorded_at, messages(image_urls)')
     .eq('client_id', clientId)
     .order('recorded_at', { ascending: true })
 
@@ -13,5 +13,14 @@ export const getWeightRecords = async (clientId: string): Promise<WeightRecord[]
     throw error
   }
 
-  return data as WeightRecord[]
+  // messages JOIN結果をフラットに変換
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (data ?? []).map((row: any) => ({
+    id: row.id,
+    client_id: row.client_id,
+    weight: row.weight,
+    notes: row.notes,
+    recorded_at: row.recorded_at,
+    image_urls: row.messages?.image_urls ?? null,
+  }))
 }

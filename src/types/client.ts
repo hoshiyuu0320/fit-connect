@@ -33,6 +33,7 @@ export type WeightRecord = {
   weight: number
   notes: string | null
   recorded_at: string
+  image_urls?: string[] | null
 }
 
 // 食事記録
