@@ -224,10 +224,12 @@ class WorkoutScreenNotifier extends _$WorkoutScreenNotifier {
 Future<List<WorkoutAssignment>> completedWorkoutAssignments(
   CompletedWorkoutAssignmentsRef ref, {
   PeriodFilter period = PeriodFilter.week,
+  DateTime? startDate,
+  DateTime? endDate,
 }) async {
   final clientId = ref.watch(currentClientIdProvider);
   if (clientId == null) return [];
 
   final repo = ref.watch(workoutRepositoryProvider);
-  return repo.getCompletedAssignments(clientId, period);
+  return repo.getCompletedAssignments(clientId, period, startDate: startDate, endDate: endDate);
 }

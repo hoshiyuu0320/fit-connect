@@ -59,8 +59,10 @@ class WorkoutRepository {
   /// 期間指定で完了済みアサインメントを取得
   Future<List<WorkoutAssignment>> getCompletedAssignments(
     String clientId,
-    PeriodFilter period,
-  ) async {
+    PeriodFilter period, {
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
     var query = SupabaseService.client
         .from('workout_assignments')
         .select(
@@ -69,10 +71,22 @@ class WorkoutRepository {
         .eq('client_id', clientId)
         .eq('status', 'completed');
 
-    if (period != PeriodFilter.all) {
-      final startDate = period.getStartDate();
+    if (startDate != null || endDate != null) {
+      // startDate/endDate が指定された場合はそちらを優先
+      if (startDate != null) {
+        final startDateStr =
+            '${startDate.year.toString().padLeft(4, '0')}-${startDate.month.toString().padLeft(2, '0')}-${startDate.day.toString().padLeft(2, '0')}';
+        query = query.gte('assigned_date', startDateStr);
+      }
+      if (endDate != null) {
+        final endDateStr =
+            '${endDate.year.toString().padLeft(4, '0')}-${endDate.month.toString().padLeft(2, '0')}-${endDate.day.toString().padLeft(2, '0')}';
+        query = query.lte('assigned_date', endDateStr);
+      }
+    } else if (period != PeriodFilter.all) {
+      final periodStart = period.getStartDate();
       final startDateStr =
-          '${startDate.year.toString().padLeft(4, '0')}-${startDate.month.toString().padLeft(2, '0')}-${startDate.day.toString().padLeft(2, '0')}';
+          '${periodStart.year.toString().padLeft(4, '0')}-${periodStart.month.toString().padLeft(2, '0')}-${periodStart.day.toString().padLeft(2, '0')}';
       query = query.gte('assigned_date', startDateStr);
     }
 

@@ -10,14 +10,23 @@ class MealRepository {
     required String clientId,
     PeriodFilter? period,
     String? mealType,
+    DateTime? startDate,
+    DateTime? endDate,
   }) async {
     var query =
         _supabase.from('meal_records').select().eq('client_id', clientId);
 
-    // 期間フィルタを適用
-    if (period != null && period != PeriodFilter.all) {
-      final startDate = period.getStartDate();
-      query = query.gte('recorded_at', startDate.toIso8601String());
+    // startDate/endDate が指定された場合はそちらを優先、なければ period でフィルタ
+    if (startDate != null || endDate != null) {
+      if (startDate != null) {
+        query = query.gte('recorded_at', startDate.toUtc().toIso8601String());
+      }
+      if (endDate != null) {
+        query = query.lte('recorded_at', endDate.toUtc().toIso8601String());
+      }
+    } else if (period != null && period != PeriodFilter.all) {
+      final periodStart = period.getStartDate();
+      query = query.gte('recorded_at', periodStart.toIso8601String());
     }
 
     // 食事タイプフィルタを適用

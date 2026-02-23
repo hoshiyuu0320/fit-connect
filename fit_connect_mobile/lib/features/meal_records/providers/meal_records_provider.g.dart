@@ -226,16 +226,20 @@ class _MealRecordCountsProviderElement
   DateTime get endDate => (origin as MealRecordCountsProvider).endDate;
 }
 
-String _$mealRecordsHash() => r'e21c3aa07e495edada4633ed50f354d9e1d9033f';
+String _$mealRecordsHash() => r'f5af3386d16c6618a91503ca5456d0bed5b547c3';
 
 abstract class _$MealRecords
     extends BuildlessAutoDisposeAsyncNotifier<List<MealRecord>> {
   late final PeriodFilter period;
   late final String? mealType;
+  late final DateTime? startDate;
+  late final DateTime? endDate;
 
   FutureOr<List<MealRecord>> build({
     PeriodFilter period = PeriodFilter.month,
     String? mealType,
+    DateTime? startDate,
+    DateTime? endDate,
   });
 }
 
@@ -260,10 +264,14 @@ class MealRecordsFamily extends Family<AsyncValue<List<MealRecord>>> {
   MealRecordsProvider call({
     PeriodFilter period = PeriodFilter.month,
     String? mealType,
+    DateTime? startDate,
+    DateTime? endDate,
   }) {
     return MealRecordsProvider(
       period: period,
       mealType: mealType,
+      startDate: startDate,
+      endDate: endDate,
     );
   }
 
@@ -274,6 +282,8 @@ class MealRecordsFamily extends Family<AsyncValue<List<MealRecord>>> {
     return call(
       period: provider.period,
       mealType: provider.mealType,
+      startDate: provider.startDate,
+      endDate: provider.endDate,
     );
   }
 
@@ -303,10 +313,14 @@ class MealRecordsProvider extends AutoDisposeAsyncNotifierProviderImpl<
   MealRecordsProvider({
     PeriodFilter period = PeriodFilter.month,
     String? mealType,
+    DateTime? startDate,
+    DateTime? endDate,
   }) : this._internal(
           () => MealRecords()
             ..period = period
-            ..mealType = mealType,
+            ..mealType = mealType
+            ..startDate = startDate
+            ..endDate = endDate,
           from: mealRecordsProvider,
           name: r'mealRecordsProvider',
           debugGetCreateSourceHash:
@@ -318,6 +332,8 @@ class MealRecordsProvider extends AutoDisposeAsyncNotifierProviderImpl<
               MealRecordsFamily._allTransitiveDependencies,
           period: period,
           mealType: mealType,
+          startDate: startDate,
+          endDate: endDate,
         );
 
   MealRecordsProvider._internal(
@@ -329,10 +345,14 @@ class MealRecordsProvider extends AutoDisposeAsyncNotifierProviderImpl<
     required super.from,
     required this.period,
     required this.mealType,
+    required this.startDate,
+    required this.endDate,
   }) : super.internal();
 
   final PeriodFilter period;
   final String? mealType;
+  final DateTime? startDate;
+  final DateTime? endDate;
 
   @override
   FutureOr<List<MealRecord>> runNotifierBuild(
@@ -341,6 +361,8 @@ class MealRecordsProvider extends AutoDisposeAsyncNotifierProviderImpl<
     return notifier.build(
       period: period,
       mealType: mealType,
+      startDate: startDate,
+      endDate: endDate,
     );
   }
 
@@ -351,7 +373,9 @@ class MealRecordsProvider extends AutoDisposeAsyncNotifierProviderImpl<
       override: MealRecordsProvider._internal(
         () => create()
           ..period = period
-          ..mealType = mealType,
+          ..mealType = mealType
+          ..startDate = startDate
+          ..endDate = endDate,
         from: from,
         name: null,
         dependencies: null,
@@ -359,6 +383,8 @@ class MealRecordsProvider extends AutoDisposeAsyncNotifierProviderImpl<
         debugGetCreateSourceHash: null,
         period: period,
         mealType: mealType,
+        startDate: startDate,
+        endDate: endDate,
       ),
     );
   }
@@ -373,7 +399,9 @@ class MealRecordsProvider extends AutoDisposeAsyncNotifierProviderImpl<
   bool operator ==(Object other) {
     return other is MealRecordsProvider &&
         other.period == period &&
-        other.mealType == mealType;
+        other.mealType == mealType &&
+        other.startDate == startDate &&
+        other.endDate == endDate;
   }
 
   @override
@@ -381,6 +409,8 @@ class MealRecordsProvider extends AutoDisposeAsyncNotifierProviderImpl<
     var hash = _SystemHash.combine(0, runtimeType.hashCode);
     hash = _SystemHash.combine(hash, period.hashCode);
     hash = _SystemHash.combine(hash, mealType.hashCode);
+    hash = _SystemHash.combine(hash, startDate.hashCode);
+    hash = _SystemHash.combine(hash, endDate.hashCode);
 
     return _SystemHash.finish(hash);
   }
@@ -394,6 +424,12 @@ mixin MealRecordsRef on AutoDisposeAsyncNotifierProviderRef<List<MealRecord>> {
 
   /// The parameter `mealType` of this provider.
   String? get mealType;
+
+  /// The parameter `startDate` of this provider.
+  DateTime? get startDate;
+
+  /// The parameter `endDate` of this provider.
+  DateTime? get endDate;
 }
 
 class _MealRecordsProviderElement
@@ -405,6 +441,10 @@ class _MealRecordsProviderElement
   PeriodFilter get period => (origin as MealRecordsProvider).period;
   @override
   String? get mealType => (origin as MealRecordsProvider).mealType;
+  @override
+  DateTime? get startDate => (origin as MealRecordsProvider).startDate;
+  @override
+  DateTime? get endDate => (origin as MealRecordsProvider).endDate;
 }
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

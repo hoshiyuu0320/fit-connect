@@ -21,12 +21,24 @@ class MealRecordScreen extends ConsumerStatefulWidget {
 
 class _MealRecordScreenState extends ConsumerState<MealRecordScreen> {
   PeriodFilter _selectedPeriod = PeriodFilter.today;
+  late DateTime _currentMonth;
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _currentMonth = DateTime(now.year, now.month, 1);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final recordsAsync = ref.watch(
-      mealRecordsProvider(period: _selectedPeriod),
-    );
+    final recordsAsync = _selectedPeriod == PeriodFilter.month
+        ? ref.watch(mealRecordsProvider(
+            startDate: _currentMonth,
+            endDate: DateTime(
+                _currentMonth.year, _currentMonth.month + 1, 0, 23, 59, 59),
+          ))
+        : ref.watch(mealRecordsProvider(period: _selectedPeriod));
     final todayCountAsync = ref.watch(todayMealCountProvider);
 
     return ListView(
@@ -48,7 +60,11 @@ class _MealRecordScreenState extends ConsumerState<MealRecordScreen> {
           const SizedBox(height: 16),
         ],
         if (_selectedPeriod == PeriodFilter.month) ...[
-          const MealMonthCalendar(),
+          MealMonthCalendar(
+            onMonthChanged: (month) {
+              setState(() => _currentMonth = month);
+            },
+          ),
           const SizedBox(height: 16),
         ],
 
@@ -68,13 +84,12 @@ class _MealRecordScreenState extends ConsumerState<MealRecordScreen> {
         border: Border.all(color: colors.border),
       ),
       child: Row(
-        children: PeriodFilter.values.map((period) {
+        children: PeriodFilter.values.where((p) => p != PeriodFilter.threeMonths && p != PeriodFilter.all).map((period) {
           final isActive = period == _selectedPeriod;
           return Expanded(
             child: GestureDetector(
               onTap: () => setState(() => _selectedPeriod = period),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
+              child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
                   color: isActive ? AppColors.primary600 : Colors.transparent,
@@ -418,7 +433,7 @@ class _PreviewPeriodFilter extends StatelessWidget {
         border: Border.all(color: colors.border),
       ),
       child: Row(
-        children: ['今日', '週', '月', '3ヶ月', '全期間'].asMap().entries.map((entry) {
+        children: ['今日', '週', '月'].asMap().entries.map((entry) {
           final isActive = entry.key == 0;
           return Expanded(
             child: Container(

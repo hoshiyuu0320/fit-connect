@@ -19,6 +19,8 @@ class ExerciseRecords extends _$ExerciseRecords {
   Future<List<ExerciseRecord>> build({
     PeriodFilter period = PeriodFilter.month,
     String? exerciseType,
+    DateTime? startDate,
+    DateTime? endDate,
   }) async {
     final clientId = ref.watch(currentClientIdProvider);
     if (clientId == null) return [];
@@ -28,6 +30,8 @@ class ExerciseRecords extends _$ExerciseRecords {
       clientId: clientId,
       period: period,
       exerciseType: exerciseType,
+      startDate: startDate,
+      endDate: endDate,
     );
   }
 
@@ -109,6 +113,8 @@ Future<int> weeklyExerciseCount(WeeklyExerciseCountRef ref) async {
 Future<Map<String, int>> exerciseTypeCounts(
   ExerciseTypeCountsRef ref, {
   PeriodFilter period = PeriodFilter.month,
+  DateTime? startDate,
+  DateTime? endDate,
 }) async {
   final clientId = ref.watch(currentClientIdProvider);
   if (clientId == null) return {};
@@ -117,6 +123,8 @@ Future<Map<String, int>> exerciseTypeCounts(
   return repository.getExerciseTypeCounts(
     clientId: clientId,
     period: period,
+    startDate: startDate,
+    endDate: endDate,
   );
 }
 
@@ -161,6 +169,8 @@ Future<Map<DateTime, int>> exerciseRecordCounts(
 Future<double> exerciseTotalCalories(
   ExerciseTotalCaloriesRef ref, {
   PeriodFilter period = PeriodFilter.month,
+  DateTime? startDate,
+  DateTime? endDate,
 }) async {
   final clientId = ref.watch(currentClientIdProvider);
   if (clientId == null) return 0;
@@ -169,5 +179,7 @@ Future<double> exerciseTotalCalories(
   return repository.getTotalCalories(
     clientId: clientId,
     period: period,
+    startDate: startDate,
+    endDate: endDate,
   );
 }
