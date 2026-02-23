@@ -29,7 +29,9 @@ class WorkoutProgressBar extends StatelessWidget {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: isCompleted ? AppColors.emerald500 : AppColors.textPrimary,
+            color: isCompleted
+                ? AppColors.emerald500
+                : AppColors.of(context).textPrimary,
           ),
         ),
         const SizedBox(height: 8),
@@ -38,7 +40,7 @@ class WorkoutProgressBar extends StatelessWidget {
           child: LinearProgressIndicator(
             value: progress,
             minHeight: 8,
-            backgroundColor: AppColors.slate100,
+            backgroundColor: AppColors.of(context).border,
             valueColor: AlwaysStoppedAnimation<Color>(barColor),
           ),
         ),

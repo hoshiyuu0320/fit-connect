@@ -18,12 +18,13 @@ class TrainerStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.slate100),
+        border: Border.all(color: colors.border),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.02),
@@ -41,7 +42,7 @@ class TrainerStatusCard extends StatelessWidget {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: AppColors.slate200,
+                  color: colors.surfaceDim,
                   shape: BoxShape.circle,
                   image: profileImageUrl != null
                       ? DecorationImage(
@@ -51,7 +52,7 @@ class TrainerStatusCard extends StatelessWidget {
                       : null,
                 ),
                 child: profileImageUrl == null
-                    ? const Icon(LucideIcons.user, color: AppColors.slate400, size: 24)
+                    ? Icon(LucideIcons.user, color: colors.textHint, size: 24)
                     : null,
               ),
               Positioned(
@@ -61,7 +62,7 @@ class TrainerStatusCard extends StatelessWidget {
                   width: 14,
                   height: 14,
                   decoration: BoxDecoration(
-                    color: isOnline ? AppColors.success : AppColors.slate300,
+                    color: isOnline ? AppColors.success : colors.textHint,
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 2),
                   ),
@@ -77,8 +78,8 @@ class TrainerStatusCard extends StatelessWidget {
               children: [
                 Text(
                   trainerName,
-                  style: const TextStyle(
-                    color: AppColors.slate800,
+                  style: TextStyle(
+                    color: colors.textPrimary,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -90,7 +91,8 @@ class TrainerStatusCard extends StatelessWidget {
                       width: 8,
                       height: 8,
                       decoration: BoxDecoration(
-                        color: isOnline ? AppColors.success : AppColors.slate300,
+                        color:
+                            isOnline ? AppColors.success : colors.textHint,
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -98,7 +100,7 @@ class TrainerStatusCard extends StatelessWidget {
                     Text(
                       isOnline ? '対応可能' : 'オフライン',
                       style: TextStyle(
-                        color: isOnline ? AppColors.success : AppColors.slate400,
+                        color: isOnline ? AppColors.success : colors.textHint,
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
                       ),
@@ -109,9 +111,9 @@ class TrainerStatusCard extends StatelessWidget {
             ),
           ),
           // カレンダーアイコン
-          const Icon(
+          Icon(
             LucideIcons.calendar,
-            color: AppColors.slate300,
+            color: colors.textHint,
             size: 20,
           ),
         ],

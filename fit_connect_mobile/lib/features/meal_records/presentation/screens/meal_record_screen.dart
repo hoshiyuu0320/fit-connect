@@ -59,12 +59,13 @@ class _MealRecordScreenState extends ConsumerState<MealRecordScreen> {
   }
 
   Widget _buildPeriodFilter() {
+    final colors = AppColors.of(context);
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.slate100),
+        border: Border.all(color: colors.border),
       ),
       child: Row(
         children: PeriodFilter.values.map((period) {
@@ -92,7 +93,7 @@ class _MealRecordScreenState extends ConsumerState<MealRecordScreen> {
                   child: Text(
                     period.shortLabel,
                     style: TextStyle(
-                      color: isActive ? Colors.white : AppColors.slate400,
+                      color: isActive ? Colors.white : colors.textHint,
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
                     ),
@@ -110,12 +111,13 @@ class _MealRecordScreenState extends ConsumerState<MealRecordScreen> {
     AsyncValue<List<MealRecord>> recordsAsync,
     AsyncValue<int> todayCountAsync,
   ) {
+    final colors = AppColors.of(context);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.slate100),
+        border: Border.all(color: colors.border),
       ),
       child: recordsAsync.when(
         data: (records) {
@@ -123,7 +125,9 @@ class _MealRecordScreenState extends ConsumerState<MealRecordScreen> {
             0,
             (sum, r) => sum + (r.calories ?? 0),
           );
-          final photosCount = records.where((r) => r.images != null && r.images!.isNotEmpty).length;
+          final photosCount = records
+              .where((r) => r.images != null && r.images!.isNotEmpty)
+              .length;
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -132,10 +136,10 @@ class _MealRecordScreenState extends ConsumerState<MealRecordScreen> {
                 _selectedPeriod == PeriodFilter.today
                     ? "今日のサマリー"
                     : "${_selectedPeriod.label}のサマリー",
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.slate800,
+                  color: colors.textPrimary,
                 ),
               ),
               const SizedBox(height: 16),
@@ -181,6 +185,7 @@ class _MealRecordScreenState extends ConsumerState<MealRecordScreen> {
     required String label,
     required Color color,
   }) {
+    final colors = AppColors.of(context);
     return Column(
       children: [
         Container(
@@ -194,17 +199,17 @@ class _MealRecordScreenState extends ConsumerState<MealRecordScreen> {
         const SizedBox(height: 8),
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: AppColors.slate800,
+            color: colors.textPrimary,
           ),
         ),
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
-            color: AppColors.slate400,
+            color: colors.textHint,
           ),
         ),
       ],
@@ -212,6 +217,7 @@ class _MealRecordScreenState extends ConsumerState<MealRecordScreen> {
   }
 
   Widget _buildRecordsList(AsyncValue<List<MealRecord>> recordsAsync) {
+    final colors = AppColors.of(context);
     return recordsAsync.when(
       data: (records) {
         if (records.isEmpty) {
@@ -221,16 +227,17 @@ class _MealRecordScreenState extends ConsumerState<MealRecordScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(LucideIcons.utensils, size: 48, color: AppColors.slate300),
+                  Icon(LucideIcons.utensils,
+                      size: 48, color: colors.textHint),
                   const SizedBox(height: 12),
-                  const Text(
+                  Text(
                     '食事記録がありません',
-                    style: TextStyle(color: AppColors.slate400),
+                    style: TextStyle(color: colors.textHint),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     '食事を記録しましょう！',
-                    style: TextStyle(color: AppColors.slate300, fontSize: 12),
+                    style: TextStyle(color: colors.textHint, fontSize: 12),
                   ),
                 ],
               ),
@@ -252,14 +259,14 @@ class _MealRecordScreenState extends ConsumerState<MealRecordScreen> {
                   padding: const EdgeInsets.only(bottom: 12.0),
                   child: Text(
                     _formatDateHeader(entry.key),
-                    style: const TextStyle(
-                      color: AppColors.slate800,
+                    style: TextStyle(
+                      color: colors.textPrimary,
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-                const Divider(height: 1, color: AppColors.slate100),
+                Divider(height: 1, color: colors.border),
                 const SizedBox(height: 16),
                 // Meal Cards
                 ...entry.value.map((record) => MealCard(record: record)),
@@ -274,7 +281,8 @@ class _MealRecordScreenState extends ConsumerState<MealRecordScreen> {
     );
   }
 
-  Map<DateTime, List<MealRecord>> _groupRecordsByDate(List<MealRecord> records) {
+  Map<DateTime, List<MealRecord>> _groupRecordsByDate(
+      List<MealRecord> records) {
     final Map<DateTime, List<MealRecord>> grouped = {};
     for (final record in records) {
       final date = DateTime(
@@ -321,7 +329,6 @@ Widget previewMealRecordScreenStatic() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -352,7 +359,6 @@ Widget previewMealRecordScreenEmpty() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -370,21 +376,27 @@ Widget previewMealRecordScreenEmpty() {
             const SizedBox(height: 16),
 
             // Empty State
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.all(40),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(LucideIcons.utensils, size: 48, color: AppColors.slate300),
-                    const SizedBox(height: 12),
-                    const Text(
-                      '食事記録がありません',
-                      style: TextStyle(color: AppColors.slate400),
+            Builder(
+              builder: (context) {
+                final colors = AppColors.of(context);
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(40),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(LucideIcons.utensils,
+                            size: 48, color: colors.textHint),
+                        const SizedBox(height: 12),
+                        Text(
+                          '食事記録がありません',
+                          style: TextStyle(color: colors.textHint),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              },
             ),
           ],
         ),
@@ -397,12 +409,13 @@ Widget previewMealRecordScreenEmpty() {
 class _PreviewPeriodFilter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.slate100),
+        border: Border.all(color: colors.border),
       ),
       child: Row(
         children: ['今日', '週', '月', '3ヶ月', '全期間'].asMap().entries.map((entry) {
@@ -418,7 +431,7 @@ class _PreviewPeriodFilter extends StatelessWidget {
                 child: Text(
                   entry.value,
                   style: TextStyle(
-                    color: isActive ? Colors.white : AppColors.slate400,
+                    color: isActive ? Colors.white : colors.textHint,
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
                   ),
@@ -435,27 +448,34 @@ class _PreviewPeriodFilter extends StatelessWidget {
 class _PreviewSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.slate100),
+        border: Border.all(color: colors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             "今日のサマリー",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.slate800),
+            style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: colors.textPrimary),
           ),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildItem(LucideIcons.utensils, '3/3', '食事', AppColors.primary600),
-              _buildItem(LucideIcons.camera, '4', '写真', AppColors.emerald500),
-              _buildItem(LucideIcons.flame, '1,100', 'kcal', AppColors.orange500),
+              _buildItem(context, LucideIcons.utensils, '3/3', '食事',
+                  AppColors.primary600),
+              _buildItem(
+                  context, LucideIcons.camera, '4', '写真', AppColors.emerald500),
+              _buildItem(context, LucideIcons.flame, '1,100', 'kcal',
+                  AppColors.orange500),
             ],
           ),
         ],
@@ -463,17 +483,25 @@ class _PreviewSummaryCard extends StatelessWidget {
     );
   }
 
-  Widget _buildItem(IconData icon, String value, String label, Color color) {
+  Widget _buildItem(BuildContext context, IconData icon, String value,
+      String label, Color color) {
+    final colors = AppColors.of(context);
     return Column(
       children: [
         Container(
           padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: color.withAlpha(25), borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(
+              color: color.withAlpha(25),
+              borderRadius: BorderRadius.circular(12)),
           child: Icon(icon, color: color, size: 24),
         ),
         const SizedBox(height: 8),
-        Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.slate800)),
-        Text(label, style: const TextStyle(fontSize: 12, color: AppColors.slate400)),
+        Text(value,
+            style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: colors.textPrimary)),
+        Text(label, style: TextStyle(fontSize: 12, color: colors.textHint)),
       ],
     );
   }
@@ -482,27 +510,34 @@ class _PreviewSummaryCard extends StatelessWidget {
 class _PreviewSummaryCardEmpty extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.slate100),
+        border: Border.all(color: colors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             "今日のサマリー",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.slate800),
+            style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: colors.textPrimary),
           ),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _PreviewSummaryCard()._buildItem(LucideIcons.utensils, '0/3', '食事', AppColors.primary600),
-              _PreviewSummaryCard()._buildItem(LucideIcons.camera, '0', '写真', AppColors.emerald500),
-              _PreviewSummaryCard()._buildItem(LucideIcons.flame, '0', 'kcal', AppColors.orange500),
+              _PreviewSummaryCard()._buildItem(context, LucideIcons.utensils,
+                  '0/3', '食事', AppColors.primary600),
+              _PreviewSummaryCard()._buildItem(
+                  context, LucideIcons.camera, '0', '写真', AppColors.emerald500),
+              _PreviewSummaryCard()._buildItem(
+                  context, LucideIcons.flame, '0', 'kcal', AppColors.orange500),
             ],
           ),
         ],
@@ -514,11 +549,16 @@ class _PreviewSummaryCardEmpty extends StatelessWidget {
 class _PreviewRecordsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('今日', style: TextStyle(color: AppColors.slate800, fontSize: 14, fontWeight: FontWeight.bold)),
-        const Divider(height: 24, color: AppColors.slate100),
+        Text('今日',
+            style: TextStyle(
+                color: colors.textPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.bold)),
+        Divider(height: 24, color: colors.border),
         ..._mockMealRecords.map((record) => MealCard(record: record)),
       ],
     );
@@ -528,6 +568,7 @@ class _PreviewRecordsList extends StatelessWidget {
 class _PreviewWeekCalendar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final daysFromMonday = (today.weekday - 1) % 7;
@@ -549,7 +590,7 @@ class _PreviewWeekCalendar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -564,10 +605,10 @@ class _PreviewWeekCalendar extends StatelessWidget {
         children: [
           Text(
             '${DateFormat('M月d日').format(startOfWeek)}〜${DateFormat('M月d日').format(endOfWeek)}',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: AppColors.slate800,
+              color: colors.textPrimary,
             ),
           ),
           const SizedBox(height: 16),
@@ -577,15 +618,17 @@ class _PreviewWeekCalendar extends StatelessWidget {
               final count = mockMealCounts[date] ?? 0;
               final isToday = date == today;
               final isFuture = date.isAfter(today);
-              final color = isFuture ? AppColors.grassLevel0 : _getGrassColor(count);
-              final textColor = count >= 2 && !isFuture ? Colors.white : AppColors.slate600;
+              final color =
+                  isFuture ? AppColors.grassLevel0 : _getGrassColor(count);
+              final textColor =
+                  count >= 2 && !isFuture ? Colors.white : AppColors.slate600;
 
               return Expanded(
                 child: Column(
                   children: [
                     Text(
                       dayLabels[index],
-                      style: const TextStyle(fontSize: 11, color: AppColors.slate400),
+                      style: TextStyle(fontSize: 11, color: colors.textHint),
                     ),
                     const SizedBox(height: 6),
                     Container(
@@ -629,10 +672,14 @@ class _PreviewWeekCalendar extends StatelessWidget {
 
   Color _getGrassColor(int count) {
     switch (count) {
-      case 0: return AppColors.grassLevel0;
-      case 1: return AppColors.grassLevel1;
-      case 2: return AppColors.grassLevel2;
-      default: return AppColors.grassLevel3;
+      case 0:
+        return AppColors.grassLevel0;
+      case 1:
+        return AppColors.grassLevel1;
+      case 2:
+        return AppColors.grassLevel2;
+      default:
+        return AppColors.grassLevel3;
     }
   }
 }
@@ -640,6 +687,7 @@ class _PreviewWeekCalendar extends StatelessWidget {
 class _PreviewWeekCalendarEmpty extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final daysFromMonday = (today.weekday - 1) % 7;
@@ -651,7 +699,7 @@ class _PreviewWeekCalendarEmpty extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -666,10 +714,10 @@ class _PreviewWeekCalendarEmpty extends StatelessWidget {
         children: [
           Text(
             '${DateFormat('M月d日').format(startOfWeek)}〜${DateFormat('M月d日').format(endOfWeek)}',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: AppColors.slate800,
+              color: colors.textPrimary,
             ),
           ),
           const SizedBox(height: 16),
@@ -684,7 +732,7 @@ class _PreviewWeekCalendarEmpty extends StatelessWidget {
                   children: [
                     Text(
                       dayLabels[index],
-                      style: const TextStyle(fontSize: 11, color: AppColors.slate400),
+                      style: TextStyle(fontSize: 11, color: colors.textHint),
                     ),
                     const SizedBox(height: 6),
                     Container(
@@ -703,7 +751,9 @@ class _PreviewWeekCalendarEmpty extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: isFuture ? AppColors.slate400 : AppColors.slate600,
+                            color: isFuture
+                                ? AppColors.slate400
+                                : AppColors.slate600,
                           ),
                         ),
                       ),

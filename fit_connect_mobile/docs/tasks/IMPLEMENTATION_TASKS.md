@@ -1,9 +1,9 @@
 # FIT-CONNECT Mobile - 実装タスク一覧
 
 **作成日**: 2025年12月30日
-**バージョン**: 3.6
+**バージョン**: 3.7
 **進捗状況**: 全体 99% 完了
-**最終更新**: 2026年2月23日 - ワークアウト機能実装完了
+**最終更新**: 2026年2月23日 - ダークモード対応実装完了
 
 ---
 
@@ -186,6 +186,41 @@
 ## 最新の変更履歴
 
 ### 2026年2月23日
+
+#### 16. ダークモード対応
+
+**目的**: アプリ全体でダークモードをサポートし、ユーザーがライト/ダーク/システム追従の3択で切り替えられるようにする。
+
+**新規作成ファイル**:
+- `lib/core/providers/theme_provider.dart` — ThemeModeNotifier（@riverpod）
+- `lib/core/providers/theme_provider.g.dart` — 自動生成
+
+**改修ファイル**:
+- `lib/core/theme/app_colors.dart` — AppColorsExtension（ThemeExtension）追加、AppColors.of(context)ヘルパー追加
+- `lib/core/theme/app_theme.dart` — lightThemeにExtension追加、darkTheme新規追加
+- `lib/app.dart` — MyApp→ConsumerWidget化、darkTheme/themeMode追加
+- `lib/features/settings/presentation/screens/settings_screen.dart` — 外観セクション追加（SegmentedButton 3択）
+
+**セマンティックカラー移行（約30ファイル）**:
+- ホーム系: home_screen, main_screen, records_screen, daily_summary_card, goal_card
+- メッセージ系: message_screen, message_bubble, chat_input, reply_preview, reply_quote, tag_suggestion_list
+- 記録系: weight_record_screen, meal_record_screen, meal_card, meal_summary_card, meal_week_calendar, meal_month_calendar, exercise_record_screen, exercise_week_calendar, exercise_month_calendar, completed_workout_card
+- ワークアウト系: workout_screen, weekly_mini_calendar, overdue_assignment_card
+- ノート系: client_notes_screen, client_note_detail_screen, note_card
+- 認証系: welcome_screen, login_screen, onboarding_screen, profile_setup_screen, trainer_confirm_screen, invite_code_screen, registration_complete_screen
+- その他: trainer_status_card
+
+**実装内容**:
+
+1. **ThemeExtensionパターン** — `AppColorsExtension` でセマンティックカラー（background, surface, surfaceDim, border, textPrimary, textSecondary, textHint, shadow）を定義。light/dark 2つの定数インスタンス
+2. **AppColors.of(context)** — `Theme.of(context).extension<AppColorsExtension>()!` のショートカット
+3. **darkTheme** — `Brightness.dark` + `AppColorsExtension.dark` + slate系ダークカラー
+4. **ThemeModeNotifier** — Riverpod Providerでテーマモード管理（デフォルト: system）
+5. **設定画面UI** — SegmentedButtonでライト/ダーク/システム切り替え（sun/moon/smartphoneアイコン）
+6. **固定色の置換** — `Colors.white`（背景）→ `colors.surface`、`AppColors.background` → scaffold自動適用、`slate100`→`colors.border`、`slate800`→`colors.textPrimary` 等
+7. **変更しなかった箇所** — ブランドカラー（primary系）、アクセントカラー（emerald/amber/rose等）、ボタン上の白テキスト、ゴールド演出色、草グラフ色
+
+---
 
 #### 15. ワークアウト機能実装
 
@@ -1152,7 +1187,7 @@ class Trainer {
 
 | # | タスク | 詳細 | 見積もり |
 |---|--------|------|----------|
-| 9 | **ダークモード** | テーマ切り替え、ダークカラーパレット | 中 |
+| ~~9~~ | ~~**ダークモード**~~ | ✅ 完了（2026/02/23） | - |
 | 10 | **画像最適化** | cached_network_image、プレースホルダー | 小 |
 | 11 | **アニメーション強化** | ページ遷移、リスト項目フェードイン | 中 |
 | 12 | **エラーハンドリング強化** | スケルトンローダー、リトライボタン | 中 |

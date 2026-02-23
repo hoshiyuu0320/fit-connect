@@ -9,7 +9,8 @@ import 'package:fit_connect_mobile/services/storage_service.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 class ChatInput extends StatefulWidget {
-  final Future<void> Function(String text, List<String>? imageUrls, String? replyToMessageId) onSend;
+  final Future<void> Function(
+      String text, List<String>? imageUrls, String? replyToMessageId) onSend;
   final String? userId;
   final String? replyToMessageId;
   final String? replyToContent;
@@ -330,6 +331,7 @@ class _ChatInputState extends State<ChatInput> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     // 編集モードと返信モードの排他制御
     final isEditMode = widget.editingMessageId != null;
     final isReplyMode = widget.replyToContent != null && !isEditMode;
@@ -361,14 +363,14 @@ class _ChatInputState extends State<ChatInput> {
             width: double.infinity,
             height: 36, // 固定高さでレイアウト変化を防ぐ
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              border: Border(top: BorderSide(color: AppColors.slate100)),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              border: Border(top: BorderSide(color: colors.border)),
             ),
             child: Text(
               _selectedTagHint != null ? '例: $_selectedTagHint' : '',
-              style: const TextStyle(
-                color: AppColors.slate400,
+              style: TextStyle(
+                color: colors.textHint,
                 fontSize: 12,
               ),
             ),
@@ -378,9 +380,9 @@ class _ChatInputState extends State<ChatInput> {
           Container(
             height: 80,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              border: Border(top: BorderSide(color: AppColors.slate100)),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              border: Border(top: BorderSide(color: colors.border)),
             ),
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
@@ -425,9 +427,9 @@ class _ChatInputState extends State<ChatInput> {
           ),
         Container(
           padding: const EdgeInsets.all(16),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            border: Border(top: BorderSide(color: AppColors.slate100)),
+          decoration: BoxDecoration(
+            color: colors.surface,
+            border: Border(top: BorderSide(color: colors.border)),
           ),
           child: SafeArea(
             top: false,
@@ -437,7 +439,7 @@ class _ChatInputState extends State<ChatInput> {
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
-                      color: AppColors.slate100,
+                      color: colors.border,
                       borderRadius: BorderRadius.circular(24),
                     ),
                     child: Row(
@@ -446,8 +448,8 @@ class _ChatInputState extends State<ChatInput> {
                         Stack(
                           children: [
                             IconButton(
-                              icon: const Icon(LucideIcons.camera,
-                                  color: AppColors.slate400, size: 20),
+                              icon: Icon(LucideIcons.camera,
+                                  color: colors.textHint, size: 20),
                               onPressed: _isUploading ? null : _pickImage,
                             ),
                             if (_selectedImages.isNotEmpty)
@@ -482,16 +484,16 @@ class _ChatInputState extends State<ChatInput> {
                             maxLines: 4,
                             minLines: 1,
                             enabled: !_isUploading,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               hintText: 'メッセージ... (#でタグ入力)',
                               border: InputBorder.none,
-                              contentPadding: EdgeInsets.symmetric(
+                              contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 4, vertical: 10),
                               hintStyle: TextStyle(
-                                  color: AppColors.slate400, fontSize: 14),
+                                  color: colors.textHint, fontSize: 14),
                             ),
-                            style: const TextStyle(
-                                color: AppColors.slate800, fontSize: 14),
+                            style: TextStyle(
+                                color: colors.textPrimary, fontSize: 14),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -507,14 +509,13 @@ class _ChatInputState extends State<ChatInput> {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: _canSend()
-                          ? AppColors.primary600
-                          : AppColors.slate200,
+                      color: _canSend() ? AppColors.primary600 : colors.border,
                       shape: BoxShape.circle,
                       boxShadow: _canSend()
                           ? [
                               BoxShadow(
-                                color: AppColors.primary600.withValues(alpha: 0.3),
+                                color:
+                                    AppColors.primary600.withValues(alpha: 0.3),
                                 blurRadius: 8,
                                 offset: const Offset(0, 4),
                               ),
@@ -600,7 +601,8 @@ class _EditPreview extends StatelessWidget {
             ),
           ),
           IconButton(
-            icon: const Icon(LucideIcons.x, size: 16, color: AppColors.amber700),
+            icon:
+                const Icon(LucideIcons.x, size: 16, color: AppColors.amber700),
             onPressed: onCancel,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
@@ -709,7 +711,8 @@ Widget previewEditPreviewLong() {
         child: Column(
           children: [
             _EditPreview(
-              messageContent: 'これは非常に長いメッセージで、1行に収まりきらないため省略されるはずです。テストメッセージです。',
+              messageContent:
+                  'これは非常に長いメッセージで、1行に収まりきらないため省略されるはずです。テストメッセージです。',
               onCancel: () {},
             ),
           ],

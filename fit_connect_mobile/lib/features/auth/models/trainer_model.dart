@@ -23,6 +23,7 @@ class Trainer {
     this.updatedAt,
   });
 
-  factory Trainer.fromJson(Map<String, dynamic> json) => _$TrainerFromJson(json);
+  factory Trainer.fromJson(Map<String, dynamic> json) =>
+      _$TrainerFromJson(json);
   Map<String, dynamic> toJson() => _$TrainerToJson(this);
 }

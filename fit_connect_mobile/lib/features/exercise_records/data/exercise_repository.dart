@@ -11,10 +11,8 @@ class ExerciseRepository {
     PeriodFilter? period,
     String? exerciseType,
   }) async {
-    var query = _supabase
-        .from('exercise_records')
-        .select()
-        .eq('client_id', clientId);
+    var query =
+        _supabase.from('exercise_records').select().eq('client_id', clientId);
 
     // 期間フィルタを適用
     if (period != null && period != PeriodFilter.all) {
@@ -198,7 +196,8 @@ class ExerciseRepository {
   Future<int> getWeeklyExerciseCount(String clientId) async {
     final now = DateTime.now();
     final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
-    final startDate = DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
+    final startDate =
+        DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
 
     final response = await _supabase
         .from('exercise_records')

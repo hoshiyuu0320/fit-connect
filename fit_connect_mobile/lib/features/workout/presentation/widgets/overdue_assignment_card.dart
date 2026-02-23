@@ -49,13 +49,14 @@ class OverdueAssignmentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     final daysOverdue = _calculateDaysOverdue(assignment.assignedDate);
     final title = assignment.planInfo?.title ?? 'ワークアウト';
     final formattedDate = _formatAssignedDate(assignment.assignedDate);
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.orange500, width: 1.5),
         boxShadow: [
@@ -82,10 +83,10 @@ class OverdueAssignmentCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: colors.textPrimary,
                   ),
                 ),
               ),
@@ -93,7 +94,7 @@ class OverdueAssignmentCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: AppColors.orange50,
+                  color: colors.accentOrange,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -113,9 +114,9 @@ class OverdueAssignmentCard extends StatelessWidget {
           // Sub text
           Text(
             '$formattedDate のプラン',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
-              color: AppColors.textSecondary,
+              color: colors.textSecondary,
             ),
           ),
 
@@ -137,7 +138,7 @@ class OverdueAssignmentCard extends StatelessWidget {
                 child: _ActionButton(
                   icon: LucideIcons.skipForward,
                   label: 'スキップ',
-                  color: AppColors.slate400,
+                  color: colors.textHint,
                   onTap: () async {
                     final confirmed = await showDialog<bool>(
                       context: context,
@@ -270,7 +271,6 @@ Widget previewOverdueAssignmentCard1DayAgo() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -300,7 +300,6 @@ Widget previewOverdueAssignmentCard3DaysAgo() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),

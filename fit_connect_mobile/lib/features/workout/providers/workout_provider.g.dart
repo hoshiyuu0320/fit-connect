@@ -199,7 +199,7 @@ class _CompletedWorkoutAssignmentsProviderElement
 }
 
 String _$workoutScreenNotifierHash() =>
-    r'a8aba22da1dbbbf1621d2a6582f16aedcfd94fb8';
+    r'f3a697181867835f769a384469e14ec5e8c61f33';
 
 /// ワークアウト画面の状態を管理するNotifier
 ///

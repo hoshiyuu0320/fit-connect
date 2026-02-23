@@ -36,15 +36,11 @@ class WorkoutRepository {
     String exerciseId,
     bool isCompleted,
   ) async {
-    await SupabaseService.client
-        .from('workout_assignment_exercises')
-        .update({
-          'is_completed': isCompleted,
-          'completed_at': isCompleted
-              ? DateTime.now().toUtc().toIso8601String()
-              : null,
-        })
-        .eq('id', exerciseId);
+    await SupabaseService.client.from('workout_assignment_exercises').update({
+      'is_completed': isCompleted,
+      'completed_at':
+          isCompleted ? DateTime.now().toUtc().toIso8601String() : null,
+    }).eq('id', exerciseId);
   }
 
   /// セット実績を更新（全セットdone時は種目も完了扱い）
@@ -53,16 +49,11 @@ class WorkoutRepository {
     List<ActualSet> actualSets,
   ) async {
     final allDone = actualSets.isNotEmpty && actualSets.every((s) => s.done);
-    await SupabaseService.client
-        .from('workout_assignment_exercises')
-        .update({
-          'actual_sets': actualSets.map((s) => s.toJson()).toList(),
-          'is_completed': allDone,
-          'completed_at': allDone
-              ? DateTime.now().toUtc().toIso8601String()
-              : null,
-        })
-        .eq('id', exerciseId);
+    await SupabaseService.client.from('workout_assignment_exercises').update({
+      'actual_sets': actualSets.map((s) => s.toJson()).toList(),
+      'is_completed': allDone,
+      'completed_at': allDone ? DateTime.now().toUtc().toIso8601String() : null,
+    }).eq('id', exerciseId);
   }
 
   /// 期間指定で完了済みアサインメントを取得
@@ -150,13 +141,10 @@ class WorkoutRepository {
 
   /// アサインメントをスキップする
   Future<void> skipAssignment(String assignmentId) async {
-    await SupabaseService.client
-        .from('workout_assignments')
-        .update({
-          'status': 'skipped',
-          'updated_at': DateTime.now().toUtc().toIso8601String(),
-        })
-        .eq('id', assignmentId);
+    await SupabaseService.client.from('workout_assignments').update({
+      'status': 'skipped',
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    }).eq('id', assignmentId);
   }
 
   /// アサインメントの実施日を変更する
@@ -164,13 +152,10 @@ class WorkoutRepository {
     String assignmentId,
     String newDateStr,
   ) async {
-    await SupabaseService.client
-        .from('workout_assignments')
-        .update({
-          'assigned_date': newDateStr,
-          'updated_at': DateTime.now().toUtc().toIso8601String(),
-        })
-        .eq('id', assignmentId);
+    await SupabaseService.client.from('workout_assignments').update({
+      'assigned_date': newDateStr,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    }).eq('id', assignmentId);
   }
 
   /// 指定週のアサインメントを取得（カレンダー表示用）

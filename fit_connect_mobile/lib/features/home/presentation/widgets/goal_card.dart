@@ -34,12 +34,14 @@ class GoalCard extends StatelessWidget {
       // 減量: initial から target に向かって減少
       // 例: initial=70, target=60, current=65 → (70-65)/(70-60) = 0.5
       // current > initial の場合は逆方向なので 0
-      progressRaw = totalChange > 0 ? (initialWeight - currentWeight) / totalChange : 0.0;
+      progressRaw =
+          totalChange > 0 ? (initialWeight - currentWeight) / totalChange : 0.0;
     } else {
       // 増量: initial から target に向かって増加
       // 例: initial=60, target=70, current=65 → (65-60)/(70-60) = 0.5
       // current < initial の場合は逆方向なので 0
-      progressRaw = totalChange > 0 ? (currentWeight - initialWeight) / totalChange : 0.0;
+      progressRaw =
+          totalChange > 0 ? (currentWeight - initialWeight) / totalChange : 0.0;
     }
     final progress = isAchieved ? 1.0 : progressRaw.clamp(0.0, 1.0);
     final percentage = isAchieved ? 100 : (progress * 100).toInt();
@@ -107,7 +109,7 @@ class GoalCard extends StatelessWidget {
               ),
             ),
           ),
-          
+
           Padding(
             padding: const EdgeInsets.all(24.0),
             child: Column(
@@ -161,9 +163,9 @@ class GoalCard extends StatelessWidget {
                     ],
                   ],
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // 3 Column Stats
                 Row(
                   children: [
@@ -195,9 +197,9 @@ class GoalCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Progress Bar
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -239,13 +241,14 @@ class GoalCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Deadline Info
                 if (targetDate != null)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
@@ -256,7 +259,8 @@ class GoalCard extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            const Icon(LucideIcons.calendar, color: AppColors.primary50, size: 14),
+                            const Icon(LucideIcons.calendar,
+                                color: AppColors.primary50, size: 14),
                             const SizedBox(width: 8),
                             Text(
                               '期限: ${_formatDateJa(targetDate!)}',
@@ -270,7 +274,8 @@ class GoalCard extends StatelessWidget {
                         ),
                         if (daysLeft != null)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.2),
                               borderRadius: BorderRadius.circular(4),
@@ -295,13 +300,18 @@ class GoalCard extends StatelessWidget {
     );
   }
 
-  Widget _buildStatBox(String label, String value, String unit, {required bool isHighlighted}) {
+  Widget _buildStatBox(String label, String value, String unit,
+      {required bool isHighlighted}) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isHighlighted ? Colors.white.withOpacity(0.9) : Colors.white.withOpacity(0.1),
+        color: isHighlighted
+            ? Colors.white.withOpacity(0.9)
+            : Colors.white.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
-        border: isHighlighted ? null : Border.all(color: Colors.white.withOpacity(0.1)),
+        border: isHighlighted
+            ? null
+            : Border.all(color: Colors.white.withOpacity(0.1)),
         boxShadow: isHighlighted
             ? [
                 BoxShadow(
@@ -318,7 +328,8 @@ class GoalCard extends StatelessWidget {
           Text(
             label.toUpperCase(),
             style: TextStyle(
-              color: isHighlighted ? AppColors.primary600 : AppColors.primary100,
+              color:
+                  isHighlighted ? AppColors.primary600 : AppColors.primary100,
               fontSize: 10,
               fontWeight: FontWeight.bold,
               letterSpacing: 0.5,
@@ -339,7 +350,9 @@ class GoalCard extends StatelessWidget {
                 TextSpan(
                   text: unit,
                   style: TextStyle(
-                    color: isHighlighted ? AppColors.primary700.withOpacity(0.8) : Colors.white.withOpacity(0.8),
+                    color: isHighlighted
+                        ? AppColors.primary700.withOpacity(0.8)
+                        : Colors.white.withOpacity(0.8),
                     fontSize: 12,
                     fontWeight: FontWeight.normal,
                   ),
@@ -366,7 +379,6 @@ Widget previewGoalCardInProgress() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -387,7 +399,6 @@ Widget previewGoalCardAchieved() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -409,15 +420,13 @@ Widget previewGoalCardBothStates() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
               const Text('進行中',
-                  style:
-                      TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               GoalCard(
                 currentWeight: 65.2,
@@ -427,8 +436,7 @@ Widget previewGoalCardBothStates() {
               ),
               const SizedBox(height: 24),
               const Text('達成',
-                  style:
-                      TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               GoalCard(
                 currentWeight: 60.0,

@@ -10,10 +10,8 @@ class WeightRepository {
     required String clientId,
     PeriodFilter? period,
   }) async {
-    var query = _supabase
-        .from('weight_records')
-        .select()
-        .eq('client_id', clientId);
+    var query =
+        _supabase.from('weight_records').select().eq('client_id', clientId);
 
     // 期間フィルタを適用
     if (period != null && period != PeriodFilter.all) {

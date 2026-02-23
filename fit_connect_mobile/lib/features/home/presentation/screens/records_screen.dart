@@ -15,7 +15,8 @@ class RecordsScreen extends StatefulWidget {
   State<RecordsScreen> createState() => _RecordsScreenState();
 }
 
-class _RecordsScreenState extends State<RecordsScreen> with SingleTickerProviderStateMixin {
+class _RecordsScreenState extends State<RecordsScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -49,20 +50,22 @@ class _RecordsScreenState extends State<RecordsScreen> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Scaffold(
-      backgroundColor: AppColors.slate50, // Matches background of inner screens
+      backgroundColor: colors.surfaceDim,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           '記録',
-          style: TextStyle(color: AppColors.slate800, fontWeight: FontWeight.bold),
+          style:
+              TextStyle(color: colors.textPrimary, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: colors.surface,
         elevation: 0,
         centerTitle: true,
         bottom: TabBar(
           controller: _tabController,
           labelColor: AppColors.primary600,
-          unselectedLabelColor: AppColors.slate400,
+          unselectedLabelColor: colors.textHint,
           indicatorColor: AppColors.primary600,
           indicatorWeight: 3,
           labelStyle: const TextStyle(fontWeight: FontWeight.bold),

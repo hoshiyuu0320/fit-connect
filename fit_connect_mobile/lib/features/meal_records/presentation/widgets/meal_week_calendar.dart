@@ -17,6 +17,7 @@ class MealWeekCalendar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = AppColors.of(context);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
@@ -32,7 +33,7 @@ class MealWeekCalendar extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -48,17 +49,18 @@ class MealWeekCalendar extends ConsumerWidget {
           // Header with date range
           Text(
             '${DateFormat('M月d日').format(startOfWeek)}〜${DateFormat('M月d日').format(endOfWeek)}',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: AppColors.slate800,
+              color: colors.textPrimary,
             ),
           ),
           const SizedBox(height: 16),
 
           // Week days grid
           mealCountsAsync.when(
-            data: (mealCounts) => _buildWeekGrid(today, startOfWeek, mealCounts),
+            data: (mealCounts) =>
+                _buildWeekGrid(context, today, startOfWeek, mealCounts),
             loading: () => const SizedBox(
               height: 80,
               child: Center(child: CircularProgressIndicator()),
@@ -71,6 +73,7 @@ class MealWeekCalendar extends ConsumerWidget {
   }
 
   Widget _buildWeekGrid(
+    BuildContext context,
     DateTime today,
     DateTime startOfWeek,
     Map<DateTime, int> mealCounts,
@@ -86,6 +89,7 @@ class MealWeekCalendar extends ConsumerWidget {
 
         return Expanded(
           child: _buildDayCell(
+            context: context,
             dayLabel: dayLabels[index],
             date: date,
             mealCount: count,
@@ -98,14 +102,17 @@ class MealWeekCalendar extends ConsumerWidget {
   }
 
   Widget _buildDayCell({
+    required BuildContext context,
     required String dayLabel,
     required DateTime date,
     required int mealCount,
     required bool isToday,
     required bool isFuture,
   }) {
-    final color = isFuture ? AppColors.grassLevel0 : _getGrassColor(mealCount);
-    final textColor = mealCount >= 2 && !isFuture ? Colors.white : AppColors.slate600;
+    final colors = AppColors.of(context);
+    final color = isFuture ? colors.calendarEmpty : _getGrassColor(mealCount, colors);
+    final textColor =
+        mealCount >= 2 && !isFuture ? Colors.white : colors.textSecondary;
 
     return GestureDetector(
       onTap: !isFuture && onDayTap != null
@@ -116,9 +123,9 @@ class MealWeekCalendar extends ConsumerWidget {
           // Day label (M, T, W...)
           Text(
             dayLabel,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
-              color: AppColors.slate400,
+              color: colors.textHint,
             ),
           ),
           const SizedBox(height: 6),
@@ -141,7 +148,7 @@ class MealWeekCalendar extends ConsumerWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: isFuture ? AppColors.slate400 : textColor,
+                    color: isFuture ? colors.textHint : textColor,
                   ),
                 ),
                 if (mealCount > 0 && !isFuture)
@@ -160,10 +167,10 @@ class MealWeekCalendar extends ConsumerWidget {
     );
   }
 
-  Color _getGrassColor(int mealCount) {
+  Color _getGrassColor(int mealCount, AppColorsExtension colors) {
     switch (mealCount) {
       case 0:
-        return AppColors.grassLevel0;
+        return colors.calendarEmpty;
       case 1:
         return AppColors.grassLevel1;
       case 2:
@@ -183,7 +190,6 @@ Widget previewMealWeekCalendarStatic() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -197,6 +203,7 @@ Widget previewMealWeekCalendarStatic() {
 class _PreviewMealWeekCalendar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final daysFromMonday = (today.weekday - 1) % 7;
@@ -219,7 +226,7 @@ class _PreviewMealWeekCalendar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -235,10 +242,10 @@ class _PreviewMealWeekCalendar extends StatelessWidget {
         children: [
           Text(
             '${DateFormat('M月d日').format(startOfWeek)}〜${DateFormat('M月d日').format(endOfWeek)}',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: AppColors.slate800,
+              color: colors.textPrimary,
             ),
           ),
           const SizedBox(height: 16),
@@ -248,15 +255,17 @@ class _PreviewMealWeekCalendar extends StatelessWidget {
               final count = mockMealCounts[date] ?? 0;
               final isToday = date == today;
               final isFuture = date.isAfter(today);
-              final color = isFuture ? AppColors.grassLevel0 : _getGrassColor(count);
-              final textColor = count >= 2 && !isFuture ? Colors.white : AppColors.slate600;
+              final color =
+                  isFuture ? colors.calendarEmpty : _getGrassColor(count, colors);
+              final textColor =
+                  count >= 2 && !isFuture ? Colors.white : colors.textSecondary;
 
               return Expanded(
                 child: Column(
                   children: [
                     Text(
                       dayLabels[index],
-                      style: const TextStyle(fontSize: 11, color: AppColors.slate400),
+                      style: TextStyle(fontSize: 11, color: colors.textHint),
                     ),
                     const SizedBox(height: 6),
                     Container(
@@ -277,7 +286,7 @@ class _PreviewMealWeekCalendar extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
-                              color: isFuture ? AppColors.slate400 : textColor,
+                              color: isFuture ? colors.textHint : textColor,
                             ),
                           ),
                           if (count > 0 && !isFuture)
@@ -298,10 +307,10 @@ class _PreviewMealWeekCalendar extends StatelessWidget {
     );
   }
 
-  Color _getGrassColor(int count) {
+  Color _getGrassColor(int count, AppColorsExtension colors) {
     switch (count) {
       case 0:
-        return AppColors.grassLevel0;
+        return colors.calendarEmpty;
       case 1:
         return AppColors.grassLevel1;
       case 2:

@@ -16,6 +16,8 @@ class ClientNotesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = AppColors.of(context);
+
     // カルテ一覧の取得
     final notesAsync = ref.watch(sharedClientNotesProvider);
 
@@ -24,7 +26,6 @@ class ClientNotesScreen extends ConsumerWidget {
     final trainerName = trainerAsync.valueOrNull?.name;
 
     return Scaffold(
-      backgroundColor: AppColors.slate50,
       body: SafeArea(
         child: notesAsync.when(
           loading: () => const Center(
@@ -42,18 +43,18 @@ class ClientNotesScreen extends ConsumerWidget {
                 const SizedBox(height: 16),
                 Text(
                   'エラーが発生しました',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.slate700,
+                    color: colors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   error.toString(),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
-                    color: AppColors.slate500,
+                    color: colors.textSecondary,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -82,7 +83,7 @@ class ClientNotesScreen extends ConsumerWidget {
           ),
           data: (notes) {
             if (notes.isEmpty) {
-              return _buildEmptyState();
+              return _buildEmptyState(colors);
             }
 
             return ListView(
@@ -178,30 +179,30 @@ class ClientNotesScreen extends ConsumerWidget {
   }
 
   /// 空状態
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(AppColorsExtension colors) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
+          Icon(
             LucideIcons.clipboardList,
             size: 48,
-            color: AppColors.slate300,
+            color: colors.textHint,
           ),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             '共有されたノートはありません',
             style: TextStyle(
-              color: AppColors.slate500,
+              color: colors.textSecondary,
               fontSize: 16,
               fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'トレーナーからまだセッションノートが共有されていません。',
             style: TextStyle(
-              color: AppColors.slate400,
+              color: colors.textHint,
               fontSize: 14,
             ),
             textAlign: TextAlign.center,
@@ -268,7 +269,6 @@ class _PreviewNotesListWithData extends StatelessWidget {
     ];
 
     return Scaffold(
-      backgroundColor: AppColors.slate50,
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -348,32 +348,32 @@ class _PreviewNotesListEmpty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Scaffold(
-      backgroundColor: AppColors.slate50,
       body: SafeArea(
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
+              Icon(
                 LucideIcons.clipboardList,
                 size: 48,
-                color: AppColors.slate300,
+                color: colors.textHint,
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 '共有されたノートはありません',
                 style: TextStyle(
-                  color: AppColors.slate500,
+                  color: colors.textSecondary,
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'トレーナーからまだセッションノートが共有されていません。',
                 style: TextStyle(
-                  color: AppColors.slate400,
+                  color: colors.textHint,
                   fontSize: 14,
                 ),
                 textAlign: TextAlign.center,

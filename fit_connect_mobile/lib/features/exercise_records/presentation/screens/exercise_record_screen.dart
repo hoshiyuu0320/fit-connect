@@ -130,12 +130,13 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
   }
 
   Widget _buildPeriodFilter() {
+    final colors = AppColors.of(context);
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.slate100),
+        border: Border.all(color: colors.border),
       ),
       child: Row(
         children: PeriodFilter.values.map((period) {
@@ -163,7 +164,7 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
                   child: Text(
                     period.shortLabel,
                     style: TextStyle(
-                      color: isActive ? Colors.white : AppColors.slate400,
+                      color: isActive ? Colors.white : colors.textHint,
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
                     ),
@@ -178,6 +179,7 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
   }
 
   Widget _buildTypeFilter() {
+    final colors = AppColors.of(context);
     final types = [
       (null, 'すべて', LucideIcons.layoutGrid),
       ('strength_training', '筋トレ', LucideIcons.dumbbell),
@@ -197,10 +199,10 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
-                  color: isActive ? AppColors.indigo50 : Colors.white,
+                  color: isActive ? colors.accentIndigo : colors.surface,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: isActive ? AppColors.indigo100 : AppColors.slate200,
+                    color: isActive ? colors.accentIndigoBorder : colors.border,
                   ),
                 ),
                 child: Row(
@@ -209,15 +211,15 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
                     Icon(
                       type.$3,
                       size: 16,
-                      color:
-                          isActive ? AppColors.indigo600 : AppColors.slate400,
+                      color: isActive ? AppColors.indigo600 : colors.textHint,
                     ),
                     const SizedBox(width: 6),
                     Text(
                       type.$2,
                       style: TextStyle(
-                        color:
-                            isActive ? AppColors.indigo600 : AppColors.slate500,
+                        color: isActive
+                            ? AppColors.indigo600
+                            : colors.textSecondary,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
@@ -237,16 +239,17 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
     AsyncValue<Map<String, int>> typeCountsAsync,
     AsyncValue<double> caloriesAsync,
   ) {
+    final colors = AppColors.of(context);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.indigo50, Colors.white],
+        gradient: LinearGradient(
+          colors: [colors.accentIndigo, colors.surface],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.indigo100),
+        border: Border.all(color: colors.accentIndigoBorder),
       ),
       child: typeCountsAsync.when(
         data: (typeCounts) {
@@ -261,8 +264,8 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
                 _selectedPeriod == PeriodFilter.week
                     ? "📊 今週のサマリー"
                     : "📊 ${_selectedPeriod.label}のサマリー",
-                style: const TextStyle(
-                  color: AppColors.slate800,
+                style: TextStyle(
+                  color: colors.textPrimary,
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
                 ),
@@ -271,16 +274,14 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
               Row(
                 children: [
                   Expanded(
-                      child:
-                          _buildSummaryStat('合計', total.toString(), '📊')),
-                  const SizedBox(width: 8),
-                  Expanded(
-                      child: _buildSummaryStat(
-                          '筋トレ', strength.toString(), '🏋️')),
+                      child: _buildSummaryStat('合計', total.toString(), '📊')),
                   const SizedBox(width: 8),
                   Expanded(
                       child:
-                          _buildSummaryStat('有酸素', cardio.toString(), '🏃')),
+                          _buildSummaryStat('筋トレ', strength.toString(), '🏋️')),
+                  const SizedBox(width: 8),
+                  Expanded(
+                      child: _buildSummaryStat('有酸素', cardio.toString(), '🏃')),
                 ],
               ),
               const SizedBox(height: 12),
@@ -300,6 +301,7 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
   }
 
   Widget _buildCaloriesRow(double? calories) {
+    final colors = AppColors.of(context);
     String displayValue;
     if (calories == null) {
       displayValue = '-- kcal';
@@ -313,9 +315,9 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withAlpha(153),
+        color: colors.surface.withAlpha(153),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white),
+        border: Border.all(color: colors.surface),
       ),
       child: Row(
         children: [
@@ -324,10 +326,10 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
             style: TextStyle(fontSize: 16),
           ),
           const SizedBox(width: 8),
-          const Text(
+          Text(
             '消費カロリー',
             style: TextStyle(
-              color: AppColors.slate600,
+              color: colors.textSecondary,
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
@@ -347,19 +349,20 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
   }
 
   Widget _buildSummaryStat(String label, String value, String icon) {
+    final colors = AppColors.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white.withAlpha(153),
+        color: colors.surface.withAlpha(153),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white),
+        border: Border.all(color: colors.surface),
       ),
       child: Column(
         children: [
           Text(
             label,
-            style: const TextStyle(
-              color: AppColors.slate500,
+            style: TextStyle(
+              color: colors.textSecondary,
               fontSize: 10,
               fontWeight: FontWeight.bold,
             ),
@@ -367,8 +370,8 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
           const SizedBox(height: 4),
           Text(
             value,
-            style: const TextStyle(
-              color: AppColors.slate800,
+            style: TextStyle(
+              color: colors.textPrimary,
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
@@ -382,6 +385,7 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
     AsyncValue<List<ExerciseRecord>> recordsAsync,
     AsyncValue<List<WorkoutAssignment>> workoutsAsync,
   ) {
+    final colors = AppColors.of(context);
     // どちらかがロード中の場合はローディング表示
     if (recordsAsync.isLoading || workoutsAsync.isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -415,17 +419,16 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(LucideIcons.dumbbell,
-                  size: 48, color: AppColors.slate300),
+              Icon(LucideIcons.dumbbell, size: 48, color: colors.textHint),
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 '運動記録がありません',
-                style: TextStyle(color: AppColors.slate400),
+                style: TextStyle(color: colors.textHint),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 '運動を記録しましょう！',
-                style: TextStyle(color: AppColors.slate300, fontSize: 12),
+                style: TextStyle(color: colors.textHint, fontSize: 12),
               ),
             ],
           ),
@@ -444,8 +447,7 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
     }
 
     // 日付キーを降順にソート
-    final sortedDates = grouped.keys.toList()
-      ..sort((a, b) => b.compareTo(a));
+    final sortedDates = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -459,14 +461,14 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
               padding: const EdgeInsets.only(bottom: 12.0),
               child: Text(
                 _formatDateHeader(date),
-                style: const TextStyle(
-                  color: AppColors.slate800,
+                style: TextStyle(
+                  color: colors.textPrimary,
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
-            const Divider(height: 1, color: AppColors.slate100),
+            Divider(height: 1, color: colors.border),
             const SizedBox(height: 16),
             // Activity Cards
             ...dateItems.map((item) => item.buildCard(this)),
@@ -497,9 +499,10 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
   }
 
   Widget _buildExerciseCard(ExerciseRecord record) {
+    final colors = AppColors.of(context);
     final isStrength = record.exerciseType == 'strength_training';
     final color = isStrength ? AppColors.purple500 : AppColors.orange500;
-    final bg = isStrength ? AppColors.purple50 : AppColors.orange50;
+    final bg = isStrength ? colors.accentPurple : colors.accentOrange;
     final icon = isStrength ? '🏋️' : '🏃';
     final typeLabel = _getExerciseTypeLabel(record.exerciseType);
 
@@ -507,9 +510,9 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.slate100),
+        border: Border.all(color: colors.border),
       ),
       child: Row(
         children: [
@@ -548,22 +551,20 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
                       ),
                     ),
                     const Spacer(),
-                    Icon(LucideIcons.clock,
-                        size: 12, color: AppColors.slate400),
+                    Icon(LucideIcons.clock, size: 12, color: colors.textHint),
                     const SizedBox(width: 4),
                     Text(
                       DateFormat('HH:mm').format(record.recordedAt),
-                      style: const TextStyle(
-                          color: AppColors.slate400, fontSize: 10),
+                      style: TextStyle(color: colors.textHint, fontSize: 10),
                     ),
                   ],
                 ),
                 const SizedBox(height: 4),
                 Text(
                   record.memo ?? typeLabel,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: AppColors.slate800,
+                    color: colors.textPrimary,
                     fontSize: 14,
                   ),
                   maxLines: 2,
@@ -573,8 +574,7 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
                   const SizedBox(height: 2),
                   Text(
                     '${record.duration}分',
-                    style: const TextStyle(
-                        color: AppColors.slate500, fontSize: 12),
+                    style: TextStyle(color: colors.textSecondary, fontSize: 12),
                   ),
                 ],
               ],
@@ -618,7 +618,6 @@ Widget previewExerciseRecordScreenStatic() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -653,7 +652,6 @@ Widget previewExerciseRecordScreenEmpty() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -671,23 +669,26 @@ Widget previewExerciseRecordScreenEmpty() {
             const SizedBox(height: 24),
 
             // Empty State
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.all(40),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(LucideIcons.dumbbell,
-                        size: 48, color: AppColors.slate300),
-                    const SizedBox(height: 12),
-                    const Text(
-                      '運動記録がありません',
-                      style: TextStyle(color: AppColors.slate400),
-                    ),
-                  ],
+            Builder(builder: (context) {
+              final colors = AppColors.of(context);
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(40),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(LucideIcons.dumbbell,
+                          size: 48, color: colors.textHint),
+                      const SizedBox(height: 12),
+                      Text(
+                        '運動記録がありません',
+                        style: TextStyle(color: colors.textHint),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ),
+              );
+            }),
           ],
         ),
       ),
@@ -699,16 +700,16 @@ Widget previewExerciseRecordScreenEmpty() {
 class _PreviewPeriodFilter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.slate100),
+        border: Border.all(color: colors.border),
       ),
       child: Row(
-        children:
-            ['今日', '週', '月', '3ヶ月', '全期間'].asMap().entries.map((e) {
+        children: ['今日', '週', '月', '3ヶ月', '全期間'].asMap().entries.map((e) {
           final isActive = e.key == 1; // Week is active
           return Expanded(
             child: Container(
@@ -721,7 +722,7 @@ class _PreviewPeriodFilter extends StatelessWidget {
                 child: Text(
                   e.value,
                   style: TextStyle(
-                    color: isActive ? Colors.white : AppColors.slate400,
+                    color: isActive ? Colors.white : colors.textHint,
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
                   ),
@@ -738,6 +739,7 @@ class _PreviewPeriodFilter extends StatelessWidget {
 class _PreviewTypeFilter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     final types = [
       ('すべて', LucideIcons.layoutGrid, true),
       ('筋トレ', LucideIcons.dumbbell, false),
@@ -754,10 +756,10 @@ class _PreviewTypeFilter extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
-                color: isActive ? AppColors.indigo50 : Colors.white,
+                color: isActive ? colors.accentIndigo : colors.surface,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: isActive ? AppColors.indigo100 : AppColors.slate200,
+                  color: isActive ? colors.accentIndigoBorder : colors.border,
                 ),
               ),
               child: Row(
@@ -766,14 +768,14 @@ class _PreviewTypeFilter extends StatelessWidget {
                   Icon(
                     type.$2,
                     size: 16,
-                    color: isActive ? AppColors.indigo600 : AppColors.slate400,
+                    color: isActive ? AppColors.indigo600 : colors.textHint,
                   ),
                   const SizedBox(width: 6),
                   Text(
                     type.$1,
                     style: TextStyle(
                       color:
-                          isActive ? AppColors.indigo600 : AppColors.slate500,
+                          isActive ? AppColors.indigo600 : colors.textSecondary,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
@@ -791,24 +793,25 @@ class _PreviewTypeFilter extends StatelessWidget {
 class _PreviewSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.indigo50, Colors.white],
+        gradient: LinearGradient(
+          colors: [colors.accentIndigo, colors.surface],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.indigo100),
+        border: Border.all(color: colors.accentIndigoBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             "📊 今週のサマリー",
             style: TextStyle(
-              color: AppColors.slate800,
+              color: colors.textPrimary,
               fontWeight: FontWeight.bold,
               fontSize: 14,
             ),
@@ -816,11 +819,11 @@ class _PreviewSummaryCard extends StatelessWidget {
           const SizedBox(height: 16),
           Row(
             children: [
-              Expanded(child: _buildStat('合計', '5', '📊')),
+              Expanded(child: _buildStat(context, '合計', '5', '📊')),
               const SizedBox(width: 8),
-              Expanded(child: _buildStat('筋トレ', '3', '🏋️')),
+              Expanded(child: _buildStat(context, '筋トレ', '3', '🏋️')),
               const SizedBox(width: 8),
-              Expanded(child: _buildStat('有酸素', '2', '🏃')),
+              Expanded(child: _buildStat(context, '有酸素', '2', '🏃')),
             ],
           ),
           const SizedBox(height: 12),
@@ -828,27 +831,27 @@ class _PreviewSummaryCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white.withAlpha(153),
+              color: colors.surface.withAlpha(153),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white),
+              border: Border.all(color: colors.surface),
             ),
-            child: const Row(
+            child: Row(
               children: [
-                Text(
+                const Text(
                   '🔥',
                   style: TextStyle(fontSize: 16),
                 ),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 Text(
                   '消費カロリー',
                   style: TextStyle(
-                    color: AppColors.slate600,
+                    color: colors.textSecondary,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                Spacer(),
-                Text(
+                const Spacer(),
+                const Text(
                   '1,150 kcal',
                   style: TextStyle(
                     color: AppColors.indigo600,
@@ -864,20 +867,22 @@ class _PreviewSummaryCard extends StatelessWidget {
     );
   }
 
-  Widget _buildStat(String label, String value, String icon) {
+  Widget _buildStat(
+      BuildContext context, String label, String value, String icon) {
+    final colors = AppColors.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white.withAlpha(153),
+        color: colors.surface.withAlpha(153),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white),
+        border: Border.all(color: colors.surface),
       ),
       child: Column(
         children: [
           Text(
             label,
-            style: const TextStyle(
-              color: AppColors.slate500,
+            style: TextStyle(
+              color: colors.textSecondary,
               fontSize: 10,
               fontWeight: FontWeight.bold,
             ),
@@ -885,8 +890,8 @@ class _PreviewSummaryCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             value,
-            style: const TextStyle(
-              color: AppColors.slate800,
+            style: TextStyle(
+              color: colors.textPrimary,
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
@@ -900,24 +905,25 @@ class _PreviewSummaryCard extends StatelessWidget {
 class _PreviewSummaryCardEmpty extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.indigo50, Colors.white],
+        gradient: LinearGradient(
+          colors: [colors.accentIndigo, colors.surface],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.indigo100),
+        border: Border.all(color: colors.accentIndigoBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             "📊 今週のサマリー",
             style: TextStyle(
-              color: AppColors.slate800,
+              color: colors.textPrimary,
               fontWeight: FontWeight.bold,
               fontSize: 14,
             ),
@@ -926,14 +932,16 @@ class _PreviewSummaryCardEmpty extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                  child: _PreviewSummaryCard()._buildStat('合計', '0', '📊')),
+                  child: _PreviewSummaryCard()
+                      ._buildStat(context, '合計', '0', '📊')),
               const SizedBox(width: 8),
               Expanded(
-                  child:
-                      _PreviewSummaryCard()._buildStat('筋トレ', '0', '🏋️')),
+                  child: _PreviewSummaryCard()
+                      ._buildStat(context, '筋トレ', '0', '🏋️')),
               const SizedBox(width: 8),
               Expanded(
-                  child: _PreviewSummaryCard()._buildStat('有酸素', '0', '🏃')),
+                  child: _PreviewSummaryCard()
+                      ._buildStat(context, '有酸素', '0', '🏃')),
             ],
           ),
           const SizedBox(height: 12),
@@ -941,27 +949,27 @@ class _PreviewSummaryCardEmpty extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white.withAlpha(153),
+              color: colors.surface.withAlpha(153),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white),
+              border: Border.all(color: colors.surface),
             ),
-            child: const Row(
+            child: Row(
               children: [
-                Text(
+                const Text(
                   '🔥',
                   style: TextStyle(fontSize: 16),
                 ),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 Text(
                   '消費カロリー',
                   style: TextStyle(
-                    color: AppColors.slate600,
+                    color: colors.textSecondary,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                Spacer(),
-                Text(
+                const Spacer(),
+                const Text(
                   '-- kcal',
                   style: TextStyle(
                     color: AppColors.indigo600,
@@ -981,44 +989,46 @@ class _PreviewSummaryCardEmpty extends StatelessWidget {
 class _PreviewRecordsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Today section
         Text(
           '今日',
-          style: const TextStyle(
-            color: AppColors.slate800,
+          style: TextStyle(
+            color: colors.textPrimary,
             fontSize: 14,
             fontWeight: FontWeight.bold,
           ),
         ),
-        const Divider(height: 24, color: AppColors.slate100),
-        _buildExerciseCard(_mockExerciseRecords[0]),
+        Divider(height: 24, color: colors.border),
+        _buildExerciseCard(context, _mockExerciseRecords[0]),
         CompletedWorkoutCard(assignment: _mockWorkoutAssignment),
         const SizedBox(height: 8),
 
         // Yesterday section
         Text(
           '昨日',
-          style: const TextStyle(
-            color: AppColors.slate800,
+          style: TextStyle(
+            color: colors.textPrimary,
             fontSize: 14,
             fontWeight: FontWeight.bold,
           ),
         ),
-        const Divider(height: 24, color: AppColors.slate100),
-        _buildExerciseCard(_mockExerciseRecords[1]),
-        _buildExerciseCard(_mockExerciseRecords[2]),
+        Divider(height: 24, color: colors.border),
+        _buildExerciseCard(context, _mockExerciseRecords[1]),
+        _buildExerciseCard(context, _mockExerciseRecords[2]),
         const SizedBox(height: 8),
       ],
     );
   }
 
-  Widget _buildExerciseCard(ExerciseRecord record) {
+  Widget _buildExerciseCard(BuildContext context, ExerciseRecord record) {
+    final colors = AppColors.of(context);
     final isStrength = record.exerciseType == 'strength_training';
     final color = isStrength ? AppColors.purple500 : AppColors.orange500;
-    final bg = isStrength ? AppColors.purple50 : AppColors.orange50;
+    final bg = isStrength ? colors.accentPurple : colors.accentOrange;
     final icon = isStrength ? '🏋️' : '🏃';
     final typeLabel = isStrength ? '筋トレ' : '有酸素運動';
 
@@ -1026,9 +1036,9 @@ class _PreviewRecordsList extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.slate100),
+        border: Border.all(color: colors.border),
       ),
       child: Row(
         children: [
@@ -1067,22 +1077,20 @@ class _PreviewRecordsList extends StatelessWidget {
                       ),
                     ),
                     const Spacer(),
-                    Icon(LucideIcons.clock,
-                        size: 12, color: AppColors.slate400),
+                    Icon(LucideIcons.clock, size: 12, color: colors.textHint),
                     const SizedBox(width: 4),
                     Text(
                       DateFormat('HH:mm').format(record.recordedAt),
-                      style: const TextStyle(
-                          color: AppColors.slate400, fontSize: 10),
+                      style: TextStyle(color: colors.textHint, fontSize: 10),
                     ),
                   ],
                 ),
                 const SizedBox(height: 4),
                 Text(
                   record.memo ?? typeLabel,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: AppColors.slate800,
+                    color: colors.textPrimary,
                     fontSize: 14,
                   ),
                   maxLines: 2,
@@ -1092,8 +1100,7 @@ class _PreviewRecordsList extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     '${record.duration}分',
-                    style: const TextStyle(
-                        color: AppColors.slate500, fontSize: 12),
+                    style: TextStyle(color: colors.textSecondary, fontSize: 12),
                   ),
                 ],
               ],
@@ -1108,6 +1115,7 @@ class _PreviewRecordsList extends StatelessWidget {
 class _PreviewWeekCalendar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final daysFromMonday = (today.weekday - 1) % 7;
@@ -1129,7 +1137,7 @@ class _PreviewWeekCalendar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -1144,10 +1152,10 @@ class _PreviewWeekCalendar extends StatelessWidget {
         children: [
           Text(
             '${DateFormat('M月').format(startOfWeek)} ${DateFormat('yyyy').format(today)}（週間）',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: AppColors.slate800,
+              color: colors.textPrimary,
             ),
           ),
           const SizedBox(height: 16),
@@ -1159,7 +1167,7 @@ class _PreviewWeekCalendar extends StatelessWidget {
               final isFuture = date.isAfter(today);
               final hasRecord = exerciseTypes.isNotEmpty;
               final backgroundColor =
-                  hasRecord ? AppColors.indigo50 : AppColors.slate50;
+                  hasRecord ? colors.accentIndigo : colors.surfaceDim;
 
               String? icon;
               if (exerciseTypes.contains('strength_training')) {
@@ -1176,43 +1184,43 @@ class _PreviewWeekCalendar extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 1.5),
                   child: Column(
-                  children: [
-                    Text(
-                      dayLabels[index],
-                      style: const TextStyle(
-                          fontSize: 11, color: AppColors.slate400),
-                    ),
-                    const SizedBox(height: 6),
-                    Container(
-                      width: 44,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: isFuture ? AppColors.slate50 : backgroundColor,
-                        borderRadius: BorderRadius.circular(12),
-                        border: isToday
-                            ? Border.all(color: AppColors.primary600, width: 3)
-                            : null,
+                    children: [
+                      Text(
+                        dayLabels[index],
+                        style: TextStyle(fontSize: 11, color: colors.textHint),
                       ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          if (icon != null && !isFuture) ...[
-                            Text(icon, style: const TextStyle(fontSize: 20)),
-                          ],
-                          Text(
-                            '${date.day}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isFuture
-                                  ? AppColors.slate400
-                                  : AppColors.slate600,
+                      const SizedBox(height: 6),
+                      Container(
+                        width: 44,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: isFuture ? colors.surfaceDim : backgroundColor,
+                          borderRadius: BorderRadius.circular(12),
+                          border: isToday
+                              ? Border.all(
+                                  color: AppColors.primary600, width: 3)
+                              : null,
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (icon != null && !isFuture) ...[
+                              Text(icon, style: const TextStyle(fontSize: 20)),
+                            ],
+                            Text(
+                              '${date.day}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isFuture
+                                    ? colors.textHint
+                                    : colors.textSecondary,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
                 ),
               );
             }),

@@ -23,9 +23,8 @@ class MessageRepository {
     }
 
     final response = await query;
-    final messages = (response as List)
-        .map((json) => Message.fromJson(json))
-        .toList();
+    final messages =
+        (response as List).map((json) => Message.fromJson(json)).toList();
 
     // 時系列順にソート（古い順）
     messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
@@ -39,21 +38,17 @@ class MessageRepository {
     int limit = 30,
     DateTime? before,
   }) async {
-    var query = _supabase
-        .from('messages')
-        .select()
-        .or('and(sender_id.eq.$userId,receiver_id.eq.$otherUserId),and(sender_id.eq.$otherUserId,receiver_id.eq.$userId)');
+    var query = _supabase.from('messages').select().or(
+        'and(sender_id.eq.$userId,receiver_id.eq.$otherUserId),and(sender_id.eq.$otherUserId,receiver_id.eq.$userId)');
 
     if (before != null) {
       query = query.lt('created_at', before.toUtc().toIso8601String());
     }
 
-    final response = await query
-        .order('created_at', ascending: false)
-        .limit(limit);
-    final messages = (response as List)
-        .map((json) => Message.fromJson(json))
-        .toList();
+    final response =
+        await query.order('created_at', ascending: false).limit(limit);
+    final messages =
+        (response as List).map((json) => Message.fromJson(json)).toList();
 
     // 時系列順にソート（古い順）
     messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
@@ -77,8 +72,10 @@ class MessageRepository {
           callback: (payload) {
             final message = Message.fromJson(payload.newRecord);
             // 該当する会話ペアのメッセージのみ処理
-            if ((message.senderId == userId && message.receiverId == otherUserId) ||
-                (message.senderId == otherUserId && message.receiverId == userId)) {
+            if ((message.senderId == userId &&
+                    message.receiverId == otherUserId) ||
+                (message.senderId == otherUserId &&
+                    message.receiverId == userId)) {
               onInsert(message);
             }
           },
@@ -89,8 +86,10 @@ class MessageRepository {
           table: 'messages',
           callback: (payload) {
             final message = Message.fromJson(payload.newRecord);
-            if ((message.senderId == userId && message.receiverId == otherUserId) ||
-                (message.senderId == otherUserId && message.receiverId == userId)) {
+            if ((message.senderId == userId &&
+                    message.receiverId == otherUserId) ||
+                (message.senderId == otherUserId &&
+                    message.receiverId == userId)) {
               onUpdate(message);
             }
           },

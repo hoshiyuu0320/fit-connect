@@ -32,7 +32,6 @@ class HomeScreen extends ConsumerWidget {
     final isTrainerOnline = ref.watch(trainerCurrentStatusProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
@@ -40,7 +39,7 @@ class HomeScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Greeting
-              _buildGreeting(now, clientAsync),
+              _buildGreeting(context, now, clientAsync),
 
               const SizedBox(height: 24),
 
@@ -83,7 +82,9 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildGreeting(DateTime now, AsyncValue clientAsync) {
+  Widget _buildGreeting(
+      BuildContext context, DateTime now, AsyncValue clientAsync) {
+    final colors = AppColors.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4.0),
       child: Column(
@@ -91,8 +92,8 @@ class HomeScreen extends ConsumerWidget {
         children: [
           Text(
             _formatDateTop(now),
-            style: const TextStyle(
-              color: AppColors.slate500,
+            style: TextStyle(
+              color: colors.textSecondary,
               fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
@@ -101,34 +102,34 @@ class HomeScreen extends ConsumerWidget {
           clientAsync.when(
             data: (client) => Text(
               'こんにちは、${client?.name ?? ''}さん 👋',
-              style: const TextStyle(
-                color: AppColors.slate800,
+              style: TextStyle(
+                color: colors.textPrimary,
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            loading: () => const Text(
+            loading: () => Text(
               'こんにちは 👋',
               style: TextStyle(
-                color: AppColors.slate800,
+                color: colors.textPrimary,
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            error: (_, __) => const Text(
+            error: (_, __) => Text(
               'こんにちは 👋',
               style: TextStyle(
-                color: AppColors.slate800,
+                color: colors.textPrimary,
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
               ),
             ),
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             '今日も頑張りましょう！',
             style: TextStyle(
-              color: AppColors.slate600,
+              color: colors.textSecondary,
               fontSize: 14,
             ),
           ),
@@ -274,7 +275,6 @@ Widget previewHomeScreenStatic() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
@@ -308,7 +308,6 @@ Widget previewHomeScreenNoGoal() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
@@ -337,6 +336,7 @@ Widget previewHomeScreenNoGoal() {
 class _PreviewGreeting extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     final now = DateTime.now();
     const days = ['日', '月', '火', '水', '木', '金', '土'];
     const months = [
@@ -363,26 +363,26 @@ class _PreviewGreeting extends StatelessWidget {
         children: [
           Text(
             dateStr,
-            style: const TextStyle(
-              color: AppColors.slate500,
+            style: TextStyle(
+              color: colors.textSecondary,
               fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'こんにちは、太郎さん 👋',
             style: TextStyle(
-              color: AppColors.slate800,
+              color: colors.textPrimary,
               fontSize: 24,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             '今日も頑張りましょう！',
             style: TextStyle(
-              color: AppColors.slate600,
+              color: colors.textSecondary,
               fontSize: 14,
             ),
           ),
@@ -445,13 +445,14 @@ class _PreviewNoGoalCard extends StatelessWidget {
 class _PreviewDailySummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     // Static preview without Riverpod
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.slate100),
+        border: Border.all(color: colors.border),
       ),
       child: Column(
         children: [
@@ -459,32 +460,33 @@ class _PreviewDailySummaryCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 '今日のまとめ',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.slate800,
+                  color: colors.textPrimary,
                 ),
               ),
-              Icon(Icons.chevron_right, color: AppColors.slate400, size: 20),
+              Icon(Icons.chevron_right, color: colors.textHint, size: 20),
             ],
           ),
           const SizedBox(height: 24),
           // Meal Section (2/3)
-          _buildMealRow(2),
+          _buildMealRow(context, 2),
           const SizedBox(height: 16),
           // Activity Section (3/7)
-          _buildActivityRow(3),
-          const Divider(height: 32, color: AppColors.slate50),
+          _buildActivityRow(context, 3),
+          Divider(height: 32, color: colors.surfaceDim),
           // Weight Section
-          _buildWeightRow(65.2, -0.6),
+          _buildWeightRow(context, 65.2, -0.6),
         ],
       ),
     );
   }
 
-  Widget _buildMealRow(int count) {
+  Widget _buildMealRow(BuildContext context, int count) {
+    final colors = AppColors.of(context);
     final progress = count / 3;
     final percentage = (progress * 100).toInt();
     return Column(
@@ -502,17 +504,29 @@ class _PreviewDailySummaryCard extends StatelessWidget {
                     color: AppColors.orange100,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.restaurant, color: AppColors.orange500, size: 16),
+                  child: const Icon(Icons.restaurant,
+                      color: AppColors.orange500, size: 16),
                 ),
                 const SizedBox(width: 10),
-                const Text('食事', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.slate700, fontSize: 14)),
+                Text('食事',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: colors.textSecondary,
+                        fontSize: 14)),
               ],
             ),
             RichText(
               text: TextSpan(
                 children: [
-                  TextSpan(text: '$count', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.slate800, fontSize: 14)),
-                  const TextSpan(text: '/3', style: TextStyle(color: AppColors.slate400, fontSize: 12)),
+                  TextSpan(
+                      text: '$count',
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: colors.textPrimary,
+                          fontSize: 14)),
+                  TextSpan(
+                      text: '/3',
+                      style: TextStyle(color: colors.textHint, fontSize: 12)),
                 ],
               ),
             ),
@@ -528,13 +542,15 @@ class _PreviewDailySummaryCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
                   value: progress,
-                  backgroundColor: AppColors.slate100,
-                  valueColor: const AlwaysStoppedAnimation<Color>(AppColors.orange500),
+                  backgroundColor: colors.border,
+                  valueColor:
+                      const AlwaysStoppedAnimation<Color>(AppColors.orange500),
                   minHeight: 8,
                 ),
               ),
               const SizedBox(height: 4),
-              Text('$percentage% 記録済み', style: const TextStyle(color: AppColors.slate400, fontSize: 10)),
+              Text('$percentage% 記録済み',
+                  style: TextStyle(color: colors.textHint, fontSize: 10)),
             ],
           ),
         ),
@@ -542,7 +558,8 @@ class _PreviewDailySummaryCard extends StatelessWidget {
     );
   }
 
-  Widget _buildActivityRow(int count) {
+  Widget _buildActivityRow(BuildContext context, int count) {
+    final colors = AppColors.of(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -555,14 +572,20 @@ class _PreviewDailySummaryCard extends StatelessWidget {
                 color: AppColors.primary100,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.fitness_center, color: AppColors.primary500, size: 16),
+              child: const Icon(Icons.fitness_center,
+                  color: AppColors.primary500, size: 16),
             ),
             const SizedBox(width: 10),
-            const Column(
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('運動', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.slate700, fontSize: 14)),
-                Text('今週', style: TextStyle(color: AppColors.slate400, fontSize: 10)),
+                Text('運動',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: colors.textSecondary,
+                        fontSize: 14)),
+                Text('今週',
+                    style: TextStyle(color: colors.textHint, fontSize: 10)),
               ],
             ),
           ],
@@ -570,8 +593,15 @@ class _PreviewDailySummaryCard extends StatelessWidget {
         RichText(
           text: TextSpan(
             children: [
-              TextSpan(text: '$count ', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.slate800, fontSize: 14)),
-              const TextSpan(text: '/ 7日', style: TextStyle(color: AppColors.slate400, fontSize: 12)),
+              TextSpan(
+                  text: '$count ',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: colors.textPrimary,
+                      fontSize: 14)),
+              TextSpan(
+                  text: '/ 7日',
+                  style: TextStyle(color: colors.textHint, fontSize: 12)),
             ],
           ),
         ),
@@ -579,7 +609,8 @@ class _PreviewDailySummaryCard extends StatelessWidget {
     );
   }
 
-  Widget _buildWeightRow(double weight, double change) {
+  Widget _buildWeightRow(BuildContext context, double weight, double change) {
+    final colors = AppColors.of(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -592,16 +623,25 @@ class _PreviewDailySummaryCard extends StatelessWidget {
                 color: AppColors.emerald100,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.monitor_weight, color: AppColors.emerald500, size: 16),
+              child: const Icon(Icons.monitor_weight,
+                  color: AppColors.emerald500, size: 16),
             ),
             const SizedBox(width: 10),
-            const Text('体重', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.slate700, fontSize: 14)),
+            Text('体重',
+                style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: colors.textSecondary,
+                    fontSize: 14)),
           ],
         ),
         Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Text('${weight.toStringAsFixed(1)} kg', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.slate800, fontSize: 14)),
+            Text('${weight.toStringAsFixed(1)} kg',
+                style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: colors.textPrimary,
+                    fontSize: 14)),
             const SizedBox(height: 4),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -611,7 +651,11 @@ class _PreviewDailySummaryCard extends StatelessWidget {
               ),
               child: Text(
                 '${change > 0 ? '+' : ''}${change.toStringAsFixed(1)}kg 前日比',
-                style: TextStyle(color: change < 0 ? AppColors.emerald500 : AppColors.rose800, fontSize: 10, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                    color:
+                        change < 0 ? AppColors.emerald500 : AppColors.rose800,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold),
               ),
             ),
           ],

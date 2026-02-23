@@ -91,7 +91,8 @@ class StorageService {
   /// [files] - アップロードする画像ファイルのリスト
   /// [userId] - ユーザーID
   /// 戻り値: アップロードされた画像の公開URLリスト
-  static Future<List<String>> uploadImages(List<File> files, String userId) async {
+  static Future<List<String>> uploadImages(
+      List<File> files, String userId) async {
     final List<String> urls = [];
 
     for (final file in files) {
@@ -156,7 +157,8 @@ class StorageService {
           .from(avatarBucketName)
           .getPublicUrl(filePath);
 
-      final urlWithTimestamp = '$publicUrl?t=${DateTime.now().millisecondsSinceEpoch}';
+      final urlWithTimestamp =
+          '$publicUrl?t=${DateTime.now().millisecondsSinceEpoch}';
 
       debugPrint('[StorageService] Profile image uploaded: $urlWithTimestamp');
       return urlWithTimestamp;

@@ -49,6 +49,8 @@ class ClientNoteDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+
     String formatDate(DateTime dt) {
       return '${dt.year}年${dt.month}月${dt.day}日 ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
     }
@@ -57,12 +59,10 @@ class ClientNoteDetailScreen extends StatelessWidget {
     final imageUrls = note.fileUrls.where(_isImage).toList();
 
     return Scaffold(
-      backgroundColor: AppColors.slate50,
       appBar: AppBar(
-        backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: AppColors.slate700),
+          icon: Icon(Icons.arrow_back_ios, color: colors.textPrimary),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -98,10 +98,10 @@ class ClientNoteDetailScreen extends StatelessWidget {
                   // タイトル
                   Text(
                     note.title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.slate800,
+                      color: colors.textPrimary,
                     ),
                   ),
 
@@ -111,32 +111,32 @@ class ClientNoteDetailScreen extends StatelessWidget {
                   Row(
                     children: [
                       if (trainerName != null) ...[
-                        const Icon(
+                        Icon(
                           Icons.person_outline,
                           size: 16,
-                          color: AppColors.slate500,
+                          color: colors.textSecondary,
                         ),
                         const SizedBox(width: 4),
                         Text(
                           trainerName!,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
-                            color: AppColors.slate500,
+                            color: colors.textSecondary,
                           ),
                         ),
                         const SizedBox(width: 12),
                       ],
-                      const Icon(
+                      Icon(
                         Icons.calendar_today,
                         size: 14,
-                        color: AppColors.slate400,
+                        color: colors.textHint,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         formatDate(note.createdAt),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
-                          color: AppColors.slate400,
+                          color: colors.textHint,
                         ),
                       ),
                     ],
@@ -152,18 +152,18 @@ class ClientNoteDetailScreen extends StatelessWidget {
               margin: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: colors.surface,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // ラベル
-                  const Text(
+                  Text(
                     '内容',
                     style: TextStyle(
                       fontSize: 13,
-                      color: AppColors.slate500,
+                      color: colors.textSecondary,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -171,9 +171,9 @@ class ClientNoteDetailScreen extends StatelessWidget {
                   // 本文
                   Text(
                     note.content,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15,
-                      color: AppColors.slate700,
+                      color: colors.textPrimary,
                       height: 1.6,
                     ),
                   ),
@@ -189,7 +189,7 @@ class ClientNoteDetailScreen extends StatelessWidget {
                 margin: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: colors.surface,
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Column(
@@ -198,9 +198,9 @@ class ClientNoteDetailScreen extends StatelessWidget {
                     // ラベル
                     Text(
                       '添付ファイル (${note.fileUrls.length})',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
-                        color: AppColors.slate500,
+                        color: colors.textSecondary,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -214,13 +214,11 @@ class ClientNoteDetailScreen extends StatelessWidget {
                         // 画像プレビュー
                         return Padding(
                           padding: EdgeInsets.only(
-                            bottom:
-                                index < note.fileUrls.length - 1 ? 12 : 0,
+                            bottom: index < note.fileUrls.length - 1 ? 12 : 0,
                           ),
                           child: GestureDetector(
                             onTap: () {
-                              final imageIndex =
-                                  imageUrls.indexOf(url);
+                              final imageIndex = imageUrls.indexOf(url);
                               FullScreenImageViewer.show(
                                 context: context,
                                 imageUrls: imageUrls,
@@ -234,11 +232,12 @@ class ClientNoteDetailScreen extends StatelessWidget {
                                 height: 200,
                                 width: double.infinity,
                                 fit: BoxFit.cover,
-                                loadingBuilder: (context, child, loadingProgress) {
+                                loadingBuilder:
+                                    (context, child, loadingProgress) {
                                   if (loadingProgress == null) return child;
                                   return Container(
                                     height: 200,
-                                    color: AppColors.slate100,
+                                    color: colors.border,
                                     child: const Center(
                                       child: CircularProgressIndicator(),
                                     ),
@@ -246,11 +245,11 @@ class ClientNoteDetailScreen extends StatelessWidget {
                                 },
                                 errorBuilder: (_, __, ___) => Container(
                                   height: 200,
-                                  color: AppColors.slate100,
-                                  child: const Center(
+                                  color: colors.border,
+                                  child: Center(
                                     child: Icon(
                                       Icons.broken_image_outlined,
-                                      color: AppColors.slate400,
+                                      color: colors.textHint,
                                       size: 48,
                                     ),
                                   ),
@@ -263,8 +262,7 @@ class ClientNoteDetailScreen extends StatelessWidget {
                         // PDFアイテム
                         return Padding(
                           padding: EdgeInsets.only(
-                            bottom:
-                                index < note.fileUrls.length - 1 ? 12 : 0,
+                            bottom: index < note.fileUrls.length - 1 ? 12 : 0,
                           ),
                           child: InkWell(
                             onTap: () => _openPdf(url),
@@ -272,7 +270,7 @@ class ClientNoteDetailScreen extends StatelessWidget {
                             child: Container(
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: AppColors.slate50,
+                                color: colors.surfaceDim,
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Row(
@@ -300,20 +298,20 @@ class ClientNoteDetailScreen extends StatelessWidget {
                                       children: [
                                         Text(
                                           _getFileName(url),
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 14,
                                             fontWeight: FontWeight.w500,
-                                            color: AppColors.slate800,
+                                            color: colors.textPrimary,
                                           ),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                         const SizedBox(height: 4),
-                                        const Text(
+                                        Text(
                                           'タップして表示',
                                           style: TextStyle(
                                             fontSize: 12,
-                                            color: AppColors.slate500,
+                                            color: colors.textSecondary,
                                           ),
                                         ),
                                       ],
@@ -321,10 +319,10 @@ class ClientNoteDetailScreen extends StatelessWidget {
                                   ),
 
                                   // 矢印アイコン
-                                  const Icon(
+                                  Icon(
                                     Icons.arrow_forward_ios,
                                     size: 16,
-                                    color: AppColors.slate400,
+                                    color: colors.textHint,
                                   ),
                                 ],
                               ),
@@ -335,29 +333,28 @@ class ClientNoteDetailScreen extends StatelessWidget {
                         // その他のファイル（サポート外）
                         return Padding(
                           padding: EdgeInsets.only(
-                            bottom:
-                                index < note.fileUrls.length - 1 ? 12 : 0,
+                            bottom: index < note.fileUrls.length - 1 ? 12 : 0,
                           ),
                           child: Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: AppColors.slate50,
+                              color: colors.surfaceDim,
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Row(
                               children: [
-                                const Icon(
+                                Icon(
                                   Icons.insert_drive_file,
-                                  color: AppColors.slate500,
+                                  color: colors.textSecondary,
                                   size: 24,
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
                                     _getFileName(url),
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 14,
-                                      color: AppColors.slate600,
+                                      color: colors.textSecondary,
                                     ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,

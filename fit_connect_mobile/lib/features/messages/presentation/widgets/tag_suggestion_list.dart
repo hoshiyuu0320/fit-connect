@@ -15,6 +15,7 @@ class TagSuggestionList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     final suggestions = _getSuggestions(query);
 
     if (suggestions.isEmpty) {
@@ -26,9 +27,9 @@ class TagSuggestionList extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: AppColors.slate100)),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        border: Border(top: BorderSide(color: colors.border)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -40,8 +41,8 @@ class TagSuggestionList extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 8),
               child: Text(
                 exampleText,
-                style: const TextStyle(
-                  color: AppColors.slate400,
+                style: TextStyle(
+                  color: colors.textHint,
                   fontSize: 12,
                 ),
               ),
@@ -55,7 +56,7 @@ class TagSuggestionList extends StatelessWidget {
               separatorBuilder: (context, index) => const SizedBox(width: 8),
               itemBuilder: (context, index) {
                 final tag = suggestions[index];
-                return _buildSuggestionBtn(tag);
+                return _buildSuggestionBtn(tag, colors);
               },
             ),
           ),
@@ -64,7 +65,7 @@ class TagSuggestionList extends StatelessWidget {
     );
   }
 
-  Widget _buildSuggestionBtn(TagSuggestion tag) {
+  Widget _buildSuggestionBtn(TagSuggestion tag, AppColorsExtension colors) {
     return InkWell(
       onTap: () {
         onSelect(tag.tag, tag.addSpace, tag.example);
@@ -75,7 +76,7 @@ class TagSuggestionList extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: AppColors.slate100,
+          color: colors.border,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Colors.transparent),
         ),
@@ -86,8 +87,8 @@ class TagSuggestionList extends StatelessWidget {
             const SizedBox(width: 4),
             Text(
               tag.label,
-              style: const TextStyle(
-                color: AppColors.slate600,
+              style: TextStyle(
+                color: colors.textSecondary,
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
               ),

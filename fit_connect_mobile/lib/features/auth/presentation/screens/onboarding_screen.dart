@@ -9,13 +9,13 @@ class OnboardingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(LucideIcons.arrowLeft, color: AppColors.slate800),
+          icon: Icon(LucideIcons.arrowLeft, color: colors.textPrimary),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -54,25 +54,25 @@ class OnboardingScreen extends StatelessWidget {
                       const SizedBox(height: 32),
 
                       // Title
-                      const Text(
+                      Text(
                         'アカウント登録',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 32,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.slate800,
+                          color: colors.textPrimary,
                           letterSpacing: 1.5,
                         ),
                       ),
                       const SizedBox(height: 16),
 
                       // Subtitle
-                      const Text(
+                      Text(
                         'トレーナーからQRコードまたは\n招待コードを受け取ってください',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 16,
-                          color: AppColors.slate500,
+                          color: colors.textSecondary,
                           height: 1.6,
                         ),
                       ),

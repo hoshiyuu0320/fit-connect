@@ -17,6 +17,7 @@ class MealMonthCalendar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = AppColors.of(context);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
@@ -36,7 +37,7 @@ class MealMonthCalendar extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -55,18 +56,18 @@ class MealMonthCalendar extends ConsumerWidget {
             children: [
               Text(
                 DateFormat('MMMM yyyy').format(today),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.slate800,
+                  color: colors.textPrimary,
                 ),
               ),
               if (totalMeals != null)
                 Text(
                   '合計: ${totalMeals}食',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
-                    color: AppColors.slate500,
+                    color: colors.textSecondary,
                   ),
                 ),
             ],
@@ -74,12 +75,13 @@ class MealMonthCalendar extends ConsumerWidget {
           const SizedBox(height: 16),
 
           // Day headers
-          _buildDayHeaders(),
+          _buildDayHeaders(context),
           const SizedBox(height: 6),
 
           // Calendar grid
           mealCountsAsync.when(
             data: (mealCounts) => _buildCalendarGrid(
+              context,
               today,
               startOfMonth,
               endOfMonth,
@@ -94,13 +96,14 @@ class MealMonthCalendar extends ConsumerWidget {
 
           // Legend
           const SizedBox(height: 12),
-          _buildLegend(),
+          _buildLegend(context),
         ],
       ),
     );
   }
 
-  Widget _buildDayHeaders() {
+  Widget _buildDayHeaders(BuildContext context) {
+    final colors = AppColors.of(context);
     const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
     return Row(
       children: dayLabels.map((label) {
@@ -108,10 +111,10 @@ class MealMonthCalendar extends ConsumerWidget {
           child: Center(
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: AppColors.slate400,
+                color: colors.textHint,
               ),
             ),
           ),
@@ -121,6 +124,7 @@ class MealMonthCalendar extends ConsumerWidget {
   }
 
   Widget _buildCalendarGrid(
+    BuildContext context,
     DateTime today,
     DateTime startOfMonth,
     DateTime endOfMonth,
@@ -147,13 +151,15 @@ class MealMonthCalendar extends ConsumerWidget {
                 return Expanded(child: Container());
               }
 
-              final date = DateTime(startOfMonth.year, startOfMonth.month, dayNumber);
+              final date =
+                  DateTime(startOfMonth.year, startOfMonth.month, dayNumber);
               final count = mealCounts[date] ?? 0;
               final isToday = date == today;
               final isFuture = date.isAfter(today);
 
               return Expanded(
                 child: _buildDayCell(
+                  context: context,
                   date: date,
                   mealCount: count,
                   isToday: isToday,
@@ -168,15 +174,17 @@ class MealMonthCalendar extends ConsumerWidget {
   }
 
   Widget _buildDayCell({
+    required BuildContext context,
     required DateTime date,
     required int mealCount,
     required bool isToday,
     required bool isFuture,
   }) {
-    final color = isFuture ? Colors.transparent : _getGrassColor(mealCount);
+    final colors = AppColors.of(context);
+    final color = isFuture ? Colors.transparent : _getGrassColor(mealCount, colors);
     final textColor = isFuture
-        ? AppColors.slate300
-        : (mealCount >= 2 ? Colors.white : AppColors.slate600);
+        ? colors.textHint
+        : (mealCount >= 2 ? Colors.white : colors.textSecondary);
 
     return GestureDetector(
       onTap: !isFuture && onDayTap != null
@@ -208,22 +216,24 @@ class MealMonthCalendar extends ConsumerWidget {
     );
   }
 
-  Widget _buildLegend() {
+  Widget _buildLegend(BuildContext context) {
+    final colors = AppColors.of(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        _buildLegendItem(AppColors.grassLevel3, '3'),
+        _buildLegendItem(context, AppColors.grassLevel3, '3'),
         const SizedBox(width: 8),
-        _buildLegendItem(AppColors.grassLevel2, '2'),
+        _buildLegendItem(context, AppColors.grassLevel2, '2'),
         const SizedBox(width: 8),
-        _buildLegendItem(AppColors.grassLevel1, '1'),
+        _buildLegendItem(context, AppColors.grassLevel1, '1'),
         const SizedBox(width: 8),
-        _buildLegendItem(AppColors.grassLevel0, '0'),
+        _buildLegendItem(context, colors.calendarEmpty, '0'),
       ],
     );
   }
 
-  Widget _buildLegendItem(Color color, String label) {
+  Widget _buildLegendItem(BuildContext context, Color color, String label) {
+    final colors = AppColors.of(context);
     return Row(
       children: [
         Container(
@@ -237,19 +247,19 @@ class MealMonthCalendar extends ConsumerWidget {
         const SizedBox(width: 4),
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
-            color: AppColors.slate500,
+            color: colors.textSecondary,
           ),
         ),
       ],
     );
   }
 
-  Color _getGrassColor(int mealCount) {
+  Color _getGrassColor(int mealCount, AppColorsExtension colors) {
     switch (mealCount) {
       case 0:
-        return AppColors.grassLevel0;
+        return colors.calendarEmpty;
       case 1:
         return AppColors.grassLevel1;
       case 2:
@@ -269,7 +279,6 @@ Widget previewMealMonthCalendarStatic() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -283,6 +292,7 @@ Widget previewMealMonthCalendarStatic() {
 class _PreviewMealMonthCalendar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final startOfMonth = DateTime(today.year, today.month, 1);
@@ -314,7 +324,7 @@ class _PreviewMealMonthCalendar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -334,17 +344,17 @@ class _PreviewMealMonthCalendar extends StatelessWidget {
             children: [
               Text(
                 DateFormat('MMMM yyyy').format(today),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.slate800,
+                  color: colors.textPrimary,
                 ),
               ),
               Text(
                 '合計: ${totalMeals}食',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
-                  color: AppColors.slate500,
+                  color: colors.textSecondary,
                 ),
               ),
             ],
@@ -358,10 +368,10 @@ class _PreviewMealMonthCalendar extends StatelessWidget {
                 child: Center(
                   child: Text(
                     label,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.slate400,
+                      color: colors.textHint,
                     ),
                   ),
                 ),
@@ -383,15 +393,17 @@ class _PreviewMealMonthCalendar extends StatelessWidget {
                     return Expanded(child: Container());
                   }
 
-                  final date = DateTime(startOfMonth.year, startOfMonth.month, dayNumber);
+                  final date = DateTime(
+                      startOfMonth.year, startOfMonth.month, dayNumber);
                   final count = mockMealCounts[date] ?? 0;
                   final isToday = date == today;
                   final isFuture = date.isAfter(today);
 
-                  final color = isFuture ? Colors.transparent : _getGrassColor(count);
+                  final color =
+                      isFuture ? Colors.transparent : _getGrassColor(count, colors);
                   final textColor = isFuture
-                      ? AppColors.slate300
-                      : (count >= 2 ? Colors.white : AppColors.slate600);
+                      ? colors.textHint
+                      : (count >= 2 ? Colors.white : colors.textSecondary);
 
                   return Expanded(
                     child: AspectRatio(
@@ -402,7 +414,8 @@ class _PreviewMealMonthCalendar extends StatelessWidget {
                           color: isFuture ? Colors.transparent : color,
                           borderRadius: BorderRadius.circular(12),
                           border: isToday
-                              ? Border.all(color: AppColors.primary600, width: 3)
+                              ? Border.all(
+                                  color: AppColors.primary600, width: 3)
                               : null,
                         ),
                         child: Center(
@@ -428,13 +441,13 @@ class _PreviewMealMonthCalendar extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              _buildLegendItem(AppColors.grassLevel3, '3'),
+              _buildLegendItem(context, AppColors.grassLevel3, '3'),
               const SizedBox(width: 8),
-              _buildLegendItem(AppColors.grassLevel2, '2'),
+              _buildLegendItem(context, AppColors.grassLevel2, '2'),
               const SizedBox(width: 8),
-              _buildLegendItem(AppColors.grassLevel1, '1'),
+              _buildLegendItem(context, AppColors.grassLevel1, '1'),
               const SizedBox(width: 8),
-              _buildLegendItem(AppColors.grassLevel0, '0'),
+              _buildLegendItem(context, colors.calendarEmpty, '0'),
             ],
           ),
         ],
@@ -442,7 +455,8 @@ class _PreviewMealMonthCalendar extends StatelessWidget {
     );
   }
 
-  Widget _buildLegendItem(Color color, String label) {
+  Widget _buildLegendItem(BuildContext context, Color color, String label) {
+    final colors = AppColors.of(context);
     return Row(
       children: [
         Container(
@@ -456,19 +470,19 @@ class _PreviewMealMonthCalendar extends StatelessWidget {
         const SizedBox(width: 4),
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
-            color: AppColors.slate500,
+            color: colors.textSecondary,
           ),
         ),
       ],
     );
   }
 
-  Color _getGrassColor(int count) {
+  Color _getGrassColor(int count, AppColorsExtension colors) {
     switch (count) {
       case 0:
-        return AppColors.grassLevel0;
+        return colors.calendarEmpty;
       case 1:
         return AppColors.grassLevel1;
       case 2:

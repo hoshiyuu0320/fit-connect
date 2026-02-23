@@ -42,7 +42,8 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
         const SizedBox(height: 16),
 
         // Stats Card
-        _buildStatsCard(latestWeightAsync, goalAsync, achievementRateAsync, recordsAsync, weightStatsAsync),
+        _buildStatsCard(latestWeightAsync, goalAsync, achievementRateAsync,
+            recordsAsync, weightStatsAsync),
         const SizedBox(height: 24),
 
         // Chart
@@ -56,10 +57,13 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
   }
 
   Widget _buildPeriodFilter() {
+    final colors = AppColors.of(context);
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
-        children: PeriodFilter.values.where((p) => p != PeriodFilter.today).map((period) {
+        children: PeriodFilter.values
+            .where((p) => p != PeriodFilter.today)
+            .map((period) {
           final isSelected = period == _selectedPeriod;
           return Padding(
             padding: const EdgeInsets.only(right: 8),
@@ -70,7 +74,7 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
               selectedColor: AppColors.primary100,
               checkmarkColor: AppColors.primary600,
               labelStyle: TextStyle(
-                color: isSelected ? AppColors.primary600 : AppColors.slate600,
+                color: isSelected ? AppColors.primary600 : colors.textSecondary,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
             ),
@@ -87,12 +91,13 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
     AsyncValue<List<WeightRecord>> recordsAsync,
     AsyncValue<Map<String, double>> weightStatsAsync,
   ) {
+    final colors = AppColors.of(context);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.slate100),
+        border: Border.all(color: colors.border),
       ),
       child: latestWeightAsync.when(
         data: (latestWeight) {
@@ -101,8 +106,10 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
               final currentWeight = latestWeight?.weight ?? 0.0;
               final targetWeight = goal?.targetWeight ?? 0.0;
               // initial_weightがNULLの場合、記録の最古データをフォールバックに使用
-              final oldestRecordWeight = recordsAsync.valueOrNull?.lastOrNull?.weight;
-              final initialWeight = goal?.initialWeight ?? oldestRecordWeight ?? currentWeight;
+              final oldestRecordWeight =
+                  recordsAsync.valueOrNull?.lastOrNull?.weight;
+              final initialWeight =
+                  goal?.initialWeight ?? oldestRecordWeight ?? currentWeight;
               final vsStart = initialWeight - currentWeight;
 
               // 減量 or 増量の判定
@@ -140,14 +147,14 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
                         currentWeight.toStringAsFixed(1),
                         'kg',
                       ),
-                      Container(width: 1, height: 40, color: AppColors.slate100),
+                      Container(width: 1, height: 40, color: colors.border),
                       _buildTopStat(
                         '目標',
                         targetWeight.toStringAsFixed(1),
                         'kg',
                         isAccent: true,
                       ),
-                      Container(width: 1, height: 40, color: AppColors.slate100),
+                      Container(width: 1, height: 40, color: colors.border),
                       _buildTopStat(
                         statusLabel,
                         difference.toStringAsFixed(1),
@@ -194,16 +201,17 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
   }
 
   Widget _buildProgressBar(double rate) {
+    final colors = AppColors.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               '達成率',
               style: TextStyle(
-                color: AppColors.slate500,
+                color: colors.textSecondary,
                 fontSize: 12,
               ),
             ),
@@ -222,7 +230,7 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
           borderRadius: BorderRadius.circular(4),
           child: LinearProgressIndicator(
             value: rate / 100,
-            backgroundColor: AppColors.slate100,
+            backgroundColor: colors.border,
             valueColor: AlwaysStoppedAnimation<Color>(
               rate >= 100 ? AppColors.success : AppColors.primary600,
             ),
@@ -233,14 +241,16 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
     );
   }
 
-  Widget _buildChartCard(AsyncValue<List<WeightRecord>> recordsAsync, AsyncValue<Client?> goalAsync) {
+  Widget _buildChartCard(AsyncValue<List<WeightRecord>> recordsAsync,
+      AsyncValue<Client?> goalAsync) {
+    final colors = AppColors.of(context);
     return Container(
       height: 280,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.slate100),
+        border: Border.all(color: colors.border),
       ),
       child: recordsAsync.when(
         data: (records) {
@@ -249,16 +259,16 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(LucideIcons.scale, size: 48, color: AppColors.slate300),
+                  Icon(LucideIcons.scale, size: 48, color: colors.textHint),
                   const SizedBox(height: 12),
-                  const Text(
+                  Text(
                     '体重記録がありません',
-                    style: TextStyle(color: AppColors.slate400),
+                    style: TextStyle(color: colors.textHint),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     '体重を記録しましょう',
-                    style: TextStyle(color: AppColors.slate300, fontSize: 12),
+                    style: TextStyle(color: colors.textHint, fontSize: 12),
                   ),
                 ],
               ),
@@ -278,12 +288,12 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 '体重推移',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
-                  color: AppColors.slate800,
+                  color: colors.textPrimary,
                 ),
               ),
               const SizedBox(height: 16),
@@ -295,7 +305,7 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
                       drawVerticalLine: false,
                       horizontalInterval: 2,
                       getDrawingHorizontalLine: (value) => FlLine(
-                        color: AppColors.slate100,
+                        color: colors.border,
                         strokeWidth: 1,
                       ),
                     ),
@@ -307,8 +317,8 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
                           getTitlesWidget: (value, meta) {
                             return Text(
                               value.toStringAsFixed(0),
-                              style: const TextStyle(
-                                color: AppColors.slate400,
+                              style: TextStyle(
+                                color: colors.textHint,
                                 fontSize: 10,
                               ),
                             );
@@ -330,8 +340,8 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
                               padding: const EdgeInsets.only(top: 8),
                               child: Text(
                                 DateFormat('M/d').format(date),
-                                style: const TextStyle(
-                                  color: AppColors.slate400,
+                                style: TextStyle(
+                                  color: colors.textHint,
                                   fontSize: 10,
                                 ),
                               ),
@@ -352,7 +362,8 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
                     lineBarsData: [
                       // Weight line
                       LineChartBarData(
-                        spots: chartRecords.asMap().entries.map<FlSpot>((entry) {
+                        spots:
+                            chartRecords.asMap().entries.map<FlSpot>((entry) {
                           return FlSpot(
                             entry.key.toDouble(),
                             entry.value.weight,
@@ -398,7 +409,8 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
                       touchTooltipData: LineTouchTooltipData(
                         getTooltipItems: (touchedSpots) {
                           return touchedSpots.map<LineTooltipItem?>((spot) {
-                            if (spot.barIndex == 1) return null; // Skip target line
+                            if (spot.barIndex == 1)
+                              return null; // Skip target line
                             final record = chartRecords[spot.x.toInt()];
                             return LineTooltipItem(
                               '${record.weight.toStringAsFixed(1)} kg\n${DateFormat('M/d').format(record.recordedAt)}',
@@ -424,6 +436,7 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
   }
 
   Widget _buildRecordsList(AsyncValue<List<WeightRecord>> recordsAsync) {
+    final colors = AppColors.of(context);
     return recordsAsync.when(
       data: (records) {
         if (records.isEmpty) return const SizedBox.shrink();
@@ -431,71 +444,72 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               '最近の記録',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
-                color: AppColors.slate800,
+                color: colors.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
             ...records.take(10).map((record) => Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.slate100),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary50,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(
-                      LucideIcons.scale,
-                      size: 20,
-                      color: AppColors.primary600,
-                    ),
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: colors.border),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${record.weight.toStringAsFixed(1)} kg',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: AppColors.slate800,
-                          ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary50,
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        if (record.notes != null && record.notes!.isNotEmpty)
-                          Text(
-                            record.notes!,
-                            style: const TextStyle(
-                              color: AppColors.slate500,
-                              fontSize: 12,
+                        child: const Icon(
+                          LucideIcons.scale,
+                          size: 20,
+                          color: AppColors.primary600,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${record.weight.toStringAsFixed(1)} kg',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: colors.textPrimary,
+                              ),
                             ),
-                          ),
-                      ],
-                    ),
+                            if (record.notes != null &&
+                                record.notes!.isNotEmpty)
+                              Text(
+                                record.notes!,
+                                style: TextStyle(
+                                  color: colors.textSecondary,
+                                  fontSize: 12,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        DateFormat('M/d HH:mm').format(record.recordedAt),
+                        style: TextStyle(
+                          color: colors.textHint,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
-                  Text(
-                    DateFormat('M/d HH:mm').format(record.recordedAt),
-                    style: const TextStyle(
-                      color: AppColors.slate400,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            )),
+                )),
           ],
         );
       },
@@ -504,13 +518,15 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
     );
   }
 
-  Widget _buildTopStat(String label, String value, String unit, {bool isAccent = false}) {
+  Widget _buildTopStat(String label, String value, String unit,
+      {bool isAccent = false}) {
+    final colors = AppColors.of(context);
     return Column(
       children: [
         Text(
           label.toUpperCase(),
-          style: const TextStyle(
-            color: AppColors.slate400,
+          style: TextStyle(
+            color: colors.textHint,
             fontSize: 10,
             fontWeight: FontWeight.bold,
           ),
@@ -522,15 +538,15 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
               TextSpan(
                 text: value,
                 style: TextStyle(
-                  color: isAccent ? AppColors.primary600 : AppColors.slate800,
+                  color: isAccent ? AppColors.primary600 : colors.textPrimary,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               TextSpan(
                 text: unit,
-                style: const TextStyle(
-                  color: AppColors.slate400,
+                style: TextStyle(
+                  color: colors.textHint,
                   fontSize: 12,
                 ),
               ),
@@ -541,7 +557,8 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
     );
   }
 
-  Widget _buildPreviousComparisonBox(AsyncValue<List<WeightRecord>> recordsAsync) {
+  Widget _buildPreviousComparisonBox(
+      AsyncValue<List<WeightRecord>> recordsAsync) {
     return recordsAsync.when(
       data: (records) {
         if (records.length < 2) {
@@ -561,6 +578,7 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
   }
 
   Widget _buildPeriodStats(AsyncValue<Map<String, double>> statsAsync) {
+    final colors = AppColors.of(context);
     return statsAsync.when(
       data: (stats) {
         final average = stats['average'] ?? 0.0;
@@ -573,16 +591,16 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
         return Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: AppColors.slate50,
+            color: colors.surfaceDim,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 '期間統計',
                 style: TextStyle(
-                  color: AppColors.slate500,
+                  color: colors.textSecondary,
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
                 ),
@@ -591,7 +609,8 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
               Row(
                 children: [
                   Expanded(
-                    child: _buildMiniStat('平均', '${average.toStringAsFixed(1)}kg'),
+                    child:
+                        _buildMiniStat('平均', '${average.toStringAsFixed(1)}kg'),
                   ),
                   Expanded(
                     child: _buildMiniStat('最高', '${max.toStringAsFixed(1)}kg'),
@@ -600,7 +619,8 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
                     child: _buildMiniStat('最低', '${min.toStringAsFixed(1)}kg'),
                   ),
                   Expanded(
-                    child: _buildMiniStat('変動幅', '${range.toStringAsFixed(1)}kg'),
+                    child:
+                        _buildMiniStat('変動幅', '${range.toStringAsFixed(1)}kg'),
                   ),
                 ],
               ),
@@ -614,20 +634,21 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
   }
 
   Widget _buildMiniStat(String label, String value) {
+    final colors = AppColors.of(context);
     return Column(
       children: [
         Text(
           label,
-          style: const TextStyle(
-            color: AppColors.slate400,
+          style: TextStyle(
+            color: colors.textHint,
             fontSize: 10,
           ),
         ),
         const SizedBox(height: 2),
         Text(
           value,
-          style: const TextStyle(
-            color: AppColors.slate800,
+          style: TextStyle(
+            color: colors.textPrimary,
             fontSize: 13,
             fontWeight: FontWeight.bold,
           ),
@@ -636,7 +657,8 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
     );
   }
 
-  Widget _buildComparisonBox(String label, String value, {bool isPositive = true}) {
+  Widget _buildComparisonBox(String label, String value,
+      {bool isPositive = true}) {
     final color = isPositive ? AppColors.emerald600 : AppColors.rose800;
     final bgColor = isPositive ? AppColors.emerald50 : AppColors.rose100;
     final icon = isPositive ? LucideIcons.arrowDown : LucideIcons.arrowUp;
@@ -688,7 +710,6 @@ Widget previewWeightRecordScreenWithChart() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: AppColors.background,
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -704,6 +725,7 @@ Widget previewWeightRecordScreenWithChart() {
 class _PreviewWeightRecordScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     // Mock data
     final now = DateTime.now();
     final mockRecords = List.generate(
@@ -725,7 +747,9 @@ class _PreviewWeightRecordScreen extends StatelessWidget {
     final currentWeight = mockRecords.last.weight;
     final initialWeight = mockRecords.first.weight;
     final vsStart = initialWeight - currentWeight;
-    final achievementRate = ((initialWeight - currentWeight) / (initialWeight - targetWeight) * 100).clamp(0, 100);
+    final achievementRate =
+        ((initialWeight - currentWeight) / (initialWeight - targetWeight) * 100)
+            .clamp(0, 100);
 
     // 減量 or 増量の判定
     final isWeightLossGoal = initialWeight > targetWeight;
@@ -768,8 +792,11 @@ class _PreviewWeightRecordScreen extends StatelessWidget {
                   selectedColor: AppColors.primary100,
                   checkmarkColor: AppColors.primary600,
                   labelStyle: TextStyle(
-                    color: isSelected ? AppColors.primary600 : AppColors.slate600,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    color: isSelected
+                        ? AppColors.primary600
+                        : colors.textSecondary,
+                    fontWeight:
+                        isSelected ? FontWeight.bold : FontWeight.normal,
                   ),
                 ),
               );
@@ -782,20 +809,24 @@ class _PreviewWeightRecordScreen extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: colors.surface,
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: AppColors.slate100),
+            border: Border.all(color: colors.border),
           ),
           child: Column(
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildTopStat('現在', currentWeight.toStringAsFixed(1), 'kg'),
-                  Container(width: 1, height: 40, color: AppColors.slate100),
-                  _buildTopStat('目標', targetWeight.toStringAsFixed(1), 'kg', isAccent: true),
-                  Container(width: 1, height: 40, color: AppColors.slate100),
                   _buildTopStat(
+                      context, '現在', currentWeight.toStringAsFixed(1), 'kg'),
+                  Container(width: 1, height: 40, color: colors.border),
+                  _buildTopStat(
+                      context, '目標', targetWeight.toStringAsFixed(1), 'kg',
+                      isAccent: true),
+                  Container(width: 1, height: 40, color: colors.border),
+                  _buildTopStat(
+                    context,
                     statusLabel,
                     difference.toStringAsFixed(1),
                     'kg',
@@ -810,9 +841,10 @@ class _PreviewWeightRecordScreen extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
+                      Text(
                         '達成率',
-                        style: TextStyle(color: AppColors.slate500, fontSize: 12),
+                        style: TextStyle(
+                            color: colors.textSecondary, fontSize: 12),
                       ),
                       Text(
                         '${achievementRate.toStringAsFixed(1)}%',
@@ -829,8 +861,9 @@ class _PreviewWeightRecordScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(4),
                     child: LinearProgressIndicator(
                       value: achievementRate / 100,
-                      backgroundColor: AppColors.slate100,
-                      valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary600),
+                      backgroundColor: colors.border,
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                          AppColors.primary600),
                       minHeight: 8,
                     ),
                   ),
@@ -860,16 +893,16 @@ class _PreviewWeightRecordScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.slate50,
+                  color: colors.surfaceDim,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       '期間統計',
                       style: TextStyle(
-                        color: AppColors.slate500,
+                        color: colors.textSecondary,
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
                       ),
@@ -877,10 +910,14 @@ class _PreviewWeightRecordScreen extends StatelessWidget {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Expanded(child: _buildMiniStat('平均', '67.3kg')),
-                        Expanded(child: _buildMiniStat('最高', '70.0kg')),
-                        Expanded(child: _buildMiniStat('最低', '65.5kg')),
-                        Expanded(child: _buildMiniStat('変動幅', '4.5kg')),
+                        Expanded(
+                            child: _buildMiniStat(context, '平均', '67.3kg')),
+                        Expanded(
+                            child: _buildMiniStat(context, '最高', '70.0kg')),
+                        Expanded(
+                            child: _buildMiniStat(context, '最低', '65.5kg')),
+                        Expanded(
+                            child: _buildMiniStat(context, '変動幅', '4.5kg')),
                       ],
                     ),
                   ],
@@ -896,85 +933,87 @@ class _PreviewWeightRecordScreen extends StatelessWidget {
           height: 280,
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: colors.surface,
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: AppColors.slate100),
+            border: Border.all(color: colors.border),
           ),
-          child: _buildChart(mockRecords, targetWeight),
+          child: _buildChart(context, mockRecords, targetWeight),
         ),
         const SizedBox(height: 24),
 
         // Records List
-        const Text(
+        Text(
           '最近の記録',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 16,
-            color: AppColors.slate800,
+            color: colors.textPrimary,
           ),
         ),
         const SizedBox(height: 12),
         ...mockRecords.reversed.take(5).map((record) => Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.slate100),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppColors.primary50,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(
-                  LucideIcons.scale,
-                  size: 20,
-                  color: AppColors.primary600,
-                ),
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colors.border),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${record.weight.toStringAsFixed(1)} kg',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: AppColors.slate800,
-                      ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary50,
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    if (record.notes != null && record.notes!.isNotEmpty)
-                      Text(
-                        record.notes!,
-                        style: const TextStyle(
-                          color: AppColors.slate500,
-                          fontSize: 12,
+                    child: const Icon(
+                      LucideIcons.scale,
+                      size: 20,
+                      color: AppColors.primary600,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${record.weight.toStringAsFixed(1)} kg',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: colors.textPrimary,
+                          ),
                         ),
-                      ),
-                  ],
-                ),
+                        if (record.notes != null && record.notes!.isNotEmpty)
+                          Text(
+                            record.notes!,
+                            style: TextStyle(
+                              color: colors.textSecondary,
+                              fontSize: 12,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    DateFormat('M/d HH:mm').format(record.recordedAt),
+                    style: TextStyle(
+                      color: colors.textHint,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
               ),
-              Text(
-                DateFormat('M/d HH:mm').format(record.recordedAt),
-                style: const TextStyle(
-                  color: AppColors.slate400,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-        )),
+            )),
       ],
     );
   }
 
-  Widget _buildChart(List<WeightRecord> records, double targetWeight) {
+  Widget _buildChart(
+      BuildContext context, List<WeightRecord> records, double targetWeight) {
+    final colors = AppColors.of(context);
     final weights = records.map<double>((r) => r.weight).toList();
     weights.add(targetWeight);
     final minWeight = weights.reduce((a, b) => a < b ? a : b) - 2;
@@ -983,12 +1022,12 @@ class _PreviewWeightRecordScreen extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           '体重推移',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 16,
-            color: AppColors.slate800,
+            color: colors.textPrimary,
           ),
         ),
         const SizedBox(height: 16),
@@ -1000,7 +1039,7 @@ class _PreviewWeightRecordScreen extends StatelessWidget {
                 drawVerticalLine: false,
                 horizontalInterval: 2,
                 getDrawingHorizontalLine: (value) => FlLine(
-                  color: AppColors.slate100,
+                  color: colors.border,
                   strokeWidth: 1,
                 ),
               ),
@@ -1012,8 +1051,8 @@ class _PreviewWeightRecordScreen extends StatelessWidget {
                     getTitlesWidget: (value, meta) {
                       return Text(
                         value.toStringAsFixed(0),
-                        style: const TextStyle(
-                          color: AppColors.slate400,
+                        style: TextStyle(
+                          color: colors.textHint,
                           fontSize: 10,
                         ),
                       );
@@ -1035,8 +1074,8 @@ class _PreviewWeightRecordScreen extends StatelessWidget {
                         padding: const EdgeInsets.only(top: 8),
                         child: Text(
                           DateFormat('M/d').format(date),
-                          style: const TextStyle(
-                            color: AppColors.slate400,
+                          style: TextStyle(
+                            color: colors.textHint,
                             fontSize: 10,
                           ),
                         ),
@@ -1119,13 +1158,16 @@ class _PreviewWeightRecordScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTopStat(String label, String value, String unit, {bool isAccent = false}) {
+  Widget _buildTopStat(
+      BuildContext context, String label, String value, String unit,
+      {bool isAccent = false}) {
+    final colors = AppColors.of(context);
     return Column(
       children: [
         Text(
           label.toUpperCase(),
-          style: const TextStyle(
-            color: AppColors.slate400,
+          style: TextStyle(
+            color: colors.textHint,
             fontSize: 10,
             fontWeight: FontWeight.bold,
           ),
@@ -1137,15 +1179,15 @@ class _PreviewWeightRecordScreen extends StatelessWidget {
               TextSpan(
                 text: value,
                 style: TextStyle(
-                  color: isAccent ? AppColors.primary600 : AppColors.slate800,
+                  color: isAccent ? AppColors.primary600 : colors.textPrimary,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               TextSpan(
                 text: unit,
-                style: const TextStyle(
-                  color: AppColors.slate400,
+                style: TextStyle(
+                  color: colors.textHint,
                   fontSize: 12,
                 ),
               ),
@@ -1156,21 +1198,22 @@ class _PreviewWeightRecordScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMiniStat(String label, String value) {
+  Widget _buildMiniStat(BuildContext context, String label, String value) {
+    final colors = AppColors.of(context);
     return Column(
       children: [
         Text(
           label,
-          style: const TextStyle(
-            color: AppColors.slate400,
+          style: TextStyle(
+            color: colors.textHint,
             fontSize: 10,
           ),
         ),
         const SizedBox(height: 2),
         Text(
           value,
-          style: const TextStyle(
-            color: AppColors.slate800,
+          style: TextStyle(
+            color: colors.textPrimary,
             fontSize: 13,
             fontWeight: FontWeight.bold,
           ),
@@ -1179,7 +1222,8 @@ class _PreviewWeightRecordScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildComparisonBox(String label, String value, {bool isPositive = true}) {
+  Widget _buildComparisonBox(String label, String value,
+      {bool isPositive = true}) {
     final color = isPositive ? AppColors.emerald600 : AppColors.rose800;
     final bgColor = isPositive ? AppColors.emerald50 : AppColors.rose100;
     final icon = isPositive ? LucideIcons.arrowDown : LucideIcons.arrowUp;

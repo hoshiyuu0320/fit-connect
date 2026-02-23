@@ -17,6 +17,7 @@ class NoteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     final fileCount = note.fileUrls.length;
     final hasFiles = fileCount > 0;
 
@@ -24,11 +25,11 @@ class NoteCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: colors.surface,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: AppColors.slate200.withOpacity(0.6),
+              color: colors.shadow,
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -55,8 +56,8 @@ class NoteCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     note.title,
-                    style: const TextStyle(
-                      color: AppColors.slate800,
+                    style: TextStyle(
+                      color: colors.textPrimary,
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
@@ -72,8 +73,8 @@ class NoteCard extends StatelessWidget {
             // Date
             Text(
               _formatDateJa(note.createdAt),
-              style: const TextStyle(
-                color: AppColors.slate400,
+              style: TextStyle(
+                color: colors.textHint,
                 fontSize: 12,
               ),
             ),
@@ -83,8 +84,8 @@ class NoteCard extends StatelessWidget {
             // Content preview
             Text(
               note.content,
-              style: const TextStyle(
-                color: AppColors.slate600,
+              style: TextStyle(
+                color: colors.textSecondary,
                 fontSize: 14,
                 height: 1.5,
               ),
@@ -105,22 +106,22 @@ class NoteCard extends StatelessWidget {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.slate100,
+                      color: colors.border,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
+                        Icon(
                           LucideIcons.paperclip,
                           size: 14,
-                          color: AppColors.slate500,
+                          color: colors.textSecondary,
                         ),
                         const SizedBox(width: 4),
                         Text(
                           '添付ファイル${fileCount}件',
-                          style: const TextStyle(
-                            color: AppColors.slate500,
+                          style: TextStyle(
+                            color: colors.textSecondary,
                             fontSize: 12,
                           ),
                         ),
@@ -129,9 +130,9 @@ class NoteCard extends StatelessWidget {
                   )
                 else
                   const SizedBox.shrink(),
-                const Icon(
+                Icon(
                   LucideIcons.chevronRight,
-                  color: AppColors.slate300,
+                  color: colors.textHint,
                   size: 20,
                 ),
               ],
@@ -156,7 +157,6 @@ Widget previewNoteCardWithSessionNumber() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -189,7 +189,6 @@ Widget previewNoteCardWithoutFiles() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -219,7 +218,6 @@ Widget previewNoteCardLongContent() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),

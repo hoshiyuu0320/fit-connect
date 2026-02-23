@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
+import 'package:fit_connect_mobile/core/providers/theme_provider.dart';
 import 'package:fit_connect_mobile/features/home/presentation/screens/main_screen.dart';
 import 'package:fit_connect_mobile/features/auth/presentation/screens/welcome_screen.dart';
 import 'package:fit_connect_mobile/features/auth/presentation/screens/profile_setup_screen.dart';
@@ -12,14 +13,16 @@ import 'package:fit_connect_mobile/features/auth/providers/current_user_provider
 import 'package:fit_connect_mobile/features/auth/providers/registration_provider.dart';
 import 'package:fit_connect_mobile/services/notification_service.dart';
 
-class MyApp extends StatelessWidget {
+class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
       title: 'FIT-CONNECT',
       theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ref.watch(themeModeNotifierProvider),
       debugShowCheckedModeBanner: false,
       home: StreamBuilder<AuthState>(
         stream: Supabase.instance.client.auth.onAuthStateChange,
@@ -48,7 +51,6 @@ class _LoadingScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
-      backgroundColor: AppColors.background,
       body: Center(
         child: CircularProgressIndicator(
           color: AppColors.primary600,
@@ -121,7 +123,6 @@ class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen> {
       loading: () {
         // ローディング中
         return Scaffold(
-          backgroundColor: AppColors.background,
           body: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -133,7 +134,7 @@ class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen> {
                 Text(
                   '読み込み中...',
                   style: TextStyle(
-                    color: AppColors.slate500,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     fontSize: 14,
                   ),
                 ),

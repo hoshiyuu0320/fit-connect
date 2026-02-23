@@ -45,6 +45,7 @@ class WeeklyMiniCalendar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     final monday = _getThisMonday();
     final today = DateTime(
       DateTime.now().year,
@@ -57,7 +58,7 @@ class WeeklyMiniCalendar extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -71,12 +72,12 @@ class WeeklyMiniCalendar extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             '今週のワークアウト',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
+              color: colors.textPrimary,
             ),
           ),
           const SizedBox(height: 12),
@@ -120,10 +121,10 @@ class _DayCell extends StatelessWidget {
   final DateTime Function(String) parseDateStr;
   final DateTime today;
 
-  _CellStyle _resolveCellStyle() {
+  _CellStyle _resolveCellStyle(AppColorsExtension colors) {
     if (assignments == null || assignments!.isEmpty) {
       return _CellStyle(
-        backgroundColor: AppColors.slate50,
+        backgroundColor: colors.surfaceDim,
         icon: null,
         iconColor: null,
       );
@@ -143,20 +144,20 @@ class _DayCell extends StatelessWidget {
       );
     } else if (status == 'skipped') {
       return _CellStyle(
-        backgroundColor: AppColors.slate100,
+        backgroundColor: colors.border,
         icon: Icons.skip_next_outlined,
-        iconColor: AppColors.slate400,
+        iconColor: colors.textHint,
       );
     } else if (status == 'pending') {
       if (isFuture) {
         return _CellStyle(
-          backgroundColor: AppColors.indigo50,
+          backgroundColor: colors.accentIndigo,
           icon: Icons.fitness_center,
           iconColor: AppColors.indigo600,
         );
       } else {
         return _CellStyle(
-          backgroundColor: AppColors.orange50,
+          backgroundColor: colors.accentOrange,
           icon: Icons.hourglass_empty,
           iconColor: AppColors.orange500,
         );
@@ -164,7 +165,7 @@ class _DayCell extends StatelessWidget {
     }
 
     return _CellStyle(
-      backgroundColor: AppColors.slate50,
+      backgroundColor: colors.surfaceDim,
       icon: null,
       iconColor: null,
     );
@@ -172,15 +173,14 @@ class _DayCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = _resolveCellStyle();
+    final colors = AppColors.of(context);
+    final style = _resolveCellStyle(colors);
     final hasAssignments = assignments != null && assignments!.isNotEmpty;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2),
       child: GestureDetector(
-        onTap: hasAssignments
-            ? () => _showDayDetail(context)
-            : null,
+        onTap: hasAssignments ? () => _showDayDetail(context) : null,
         child: Container(
           decoration: BoxDecoration(
             color: style.backgroundColor,
@@ -198,7 +198,7 @@ class _DayCell extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
-                  color: isToday ? AppColors.primary600 : AppColors.slate500,
+                  color: isToday ? AppColors.primary600 : colors.textSecondary,
                 ),
               ),
               const SizedBox(height: 4),
@@ -207,7 +207,7 @@ class _DayCell extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: isToday ? AppColors.primary600 : AppColors.textPrimary,
+                  color: isToday ? AppColors.primary600 : colors.textPrimary,
                 ),
               ),
               const SizedBox(height: 4),
@@ -272,34 +272,37 @@ class _DayDetailSheet extends StatelessWidget {
     }
   }
 
-  Color _statusColor(String status) {
+  Color _statusColor(BuildContext context, String status) {
+    final colors = AppColors.of(context);
     switch (status) {
       case 'completed':
         return AppColors.emerald500;
       case 'skipped':
-        return AppColors.slate400;
+        return colors.textHint;
       case 'pending':
         return AppColors.indigo600;
       default:
-        return AppColors.slate500;
+        return colors.textSecondary;
     }
   }
 
-  Color _statusBg(String status) {
+  Color _statusBg(BuildContext context, String status) {
+    final colors = AppColors.of(context);
     switch (status) {
       case 'completed':
         return AppColors.emerald50;
       case 'skipped':
-        return AppColors.slate100;
+        return colors.border;
       case 'pending':
-        return AppColors.indigo50;
+        return colors.accentIndigo;
       default:
-        return AppColors.slate50;
+        return colors.surfaceDim;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
@@ -313,7 +316,7 @@ class _DayDetailSheet extends StatelessWidget {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.slate300,
+                  color: colors.textHint,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -323,10 +326,10 @@ class _DayDetailSheet extends StatelessWidget {
             // 日付タイトル
             Text(
               dateLabel,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
+                color: colors.textPrimary,
               ),
             ),
             const SizedBox(height: 16),
@@ -334,7 +337,7 @@ class _DayDetailSheet extends StatelessWidget {
             // アサインメント一覧
             for (int i = 0; i < assignments.length; i++) ...[
               if (i > 0) const SizedBox(height: 10),
-              _buildAssignmentTile(assignments[i]),
+              _buildAssignmentTile(context, assignments[i]),
             ],
           ],
         ),
@@ -342,7 +345,9 @@ class _DayDetailSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildAssignmentTile(WorkoutAssignment assignment) {
+  Widget _buildAssignmentTile(
+      BuildContext context, WorkoutAssignment assignment) {
+    final colors = AppColors.of(context);
     final plan = assignment.planInfo;
     final title = plan?.title ?? 'ワークアウト';
     final status = assignment.status;
@@ -350,9 +355,9 @@ class _DayDetailSheet extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.slate100),
+        border: Border.all(color: colors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -360,22 +365,22 @@ class _DayDetailSheet extends StatelessWidget {
           // タイトル + ステータスバッジ
           Row(
             children: [
-              Icon(LucideIcons.dumbbell, size: 16, color: AppColors.slate500),
+              Icon(LucideIcons.dumbbell, size: 16, color: colors.textSecondary),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: colors.textPrimary,
                   ),
                 ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: _statusBg(status),
+                  color: _statusBg(context, status),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -383,7 +388,7 @@ class _DayDetailSheet extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: _statusColor(status),
+                    color: _statusColor(context, status),
                   ),
                 ),
               ),
@@ -396,25 +401,25 @@ class _DayDetailSheet extends StatelessWidget {
             Row(
               children: [
                 if (plan.category.isNotEmpty) ...[
-                  Icon(LucideIcons.tag, size: 12, color: AppColors.slate400),
+                  Icon(LucideIcons.tag, size: 12, color: colors.textHint),
                   const SizedBox(width: 4),
                   Text(
                     plan.category,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.slate500,
+                      color: colors.textSecondary,
                     ),
                   ),
                 ],
                 if (plan.estimatedMinutes != null) ...[
                   const SizedBox(width: 12),
-                  Icon(LucideIcons.clock, size: 12, color: AppColors.slate400),
+                  Icon(LucideIcons.clock, size: 12, color: colors.textHint),
                   const SizedBox(width: 4),
                   Text(
                     '${plan.estimatedMinutes}分',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.slate500,
+                      color: colors.textSecondary,
                     ),
                   ),
                 ],
@@ -427,9 +432,9 @@ class _DayDetailSheet extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               plan.description!,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
-                color: AppColors.slate500,
+                color: colors.textSecondary,
               ),
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
@@ -439,21 +444,22 @@ class _DayDetailSheet extends StatelessWidget {
           // 種目リスト（あれば）
           if (assignment.exercises.isNotEmpty) ...[
             const SizedBox(height: 10),
-            const Divider(height: 1, thickness: 1, color: AppColors.slate100),
+            Divider(height: 1, thickness: 1, color: colors.border),
             const SizedBox(height: 10),
-            ...assignment.exercises
-                .toList()
-                .asMap()
-                .entries
-                .map((entry) => _buildExerciseRow(entry.value, entry.key < assignment.exercises.length - 1)),
+            ...assignment.exercises.toList().asMap().entries.map((entry) =>
+                _buildExerciseRow(context, entry.value,
+                    entry.key < assignment.exercises.length - 1)),
           ],
         ],
       ),
     );
   }
 
-  Widget _buildExerciseRow(WorkoutAssignmentExercise exercise, bool showBottomMargin) {
-    final hasActualSets = exercise.actualSets != null && exercise.actualSets!.isNotEmpty;
+  Widget _buildExerciseRow(BuildContext context,
+      WorkoutAssignmentExercise exercise, bool showBottomMargin) {
+    final colors = AppColors.of(context);
+    final hasActualSets =
+        exercise.actualSets != null && exercise.actualSets!.isNotEmpty;
 
     // 目標テキスト組み立て
     final targetParts = <String>[
@@ -480,25 +486,25 @@ class _DayDetailSheet extends StatelessWidget {
                 size: 14,
                 color: exercise.isCompleted
                     ? AppColors.emerald500
-                    : AppColors.slate300,
+                    : colors.textHint,
               ),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   exercise.exerciseName,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: colors.textPrimary,
                   ),
                 ),
               ),
               const SizedBox(width: 6),
               Text(
                 targetText,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
-                  color: AppColors.slate500,
+                  color: colors.textSecondary,
                 ),
               ),
             ],
@@ -513,7 +519,7 @@ class _DayDetailSheet extends StatelessWidget {
                 spacing: 8,
                 runSpacing: 2,
                 children: exercise.actualSets!
-                    .map((set) => _buildActualSetChip(set))
+                    .map((set) => _buildActualSetChip(context, set))
                     .toList(),
               ),
             ),
@@ -523,13 +529,15 @@ class _DayDetailSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildActualSetChip(ActualSet set) {
-    final weightText = set.weight > 0 ? '${_formatWeight(set.weight)}kg × ' : '';
+  Widget _buildActualSetChip(BuildContext context, ActualSet set) {
+    final colors = AppColors.of(context);
+    final weightText =
+        set.weight > 0 ? '${_formatWeight(set.weight)}kg × ' : '';
     return Text(
       'Set${set.setNumber}: $weightText${set.reps}回',
       style: TextStyle(
         fontSize: 11,
-        color: set.done ? AppColors.slate500 : AppColors.slate400,
+        color: set.done ? colors.textSecondary : colors.textHint,
       ),
     );
   }
@@ -626,7 +634,6 @@ Widget previewWeeklyMiniCalendar() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -705,7 +712,6 @@ Widget previewDayDetailSheetCompleted() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: AppColors.background,
       body: SafeArea(
         child: _DayDetailSheet(
           dateLabel: '${today.month}月${today.day}日(月)',
@@ -773,7 +779,6 @@ Widget previewDayDetailSheetPending() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: AppColors.background,
       body: SafeArea(
         child: _DayDetailSheet(
           dateLabel: '${tomorrow.month}月${tomorrow.day}日(火)',

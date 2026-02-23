@@ -19,7 +19,10 @@ class WorkoutAssignmentExercise {
   final double? targetWeight;
   @JsonKey(name: 'order_index')
   final int orderIndex;
-  @JsonKey(name: 'actual_sets', fromJson: _actualSetsFromJson, toJson: _actualSetsToJson)
+  @JsonKey(
+      name: 'actual_sets',
+      fromJson: _actualSetsFromJson,
+      toJson: _actualSetsToJson)
   final List<ActualSet>? actualSets;
   @JsonKey(name: 'is_completed')
   final bool isCompleted;
