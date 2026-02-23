@@ -167,12 +167,21 @@ class WorkoutScreenNotifier extends _$WorkoutScreenNotifier {
   Future<void> submitCompletion(
     String assignmentId, {
     String? clientFeedback,
+    int? calories,
   }) async {
     final repo = ref.read(workoutRepositoryProvider);
-    await repo.completeAssignment(assignmentId, clientFeedback: clientFeedback);
+    await repo.completeAssignment(
+      assignmentId,
+      clientFeedback: clientFeedback,
+      calories: calories,
+    );
 
     _updateAssignment(assignmentId, (a) {
-      return a.copyWith(status: 'completed', finishedAt: DateTime.now());
+      return a.copyWith(
+        status: 'completed',
+        finishedAt: DateTime.now(),
+        calories: calories,
+      );
     });
   }
 

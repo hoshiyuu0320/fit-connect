@@ -109,6 +109,7 @@ class WorkoutRepository {
   Future<void> completeAssignment(
     String assignmentId, {
     String? clientFeedback,
+    int? calories,
   }) async {
     final updateData = <String, dynamic>{
       'status': 'completed',
@@ -117,6 +118,10 @@ class WorkoutRepository {
 
     if (clientFeedback != null && clientFeedback.isNotEmpty) {
       updateData['client_feedback'] = clientFeedback;
+    }
+
+    if (calories != null) {
+      updateData['calories'] = calories;
     }
 
     await SupabaseService.client

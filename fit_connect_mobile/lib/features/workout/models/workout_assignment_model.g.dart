@@ -38,6 +38,7 @@ WorkoutAssignment _$WorkoutAssignmentFromJson(Map<String, dynamic> json) =>
           .fromJson(json['updated_at'] as String?),
       trainerNote: json['trainer_note'] as String?,
       clientFeedback: json['client_feedback'] as String?,
+      calories: (json['calories'] as num?)?.toInt(),
       startedAt: const NullableDateTimeConverter()
           .fromJson(json['started_at'] as String?),
       finishedAt: const NullableDateTimeConverter()
@@ -67,6 +68,7 @@ Map<String, dynamic> _$WorkoutAssignmentToJson(WorkoutAssignment instance) =>
           const NullableDateTimeConverter().toJson(instance.updatedAt),
       'trainer_note': instance.trainerNote,
       'client_feedback': instance.clientFeedback,
+      'calories': instance.calories,
       'started_at':
           const NullableDateTimeConverter().toJson(instance.startedAt),
       'finished_at':

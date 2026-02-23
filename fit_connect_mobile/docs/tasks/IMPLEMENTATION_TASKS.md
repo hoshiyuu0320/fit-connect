@@ -3,7 +3,7 @@
 **作成日**: 2025年12月30日
 **バージョン**: 3.7
 **進捗状況**: 全体 99% 完了
-**最終更新**: 2026年2月23日 - ダークモード対応実装完了
+**最終更新**: 2026年2月23日 - タグ入力UX改善（クイックアクション＋構造化フォーム）
 
 ---
 
@@ -186,6 +186,25 @@
 ## 最新の変更履歴
 
 ### 2026年2月23日
+
+#### 17. タグ入力UX改善
+
+**目的**: メッセージチャットでのタグ入力（#体重, #食事, #運動）をクイックアクションボタンと構造化フォームで直感的にする。既存の#手入力フローは完全維持。
+
+**新規作成ファイル**:
+- `lib/features/messages/presentation/widgets/quick_action_bar.dart` — 体重/食事/運動の3チップバー（QuickActionBar）
+- `lib/features/messages/presentation/widgets/structured_tag_form.dart` — 構造化タグ入力フォーム（StructuredTagForm, WeightTagForm, MealTagForm, ExerciseTagForm）
+
+**改修ファイル**:
+- `lib/features/messages/presentation/widgets/chat_input.dart` — _activeFormType State変数追加、QuickActionBar/StructuredTagForm組み込み、_insertComposedText()メソッド追加、プレビュー関数追加
+
+**機能詳細**:
+- クイックアクションバー: 入力欄上部に常時表示、チップタップで構造化フォーム展開
+- 体重フォーム: 数値入力(20-300kg範囲チェック)+コメント → `#体重 65.5kg コメント`
+- 食事フォーム: セグメント(朝食/昼食/夕食/間食、時間帯自動選択)+内容 → `#食事:朝食 トースト`
+- 運動フォーム: セグメント(筋トレ/有酸素)+種目+時間+カロリー → `#運動:筋トレ ベンチプレス 60分 350kcal`
+- 全フォーム: リアルタイムプレビュー、挿入ボタンでTextFieldにテキスト挿入
+- ダークモード完全対応
 
 #### 16. ダークモード対応
 
