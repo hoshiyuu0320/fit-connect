@@ -1,9 +1,9 @@
 # FIT-CONNECT Web - 実装タスク一覧
 
 **作成日**: 2026年2月1日
-**バージョン**: 2.3
+**バージョン**: 2.4
 **進捗状況**: 全体 100% 完了
-**最終更新**: 2026年2月23日 - ダッシュボード・メッセージUI全面ブラッシュアップ
+**最終更新**: 2026年2月23日 - セッション種別プルダウン化 + ワークアウトプラン紐付け
 
 ---
 
@@ -75,7 +75,31 @@
 
 ## 最新の変更履歴
 
-### 2026年2月23日
+### 2026年2月23日（セッション種別プルダウン + ワークアウトプラン紐付け）
+
+- セッション種別プルダウン化 + ワークアウトプラン紐付け
+  - `src/types/session.ts` **新規作成**: SESSION_TYPE_OPTIONS 定数定義（5種別 + SessionTypeValue型）
+  - `src/lib/supabase/getSessionWorkoutPlans.ts` **新規作成**: plan_type='session' のワークアウトプラン取得関数
+  - `src/lib/supabase/getSessions.ts`: Session型に workout_assignments フィールド追加、selectクエリにworkout_assignments JOIN追加
+  - `src/app/api/workout-assignments/route.ts`: POST bodyに sessionId パラメータ追加、insert時にsession_id設定、sessionId指定時はcreateSessionスキップ
+  - `src/components/schedule/SessionModal.tsx`: セッション種別をSelect（プルダウン）に変更、「その他」時のみ自由テキスト入力、ワークアウトプラン選択UI追加（トレーニング系選択時のみ表示）、プラン選択時にestimated_minutesを所要時間に自動反映、保存時にworkout_assignment自動作成
+  - `src/components/schedule/CalendarEvent.tsx`: 色分け優先度バグ修正（有酸素→ストレッチ→カウンセリング→トレーニングの順にチェック）、週/日ビューにプラン名表示
+
+### 2026年2月23日（スケジュールブラッシュアップ）
+
+- スケジュール機能ブラッシュアップ: 繰り返し予約 + ドラッグ&ドロップ
+  - **DBマイグレーション**: `sessions` テーブルに `recurrence_group_id`（UUID, nullable）カラム追加 + インデックス
+  - `getSessions.ts`: Session型に `recurrence_group_id` フィールド追加
+  - `createRecurringSessions.ts` **新規作成**: 繰り返しセッション一括INSERT（毎週/隔週、回数指定/日付指定）
+  - `deleteRecurringSessionsFromDate.ts` **新規作成**: グループ一括DELETE（指定日以降）
+  - `updateSession.ts`: `session_date`/`duration_minutes`の条件分岐を`!== undefined`に修正
+  - `RecurrenceDeleteDialog.tsx` **新規作成**: 「このセッションのみ/以降すべて」選択ダイアログ
+  - `SessionModal.tsx`: 繰り返し設定UI追加（トグル+パターン+終了条件）、繰り返し削除フロー対応
+  - `TimeSlotCell.tsx` **新規作成**: droppable時間スロットセル（`@dnd-kit/core`）
+  - `CalendarEvent.tsx`: `useDraggable`適用、isDragging半透明化、DragOverlay対応
+  - `CalendarView.tsx`: `DndContext`統合、`MonthDayCell`（droppable）、`handleDragEnd`（日時更新）、`DragOverlay`
+
+### 2026年2月23日（UI全面ブラッシュアップ）
 
 - ダッシュボード・メッセージUI全面ブラッシュアップ
   - **ダッシュボード**

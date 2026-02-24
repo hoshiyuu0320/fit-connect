@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { trainerId, clientId, planId, assignedDate, ticketId, sessionTime, createSession } = body
+    const { trainerId, clientId, planId, assignedDate, ticketId, sessionTime, createSession, sessionId } = body
 
     if (!trainerId || !clientId || !planId || !assignedDate) {
       return NextResponse.json(
@@ -84,6 +84,7 @@ export async function POST(request: NextRequest) {
           plan_id: planId,
           assigned_date: assignedDate,
           status: 'pending',
+          session_id: sessionId || null,
         },
       ])
       .select()
@@ -130,8 +131,8 @@ export async function POST(request: NextRequest) {
       if (insertError) throw insertError
     }
 
-    // createSession=true の場合、sessions テーブルにレコードを作成
-    if (createSession === true) {
+    // createSession=true かつ sessionId が渡されていない場合、sessions テーブルにレコードを作成
+    if (createSession === true && !sessionId) {
       // プランの estimated_minutes を取得
       const { data: plan } = await supabaseAdmin
         .from('workout_plans')

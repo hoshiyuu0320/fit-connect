@@ -16,8 +16,8 @@ export const updateSession = async (params: UpdateSessionParams) => {
     updated_at: new Date().toISOString(),
   };
 
-  if (params.session_date) updates.session_date = params.session_date.toISOString();
-  if (params.duration_minutes) updates.duration_minutes = params.duration_minutes;
+  if (params.session_date !== undefined) updates.session_date = params.session_date.toISOString();
+  if (params.duration_minutes !== undefined) updates.duration_minutes = params.duration_minutes;
   if (params.status) updates.status = params.status;
   if (params.session_type !== undefined) updates.session_type = params.session_type;
   if (params.memo !== undefined) updates.memo = params.memo;
