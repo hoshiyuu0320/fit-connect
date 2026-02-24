@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isSameMonth, isSameDay, addMonths, addDays, getDay } from 'date-fns';
+import { format, startOfMonth, endOfMonth, startOfWeek, isSameMonth, isSameDay, addMonths, addDays, getDay } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Plus, Search } from 'lucide-react';
 import { DndContext, DragOverlay, closestCenter, DragEndEvent, DragStartEvent, useDroppable, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
@@ -77,8 +77,9 @@ export default function CalendarView() {
 
     const fetchSessions = useCallback(async () => {
         if (!currentDate) return;
-        const start = startOfWeek(startOfMonth(currentDate));
-        const end = endOfWeek(endOfMonth(currentDate));
+        // 月ビューの表示グリッド（42日間・月曜始まり）と完全一致させる
+        const start = startOfWeek(startOfMonth(currentDate), { weekStartsOn: 1 });
+        const end = addDays(start, 41);
         try {
             const data = await getSessions(start, end);
             setSessions(data);
