@@ -20,6 +20,7 @@ interface TicketSelectModalProps {
   planTitle: string
   assignedDate: string // "YYYY-MM-DD"
   estimatedMinutes: number | null
+  defaultSessionTime?: string // "HH:mm" - ドロップ先の時刻
   onConfirm: (ticketId: string | null, sessionTime: string) => void
   onCancel: () => void
 }
@@ -30,6 +31,7 @@ export default function TicketSelectModal({
   planTitle,
   assignedDate,
   estimatedMinutes,
+  defaultSessionTime,
   onConfirm,
   onCancel,
 }: TicketSelectModalProps) {
@@ -65,9 +67,9 @@ export default function TicketSelectModal({
   useEffect(() => {
     if (isOpen) {
       setSelectedTicketId(null)
-      setSessionTime('10:00')
+      setSessionTime(defaultSessionTime ?? '10:00')
     }
-  }, [isOpen])
+  }, [isOpen, defaultSessionTime])
 
   const formatDate = (dateStr: string): string => {
     const date = new Date(dateStr + 'T00:00:00')
