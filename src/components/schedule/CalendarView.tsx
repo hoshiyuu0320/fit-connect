@@ -3,14 +3,21 @@
 import { useState, useEffect, useCallback } from 'react';
 import { format, startOfMonth, endOfMonth, startOfWeek, isSameMonth, isSameDay, addMonths, addDays, getDay } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Plus, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Search, ClipboardList } from 'lucide-react';
 import { DndContext, DragOverlay, closestCenter, DragEndEvent, DragStartEvent, useDroppable, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { supabase } from '@/lib/supabase';
 import { getSessions, Session } from '@/lib/supabase/getSessions';
 import { updateSession } from '@/lib/supabase/updateSession';
+import { ClientSelector } from '@/components/workout/ClientSelector';
+import { TemplatePanel } from '@/components/workout/TemplatePanel';
+import TicketSelectModal from '@/components/workout/TicketSelectModal';
 import SessionModal from './SessionModal';
 import { CalendarEvent } from './CalendarEvent';
 import { TimeSlotCell } from './TimeSlotCell';
+import { AssignmentMiniCard } from './AssignmentMiniCard';
+import type { WorkoutAssignment, WorkoutPlan } from '@/types/workout';
 
 type ViewMode = 'day' | 'week' | 'month';
 
@@ -63,6 +70,18 @@ export default function CalendarView() {
     const [searchQuery, setSearchQuery] = useState('');
     const [draggedSession, setDraggedSession] = useState<Session | null>(null);
 
+    // 追加 state
+    const [trainerId, setTrainerId] = useState('');
+    const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+    const [isWorkoutPanelOpen, setIsWorkoutPanelOpen] = useState(false);
+    const [templates, setTemplates] = useState<WorkoutPlan[]>([]);
+    const [assignments, setAssignments] = useState<WorkoutAssignment[]>([]);
+    const [draggedTemplate, setDraggedTemplate] = useState<WorkoutPlan | null>(null);
+    const [pendingDrop, setPendingDrop] = useState<{ planId: string; date: string; hour?: number } | null>(null);
+    const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
+    const [isClientSelectModalOpen, setIsClientSelectModalOpen] = useState(false);
+    const [pendingTemplateDrop, setPendingTemplateDrop] = useState<{ planId: string; date: string; hour?: number } | null>(null);
+
     const sensors = useSensors(
         useSensor(PointerSensor, {
             activationConstraint: {
@@ -73,6 +92,15 @@ export default function CalendarView() {
 
     useEffect(() => {
         setCurrentDate(new Date());
+    }, []);
+
+    // トレーナーID取得
+    useEffect(() => {
+        const fetchUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) setTrainerId(user.id);
+        };
+        fetchUser();
     }, []);
 
     const fetchSessions = useCallback(async () => {
@@ -91,6 +119,51 @@ export default function CalendarView() {
     useEffect(() => {
         fetchSessions();
     }, [fetchSessions]);
+
+    // テンプレート取得
+    const fetchTemplates = useCallback(async () => {
+        if (!trainerId) return;
+        try {
+            const res = await fetch(`/api/workout-plans?trainerId=${trainerId}`);
+            if (res.ok) {
+                const json = await res.json();
+                setTemplates(json.data || []);
+            }
+        } catch (error) {
+            console.error('テンプレート取得エラー:', error);
+        }
+    }, [trainerId]);
+
+    useEffect(() => {
+        fetchTemplates();
+    }, [fetchTemplates]);
+
+    // アサインメント取得（クライアント選択時のみ）
+    const fetchAssignments = useCallback(async () => {
+        if (!trainerId || !selectedClientId) {
+            setAssignments([]);
+            return;
+        }
+        try {
+            const start = startOfWeek(startOfMonth(currentDate!), { weekStartsOn: 1 });
+            const end = addDays(start, 41);
+            const weekStart = format(start, 'yyyy-MM-dd');
+            const weekEnd = format(end, 'yyyy-MM-dd');
+            const res = await fetch(
+                `/api/workout-assignments?trainerId=${trainerId}&clientId=${selectedClientId}&weekStart=${weekStart}&weekEnd=${weekEnd}`
+            );
+            if (res.ok) {
+                const json = await res.json();
+                setAssignments(json.data || []);
+            }
+        } catch (error) {
+            console.error('アサインメント取得エラー:', error);
+        }
+    }, [trainerId, selectedClientId, currentDate]);
+
+    useEffect(() => {
+        fetchAssignments();
+    }, [fetchAssignments]);
 
     const navigateDate = (direction: 'prev' | 'next' | 'today') => {
         if (direction === 'today') {
@@ -130,64 +203,223 @@ export default function CalendarView() {
         return Array.from({ length: 7 }, (_, i) => addDays(start, i));
     }, [viewMode, currentDate]);
 
+    // クライアントフィルタ対応
     const filteredSessions = useCallback(() => {
-        if (!searchQuery) return sessions;
-        const lower = searchQuery.toLowerCase();
-        return sessions.filter(s =>
-            s.clients?.name.toLowerCase().includes(lower) ||
-            s.session_type?.toLowerCase().includes(lower)
-        );
-    }, [sessions, searchQuery]);
+        let result = sessions;
+        // クライアント選択フィルタ
+        if (selectedClientId) {
+            result = result.filter(s => s.client_id === selectedClientId);
+        }
+        // テキスト検索
+        if (searchQuery) {
+            const lower = searchQuery.toLowerCase();
+            result = result.filter(s =>
+                s.clients?.name.toLowerCase().includes(lower) ||
+                s.session_type?.toLowerCase().includes(lower)
+            );
+        }
+        return result;
+    }, [sessions, searchQuery, selectedClientId]);
 
     // D&D handlers
     const handleDragStart = (event: DragStartEvent) => {
         const { active } = event;
-        if (active.data.current?.type === 'session') {
-            const session = sessions.find(s => s.id === active.data.current?.sessionId);
+        const activeData = active.data.current;
+        if (activeData?.type === 'session') {
+            const session = sessions.find(s => s.id === activeData.sessionId);
             if (session) setDraggedSession(session);
+        }
+        if (activeData?.type === 'template') {
+            const plan = templates.find(t => t.id === activeData.planId);
+            if (plan) setDraggedTemplate(plan);
         }
     };
 
     const handleDragEnd = async (event: DragEndEvent) => {
         setDraggedSession(null);
+        setDraggedTemplate(null);
         const { active, over } = event;
         if (!over || !active.data.current) return;
 
-        const sessionId = active.data.current.sessionId as string;
-        const session = sessions.find(s => s.id === sessionId);
-        if (!session) return;
-
+        const activeData = active.data.current;
         const overData = over.data.current;
         if (!overData) return;
 
-        const originalDate = new Date(session.session_date);
-        let newDate: Date;
+        // ===== 既存: セッション移動 =====
+        if (activeData.type === 'session') {
+            const sessionId = activeData.sessionId as string;
+            const session = sessions.find(s => s.id === sessionId);
+            if (!session) return;
 
-        if (overData.type === 'timeSlot') {
-            const [year, month, day] = (overData.date as string).split('-').map(Number);
-            newDate = new Date(year, month - 1, day, overData.hour as number, originalDate.getMinutes());
-        } else if (overData.type === 'monthDay') {
-            const [year, month, day] = (overData.date as string).split('-').map(Number);
-            newDate = new Date(year, month - 1, day, originalDate.getHours(), originalDate.getMinutes());
-        } else {
+            const originalDate = new Date(session.session_date);
+            let newDate: Date;
+
+            if (overData.type === 'timeSlot') {
+                const [year, month, day] = (overData.date as string).split('-').map(Number);
+                newDate = new Date(year, month - 1, day, overData.hour as number, originalDate.getMinutes());
+            } else if (overData.type === 'monthDay') {
+                const [year, month, day] = (overData.date as string).split('-').map(Number);
+                newDate = new Date(year, month - 1, day, originalDate.getHours(), originalDate.getMinutes());
+            } else {
+                return;
+            }
+
+            if (newDate.getTime() === originalDate.getTime()) return;
+
+            // 楽観的更新: ローカルstateを即座に更新して複製表示を防ぐ
+            setSessions(prev => prev.map(s =>
+                s.id === sessionId
+                    ? { ...s, session_date: newDate.toISOString() }
+                    : s
+            ));
+
+            try {
+                await updateSession({ id: sessionId, session_date: newDate });
+                await fetchSessions();
+            } catch (error) {
+                console.error('Failed to move session:', error);
+                await fetchSessions();
+            }
             return;
         }
 
-        if (newDate.getTime() === originalDate.getTime()) return;
+        // ===== 新規: テンプレート → カレンダーにD&D =====
+        if (activeData.type === 'template' && (overData.type === 'timeSlot' || overData.type === 'monthDay')) {
+            const plan = templates.find(t => t.id === activeData.planId);
+            if (!plan) return;
 
-        // 楽観的更新: ローカルstateを即座に更新して複製表示を防ぐ
-        setSessions(prev => prev.map(s =>
-            s.id === sessionId
-                ? { ...s, session_date: newDate.toISOString() }
-                : s
-        ));
+            const dropDate = overData.date as string;
+            const dropHour = overData.type === 'timeSlot' ? (overData.hour as number) : undefined;
 
+            if (!selectedClientId) {
+                setPendingTemplateDrop({ planId: plan.id, date: dropDate, hour: dropHour });
+                setIsClientSelectModalOpen(true);
+                return;
+            }
+
+            if (plan.plan_type === 'session') {
+                setPendingDrop({ planId: plan.id, date: dropDate, hour: dropHour });
+                setIsTicketModalOpen(true);
+            } else {
+                // 宿題: 即時作成
+                try {
+                    const res = await fetch('/api/workout-assignments', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            trainerId,
+                            clientId: selectedClientId,
+                            planId: plan.id,
+                            assignedDate: dropDate,
+                        }),
+                    });
+                    if (res.ok) {
+                        await fetchAssignments();
+                    }
+                } catch (error) {
+                    console.error('アサインメント作成エラー:', error);
+                }
+            }
+            return;
+        }
+
+        // ===== 新規: アサインメント日付移動 =====
+        if (activeData.type === 'assignment' && (overData.type === 'timeSlot' || overData.type === 'monthDay')) {
+            const newDate = overData.date as string;
+            try {
+                const res = await fetch(`/api/workout-assignments/${activeData.assignmentId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ assignedDate: newDate }),
+                });
+                if (res.ok) {
+                    await fetchAssignments();
+                }
+            } catch (error) {
+                console.error('アサインメント更新エラー:', error);
+            }
+            return;
+        }
+    };
+
+    // TicketSelectModal ハンドラ
+    const handleTicketConfirm = async (ticketId: string | null, sessionTime: string) => {
+        if (!pendingDrop || !selectedClientId) return;
+        setIsTicketModalOpen(false);
         try {
-            await updateSession({ id: sessionId, session_date: newDate });
-            await fetchSessions();
+            const res = await fetch('/api/workout-assignments', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    trainerId,
+                    clientId: selectedClientId,
+                    planId: pendingDrop.planId,
+                    assignedDate: pendingDrop.date,
+                    ticketId,
+                    sessionTime,
+                    createSession: true,
+                }),
+            });
+            if (res.ok) {
+                await fetchAssignments();
+                await fetchSessions();
+            } else {
+                const json = await res.json();
+                alert(json.error || 'エラーが発生しました');
+            }
         } catch (error) {
-            console.error('Failed to move session:', error);
-            await fetchSessions(); // エラー時はサーバーデータで復元
+            console.error('セッション付きアサインメント作成エラー:', error);
+        } finally {
+            setPendingDrop(null);
+        }
+    };
+
+    const handleTicketCancel = () => {
+        setIsTicketModalOpen(false);
+        setPendingDrop(null);
+    };
+
+    const handleDeleteAssignment = async (id: string) => {
+        try {
+            const res = await fetch(`/api/workout-assignments/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                setAssignments(prev => prev.filter(a => a.id !== id));
+            }
+        } catch (error) {
+            console.error('アサインメント削除エラー:', error);
+        }
+    };
+
+    const handleClientSelectForDrop = async (clientId: string) => {
+        setSelectedClientId(clientId);
+        setIsClientSelectModalOpen(false);
+        if (!pendingTemplateDrop) return;
+        const { planId, date, hour } = pendingTemplateDrop;
+        setPendingTemplateDrop(null);
+        const plan = templates.find(t => t.id === planId);
+        if (!plan) return;
+
+        if (plan.plan_type === 'session') {
+            setPendingDrop({ planId: plan.id, date, hour });
+            setIsTicketModalOpen(true);
+        } else {
+            try {
+                const res = await fetch('/api/workout-assignments', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        trainerId,
+                        clientId,
+                        planId: plan.id,
+                        assignedDate: date,
+                    }),
+                });
+                if (res.ok) {
+                    await fetchAssignments();
+                }
+            } catch (error) {
+                console.error('アサインメント作成エラー:', error);
+            }
         }
     };
 
@@ -215,6 +447,28 @@ export default function CalendarView() {
                         })}
                     </div>
                 </div>
+
+                {/* All-day エリア (アサインメント) */}
+                {selectedClientId && days.some(day => assignments.some(a => a.assigned_date === format(day, 'yyyy-MM-dd') && a.plan?.plan_type !== 'session')) && (
+                    <div className="flex border-b border-gray-200 bg-gray-50/30">
+                        <div className="w-16 flex-shrink-0 border-r border-gray-100 flex items-center justify-center">
+                            <span className="text-[10px] text-gray-400">終日</span>
+                        </div>
+                        <div className={`flex-1 grid ${viewMode === 'day' ? 'grid-cols-1' : 'grid-cols-7'}`}>
+                            {days.map((day, i) => {
+                                const dayStr = format(day, 'yyyy-MM-dd');
+                                const dayAssignments = assignments.filter(a => a.assigned_date === dayStr && a.plan?.plan_type !== 'session');
+                                return (
+                                    <div key={i} className="px-1 py-1 border-r border-gray-100 last:border-0 min-h-[32px] space-y-0.5">
+                                        {dayAssignments.map(a => (
+                                            <AssignmentMiniCard key={a.id} assignment={a} viewMode={viewMode} onDelete={handleDeleteAssignment} />
+                                        ))}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
 
                 {/* Grid Scrollable Area */}
                 <div className="flex-1 overflow-y-auto relative">
@@ -325,6 +579,7 @@ export default function CalendarView() {
                         const isCurrentMonth = isSameMonth(date, currentDate);
                         const dayAppts = filteredSessions().filter(s => isSameDay(new Date(s.session_date), date));
                         const today = isSameDay(date, new Date());
+                        const dayAssignments = assignments.filter(a => a.assigned_date === format(date, 'yyyy-MM-dd'));
 
                         return (
                             <MonthDayCell
@@ -334,6 +589,10 @@ export default function CalendarView() {
                                 isToday={today}
                                 onClick={() => handleSlotClick(date, 9)}
                             >
+                                {/* アサインメントカードをセッションカードの前に表示 */}
+                                {dayAssignments.map(a => (
+                                    <AssignmentMiniCard key={a.id} assignment={a} viewMode="month" onDelete={handleDeleteAssignment} />
+                                ))}
                                 {dayAppts.map(appt => (
                                     <CalendarEvent key={appt.id} event={appt} onClick={handleSessionClick} viewMode="month" />
                                 ))}
@@ -358,55 +617,94 @@ export default function CalendarView() {
         >
             <div className="flex flex-col h-full bg-gray-50/50 selection:bg-blue-100">
                 {/* Top Header */}
-                <header className="h-16 flex items-center justify-between px-6 border-b border-gray-100 bg-white flex-shrink-0 z-30">
-                    <div className="flex items-center gap-6">
-                        <h1 className="text-xl font-semibold tracking-tight w-[190px]">
+                <header className="flex flex-col border-b border-gray-100 bg-white flex-shrink-0 z-30">
+                    {/* 上段: 日付 + セッション追加 + ワークアウト */}
+                    <div className="flex items-center justify-between px-6 py-2.5">
+                        <h1 className="text-lg font-semibold tracking-tight">
                             {format(currentDate, 'yyyy年M月', { locale: ja })}
                         </h1>
-
-                        <div className="flex items-center bg-gray-100 rounded-lg p-1 gap-1">
-                            <button onClick={() => navigateDate('prev')} className="p-1 hover:bg-white hover:shadow-sm rounded-md transition-all text-gray-600"><ChevronLeft size={16} /></button>
-                            <button onClick={() => navigateDate('today')} className="px-3 py-1 text-xs font-medium text-gray-700 hover:bg-white hover:shadow-sm rounded-md transition-all">{TODAY_LABELS[viewMode]}</button>
-                            <button onClick={() => navigateDate('next')} className="p-1 hover:bg-white hover:shadow-sm rounded-md transition-all text-gray-600"><ChevronRight size={16} /></button>
+                        <div className="flex items-center gap-3">
+                            <Button size="sm" className="w-40 h-10 justify-center" onClick={() => { setSelectedDate(new Date()); setSelectedSession(null); setIsModalOpen(true); }}>
+                                <Plus className="h-4 w-4 mr-2" />
+                                セッション追加
+                            </Button>
+                            <button
+                                onClick={() => setIsWorkoutPanelOpen(prev => !prev)}
+                                className={`w-40 h-10 flex items-center justify-center gap-1.5 px-3 rounded-lg text-sm font-medium transition-all ${
+                                    isWorkoutPanelOpen
+                                        ? 'bg-blue-100 text-blue-700'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                            >
+                                <ClipboardList size={16} />
+                                <span className="hidden md:inline">ワークアウト</span>
+                            </button>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-4">
-                        {/* Search */}
-                        <div className="hidden md:flex items-center relative group">
-                            <Search size={16} className="absolute left-3 text-gray-400 group-focus-within:text-gray-600" />
-                            <input
-                                type="text"
-                                placeholder="スケジュールを検索..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-9 pr-4 py-1.5 bg-gray-50 border border-transparent focus:bg-white focus:border-gray-200 focus:ring-2 focus:ring-gray-100 rounded-lg text-sm transition-all w-64 outline-none"
-                            />
+                    {/* 下段: ビュー切替 + ナビ | 検索 + クライアント選択 */}
+                    <div className="flex items-center justify-between px-6 py-2">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-gray-100 p-1 rounded-lg flex text-sm font-medium">
+                                {(['day', 'week', 'month'] as ViewMode[]).map((mode) => (
+                                    <button
+                                        key={mode}
+                                        onClick={() => setViewMode(mode)}
+                                        className={`px-3 py-1.5 rounded-md transition-all ${viewMode === mode ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                    >
+                                        {VIEW_MODE_LABELS[mode]}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="flex items-center bg-gray-100 rounded-lg p-1 gap-1 text-sm font-medium">
+                                <button onClick={() => navigateDate('prev')} className="px-1.5 py-1.5 hover:bg-white hover:shadow-sm rounded-md transition-all text-gray-600"><ChevronLeft size={16} /></button>
+                                <button onClick={() => navigateDate('today')} className="px-3 py-1.5 text-gray-700 hover:bg-white hover:shadow-sm rounded-md transition-all">{TODAY_LABELS[viewMode]}</button>
+                                <button onClick={() => navigateDate('next')} className="px-1.5 py-1.5 hover:bg-white hover:shadow-sm rounded-md transition-all text-gray-600"><ChevronRight size={16} /></button>
+                            </div>
                         </div>
-
-                        {/* View Toggle */}
-                        <div className="bg-gray-100 p-1 rounded-lg flex text-sm font-medium">
-                            {(['day', 'week', 'month'] as ViewMode[]).map((mode) => (
-                                <button
-                                    key={mode}
-                                    onClick={() => setViewMode(mode)}
-                                    className={`px-3 py-2 rounded-md transition-all ${viewMode === mode ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                                >
-                                    {VIEW_MODE_LABELS[mode]}
-                                </button>
-                            ))}
+                        <div className="flex items-center gap-3">
+                            <div className="hidden md:flex items-center relative group">
+                                <Search size={16} className="absolute left-3 text-gray-400 group-focus-within:text-gray-600" />
+                                <input
+                                    type="text"
+                                    placeholder="スケジュールを検索..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="pl-9 pr-4 h-10 bg-gray-50 border border-transparent focus:bg-white focus:border-gray-200 focus:ring-2 focus:ring-gray-100 rounded-lg text-xs font-medium transition-all w-40 outline-none"
+                                />
+                            </div>
+                            {trainerId && (
+                                <ClientSelector
+                                    trainerId={trainerId}
+                                    selectedClientId={selectedClientId ?? '__all__'}
+                                    onSelect={(id) => setSelectedClientId(id === '__all__' ? null : id)}
+                                    showAllOption
+                                    className="w-40 h-10"
+                                />
+                            )}
                         </div>
-
-                        <Button size="sm" onClick={() => { setSelectedDate(new Date()); setSelectedSession(null); setIsModalOpen(true); }}>
-                            <Plus className="h-4 w-4 mr-2" />
-                            セッション追加
-                        </Button>
                     </div>
                 </header>
 
-                {/* Content Area */}
-                <div className="flex-1 overflow-hidden p-0 bg-gray-50/50">
-                    {viewMode === 'month' ? renderMonthView() : renderTimeGridView()}
+                {/* Content Area - サイドパネル付き */}
+                <div className="flex-1 overflow-hidden flex">
+                    {/* カレンダー本体 */}
+                    <div className="flex-1 overflow-hidden bg-gray-50/50 min-w-0">
+                        {viewMode === 'month' ? renderMonthView() : renderTimeGridView()}
+                    </div>
+
+                    {/* ワークアウトサイドパネル */}
+                    <div className={`transition-all duration-300 ease-in-out flex-shrink-0 overflow-hidden border-l border-gray-200 bg-white ${
+                        isWorkoutPanelOpen ? 'w-80' : 'w-0'
+                    }`}>
+                        {isWorkoutPanelOpen && (
+                            <TemplatePanel
+                                trainerId={trainerId}
+                                templates={templates}
+                                onRefetch={fetchTemplates}
+                            />
+                        )}
+                    </div>
                 </div>
 
                 <SessionModal
@@ -416,6 +714,39 @@ export default function CalendarView() {
                     session={selectedSession}
                     onSuccess={fetchSessions}
                 />
+
+                {/* TicketSelectModal */}
+                {selectedClientId && pendingDrop && (
+                    <TicketSelectModal
+                        isOpen={isTicketModalOpen}
+                        clientId={selectedClientId}
+                        planTitle={templates.find(t => t.id === pendingDrop.planId)?.title ?? ''}
+                        assignedDate={pendingDrop.date}
+                        estimatedMinutes={templates.find(t => t.id === pendingDrop.planId)?.estimated_minutes ?? null}
+                        defaultSessionTime={pendingDrop.hour != null ? `${String(pendingDrop.hour).padStart(2, '0')}:00` : undefined}
+                        onConfirm={handleTicketConfirm}
+                        onCancel={handleTicketCancel}
+                    />
+                )}
+
+                {/* クライアント選択モーダル */}
+                <Dialog open={isClientSelectModalOpen} onOpenChange={(open) => { if (!open) { setIsClientSelectModalOpen(false); setPendingTemplateDrop(null); } }}>
+                    <DialogContent className="sm:max-w-[400px] bg-white">
+                        <DialogHeader>
+                            <DialogTitle>クライアントを選択してください</DialogTitle>
+                        </DialogHeader>
+                        <div className="py-4">
+                            {trainerId && (
+                                <ClientSelector
+                                    trainerId={trainerId}
+                                    selectedClientId={null}
+                                    onSelect={handleClientSelectForDrop}
+                                    className="w-full"
+                                />
+                            )}
+                        </div>
+                    </DialogContent>
+                </Dialog>
             </div>
 
             {/* Drag Overlay */}
@@ -428,6 +759,14 @@ export default function CalendarView() {
                             viewMode="month"
                             isDragOverlay
                         />
+                    </div>
+                )}
+                {draggedTemplate && (
+                    <div className="p-3 bg-white border-2 border-blue-400 rounded-lg shadow-lg opacity-90">
+                        <div className="font-bold text-gray-800 text-sm">{draggedTemplate.title}</div>
+                        <div className="text-xs text-gray-500 mt-1">
+                            {draggedTemplate.exercise_count ?? 0} 種目
+                        </div>
                     </div>
                 )}
             </DragOverlay>
