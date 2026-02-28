@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { getClientDetail } from '@/lib/supabase/getClientDetail'
 import { getWeightRecords } from '@/lib/supabase/getWeightRecords'
@@ -24,8 +24,13 @@ import { SessionTab } from './_components/SessionTab'
 
 export default function ClientDetailPage() {
   const params = useParams()
+  const searchParams = useSearchParams()
   const clientId = params.client_id as string
+  const tabParam = searchParams.get('tab')
+  const validTabs = ['summary', 'weight', 'meal', 'exercise', 'notes', 'tickets']
+  const initialTab = tabParam && validTabs.includes(tabParam) ? tabParam : 'summary'
 
+  const [activeTab, setActiveTab] = useState(initialTab)
   const [client, setClient] = useState<ClientDetail | null>(null)
   const [weightRecords, setWeightRecords] = useState<WeightRecord[]>([])
   const [mealRecords, setMealRecords] = useState<MealRecord[]>([])
@@ -36,6 +41,7 @@ export default function ClientDetailPage() {
   const [trainerId, setTrainerId] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [mode, setMode] = useState<'info' | 'session'>('info')
+  const [prevMode, setPrevMode] = useState<'info' | 'session'>('info')
 
   useEffect(() => {
     const fetchData = async () => {
@@ -69,6 +75,26 @@ export default function ClientDetailPage() {
     }
     fetchData()
   }, [clientId])
+
+  // セッションモードから情報モードに戻った時にデータを再取得
+  useEffect(() => {
+    if (prevMode === 'session' && mode === 'info') {
+      const refetch = async () => {
+        try {
+          const [exercises, assignmentsData] = await Promise.all([
+            getExerciseRecords({ clientId, limit: 100 }),
+            getClientAssignments(clientId),
+          ])
+          setExerciseRecords(exercises.data)
+          setWorkoutAssignments(assignmentsData)
+        } catch (error) {
+          console.error('データ再取得エラー:', error)
+        }
+      }
+      refetch()
+    }
+    setPrevMode(mode)
+  }, [mode])
 
   const refetchNotes = async () => {
     try {
@@ -112,7 +138,7 @@ export default function ClientDetailPage() {
 
         {/* モード別コンテンツ */}
         {mode === 'info' ? (
-          <Tabs defaultValue="summary" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="summary">サマリー</TabsTrigger>
               <TabsTrigger value="weight">体重</TabsTrigger>

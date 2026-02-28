@@ -12,9 +12,18 @@ export interface Session {
   created_at: string;
   updated_at: string;
   ticket_id?: string | null;
+  recurrence_group_id?: string | null;
   clients?: {
     name: string;
   };
+  workout_assignments?: {
+    id: string;
+    plan?: {
+      id: string;
+      title: string;
+      category: string;
+    } | null;
+  }[];
 }
 
 export const getSessions = async (startDate: Date, endDate: Date) => {
@@ -27,6 +36,14 @@ export const getSessions = async (startDate: Date, endDate: Date) => {
       *,
       clients (
         name
+      ),
+      workout_assignments (
+        id,
+        plan:workout_plans (
+          id,
+          title,
+          category
+        )
       )
     `)
     .gte('session_date', startDate.toISOString())

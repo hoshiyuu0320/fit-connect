@@ -63,7 +63,7 @@ export function SessionSummaryModal({
           <DialogTitle>セッションサマリー</DialogTitle>
         </DialogHeader>
 
-        <div className="max-h-[70vh] overflow-y-auto pr-1 space-y-5">
+        <div className="max-h-[70vh] overflow-y-auto px-1 space-y-5">
           {/* 所要時間 */}
           <div className="flex items-center gap-2 text-sm text-gray-700">
             <span className="font-medium">所要時間:</span>
@@ -87,8 +87,17 @@ export function SessionSummaryModal({
                       <div key={exercise.id} className="p-3">
                         {/* 種目名 + 完了アイコン */}
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-base leading-none">
-                            {exercise.is_completed ? '✅' : '⬜'}
+                          <span className="flex-shrink-0">
+                            {exercise.is_completed ? (
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-green-500" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                                <polyline points="22 4 12 14.01 9 11.01" />
+                              </svg>
+                            ) : (
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-gray-300" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="3" y="3" width="18" height="18" rx="4" />
+                              </svg>
+                            )}
                           </span>
                           <span className="text-sm font-medium text-gray-900">
                             {exercise.exercise_name}

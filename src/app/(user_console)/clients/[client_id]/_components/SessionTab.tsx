@@ -366,7 +366,7 @@ export function SessionTab({ clientId, trainerId }: SessionTabProps) {
                   <span
                     className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${statusColor.bg} ${statusColor.text}`}
                   >
-                    {statusColor.icon} {ASSIGNMENT_STATUS_OPTIONS[assignment.status]}
+                    <span className={`inline-block w-2 h-2 rounded-full ${statusColor.dot}`} /> {ASSIGNMENT_STATUS_OPTIONS[assignment.status]}
                   </span>
                 </div>
 

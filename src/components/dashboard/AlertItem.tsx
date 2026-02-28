@@ -17,13 +17,20 @@ export function AlertItem({
   message,
   severity,
 }: AlertItemProps) {
-  const severityIcon = severity === 'high' ? '🔴' : '🟡'
+  const dot =
+    severity === 'high' ? (
+      <span className="w-2 h-2 rounded-full bg-red-500 inline-block flex-shrink-0 mt-1.5" />
+    ) : (
+      <span className="w-2 h-2 rounded-full bg-yellow-500 inline-block flex-shrink-0 mt-1.5" />
+    )
+
+  const accentBorder = severity === 'high' ? 'border-l-red-400' : 'border-l-yellow-400'
   const severityColor = severity === 'high' ? 'text-red-700' : 'text-yellow-700'
 
   const content = (
-    <div className="p-4">
+    <div className={`p-4 border-l-2 ${accentBorder}`}>
       <div className="flex items-start space-x-3">
-        <span className="text-lg flex-shrink-0">{severityIcon}</span>
+        {dot}
         <div className="flex-1 min-w-0">
           <p className={`text-sm font-medium ${severityColor}`}>
             {clientName ? `${clientName}さん - ${message}` : message}

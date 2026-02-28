@@ -17,10 +17,63 @@ import { MessagePreviewList } from '@/components/dashboard/MessagePreviewList'
 import { QuickActions } from '@/components/dashboard/QuickActions'
 import { AlertList } from '@/components/dashboard/AlertList'
 import { TodaysSchedule } from '@/components/dashboard/TodaysSchedule'
+import { DashboardSkeleton } from '@/components/dashboard/DashboardSkeleton'
 import type { RecentMessage } from '@/lib/supabase/getRecentMessages'
 import type { AlertItemProps } from '@/components/dashboard/AlertItem'
 import type { TodaysSession } from '@/lib/supabase/getTodaysSessions'
 import React from 'react'
+
+function UsersIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+      />
+    </svg>
+  )
+}
+
+function ChatIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+      />
+    </svg>
+  )
+}
+
+function ChartIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+      />
+    </svg>
+  )
+}
+
+function TicketIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"
+      />
+    </svg>
+  )
+}
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
@@ -149,11 +202,7 @@ export default function DashboardPage() {
   }, [setUserName])
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-[calc(100vh-48px)]">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
-      </div>
-    )
+    return <DashboardSkeleton />
   }
 
   return (
@@ -169,10 +218,37 @@ export default function DashboardPage() {
 
         {/* KPI カード */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard icon="👥" label="担当顧客数" value={clientCount} suffix="人" />
-          <StatCard icon="💬" label="今週のメッセージ" value={messageCount} suffix="件" />
-          <StatCard icon="✅" label="アクティブ顧客" value={activeClientCount} suffix="人" />
-          <StatCard icon="⏰" label="要対応チケット" value={expiringTicketCount} suffix="件" />
+          <StatCard
+            icon={<UsersIcon />}
+            label="担当顧客数"
+            value={clientCount}
+            suffix="人"
+            color="blue"
+            href="/clients"
+          />
+          <StatCard
+            icon={<ChatIcon />}
+            label="今週のメッセージ"
+            value={messageCount}
+            suffix="件"
+            color="purple"
+            href="/message"
+          />
+          <StatCard
+            icon={<ChartIcon />}
+            label="アクティブ顧客"
+            value={activeClientCount}
+            suffix="人"
+            color="green"
+          />
+          <StatCard
+            icon={<TicketIcon />}
+            label="要対応チケット"
+            value={expiringTicketCount}
+            suffix="件"
+            color="red"
+            href="/clients"
+          />
         </div>
 
         {/* 本日の予定 */}

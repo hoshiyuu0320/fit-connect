@@ -59,7 +59,7 @@ function AssignmentCard({ assignment, onDelete }: AssignmentCardProps) {
       <div className="p-3">
         {!isSession && (
           <span className={`inline-flex items-center gap-1 mb-1.5 px-2 py-0.5 rounded text-[11px] font-medium ${statusColors.bg} ${statusColors.text}`}>
-            {statusColors.icon} {statusLabel}
+            {statusLabel}
           </span>
         )}
         <h3 className="font-bold text-gray-800 text-sm mb-1 line-clamp-2">

@@ -18,6 +18,9 @@ export function MessagePreviewItem({
   // メッセージを50文字で切り詰め
   const truncatedMessage = message.length > 50 ? `${message.slice(0, 50)}...` : message
 
+  // イニシャルアバター用の先頭1文字
+  const initial = clientName.charAt(0)
+
   return (
     <Link
       href={`/message?clientId=${clientId}`}
@@ -25,13 +28,15 @@ export function MessagePreviewItem({
     >
       <div className="p-4">
         <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center space-x-2">
-            <span className="text-lg">👤</span>
+          <div className="flex items-center space-x-3">
+            <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold flex-shrink-0">
+              {initial}
+            </div>
             <span className="font-semibold text-gray-900">{clientName}さん</span>
           </div>
           <span className="text-xs text-gray-500">{formatRelativeTime(timestamp)}</span>
         </div>
-        <p className="text-sm text-gray-700 pl-7">{truncatedMessage}</p>
+        <p className="text-sm text-gray-600 pl-12">{truncatedMessage}</p>
       </div>
     </Link>
   )

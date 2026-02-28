@@ -43,6 +43,7 @@ export type WorkoutAssignment = {
   status: 'pending' | 'partial' | 'completed' | 'skipped'
   trainer_note: string | null
   client_feedback: string | null
+  calories: number | null
   started_at: string | null
   finished_at: string | null
   created_at: string
@@ -187,8 +188,8 @@ export const ASSIGNMENT_STATUS_OPTIONS = {
 } as const
 
 export const ASSIGNMENT_STATUS_COLORS = {
-  pending: { bg: 'bg-gray-100', text: 'text-gray-600', icon: '⚪' },
-  partial: { bg: 'bg-yellow-100', text: 'text-yellow-800', icon: '🟡' },
-  completed: { bg: 'bg-green-100', text: 'text-green-800', icon: '🟢' },
-  skipped: { bg: 'bg-red-100', text: 'text-red-800', icon: '🔴' },
+  pending: { bg: 'bg-gray-100', text: 'text-gray-600', dot: 'bg-gray-400' },
+  partial: { bg: 'bg-yellow-100', text: 'text-yellow-800', dot: 'bg-yellow-500' },
+  completed: { bg: 'bg-green-100', text: 'text-green-800', dot: 'bg-green-500' },
+  skipped: { bg: 'bg-red-100', text: 'text-red-800', dot: 'bg-red-500' },
 } as const
