@@ -223,7 +223,7 @@ export default function DashboardPage() {
             label="担当顧客数"
             value={clientCount}
             suffix="人"
-            color="blue"
+            color="teal"
             href="/clients"
           />
           <StatCard
@@ -231,7 +231,7 @@ export default function DashboardPage() {
             label="今週のメッセージ"
             value={messageCount}
             suffix="件"
-            color="purple"
+            color="teal"
             href="/message"
           />
           <StatCard

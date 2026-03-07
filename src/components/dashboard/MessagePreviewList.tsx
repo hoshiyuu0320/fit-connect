@@ -23,33 +23,33 @@ function ChatBubbleIcon() {
 export function MessagePreviewList({ messages }: MessagePreviewListProps) {
   if (messages.length === 0) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="bg-white rounded-md border border-[#E2E8F0] p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-gray-900 flex items-center space-x-2">
-            <span className="text-gray-500"><ChatBubbleIcon /></span>
+          <h2 className="text-lg font-bold text-[#0F172A] flex items-center space-x-2">
+            <span className="text-[#94A3B8]"><ChatBubbleIcon /></span>
             <span>最近のメッセージ</span>
           </h2>
         </div>
-        <p className="text-center text-gray-500 py-8">メッセージがありません</p>
+        <p className="text-center text-[#94A3B8] py-8">メッセージがありません</p>
       </div>
     )
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200">
-      <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-100">
-        <h2 className="text-lg font-bold text-gray-900 flex items-center space-x-2">
-          <span className="text-gray-500"><ChatBubbleIcon /></span>
+    <div className="bg-white rounded-md border border-[#E2E8F0]">
+      <div className="flex items-center justify-between p-6 pb-4 border-b border-[#E2E8F0]">
+        <h2 className="text-lg font-bold text-[#0F172A] flex items-center space-x-2">
+          <span className="text-[#94A3B8]"><ChatBubbleIcon /></span>
           <span>最近のメッセージ</span>
         </h2>
         <Link
           href="/message"
-          className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+          className="text-sm text-[#14B8A6] hover:text-[#0D9488] font-medium"
         >
           全て見る
         </Link>
       </div>
-      <div className="divide-y divide-gray-100">
+      <div className="divide-y divide-[#E2E8F0]">
         {messages.map((msg) => (
           <MessagePreviewItem
             key={msg.id}

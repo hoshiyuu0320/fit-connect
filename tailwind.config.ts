@@ -9,11 +9,20 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['var(--font-lexend)', 'sans-serif'],
+        sans: ['var(--font-jakarta)', 'var(--font-noto)', 'sans-serif'],
       },
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        accent: {
+          DEFAULT: "#14B8A6",
+          light: "#F0FDFA",
+          subtle: "#CCFBF1",
+          hover: "#0D9488",
+        },
+      },
+      borderRadius: {
+        DEFAULT: '6px',
       },
     },
   },

@@ -11,9 +11,9 @@ function QuickActionButton({ href, icon, label }: QuickActionButtonProps) {
   return (
     <Link
       href={href}
-      className="flex flex-col items-center justify-center space-y-2 px-4 py-5 rounded-xl font-medium transition-all bg-white border border-gray-200 hover:border-blue-300 hover:bg-blue-50 hover:shadow-sm text-gray-700 hover:text-blue-700"
+      className="flex flex-col items-center justify-center space-y-2 px-4 py-5 rounded-md font-medium transition-all bg-white border border-[#E2E8F0] hover:border-[#14B8A6] hover:bg-[#F0FDFA] hover:text-[#0F172A] text-[#475569]"
     >
-      <span className="text-gray-500 group-hover:text-blue-600">{icon}</span>
+      <span className="text-[#94A3B8]">{icon}</span>
       <span className="text-sm">{label}</span>
     </Link>
   )
@@ -86,9 +86,9 @@ function LightningIcon() {
 
 export function QuickActions() {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6">
-      <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center space-x-2">
-        <span className="text-gray-500"><LightningIcon /></span>
+    <div className="bg-white rounded-md border border-[#E2E8F0] p-6">
+      <h2 className="text-lg font-bold text-[#0F172A] mb-4 flex items-center space-x-2">
+        <span className="text-[#94A3B8]"><LightningIcon /></span>
         <span>クイックアクション</span>
       </h2>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

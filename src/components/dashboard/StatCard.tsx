@@ -1,7 +1,7 @@
 import React from 'react'
 import Link from 'next/link'
 
-type StatCardColor = 'blue' | 'purple' | 'green' | 'red'
+type StatCardColor = 'teal' | 'green' | 'amber' | 'red'
 
 type StatCardProps = {
   icon: React.ReactNode
@@ -12,29 +12,21 @@ type StatCardProps = {
   href?: string
 }
 
-const colorMap: Record<StatCardColor, { border: string; bg: string; iconBg: string; iconText: string }> = {
-  blue: {
-    border: 'border-l-blue-500',
-    bg: 'bg-blue-50',
-    iconBg: 'bg-blue-100',
-    iconText: 'text-blue-600',
-  },
-  purple: {
-    border: 'border-l-purple-500',
-    bg: 'bg-purple-50',
-    iconBg: 'bg-purple-100',
-    iconText: 'text-purple-600',
+const colorMap: Record<StatCardColor, { iconBg: string; iconText: string }> = {
+  teal: {
+    iconBg: 'bg-[#F0FDFA]',
+    iconText: 'text-[#14B8A6]',
   },
   green: {
-    border: 'border-l-green-500',
-    bg: 'bg-green-50',
-    iconBg: 'bg-green-100',
-    iconText: 'text-green-600',
+    iconBg: 'bg-emerald-50',
+    iconText: 'text-emerald-600',
+  },
+  amber: {
+    iconBg: 'bg-amber-50',
+    iconText: 'text-amber-600',
   },
   red: {
-    border: 'border-l-red-500',
-    bg: 'bg-red-50',
-    iconBg: 'bg-red-100',
+    iconBg: 'bg-red-50',
     iconText: 'text-red-600',
   },
 }
@@ -43,16 +35,16 @@ export function StatCard({ icon, label, value, suffix, color, href }: StatCardPr
   const c = colorMap[color]
 
   const content = (
-    <div className={`bg-white rounded-xl border border-gray-200 border-l-4 ${c.border} p-6 hover:shadow-md transition-shadow`}>
+    <div className="bg-white rounded-md border border-[#E2E8F0] p-6 hover:shadow-sm transition-shadow">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-medium text-gray-600">{label}</h3>
-        <div className={`w-10 h-10 rounded-lg ${c.iconBg} ${c.iconText} flex items-center justify-center`}>
+        <h3 className="text-xs font-medium text-[#94A3B8]">{label}</h3>
+        <div className={`w-10 h-10 rounded-md ${c.iconBg} ${c.iconText} flex items-center justify-center`}>
           {icon}
         </div>
       </div>
       <div className="flex items-baseline space-x-1">
-        <p className="text-3xl font-bold text-gray-900">{value}</p>
-        {suffix && <span className="text-sm text-gray-500">{suffix}</span>}
+        <p className="text-[32px] font-bold text-[#0F172A] tracking-tight leading-none">{value}</p>
+        {suffix && <span className="text-xs text-[#94A3B8]">{suffix}</span>}
       </div>
     </div>
   )

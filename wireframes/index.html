@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FitConnect UI提案 - 5案比較</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; background: #0F172A; color: #F8FAFC; min-height: 100vh; }
+
+  .hero { text-align: center; padding: 60px 24px 40px; }
+  .hero h1 { font-size: 36px; font-weight: 700; margin-bottom: 8px; }
+  .hero h1 span { background: linear-gradient(135deg, #38BDF8, #818CF8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .hero p { color: #94A3B8; font-size: 16px; max-width: 480px; margin: 0 auto; }
+
+  .cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; max-width: 1200px; margin: 0 auto; padding: 0 24px 60px; }
+
+  .card {
+    background: #1E293B; border-radius: 20px; overflow: hidden; border: 1px solid #334155;
+    transition: all 0.3s; cursor: pointer; text-decoration: none; color: inherit;
+    display: flex; flex-direction: column;
+  }
+  .card:hover { border-color: #818CF8; transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,0.3); }
+
+  .card-preview {
+    width: 100%; aspect-ratio: 16/10; border-bottom: 1px solid #334155; position: relative; overflow: hidden;
+  }
+  .card-preview iframe {
+    width: 200%; height: 200%; border: none;
+    transform: scale(0.5); transform-origin: top left;
+    pointer-events: none;
+  }
+
+  .card-body { padding: 24px; flex: 1; display: flex; flex-direction: column; }
+  .card-badge { display: inline-block; padding: 4px 12px; border-radius: 8px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; width: fit-content; }
+  .badge-teal { background: rgba(8,145,178,0.15); color: #22D3EE; }
+  .badge-purple { background: rgba(124,58,237,0.15); color: #A78BFA; }
+  .badge-orange { background: rgba(249,115,22,0.15); color: #FB923C; }
+  .badge-mono { background: rgba(255,255,255,0.12); color: #E2E8F0; }
+  .badge-hybrid { background: rgba(63,186,115,0.15); color: #6EE7A0; }
+
+  .card-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+  .card-desc { font-size: 14px; color: #94A3B8; line-height: 1.6; flex: 1; }
+
+  .card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
+  .tag { padding: 4px 10px; border-radius: 6px; font-size: 11px; background: rgba(255,255,255,0.06); color: #CBD5E1; }
+
+  .card-footer { padding: 16px 24px; border-top: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
+  .cost { font-size: 12px; color: #64748B; }
+  .cost span { color: #F8FAFC; font-weight: 600; }
+  .open-btn { padding: 8px 20px; border-radius: 10px; background: #818CF8; color: #FFF; font-size: 13px; font-weight: 600; border: none; cursor: pointer; transition: background 0.2s; }
+  .open-btn:hover { background: #6366F1; }
+
+  @media (max-width: 900px) { .cards { grid-template-columns: 1fr; max-width: 500px; } }
+</style>
+</head>
+<body>
+  <div class="hero">
+    <h1>FitConnect <span>UI Proposal</span></h1>
+    <p>5つのデザイン方針からお好みのレイアウトをお選びください</p>
+  </div>
+
+  <div class="cards">
+    <!-- Plan A -->
+    <a class="card" href="a-clean-saas.html" target="_blank">
+      <div class="card-preview">
+        <iframe src="a-clean-saas.html" loading="lazy"></iframe>
+      </div>
+      <div class="card-body">
+        <span class="card-badge badge-teal">Plan A</span>
+        <div class="card-title">Clean SaaS Dashboard</div>
+        <div class="card-desc">
+          クリーン&プロフェッショナルなデザイン。Teal系カラーで信頼感のあるヘルスケアSaaSの定番スタイル。現行レイアウトに最も近く、改修コストが低い。
+        </div>
+        <div class="card-tags">
+          <span class="tag">Teal #0891B2</span>
+          <span class="tag">Lexend</span>
+          <span class="tag">Subtle Shadow</span>
+          <span class="tag">白背景カード</span>
+        </div>
+      </div>
+      <div class="card-footer">
+        <span class="cost">改修コスト: <span>低</span></span>
+        <button class="open-btn" onclick="event.preventDefault(); window.open('a-clean-saas.html')">プレビュー →</button>
+      </div>
+    </a>
+
+    <!-- Plan B -->
+    <a class="card" href="b-bento-grid.html" target="_blank">
+      <div class="card-preview">
+        <iframe src="b-bento-grid.html" loading="lazy"></iframe>
+      </div>
+      <div class="card-body">
+        <span class="card-badge badge-purple">Plan B</span>
+        <div class="card-title">Bento Grid Dashboard</div>
+        <div class="card-desc">
+          Apple風のモダン&洗練されたBentoグリッドレイアウト。異なるサイズのカードを組み合わせた視覚的インパクト。パープルアクセントで先進的な印象。
+        </div>
+        <div class="card-tags">
+          <span class="tag">Purple #7C3AED</span>
+          <span class="tag">Barlow</span>
+          <span class="tag">Bento Grid</span>
+          <span class="tag">Glassmorphism</span>
+        </div>
+      </div>
+      <div class="card-footer">
+        <span class="cost">改修コスト: <span>中</span></span>
+        <button class="open-btn" onclick="event.preventDefault(); window.open('b-bento-grid.html')">プレビュー →</button>
+      </div>
+    </a>
+
+    <!-- Plan C -->
+    <a class="card" href="c-energy-fitness.html" target="_blank">
+      <div class="card-preview">
+        <iframe src="c-energy-fitness.html" loading="lazy"></iframe>
+      </div>
+      <div class="card-body">
+        <span class="card-badge badge-orange">Plan C</span>
+        <div class="card-title">Energy Fitness (Dark)</div>
+        <div class="card-desc">
+          ダークテーマ+オレンジアクセントでジム・フィットネス業界に映える力強いデザイン。データが際立ち、活動的でエネルギッシュな印象。
+        </div>
+        <div class="card-tags">
+          <span class="tag">Orange #F97316</span>
+          <span class="tag">Barlow Condensed</span>
+          <span class="tag">Dark Theme</span>
+          <span class="tag">Accent Bar</span>
+        </div>
+      </div>
+      <div class="card-footer">
+        <span class="cost">改修コスト: <span>高</span></span>
+        <button class="open-btn" onclick="event.preventDefault(); window.open('c-energy-fitness.html')">プレビュー →</button>
+      </div>
+    </a>
+
+    <!-- Plan D -->
+    <a class="card" href="d-mono-professional.html" target="_blank">
+      <div class="card-preview">
+        <iframe src="d-mono-professional.html" loading="lazy"></iframe>
+      </div>
+      <div class="card-body">
+        <span class="card-badge badge-mono">Plan D</span>
+        <div class="card-title">Mono Professional</div>
+        <div class="card-desc">
+          黒・白・グレーのモノクロ基調。余計な装飾を排除したシンプル&モダンなプロ仕様。常時展開サイドバー+セクション分けで情報整理が明快。
+        </div>
+        <div class="card-tags">
+          <span class="tag">Black #171717</span>
+          <span class="tag">Inter</span>
+          <span class="tag">Monochrome</span>
+          <span class="tag">Minimal Border</span>
+        </div>
+      </div>
+      <div class="card-footer">
+        <span class="cost">改修コスト: <span>低〜中</span></span>
+        <button class="open-btn" onclick="event.preventDefault(); window.open('d-mono-professional.html')">プレビュー →</button>
+      </div>
+    </a>
+
+    <!-- Plan E -->
+    <a class="card" href="e-dark-light-hybrid.html" target="_blank">
+      <div class="card-preview">
+        <iframe src="e-dark-light-hybrid.html" loading="lazy"></iframe>
+      </div>
+      <div class="card-body">
+        <span class="card-badge badge-hybrid">Plan E</span>
+        <div class="card-title">Dark-Light Hybrid</div>
+        <div class="card-desc">
+          SugarCRM風のダーク&ライト2トーン構成。メインエリアはライトグレー、右サイドバーはダークでタイムライン・メトリクスを表示。グリーン/レッド/イエローのカラフルなクライアントカード。
+        </div>
+        <div class="card-tags">
+          <span class="tag">Dark #122022</span>
+          <span class="tag">Outfit</span>
+          <span class="tag">2-Tone Layout</span>
+          <span class="tag">Color Cards</span>
+        </div>
+      </div>
+      <div class="card-footer">
+        <span class="cost">改修コスト: <span>中〜高</span></span>
+        <button class="open-btn" onclick="event.preventDefault(); window.open('e-dark-light-hybrid.html')">プレビュー →</button>
+      </div>
+    </a>
+  </div>
+</body>
+</html>

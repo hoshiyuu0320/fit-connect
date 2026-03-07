@@ -21,19 +21,19 @@ function BellAlertIcon() {
 export function AlertList({ alerts }: AlertListProps) {
   if (alerts.length === 0) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center space-x-2">
-          <span className="text-gray-500"><BellAlertIcon /></span>
+      <div className="bg-white rounded-md border border-[#E2E8F0] p-6">
+        <h2 className="text-lg font-bold text-[#0F172A] mb-4 flex items-center space-x-2">
+          <span className="text-[#94A3B8]"><BellAlertIcon /></span>
           <span>対応が必要</span>
         </h2>
         <div className="text-center py-8">
-          <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-green-100 flex items-center justify-center">
-            <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="w-12 h-12 mx-auto mb-3 rounded-md bg-emerald-50 flex items-center justify-center">
+            <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <p className="text-gray-600 font-medium">対応が必要な項目はありません</p>
-          <p className="text-sm text-gray-500 mt-1">すべての顧客が順調です！</p>
+          <p className="text-[#475569] font-medium">対応が必要な項目はありません</p>
+          <p className="text-sm text-[#94A3B8] mt-1">すべての顧客が順調です！</p>
         </div>
       </div>
     )
@@ -44,26 +44,26 @@ export function AlertList({ alerts }: AlertListProps) {
   const hasMore = alerts.length > 5
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200">
-      <div className="p-6 pb-4 border-b border-gray-100">
+    <div className="bg-white rounded-md border border-[#E2E8F0]">
+      <div className="p-6 pb-4 border-b border-[#E2E8F0]">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-gray-900 flex items-center space-x-2">
-            <span className="text-gray-500"><BellAlertIcon /></span>
+          <h2 className="text-lg font-bold text-[#0F172A] flex items-center space-x-2">
+            <span className="text-[#94A3B8]"><BellAlertIcon /></span>
             <span>対応が必要</span>
           </h2>
-          <span className="text-xs font-semibold text-red-600 bg-red-50 border border-red-200 px-2.5 py-1 rounded-full">
+          <span className="text-xs font-semibold text-red-600 bg-red-50 border border-red-200 px-2.5 py-1 rounded">
             {alerts.length}件
           </span>
         </div>
       </div>
-      <div className="divide-y divide-gray-100">
+      <div className="divide-y divide-[#E2E8F0]">
         {displayedAlerts.map((alert, index) => (
           <AlertItem key={`${alert.clientId}-${index}`} {...alert} />
         ))}
       </div>
       {hasMore && (
-        <div className="p-4 bg-gray-50 text-center rounded-b-xl">
-          <p className="text-sm text-gray-600">
+        <div className="p-4 bg-[#F8FAFC] text-center rounded-b-md">
+          <p className="text-sm text-[#475569]">
             他 {alerts.length - 5} 件のアラートがあります
           </p>
         </div>
