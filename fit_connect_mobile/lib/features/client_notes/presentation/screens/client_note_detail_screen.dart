@@ -5,6 +5,7 @@ import 'package:fit_connect_mobile/features/client_notes/models/client_note_mode
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
 import 'package:fit_connect_mobile/shared/widgets/full_screen_image_viewer.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 /// カルテ詳細画面（読み取り専用）
 class ClientNoteDetailScreen extends StatelessWidget {
@@ -62,7 +63,7 @@ class ClientNoteDetailScreen extends StatelessWidget {
       appBar: AppBar(
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios, color: colors.textPrimary),
+          icon: Icon(LucideIcons.chevronLeft, color: colors.textPrimary),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -112,7 +113,7 @@ class ClientNoteDetailScreen extends StatelessWidget {
                     children: [
                       if (trainerName != null) ...[
                         Icon(
-                          Icons.person_outline,
+                          LucideIcons.user,
                           size: 16,
                           color: colors.textSecondary,
                         ),
@@ -127,7 +128,7 @@ class ClientNoteDetailScreen extends StatelessWidget {
                         const SizedBox(width: 12),
                       ],
                       Icon(
-                        Icons.calendar_today,
+                        LucideIcons.calendar,
                         size: 14,
                         color: colors.textHint,
                       ),
@@ -248,7 +249,7 @@ class ClientNoteDetailScreen extends StatelessWidget {
                                   color: colors.border,
                                   child: Center(
                                     child: Icon(
-                                      Icons.broken_image_outlined,
+                                      LucideIcons.imageOff,
                                       color: colors.textHint,
                                       size: 48,
                                     ),
@@ -283,7 +284,7 @@ class ClientNoteDetailScreen extends StatelessWidget {
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: const Icon(
-                                      Icons.picture_as_pdf,
+                                      LucideIcons.fileText,
                                       color: Colors.white,
                                       size: 24,
                                     ),
@@ -320,7 +321,7 @@ class ClientNoteDetailScreen extends StatelessWidget {
 
                                   // 矢印アイコン
                                   Icon(
-                                    Icons.arrow_forward_ios,
+                                    LucideIcons.chevronRight,
                                     size: 16,
                                     color: colors.textHint,
                                   ),
@@ -344,7 +345,7 @@ class ClientNoteDetailScreen extends StatelessWidget {
                             child: Row(
                               children: [
                                 Icon(
-                                  Icons.insert_drive_file,
+                                  LucideIcons.file,
                                   color: colors.textSecondary,
                                   size: 24,
                                 ),

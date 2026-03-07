@@ -143,7 +143,7 @@ class _WeightTagFormState extends State<WeightTagForm> {
           // ヘッダー行
           Row(
             children: [
-              const Text('⚖️', style: TextStyle(fontSize: 16)),
+              Icon(LucideIcons.scale, size: 16, color: colors.textPrimary),
               const SizedBox(width: 6),
               Text(
                 '体重を記録',
@@ -355,7 +355,7 @@ class _MealTagFormState extends State<MealTagForm> {
           // ヘッダー行
           Row(
             children: [
-              const Text('🍽️', style: TextStyle(fontSize: 16)),
+              Icon(LucideIcons.utensils, size: 16, color: colors.textPrimary),
               const SizedBox(width: 6),
               Text(
                 '食事を記録',
@@ -524,7 +524,7 @@ class _ExerciseTagFormState extends State<ExerciseTagForm> {
             // ヘッダー行
             Row(
               children: [
-                const Text('🏃', style: TextStyle(fontSize: 16)),
+                Icon(LucideIcons.activity, size: 16, color: colors.textPrimary),
                 const SizedBox(width: 6),
                 Text(
                   '運動を記録',
@@ -863,13 +863,21 @@ class _PreviewRow extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: Text(
-            '💬 $previewText',
-            style: TextStyle(
-              fontSize: 13,
-              color: colors.textSecondary,
-            ),
-            overflow: TextOverflow.ellipsis,
+          child: Row(
+            children: [
+              Icon(LucideIcons.messageCircle, size: 13, color: colors.textSecondary),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  previewText,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: colors.textSecondary,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
         ),
         const SizedBox(width: 12),
@@ -918,7 +926,7 @@ class _PreviewWeightTagFormFilled extends StatelessWidget {
           // ヘッダー行
           Row(
             children: [
-              const Text('⚖️', style: TextStyle(fontSize: 16)),
+              Icon(LucideIcons.scale, size: 16, color: colors.textPrimary),
               const SizedBox(width: 6),
               Text(
                 '体重を記録',

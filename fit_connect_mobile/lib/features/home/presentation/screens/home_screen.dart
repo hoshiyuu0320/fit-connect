@@ -10,6 +10,7 @@ import 'package:fit_connect_mobile/features/home/presentation/widgets/goal_card.
 import 'package:fit_connect_mobile/features/home/presentation/widgets/daily_summary_card.dart';
 import 'package:fit_connect_mobile/features/schedules/providers/trainer_schedule_provider.dart';
 import 'package:fit_connect_mobile/features/schedules/presentation/widgets/trainer_status_card.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 class HomeScreen extends ConsumerWidget {
   final void Function(int tabIndex)? onNavigateToRecordsTab;
@@ -468,7 +469,7 @@ class _PreviewDailySummaryCard extends StatelessWidget {
                   color: colors.textPrimary,
                 ),
               ),
-              Icon(Icons.chevron_right, color: colors.textHint, size: 20),
+              Icon(LucideIcons.chevronRight, color: colors.textHint, size: 20),
             ],
           ),
           const SizedBox(height: 24),
@@ -504,7 +505,7 @@ class _PreviewDailySummaryCard extends StatelessWidget {
                     color: AppColors.orange100,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.restaurant,
+                  child: const Icon(LucideIcons.utensils,
                       color: AppColors.orange500, size: 16),
                 ),
                 const SizedBox(width: 10),
@@ -572,7 +573,7 @@ class _PreviewDailySummaryCard extends StatelessWidget {
                 color: AppColors.primary100,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.fitness_center,
+              child: const Icon(LucideIcons.dumbbell,
                   color: AppColors.primary500, size: 16),
             ),
             const SizedBox(width: 10),
@@ -623,7 +624,7 @@ class _PreviewDailySummaryCard extends StatelessWidget {
                 color: AppColors.emerald100,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.monitor_weight,
+              child: const Icon(LucideIcons.scale,
                   color: AppColors.emerald500, size: 16),
             ),
             const SizedBox(width: 10),

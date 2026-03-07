@@ -139,26 +139,26 @@ class _DayCell extends StatelessWidget {
     if (status == 'completed') {
       return _CellStyle(
         backgroundColor: AppColors.emerald50,
-        icon: Icons.check_circle_outline,
+        icon: LucideIcons.checkCircle2,
         iconColor: AppColors.emerald500,
       );
     } else if (status == 'skipped') {
       return _CellStyle(
         backgroundColor: colors.border,
-        icon: Icons.skip_next_outlined,
+        icon: LucideIcons.skipForward,
         iconColor: colors.textHint,
       );
     } else if (status == 'pending') {
       if (isFuture) {
         return _CellStyle(
           backgroundColor: colors.accentIndigo,
-          icon: Icons.fitness_center,
+          icon: LucideIcons.dumbbell,
           iconColor: AppColors.indigo600,
         );
       } else {
         return _CellStyle(
           backgroundColor: colors.accentOrange,
-          icon: Icons.hourglass_empty,
+          icon: LucideIcons.hourglass,
           iconColor: AppColors.orange500,
         );
       }

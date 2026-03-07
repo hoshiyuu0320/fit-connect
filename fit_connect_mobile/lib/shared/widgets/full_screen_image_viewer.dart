@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 /// フルスクリーン画像ビューア
 ///
@@ -102,7 +103,7 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
                     },
                     errorBuilder: (_, __, ___) => const Center(
                       child: Icon(
-                        Icons.broken_image_outlined,
+                        LucideIcons.imageOff,
                         color: Colors.white54,
                         size: 64,
                       ),
@@ -119,7 +120,7 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
             left: 8,
             child: IconButton(
               onPressed: () => Navigator.of(context).pop(),
-              icon: const Icon(Icons.close, color: Colors.white, size: 28),
+              icon: const Icon(LucideIcons.x, color: Colors.white, size: 28),
               style: IconButton.styleFrom(
                 backgroundColor: Colors.black45,
               ),
@@ -184,7 +185,7 @@ class _PreviewFullScreenImageViewer extends StatelessWidget {
               child: const Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.image, color: Colors.white54, size: 64),
+                  Icon(LucideIcons.image, color: Colors.white54, size: 64),
                   SizedBox(height: 8),
                   Text(
                     'フルスクリーン画像',
@@ -200,7 +201,7 @@ class _PreviewFullScreenImageViewer extends StatelessWidget {
             left: 8,
             child: IconButton(
               onPressed: () {},
-              icon: const Icon(Icons.close, color: Colors.white, size: 28),
+              icon: const Icon(LucideIcons.x, color: Colors.white, size: 28),
               style: IconButton.styleFrom(
                 backgroundColor: Colors.black45,
               ),

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:fit_connect_mobile/services/supabase_service.dart';
 import 'package:uuid/uuid.dart';
 
@@ -195,12 +196,12 @@ class StorageService {
         child: Wrap(
           children: [
             ListTile(
-              leading: const Icon(Icons.camera_alt),
+              leading: const Icon(LucideIcons.camera),
               title: const Text('カメラで撮影'),
               onTap: () => Navigator.pop(context, ImageSource.camera),
             ),
             ListTile(
-              leading: const Icon(Icons.photo_library),
+              leading: const Icon(LucideIcons.image),
               title: const Text('ギャラリーから選択'),
               onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),
