@@ -77,26 +77,50 @@ class ExerciseRecordScreen extends ConsumerStatefulWidget {
 }
 
 class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
-  PeriodFilter _selectedPeriod = PeriodFilter.week;
+  PeriodFilter _selectedPeriod = PeriodFilter.today;
   String? _selectedType; // null = all, 'strength_training', 'cardio'
+  late DateTime _currentMonth;
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _currentMonth = DateTime(now.year, now.month, 1);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final recordsAsync = ref.watch(
-      exerciseRecordsProvider(
-        period: _selectedPeriod,
-        exerciseType: _selectedType,
-      ),
-    );
-    final typeCountsAsync = ref.watch(
-      exerciseTypeCountsProvider(period: _selectedPeriod),
-    );
-    final caloriesAsync = ref.watch(
-      exerciseTotalCaloriesProvider(period: _selectedPeriod),
-    );
-    final workoutsAsync = ref.watch(
-      completedWorkoutAssignmentsProvider(period: _selectedPeriod),
-    );
+    final monthEnd = DateTime(_currentMonth.year, _currentMonth.month + 1, 0, 23, 59, 59);
+    final isMonth = _selectedPeriod == PeriodFilter.month;
+
+    final recordsAsync = isMonth
+        ? ref.watch(exerciseRecordsProvider(
+            startDate: _currentMonth,
+            endDate: monthEnd,
+            exerciseType: _selectedType,
+          ))
+        : ref.watch(exerciseRecordsProvider(
+            period: _selectedPeriod,
+            exerciseType: _selectedType,
+          ));
+    final typeCountsAsync = isMonth
+        ? ref.watch(exerciseTypeCountsProvider(
+            startDate: _currentMonth,
+            endDate: monthEnd,
+          ))
+        : ref.watch(exerciseTypeCountsProvider(period: _selectedPeriod));
+    final caloriesAsync = isMonth
+        ? ref.watch(exerciseTotalCaloriesProvider(
+            startDate: _currentMonth,
+            endDate: monthEnd,
+          ))
+        : ref.watch(exerciseTotalCaloriesProvider(period: _selectedPeriod));
+    final workoutsAsync = isMonth
+        ? ref.watch(completedWorkoutAssignmentsProvider(
+            startDate: _currentMonth,
+            endDate: monthEnd,
+          ))
+        : ref.watch(completedWorkoutAssignmentsProvider(period: _selectedPeriod));
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -119,7 +143,11 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
           const SizedBox(height: 16),
         ],
         if (_selectedPeriod == PeriodFilter.month) ...[
-          const ExerciseMonthCalendar(),
+          ExerciseMonthCalendar(
+            onMonthChanged: (month) {
+              setState(() => _currentMonth = month);
+            },
+          ),
           const SizedBox(height: 16),
         ],
 
@@ -139,13 +167,12 @@ class _ExerciseRecordScreenState extends ConsumerState<ExerciseRecordScreen> {
         border: Border.all(color: colors.border),
       ),
       child: Row(
-        children: PeriodFilter.values.map((period) {
+        children: PeriodFilter.values.where((p) => p != PeriodFilter.threeMonths && p != PeriodFilter.all).map((period) {
           final isActive = period == _selectedPeriod;
           return Expanded(
             child: GestureDetector(
               onTap: () => setState(() => _selectedPeriod = period),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
+              child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
                   color: isActive ? AppColors.indigo600 : Colors.transparent,
@@ -709,7 +736,7 @@ class _PreviewPeriodFilter extends StatelessWidget {
         border: Border.all(color: colors.border),
       ),
       child: Row(
-        children: ['今日', '週', '月', '3ヶ月', '全期間'].asMap().entries.map((e) {
+        children: ['今日', '週', '月'].asMap().entries.map((e) {
           final isActive = e.key == 1; // Week is active
           return Expanded(
             child: Container(

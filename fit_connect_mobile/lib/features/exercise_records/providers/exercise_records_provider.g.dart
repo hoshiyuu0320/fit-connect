@@ -48,7 +48,7 @@ final weeklyExerciseCountProvider = AutoDisposeFutureProvider<int>.internal(
 // ignore: unused_element
 typedef WeeklyExerciseCountRef = AutoDisposeFutureProviderRef<int>;
 String _$exerciseTypeCountsHash() =>
-    r'1a979b2c39a897f5a1308a0c27fcb245183a6c40';
+    r'b2e189c9adfd6b39d4ba51996a58a38bb4b5b9d0';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -91,9 +91,13 @@ class ExerciseTypeCountsFamily extends Family<AsyncValue<Map<String, int>>> {
   /// Copied from [exerciseTypeCounts].
   ExerciseTypeCountsProvider call({
     PeriodFilter period = PeriodFilter.month,
+    DateTime? startDate,
+    DateTime? endDate,
   }) {
     return ExerciseTypeCountsProvider(
       period: period,
+      startDate: startDate,
+      endDate: endDate,
     );
   }
 
@@ -103,6 +107,8 @@ class ExerciseTypeCountsFamily extends Family<AsyncValue<Map<String, int>>> {
   ) {
     return call(
       period: provider.period,
+      startDate: provider.startDate,
+      endDate: provider.endDate,
     );
   }
 
@@ -131,10 +137,14 @@ class ExerciseTypeCountsProvider
   /// Copied from [exerciseTypeCounts].
   ExerciseTypeCountsProvider({
     PeriodFilter period = PeriodFilter.month,
+    DateTime? startDate,
+    DateTime? endDate,
   }) : this._internal(
           (ref) => exerciseTypeCounts(
             ref as ExerciseTypeCountsRef,
             period: period,
+            startDate: startDate,
+            endDate: endDate,
           ),
           from: exerciseTypeCountsProvider,
           name: r'exerciseTypeCountsProvider',
@@ -146,6 +156,8 @@ class ExerciseTypeCountsProvider
           allTransitiveDependencies:
               ExerciseTypeCountsFamily._allTransitiveDependencies,
           period: period,
+          startDate: startDate,
+          endDate: endDate,
         );
 
   ExerciseTypeCountsProvider._internal(
@@ -156,9 +168,13 @@ class ExerciseTypeCountsProvider
     required super.debugGetCreateSourceHash,
     required super.from,
     required this.period,
+    required this.startDate,
+    required this.endDate,
   }) : super.internal();
 
   final PeriodFilter period;
+  final DateTime? startDate;
+  final DateTime? endDate;
 
   @override
   Override overrideWith(
@@ -174,6 +190,8 @@ class ExerciseTypeCountsProvider
         allTransitiveDependencies: null,
         debugGetCreateSourceHash: null,
         period: period,
+        startDate: startDate,
+        endDate: endDate,
       ),
     );
   }
@@ -185,13 +203,18 @@ class ExerciseTypeCountsProvider
 
   @override
   bool operator ==(Object other) {
-    return other is ExerciseTypeCountsProvider && other.period == period;
+    return other is ExerciseTypeCountsProvider &&
+        other.period == period &&
+        other.startDate == startDate &&
+        other.endDate == endDate;
   }
 
   @override
   int get hashCode {
     var hash = _SystemHash.combine(0, runtimeType.hashCode);
     hash = _SystemHash.combine(hash, period.hashCode);
+    hash = _SystemHash.combine(hash, startDate.hashCode);
+    hash = _SystemHash.combine(hash, endDate.hashCode);
 
     return _SystemHash.finish(hash);
   }
@@ -202,6 +225,12 @@ class ExerciseTypeCountsProvider
 mixin ExerciseTypeCountsRef on AutoDisposeFutureProviderRef<Map<String, int>> {
   /// The parameter `period` of this provider.
   PeriodFilter get period;
+
+  /// The parameter `startDate` of this provider.
+  DateTime? get startDate;
+
+  /// The parameter `endDate` of this provider.
+  DateTime? get endDate;
 }
 
 class _ExerciseTypeCountsProviderElement
@@ -211,6 +240,10 @@ class _ExerciseTypeCountsProviderElement
 
   @override
   PeriodFilter get period => (origin as ExerciseTypeCountsProvider).period;
+  @override
+  DateTime? get startDate => (origin as ExerciseTypeCountsProvider).startDate;
+  @override
+  DateTime? get endDate => (origin as ExerciseTypeCountsProvider).endDate;
 }
 
 String _$weeklyExerciseDataHash() =>
@@ -546,7 +579,7 @@ class _ExerciseRecordCountsProviderElement
 }
 
 String _$exerciseTotalCaloriesHash() =>
-    r'333f89ca6897a48fcb5468b46930caf59356052b';
+    r'4250b82a429fd5d33fb4fc77ecbcfe58bb40dade';
 
 /// 期間内の消費カロリー合計を取得するProvider
 ///
@@ -568,9 +601,13 @@ class ExerciseTotalCaloriesFamily extends Family<AsyncValue<double>> {
   /// Copied from [exerciseTotalCalories].
   ExerciseTotalCaloriesProvider call({
     PeriodFilter period = PeriodFilter.month,
+    DateTime? startDate,
+    DateTime? endDate,
   }) {
     return ExerciseTotalCaloriesProvider(
       period: period,
+      startDate: startDate,
+      endDate: endDate,
     );
   }
 
@@ -580,6 +617,8 @@ class ExerciseTotalCaloriesFamily extends Family<AsyncValue<double>> {
   ) {
     return call(
       period: provider.period,
+      startDate: provider.startDate,
+      endDate: provider.endDate,
     );
   }
 
@@ -607,10 +646,14 @@ class ExerciseTotalCaloriesProvider extends AutoDisposeFutureProvider<double> {
   /// Copied from [exerciseTotalCalories].
   ExerciseTotalCaloriesProvider({
     PeriodFilter period = PeriodFilter.month,
+    DateTime? startDate,
+    DateTime? endDate,
   }) : this._internal(
           (ref) => exerciseTotalCalories(
             ref as ExerciseTotalCaloriesRef,
             period: period,
+            startDate: startDate,
+            endDate: endDate,
           ),
           from: exerciseTotalCaloriesProvider,
           name: r'exerciseTotalCaloriesProvider',
@@ -622,6 +665,8 @@ class ExerciseTotalCaloriesProvider extends AutoDisposeFutureProvider<double> {
           allTransitiveDependencies:
               ExerciseTotalCaloriesFamily._allTransitiveDependencies,
           period: period,
+          startDate: startDate,
+          endDate: endDate,
         );
 
   ExerciseTotalCaloriesProvider._internal(
@@ -632,9 +677,13 @@ class ExerciseTotalCaloriesProvider extends AutoDisposeFutureProvider<double> {
     required super.debugGetCreateSourceHash,
     required super.from,
     required this.period,
+    required this.startDate,
+    required this.endDate,
   }) : super.internal();
 
   final PeriodFilter period;
+  final DateTime? startDate;
+  final DateTime? endDate;
 
   @override
   Override overrideWith(
@@ -650,6 +699,8 @@ class ExerciseTotalCaloriesProvider extends AutoDisposeFutureProvider<double> {
         allTransitiveDependencies: null,
         debugGetCreateSourceHash: null,
         period: period,
+        startDate: startDate,
+        endDate: endDate,
       ),
     );
   }
@@ -661,13 +712,18 @@ class ExerciseTotalCaloriesProvider extends AutoDisposeFutureProvider<double> {
 
   @override
   bool operator ==(Object other) {
-    return other is ExerciseTotalCaloriesProvider && other.period == period;
+    return other is ExerciseTotalCaloriesProvider &&
+        other.period == period &&
+        other.startDate == startDate &&
+        other.endDate == endDate;
   }
 
   @override
   int get hashCode {
     var hash = _SystemHash.combine(0, runtimeType.hashCode);
     hash = _SystemHash.combine(hash, period.hashCode);
+    hash = _SystemHash.combine(hash, startDate.hashCode);
+    hash = _SystemHash.combine(hash, endDate.hashCode);
 
     return _SystemHash.finish(hash);
   }
@@ -678,6 +734,12 @@ class ExerciseTotalCaloriesProvider extends AutoDisposeFutureProvider<double> {
 mixin ExerciseTotalCaloriesRef on AutoDisposeFutureProviderRef<double> {
   /// The parameter `period` of this provider.
   PeriodFilter get period;
+
+  /// The parameter `startDate` of this provider.
+  DateTime? get startDate;
+
+  /// The parameter `endDate` of this provider.
+  DateTime? get endDate;
 }
 
 class _ExerciseTotalCaloriesProviderElement
@@ -687,18 +749,27 @@ class _ExerciseTotalCaloriesProviderElement
 
   @override
   PeriodFilter get period => (origin as ExerciseTotalCaloriesProvider).period;
+  @override
+  DateTime? get startDate =>
+      (origin as ExerciseTotalCaloriesProvider).startDate;
+  @override
+  DateTime? get endDate => (origin as ExerciseTotalCaloriesProvider).endDate;
 }
 
-String _$exerciseRecordsHash() => r'0b2b24856e71ba0d72ca39f3cb70fba27935cb45';
+String _$exerciseRecordsHash() => r'095bf2dcfdaac8f8e5061690eb3468e09b1bd470';
 
 abstract class _$ExerciseRecords
     extends BuildlessAutoDisposeAsyncNotifier<List<ExerciseRecord>> {
   late final PeriodFilter period;
   late final String? exerciseType;
+  late final DateTime? startDate;
+  late final DateTime? endDate;
 
   FutureOr<List<ExerciseRecord>> build({
     PeriodFilter period = PeriodFilter.month,
     String? exerciseType,
+    DateTime? startDate,
+    DateTime? endDate,
   });
 }
 
@@ -723,10 +794,14 @@ class ExerciseRecordsFamily extends Family<AsyncValue<List<ExerciseRecord>>> {
   ExerciseRecordsProvider call({
     PeriodFilter period = PeriodFilter.month,
     String? exerciseType,
+    DateTime? startDate,
+    DateTime? endDate,
   }) {
     return ExerciseRecordsProvider(
       period: period,
       exerciseType: exerciseType,
+      startDate: startDate,
+      endDate: endDate,
     );
   }
 
@@ -737,6 +812,8 @@ class ExerciseRecordsFamily extends Family<AsyncValue<List<ExerciseRecord>>> {
     return call(
       period: provider.period,
       exerciseType: provider.exerciseType,
+      startDate: provider.startDate,
+      endDate: provider.endDate,
     );
   }
 
@@ -766,10 +843,14 @@ class ExerciseRecordsProvider extends AutoDisposeAsyncNotifierProviderImpl<
   ExerciseRecordsProvider({
     PeriodFilter period = PeriodFilter.month,
     String? exerciseType,
+    DateTime? startDate,
+    DateTime? endDate,
   }) : this._internal(
           () => ExerciseRecords()
             ..period = period
-            ..exerciseType = exerciseType,
+            ..exerciseType = exerciseType
+            ..startDate = startDate
+            ..endDate = endDate,
           from: exerciseRecordsProvider,
           name: r'exerciseRecordsProvider',
           debugGetCreateSourceHash:
@@ -781,6 +862,8 @@ class ExerciseRecordsProvider extends AutoDisposeAsyncNotifierProviderImpl<
               ExerciseRecordsFamily._allTransitiveDependencies,
           period: period,
           exerciseType: exerciseType,
+          startDate: startDate,
+          endDate: endDate,
         );
 
   ExerciseRecordsProvider._internal(
@@ -792,10 +875,14 @@ class ExerciseRecordsProvider extends AutoDisposeAsyncNotifierProviderImpl<
     required super.from,
     required this.period,
     required this.exerciseType,
+    required this.startDate,
+    required this.endDate,
   }) : super.internal();
 
   final PeriodFilter period;
   final String? exerciseType;
+  final DateTime? startDate;
+  final DateTime? endDate;
 
   @override
   FutureOr<List<ExerciseRecord>> runNotifierBuild(
@@ -804,6 +891,8 @@ class ExerciseRecordsProvider extends AutoDisposeAsyncNotifierProviderImpl<
     return notifier.build(
       period: period,
       exerciseType: exerciseType,
+      startDate: startDate,
+      endDate: endDate,
     );
   }
 
@@ -814,7 +903,9 @@ class ExerciseRecordsProvider extends AutoDisposeAsyncNotifierProviderImpl<
       override: ExerciseRecordsProvider._internal(
         () => create()
           ..period = period
-          ..exerciseType = exerciseType,
+          ..exerciseType = exerciseType
+          ..startDate = startDate
+          ..endDate = endDate,
         from: from,
         name: null,
         dependencies: null,
@@ -822,6 +913,8 @@ class ExerciseRecordsProvider extends AutoDisposeAsyncNotifierProviderImpl<
         debugGetCreateSourceHash: null,
         period: period,
         exerciseType: exerciseType,
+        startDate: startDate,
+        endDate: endDate,
       ),
     );
   }
@@ -836,7 +929,9 @@ class ExerciseRecordsProvider extends AutoDisposeAsyncNotifierProviderImpl<
   bool operator ==(Object other) {
     return other is ExerciseRecordsProvider &&
         other.period == period &&
-        other.exerciseType == exerciseType;
+        other.exerciseType == exerciseType &&
+        other.startDate == startDate &&
+        other.endDate == endDate;
   }
 
   @override
@@ -844,6 +939,8 @@ class ExerciseRecordsProvider extends AutoDisposeAsyncNotifierProviderImpl<
     var hash = _SystemHash.combine(0, runtimeType.hashCode);
     hash = _SystemHash.combine(hash, period.hashCode);
     hash = _SystemHash.combine(hash, exerciseType.hashCode);
+    hash = _SystemHash.combine(hash, startDate.hashCode);
+    hash = _SystemHash.combine(hash, endDate.hashCode);
 
     return _SystemHash.finish(hash);
   }
@@ -858,6 +955,12 @@ mixin ExerciseRecordsRef
 
   /// The parameter `exerciseType` of this provider.
   String? get exerciseType;
+
+  /// The parameter `startDate` of this provider.
+  DateTime? get startDate;
+
+  /// The parameter `endDate` of this provider.
+  DateTime? get endDate;
 }
 
 class _ExerciseRecordsProviderElement
@@ -869,6 +972,10 @@ class _ExerciseRecordsProviderElement
   PeriodFilter get period => (origin as ExerciseRecordsProvider).period;
   @override
   String? get exerciseType => (origin as ExerciseRecordsProvider).exerciseType;
+  @override
+  DateTime? get startDate => (origin as ExerciseRecordsProvider).startDate;
+  @override
+  DateTime? get endDate => (origin as ExerciseRecordsProvider).endDate;
 }
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

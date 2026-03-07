@@ -27,30 +27,36 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
   String? _completedPlanTitle;
 
   Future<void> _handleSubmitCompletion(WorkoutAssignment assignment) async {
-    // フィードバック入力ダイアログを表示
-    final feedback = await showDialog<String>(
+    final result = await showDialog<_FeedbackResult>(
       context: context,
       builder: (context) => const _FeedbackDialog(),
     );
 
-    // キャンセル時は何もしない
-    if (feedback == null) return;
+    if (result == null) return;
 
+    final feedback = result.feedback;
+    final calories = result.calories;
     final planTitle = assignment.planInfo?.title ?? 'ワークアウトプラン';
     final clientId = ref.read(currentClientIdProvider);
     final trainerId = ref.read(currentTrainerIdProvider);
 
-    // DB更新（フィードバック付き）
     await ref
         .read(workoutScreenNotifierProvider.notifier)
-        .submitCompletion(assignment.id, clientFeedback: feedback);
+        .submitCompletion(
+          assignment.id,
+          clientFeedback: feedback,
+          calories: calories,
+        );
 
-    // 通知メッセージ送信（タグなし）
     if (clientId != null && trainerId != null) {
       try {
-        final messageContent = feedback.isNotEmpty
-            ? '本日のワークアウトプラン「$planTitle」を達成しました！\n\n💬 $feedback'
-            : '本日のワークアウトプラン「$planTitle」を達成しました！';
+        final hasCalories = calories != null;
+        final hasFeedback = feedback != null && feedback.isNotEmpty;
+
+        String messageContent = '本日のワークアウトプラン「$planTitle」を達成しました！';
+        if (hasCalories || hasFeedback) messageContent += '\n';
+        if (hasCalories) messageContent += '\n🔥 消費カロリー: ${calories}kcal';
+        if (hasFeedback) messageContent += '\n💬 $feedback';
 
         await MessageRepository().sendMessage(
           senderId: clientId,
@@ -60,7 +66,6 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
           content: messageContent,
         );
       } catch (e) {
-        // メッセージ送信失敗しても完了報告は成功として扱う
         debugPrint('[WorkoutScreen] メッセージ送信エラー: $e');
       }
     }
@@ -415,6 +420,12 @@ class _AssignmentSection extends StatelessWidget {
   }
 }
 
+class _FeedbackResult {
+  final String? feedback;
+  final int? calories;
+  const _FeedbackResult({this.feedback, this.calories});
+}
+
 class _FeedbackDialog extends StatefulWidget {
   const _FeedbackDialog();
 
@@ -424,10 +435,12 @@ class _FeedbackDialog extends StatefulWidget {
 
 class _FeedbackDialogState extends State<_FeedbackDialog> {
   final _controller = TextEditingController();
+  final _caloriesController = TextEditingController();
 
   @override
   void dispose() {
     _controller.dispose();
+    _caloriesController.dispose();
     super.dispose();
   }
 
@@ -457,7 +470,26 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
                 ),
               ),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 16),
+            Text(
+              '消費カロリー（任意）',
+              style: TextStyle(
+                fontSize: 14,
+                color: AppColors.of(context).textSecondary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _caloriesController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                hintText: '例: 300',
+                suffixText: 'kcal',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -467,7 +499,16 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
           child: const Text('キャンセル'),
         ),
         ElevatedButton(
-          onPressed: () => Navigator.of(context).pop(_controller.text),
+          onPressed: () {
+            final caloriesText = _caloriesController.text.trim();
+            final calories = caloriesText.isNotEmpty ? int.tryParse(caloriesText) : null;
+            Navigator.of(context).pop(
+              _FeedbackResult(
+                feedback: _controller.text,
+                calories: calories,
+              ),
+            );
+          },
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.emerald500,
             foregroundColor: Colors.white,

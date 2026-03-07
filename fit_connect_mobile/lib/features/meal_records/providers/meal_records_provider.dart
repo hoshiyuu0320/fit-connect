@@ -19,6 +19,8 @@ class MealRecords extends _$MealRecords {
   Future<List<MealRecord>> build({
     PeriodFilter period = PeriodFilter.month,
     String? mealType,
+    DateTime? startDate,
+    DateTime? endDate,
   }) async {
     final clientId = ref.watch(currentClientIdProvider);
     if (clientId == null) return [];
@@ -28,6 +30,8 @@ class MealRecords extends _$MealRecords {
       clientId: clientId,
       period: period,
       mealType: mealType,
+      startDate: startDate,
+      endDate: endDate,
     );
   }
 

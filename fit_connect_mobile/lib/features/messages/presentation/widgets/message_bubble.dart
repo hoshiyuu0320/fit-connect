@@ -208,14 +208,7 @@ class MessageBubble extends StatelessWidget {
 
                         // メッセージ本文（タグを除去して表示）
                         if (displayMessage.isNotEmpty)
-                          Text(
-                            displayMessage,
-                            style: TextStyle(
-                              color: isUser ? Colors.white : colors.textPrimary,
-                              fontSize: 14,
-                              height: 1.4,
-                            ),
-                          ),
+                          _buildRichText(displayMessage, isUser, colors),
 
                         // Images
                         if (images != null && images!.isNotEmpty) ...[
@@ -306,6 +299,61 @@ class MessageBubble extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// 🔥/💬絵文字をLucideIconsのWidgetSpanに変換してリッチテキストを返す
+  Widget _buildRichText(String text, bool isUser, AppColorsExtension colors) {
+    final emojiPattern = RegExp(r'(🔥|💬)');
+    final matches = emojiPattern.allMatches(text);
+
+    if (matches.isEmpty) {
+      return Text(
+        text,
+        style: TextStyle(
+          color: isUser ? Colors.white : colors.textPrimary,
+          fontSize: 14,
+          height: 1.4,
+        ),
+      );
+    }
+
+    final spans = <InlineSpan>[];
+    int lastEnd = 0;
+    final textColor = isUser ? Colors.white : colors.textPrimary;
+    final textStyle = TextStyle(color: textColor, fontSize: 14, height: 1.4);
+
+    for (final match in matches) {
+      if (match.start > lastEnd) {
+        spans.add(TextSpan(
+          text: text.substring(lastEnd, match.start),
+          style: textStyle,
+        ));
+      }
+
+      final emoji = match.group(0);
+      final IconData icon;
+      if (emoji == '🔥') {
+        icon = LucideIcons.flame;
+      } else {
+        icon = LucideIcons.messageCircle;
+      }
+
+      spans.add(WidgetSpan(
+        alignment: PlaceholderAlignment.middle,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 1),
+          child: Icon(icon, size: 16, color: textColor),
+        ),
+      ));
+
+      lastEnd = match.end;
+    }
+
+    if (lastEnd < text.length) {
+      spans.add(TextSpan(text: text.substring(lastEnd), style: textStyle));
+    }
+
+    return Text.rich(TextSpan(children: spans));
   }
 
   Widget _buildTag(String tag, bool isUser) {
@@ -587,6 +635,39 @@ Widget previewMessageBubbleEditMenu() {
                 ],
               );
             },
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+@Preview(name: 'MessageBubble - Workout Report')
+Widget previewMessageBubbleWorkoutReport() {
+  return MaterialApp(
+    theme: AppTheme.lightTheme,
+    home: Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              MessageBubble(
+                message: 'ワークアウト完了！\n🔥 消費カロリー: 350kcal\n💬 今日は脚トレを頑張りました！',
+                isUser: true,
+                timestamp: '18:30',
+                tags: ['#運動:筋トレ'],
+                onReply: () {},
+                onEdit: () {},
+              ),
+              const SizedBox(height: 16),
+              MessageBubble(
+                message: '素晴らしい成果ですね！🔥 消費カロリーも十分です。💬 次回はスクワットを増やしましょう',
+                isUser: false,
+                timestamp: '18:35',
+                onReply: () {},
+              ),
+            ],
           ),
         ),
       ),

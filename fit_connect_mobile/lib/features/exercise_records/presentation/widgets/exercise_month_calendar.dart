@@ -7,7 +7,12 @@ import 'package:fit_connect_mobile/features/exercise_records/providers/exercise_
 
 /// 月カレンダー（運動記録）
 class ExerciseMonthCalendar extends ConsumerStatefulWidget {
-  const ExerciseMonthCalendar({super.key});
+  final void Function(DateTime month)? onMonthChanged;
+
+  const ExerciseMonthCalendar({
+    super.key,
+    this.onMonthChanged,
+  });
 
   @override
   ConsumerState<ExerciseMonthCalendar> createState() =>
@@ -25,18 +30,21 @@ class _ExerciseMonthCalendarState extends ConsumerState<ExerciseMonthCalendar> {
   }
 
   void _previousMonth() {
+    final newMonth = DateTime(_currentMonth.year, _currentMonth.month - 1, 1);
     setState(() {
-      _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1, 1);
+      _currentMonth = newMonth;
     });
+    widget.onMonthChanged?.call(newMonth);
   }
 
   void _nextMonth() {
     final now = DateTime.now();
-    final nextMonth = DateTime(_currentMonth.year, _currentMonth.month + 1, 1);
-    if (!nextMonth.isAfter(DateTime(now.year, now.month, 1))) {
+    final newMonth = DateTime(_currentMonth.year, _currentMonth.month + 1, 1);
+    if (!newMonth.isAfter(DateTime(now.year, now.month, 1))) {
       setState(() {
-        _currentMonth = nextMonth;
+        _currentMonth = newMonth;
       });
+      widget.onMonthChanged?.call(newMonth);
     }
   }
 

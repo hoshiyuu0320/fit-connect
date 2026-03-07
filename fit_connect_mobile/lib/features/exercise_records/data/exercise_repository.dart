@@ -10,14 +10,24 @@ class ExerciseRepository {
     required String clientId,
     PeriodFilter? period,
     String? exerciseType,
+    DateTime? startDate,
+    DateTime? endDate,
   }) async {
     var query =
         _supabase.from('exercise_records').select().eq('client_id', clientId);
 
     // 期間フィルタを適用
-    if (period != null && period != PeriodFilter.all) {
-      final startDate = period.getStartDate();
-      query = query.gte('recorded_at', startDate.toIso8601String());
+    if (startDate != null || endDate != null) {
+      // startDate/endDate が指定された場合は period を無視
+      if (startDate != null) {
+        query = query.gte('recorded_at', startDate.toUtc().toIso8601String());
+      }
+      if (endDate != null) {
+        query = query.lte('recorded_at', endDate.toUtc().toIso8601String());
+      }
+    } else if (period != null && period != PeriodFilter.all) {
+      final periodStart = period.getStartDate();
+      query = query.gte('recorded_at', periodStart.toIso8601String());
     }
 
     // 運動タイプフィルタを適用
@@ -35,10 +45,14 @@ class ExerciseRepository {
   Future<Map<String, int>> getExerciseTypeCounts({
     required String clientId,
     required PeriodFilter period,
+    DateTime? startDate,
+    DateTime? endDate,
   }) async {
     final records = await getExerciseRecords(
       clientId: clientId,
       period: period,
+      startDate: startDate,
+      endDate: endDate,
     );
 
     final counts = <String, int>{};
@@ -177,10 +191,14 @@ class ExerciseRepository {
   Future<double> getTotalCalories({
     required String clientId,
     required PeriodFilter period,
+    DateTime? startDate,
+    DateTime? endDate,
   }) async {
     final records = await getExerciseRecords(
       clientId: clientId,
       period: period,
+      startDate: startDate,
+      endDate: endDate,
     );
 
     double total = 0;

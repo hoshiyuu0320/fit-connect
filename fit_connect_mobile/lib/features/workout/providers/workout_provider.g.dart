@@ -27,7 +27,7 @@ final workoutRepositoryProvider =
 // ignore: unused_element
 typedef WorkoutRepositoryRef = AutoDisposeProviderRef<WorkoutRepository>;
 String _$completedWorkoutAssignmentsHash() =>
-    r'e3aacf0fef4cb70a6a15dca0466647b575de6223';
+    r'd6b0ec4de50ead2e577bee5a250dd1ebb83315e5';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -71,9 +71,13 @@ class CompletedWorkoutAssignmentsFamily
   /// Copied from [completedWorkoutAssignments].
   CompletedWorkoutAssignmentsProvider call({
     PeriodFilter period = PeriodFilter.week,
+    DateTime? startDate,
+    DateTime? endDate,
   }) {
     return CompletedWorkoutAssignmentsProvider(
       period: period,
+      startDate: startDate,
+      endDate: endDate,
     );
   }
 
@@ -83,6 +87,8 @@ class CompletedWorkoutAssignmentsFamily
   ) {
     return call(
       period: provider.period,
+      startDate: provider.startDate,
+      endDate: provider.endDate,
     );
   }
 
@@ -111,10 +117,14 @@ class CompletedWorkoutAssignmentsProvider
   /// Copied from [completedWorkoutAssignments].
   CompletedWorkoutAssignmentsProvider({
     PeriodFilter period = PeriodFilter.week,
+    DateTime? startDate,
+    DateTime? endDate,
   }) : this._internal(
           (ref) => completedWorkoutAssignments(
             ref as CompletedWorkoutAssignmentsRef,
             period: period,
+            startDate: startDate,
+            endDate: endDate,
           ),
           from: completedWorkoutAssignmentsProvider,
           name: r'completedWorkoutAssignmentsProvider',
@@ -126,6 +136,8 @@ class CompletedWorkoutAssignmentsProvider
           allTransitiveDependencies:
               CompletedWorkoutAssignmentsFamily._allTransitiveDependencies,
           period: period,
+          startDate: startDate,
+          endDate: endDate,
         );
 
   CompletedWorkoutAssignmentsProvider._internal(
@@ -136,9 +148,13 @@ class CompletedWorkoutAssignmentsProvider
     required super.debugGetCreateSourceHash,
     required super.from,
     required this.period,
+    required this.startDate,
+    required this.endDate,
   }) : super.internal();
 
   final PeriodFilter period;
+  final DateTime? startDate;
+  final DateTime? endDate;
 
   @override
   Override overrideWith(
@@ -156,6 +172,8 @@ class CompletedWorkoutAssignmentsProvider
         allTransitiveDependencies: null,
         debugGetCreateSourceHash: null,
         period: period,
+        startDate: startDate,
+        endDate: endDate,
       ),
     );
   }
@@ -168,13 +186,17 @@ class CompletedWorkoutAssignmentsProvider
   @override
   bool operator ==(Object other) {
     return other is CompletedWorkoutAssignmentsProvider &&
-        other.period == period;
+        other.period == period &&
+        other.startDate == startDate &&
+        other.endDate == endDate;
   }
 
   @override
   int get hashCode {
     var hash = _SystemHash.combine(0, runtimeType.hashCode);
     hash = _SystemHash.combine(hash, period.hashCode);
+    hash = _SystemHash.combine(hash, startDate.hashCode);
+    hash = _SystemHash.combine(hash, endDate.hashCode);
 
     return _SystemHash.finish(hash);
   }
@@ -186,6 +208,12 @@ mixin CompletedWorkoutAssignmentsRef
     on AutoDisposeFutureProviderRef<List<WorkoutAssignment>> {
   /// The parameter `period` of this provider.
   PeriodFilter get period;
+
+  /// The parameter `startDate` of this provider.
+  DateTime? get startDate;
+
+  /// The parameter `endDate` of this provider.
+  DateTime? get endDate;
 }
 
 class _CompletedWorkoutAssignmentsProviderElement
@@ -196,10 +224,16 @@ class _CompletedWorkoutAssignmentsProviderElement
   @override
   PeriodFilter get period =>
       (origin as CompletedWorkoutAssignmentsProvider).period;
+  @override
+  DateTime? get startDate =>
+      (origin as CompletedWorkoutAssignmentsProvider).startDate;
+  @override
+  DateTime? get endDate =>
+      (origin as CompletedWorkoutAssignmentsProvider).endDate;
 }
 
 String _$workoutScreenNotifierHash() =>
-    r'f3a697181867835f769a384469e14ec5e8c61f33';
+    r'787849580641cb2ccc6d76ff5bd02dae3ffbd6ec';
 
 /// ワークアウト画面の状態を管理するNotifier
 ///

@@ -5,6 +5,8 @@ import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
 import 'package:fit_connect_mobile/features/messages/presentation/widgets/tag_suggestion_list.dart';
 import 'package:fit_connect_mobile/features/messages/presentation/widgets/reply_preview.dart';
+import 'package:fit_connect_mobile/features/messages/presentation/widgets/quick_action_bar.dart';
+import 'package:fit_connect_mobile/features/messages/presentation/widgets/structured_tag_form.dart';
 import 'package:fit_connect_mobile/services/storage_service.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
@@ -43,6 +45,7 @@ class _ChatInputState extends State<ChatInput> {
   String? _selectedTagHint; // タグ選択後に表示するヒント（タグ以降の部分）
   List<File> _selectedImages = []; // 選択された画像ファイル
   bool _isUploading = false; // アップロード中フラグ
+  String? _activeFormType; // null: フォーム非表示, 'weight'/'meal'/'exercise': 対応フォーム表示
 
   @override
   void initState() {
@@ -329,6 +332,90 @@ class _ChatInputState extends State<ChatInput> {
     }
   }
 
+  Widget _buildImagePreview({required bool insideForm}) {
+    final colors = AppColors.of(context);
+    return Container(
+      height: 88,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      decoration: BoxDecoration(
+        color: insideForm ? colors.surfaceDim : colors.surface,
+        border: insideForm
+            ? null
+            : Border(top: BorderSide(color: colors.border)),
+      ),
+      child: ListView.separated(
+        clipBehavior: Clip.none,
+        scrollDirection: Axis.horizontal,
+        itemCount: _selectedImages.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.file(
+                  _selectedImages[index],
+                  width: 64,
+                  height: 64,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              Positioned(
+                top: -4,
+                right: -4,
+                child: GestureDetector(
+                  onTap: () => _removeImage(index),
+                  child: Container(
+                    width: 20,
+                    height: 20,
+                    decoration: const BoxDecoration(
+                      color: AppColors.rose800,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      LucideIcons.x,
+                      color: Colors.white,
+                      size: 12,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _openStructuredForm(String type) {
+    setState(() {
+      _activeFormType = type;
+      _showSuggestions = false;
+      _selectedTagHint = null;
+    });
+  }
+
+  void _closeStructuredForm() {
+    setState(() {
+      _activeFormType = null;
+    });
+  }
+
+  void _insertComposedText(String text) {
+    final currentText = _controller.text.trim();
+    if (currentText.isEmpty) {
+      _controller.text = text;
+    } else {
+      _controller.text = '$currentText\n$text';
+    }
+    _controller.selection = TextSelection.fromPosition(
+      TextPosition(offset: _controller.text.length),
+    );
+    _closeStructuredForm();
+    _focusNode.requestFocus();
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
@@ -351,14 +438,25 @@ class _ChatInputState extends State<ChatInput> {
             messageContent: widget.replyToContent!,
             onCancel: widget.onCancelReply ?? () {},
           ),
-        if (_showSuggestions)
+        // 構造化タグフォーム（クイックアクションから開いた場合）
+        if (_activeFormType != null)
+          StructuredTagForm(
+            formType: _activeFormType!,
+            onCompose: _insertComposedText,
+            onClose: _closeStructuredForm,
+            hasImages: _selectedImages.isNotEmpty,
+            selectedImages: _selectedImages,
+            onPickImage: _pickImage,
+            onRemoveImage: _removeImage,
+          ),
+        if (_showSuggestions && _activeFormType == null)
           TagSuggestionList(
             query: _currentTagQuery,
             onSelect: _addTag,
             textFieldFocusNode: _focusNode,
           ),
         // タグ選択後のヒント表示（常に同じ高さを維持）
-        if (!_showSuggestions)
+        if (!_showSuggestions && _activeFormType == null)
           Container(
             width: double.infinity,
             height: 36, // 固定高さでレイアウト変化を防ぐ
@@ -375,56 +473,13 @@ class _ChatInputState extends State<ChatInput> {
               ),
             ),
           ),
-        // 画像プレビュー
-        if (_selectedImages.isNotEmpty)
-          Container(
-            height: 80,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: colors.surface,
-              border: Border(top: BorderSide(color: colors.border)),
-            ),
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: _selectedImages.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (context, index) {
-                return Stack(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.file(
-                        _selectedImages[index],
-                        width: 64,
-                        height: 64,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    Positioned(
-                      top: -4,
-                      right: -4,
-                      child: GestureDetector(
-                        onTap: () => _removeImage(index),
-                        child: Container(
-                          width: 20,
-                          height: 20,
-                          decoration: const BoxDecoration(
-                            color: AppColors.rose800,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            LucideIcons.x,
-                            color: Colors.white,
-                            size: 12,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
+        // クイックアクションバー（フォーム非表示時のみ）
+        if (_activeFormType == null)
+          QuickActionBar(onTap: _openStructuredForm),
+        // 画像プレビュー（フォーム非表示時のみ通常位置に表示）
+        if (_activeFormType == null && _selectedImages.isNotEmpty)
+          _buildImagePreview(insideForm: false),
+        if (_activeFormType == null)
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -714,6 +769,46 @@ Widget previewEditPreviewLong() {
               messageContent:
                   'これは非常に長いメッセージで、1行に収まりきらないため省略されるはずです。テストメッセージです。',
               onCancel: () {},
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+@Preview(name: 'ChatInput - QuickAction Visible')
+Widget previewChatInputQuickAction() {
+  return MaterialApp(
+    theme: AppTheme.lightTheme,
+    home: Scaffold(
+      body: SafeArea(
+        child: Column(
+          children: [
+            const Spacer(),
+            ChatInput(
+              onSend: (text, images, replyTo) async {},
+              userId: 'user-123',
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+@Preview(name: 'ChatInput - Dark Mode')
+Widget previewChatInputDark() {
+  return MaterialApp(
+    theme: AppTheme.darkTheme,
+    home: Scaffold(
+      body: SafeArea(
+        child: Column(
+          children: [
+            const Spacer(),
+            ChatInput(
+              onSend: (text, images, replyTo) async {},
+              userId: 'user-123',
             ),
           ],
         ),

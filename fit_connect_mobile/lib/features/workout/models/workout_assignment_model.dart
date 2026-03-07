@@ -49,6 +49,7 @@ class WorkoutAssignment {
   final String? trainerNote;
   @JsonKey(name: 'client_feedback')
   final String? clientFeedback;
+  final int? calories;
   @NullableDateTimeConverter()
   @JsonKey(name: 'started_at')
   final DateTime? startedAt;
@@ -71,6 +72,7 @@ class WorkoutAssignment {
     this.updatedAt,
     this.trainerNote,
     this.clientFeedback,
+    this.calories,
     this.startedAt,
     this.finishedAt,
     this.planInfo,
@@ -92,6 +94,7 @@ class WorkoutAssignment {
     DateTime? updatedAt,
     String? trainerNote,
     String? clientFeedback,
+    int? calories,
     DateTime? startedAt,
     DateTime? finishedAt,
     WorkoutPlanInfo? planInfo,
@@ -108,6 +111,7 @@ class WorkoutAssignment {
       updatedAt: updatedAt ?? this.updatedAt,
       trainerNote: trainerNote ?? this.trainerNote,
       clientFeedback: clientFeedback ?? this.clientFeedback,
+      calories: calories ?? this.calories,
       startedAt: startedAt ?? this.startedAt,
       finishedAt: finishedAt ?? this.finishedAt,
       planInfo: planInfo ?? this.planInfo,
