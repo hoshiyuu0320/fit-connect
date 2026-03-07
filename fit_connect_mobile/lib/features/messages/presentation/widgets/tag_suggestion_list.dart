@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 class TagSuggestionList extends StatelessWidget {
   final String query;
@@ -83,7 +84,7 @@ class TagSuggestionList extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(tag.icon),
+            Icon(tag.icon, size: 14, color: colors.textSecondary),
             const SizedBox(width: 4),
             Text(
               tag.label,
@@ -108,45 +109,45 @@ class TagSuggestionList extends StatelessWidget {
       // 食事
       const TagSuggestion(
           label: '#食事:朝食',
-          icon: '🌅',
+          icon: LucideIcons.sunrise,
           tag: '#食事:朝食',
           keywords: ['食事', '朝食', 'meal', 'breakfast'],
           example: '例: #食事:朝食 トースト、目玉焼き、サラダ'),
       const TagSuggestion(
           label: '#食事:昼食',
-          icon: '☀️',
+          icon: LucideIcons.sun,
           tag: '#食事:昼食',
           keywords: ['食事', '昼食', 'meal', 'lunch'],
           example: '例: #食事:昼食 サラダチキン、玄米おにぎり'),
       const TagSuggestion(
           label: '#食事:夕食',
-          icon: '🌙',
+          icon: LucideIcons.moon,
           tag: '#食事:夕食',
           keywords: ['食事', '夕食', 'meal', 'dinner'],
           example: '例: #食事:夕食 鶏むね肉のグリル、味噌汁'),
       const TagSuggestion(
           label: '#食事:間食',
-          icon: '🍪',
+          icon: LucideIcons.cookie,
           tag: '#食事:間食',
           keywords: ['食事', '間食', 'meal', 'snack'],
           example: '例: #食事:間食 プロテインバー、ナッツ'),
       // 運動
       const TagSuggestion(
           label: '#運動:筋トレ',
-          icon: '🏋️',
+          icon: LucideIcons.dumbbell,
           tag: '#運動:筋トレ',
           keywords: ['運動', '筋トレ', 'exercise', 'workout', 'strength'],
           example: '例: #運動:筋トレ ベンチプレス 60分 350kcal'),
       const TagSuggestion(
           label: '#運動:有酸素',
-          icon: '🏃',
+          icon: LucideIcons.activity,
           tag: '#運動:有酸素',
           keywords: ['運動', '有酸素', 'exercise', 'cardio', 'run'],
           example: '例: #運動:有酸素 ウォーキング 30分 3km 150kcal'),
       // 体重
       const TagSuggestion(
           label: '#体重',
-          icon: '⚖️',
+          icon: LucideIcons.scale,
           tag: '#体重',
           keywords: ['体重', 'weight'],
           example: '例: #体重 65.5kg 順調に減ってきた！'),
@@ -157,21 +158,21 @@ class TagSuggestionList extends StatelessWidget {
       return [
         const TagSuggestion(
             label: '#食事',
-            icon: '🍽️',
+            icon: LucideIcons.utensils,
             tag: '#食事',
             keywords: [],
             addSpace: false,
             example: '#食事:朝食 / 昼食 / 夕食 / 間食 から選択'),
         const TagSuggestion(
             label: '#運動',
-            icon: '🏋️',
+            icon: LucideIcons.dumbbell,
             tag: '#運動',
             keywords: [],
             addSpace: false,
             example: '#運動:筋トレ / 有酸素 から選択'),
         const TagSuggestion(
             label: '#体重',
-            icon: '⚖️',
+            icon: LucideIcons.scale,
             tag: '#体重',
             keywords: [],
             example: '例: #体重 65.5kg'),
@@ -190,7 +191,7 @@ class TagSuggestionList extends StatelessWidget {
 
 class TagSuggestion {
   final String label;
-  final String icon;
+  final IconData icon;
   final String tag;
   final List<String> keywords;
   final bool addSpace;

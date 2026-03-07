@@ -357,10 +357,11 @@ class MessageBubble extends StatelessWidget {
   }
 
   Widget _buildTag(String tag, bool isUser) {
-    String icon = _getTagIcon(tag);
+    final icon = _getTagIcon(tag);
 
     // タグの表示テキスト（#がなければ追加）
     final displayTag = tag.startsWith('#') ? tag : '#$tag';
+    final color = isUser ? Colors.white : AppColors.primary600;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -368,40 +369,49 @@ class MessageBubble extends StatelessWidget {
         color: isUser ? Colors.white.withOpacity(0.2) : AppColors.primary50,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Text(
-        icon.isNotEmpty ? '$icon $displayTag' : displayTag,
-        style: TextStyle(
-          color: isUser ? Colors.white : AppColors.primary600,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 12, color: color),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            displayTag,
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
 
   /// タグに応じたアイコンを取得
-  String _getTagIcon(String tag) {
+  IconData? _getTagIcon(String tag) {
     // 食事タグ
-    if (tag.contains('朝食')) return '🌅'; // 朝食
-    if (tag.contains('昼食')) return '☀️'; // 昼食
-    if (tag.contains('夕食') || tag.contains('晩')) return '🌙'; // 夕食
-    if (tag.contains('間食')) return '🍪'; // 間食
-    if (tag.contains('食事')) return '🍽️'; // 食事（詳細なし）
+    if (tag.contains('朝食')) return LucideIcons.sunrise;
+    if (tag.contains('昼食')) return LucideIcons.sun;
+    if (tag.contains('夕食') || tag.contains('晩')) return LucideIcons.moon;
+    if (tag.contains('間食')) return LucideIcons.cookie;
+    if (tag.contains('食事')) return LucideIcons.utensils;
 
     // 運動タグ
-    if (tag.contains('筋トレ')) return '🏋️'; // 筋トレ
-    if (tag.contains('有酸素')) return '🏃'; // 有酸素
-    if (tag.contains('ランニング') || tag.contains('走')) return '🏃'; // ランニング
-    if (tag.contains('ウォーキング') || tag.contains('歩')) return '🚶'; // ウォーキング
-    if (tag.contains('自転車') || tag.contains('サイクリング')) return '🚴'; // サイクリング
-    if (tag.contains('水泳') || tag.contains('プール')) return '🏊'; // 水泳
-    if (tag.contains('ヨガ')) return '🧘'; // ヨガ
-    if (tag.contains('運動')) return '🏋️'; // 運動（詳細なし）
+    if (tag.contains('筋トレ')) return LucideIcons.dumbbell;
+    if (tag.contains('有酸素')) return LucideIcons.activity;
+    if (tag.contains('ランニング') || tag.contains('走')) return LucideIcons.activity;
+    if (tag.contains('ウォーキング') || tag.contains('歩')) return LucideIcons.footprints;
+    if (tag.contains('自転車') || tag.contains('サイクリング')) return LucideIcons.bike;
+    if (tag.contains('水泳') || tag.contains('プール')) return LucideIcons.waves;
+    if (tag.contains('ヨガ')) return LucideIcons.flower2;
+    if (tag.contains('運動')) return LucideIcons.dumbbell;
 
     // 体重タグ
-    if (tag.contains('体重')) return '⚖️';
+    if (tag.contains('体重')) return LucideIcons.scale;
 
-    return '';
+    return null;
   }
 }
 

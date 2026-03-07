@@ -3,6 +3,7 @@ import 'package:flutter/widget_previews.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:fit_connect_mobile/features/meal_records/providers/meal_records_provider.dart';
 
 /// 月カレンダー（7列×複数行のグリッド）
@@ -87,7 +88,7 @@ class _MealMonthCalendarState extends ConsumerState<MealMonthCalendar> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                icon: Icon(Icons.chevron_left, color: colors.textHint),
+                icon: Icon(LucideIcons.chevronLeft, color: colors.textHint),
                 onPressed: _previousMonth,
               ),
               Text(
@@ -100,7 +101,7 @@ class _MealMonthCalendarState extends ConsumerState<MealMonthCalendar> {
               ),
               IconButton(
                 icon: Icon(
-                  Icons.chevron_right,
+                  LucideIcons.chevronRight,
                   color: _currentMonth.year == now.year &&
                           _currentMonth.month == now.month
                       ? colors.border
@@ -443,7 +444,7 @@ class _PreviewMealMonthCalendarState extends State<_PreviewMealMonthCalendar> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
-                icon: Icon(Icons.chevron_left, color: colors.textHint),
+                icon: Icon(LucideIcons.chevronLeft, color: colors.textHint),
                 onPressed: _previousMonth,
               ),
               Text(
@@ -456,7 +457,7 @@ class _PreviewMealMonthCalendarState extends State<_PreviewMealMonthCalendar> {
               ),
               IconButton(
                 icon: Icon(
-                  Icons.chevron_right,
+                  LucideIcons.chevronRight,
                   color: _currentMonth.year == now.year &&
                           _currentMonth.month == now.month
                       ? colors.border

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 class QuickActionBar extends StatelessWidget {
   final Function(String formType) onTap;
@@ -23,21 +24,21 @@ class QuickActionBar extends StatelessWidget {
       child: Row(
         children: [
           _ActionChip(
-            icon: '⚖️',
+            icon: LucideIcons.scale,
             label: '体重',
             colors: colors,
             onTap: () => onTap('weight'),
           ),
           const SizedBox(width: 8),
           _ActionChip(
-            icon: '🍽️',
+            icon: LucideIcons.utensils,
             label: '食事',
             colors: colors,
             onTap: () => onTap('meal'),
           ),
           const SizedBox(width: 8),
           _ActionChip(
-            icon: '🏃',
+            icon: LucideIcons.activity,
             label: '運動',
             colors: colors,
             onTap: () => onTap('exercise'),
@@ -57,7 +58,7 @@ class QuickActionBar extends StatelessWidget {
 }
 
 class _ActionChip extends StatelessWidget {
-  final String icon;
+  final IconData icon;
   final String label;
   final AppColorsExtension colors;
   final VoidCallback onTap;
@@ -82,7 +83,7 @@ class _ActionChip extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(icon, style: const TextStyle(fontSize: 13)),
+            Icon(icon, size: 14, color: colors.textSecondary),
             const SizedBox(width: 4),
             Text(
               label,
