@@ -13,6 +13,10 @@ class Trainer {
   final DateTime? createdAt;
   @JsonKey(name: 'updated_at')
   final DateTime? updatedAt;
+  @JsonKey(name: 'is_online', defaultValue: false)
+  final bool isOnline;
+  @JsonKey(name: 'last_seen_at')
+  final DateTime? lastSeenAt;
 
   const Trainer({
     required this.id,
@@ -21,6 +25,8 @@ class Trainer {
     this.profileImageUrl,
     this.createdAt,
     this.updatedAt,
+    this.isOnline = false,
+    this.lastSeenAt,
   });
 
   factory Trainer.fromJson(Map<String, dynamic> json) =>

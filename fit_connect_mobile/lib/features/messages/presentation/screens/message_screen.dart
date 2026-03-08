@@ -221,13 +221,14 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
     final currentUser = ref.watch(authNotifierProvider).valueOrNull;
     final trainerProfile = ref.watch(trainerProfileProvider).valueOrNull;
     final trainerName = trainerProfile?.name ?? 'トレーナー';
-    final isTrainerOnline = ref.watch(trainerCurrentStatusProvider);
+    final trainerPresence = ref.watch(trainerPresenceNotifierProvider);
+    final isTrainerOnline = trainerPresence.isOnline;
 
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
         appBar: _buildAppBar(context, trainerName, isTrainerOnline,
-            trainerProfile?.profileImageUrl),
+            trainerProfile?.profileImageUrl, trainerPresence.lastSeenAt),
         body: Column(
           children: [
             if (!isTrainerOnline)
@@ -243,7 +244,7 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'トレーナーは現在オフライン時間帯です。返信が遅くなる場合があります。',
+                        'トレーナーは現在オフラインです。返信が遅くなる場合があります。',
                         style: TextStyle(
                           color: AppColors.slate700,
                           fontSize: 12,
@@ -304,8 +305,17 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
     );
   }
 
+  String _formatLastSeen(DateTime? lastSeenAt) {
+    if (lastSeenAt == null) return 'オフライン';
+    final diff = DateTime.now().difference(lastSeenAt);
+    if (diff.inMinutes < 1) return 'たった今';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}分前';
+    if (diff.inHours < 24) return '${diff.inHours}時間前';
+    return '${diff.inDays}日前';
+  }
+
   PreferredSizeWidget _buildAppBar(BuildContext context, String trainerName,
-      bool isOnline, String? profileImageUrl) {
+      bool isOnline, String? profileImageUrl, DateTime? lastSeenAt) {
     final colors = AppColors.of(context);
     return AppBar(
       backgroundColor: colors.surface,
@@ -365,7 +375,9 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
                   ),
                 ),
                 Text(
-                  isOnline ? 'オンライン' : 'オフライン',
+                  isOnline
+                      ? 'オンライン'
+                      : _formatLastSeen(lastSeenAt),
                   style: TextStyle(
                     color: isOnline ? AppColors.success : colors.textHint,
                     fontSize: 10,
