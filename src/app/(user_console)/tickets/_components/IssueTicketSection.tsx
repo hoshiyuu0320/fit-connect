@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -66,17 +65,27 @@ export function IssueTicketSection({ templates, clients, onIssued }: IssueTicket
     }
   }
 
-  return (
-    <div className="bg-white rounded-lg shadow-sm border p-6">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">チケット発行</h2>
+  const isError = message.includes('エラー') || message.includes('選択')
 
-      <div className="space-y-4">
+  return (
+    <div className="bg-white rounded-md border border-[#E2E8F0] p-5">
+      <p className="text-[13px] font-semibold text-[#0F172A] mb-3">チケット発行</p>
+
+      <div className="flex items-end gap-4">
         {/* テンプレート選択 */}
-        <div className="space-y-2">
-          <Label>テンプレート</Label>
-          <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId} disabled={oneTimeTemplates.length === 0}>
+        <div className="flex-1">
+          <p className="text-[12px] font-medium text-[#475569] mb-1">テンプレート</p>
+          <Select
+            value={selectedTemplateId}
+            onValueChange={setSelectedTemplateId}
+            disabled={oneTimeTemplates.length === 0}
+          >
             <SelectTrigger>
-              <SelectValue placeholder={oneTimeTemplates.length === 0 ? 'テンプレートがありません' : 'テンプレートを選択'} />
+              <SelectValue
+                placeholder={
+                  oneTimeTemplates.length === 0 ? 'テンプレートがありません' : 'テンプレートを選択'
+                }
+              />
             </SelectTrigger>
             <SelectContent className="bg-white">
               {oneTimeTemplates.map((template) => (
@@ -89,11 +98,17 @@ export function IssueTicketSection({ templates, clients, onIssued }: IssueTicket
         </div>
 
         {/* 顧客選択 */}
-        <div className="space-y-2">
-          <Label>顧客</Label>
-          <Select value={selectedClientId} onValueChange={setSelectedClientId} disabled={clients.length === 0}>
+        <div className="flex-1">
+          <p className="text-[12px] font-medium text-[#475569] mb-1">顧客</p>
+          <Select
+            value={selectedClientId}
+            onValueChange={setSelectedClientId}
+            disabled={clients.length === 0}
+          >
             <SelectTrigger>
-              <SelectValue placeholder={clients.length === 0 ? '顧客がいません' : '顧客を選択'} />
+              <SelectValue
+                placeholder={clients.length === 0 ? '顧客がいません' : '顧客を選択'}
+              />
             </SelectTrigger>
             <SelectContent className="bg-white">
               {clients.map((client) => (
@@ -105,26 +120,25 @@ export function IssueTicketSection({ templates, clients, onIssued }: IssueTicket
           </Select>
         </div>
 
-        {/* メッセージ */}
-        {message && (
-          <p
-            className={`text-sm ${
-              message.includes('エラー') || message.includes('選択')
-                ? 'text-rose-600'
-                : 'text-emerald-600'
-            }`}
-          >
-            {message}
-          </p>
-        )}
-
         {/* 発行ボタン */}
-        <div className="flex justify-end">
-          <Button onClick={handleIssue} disabled={loading}>
-            {loading ? '発行中...' : '発行する'}
-          </Button>
-        </div>
+        <Button
+          onClick={handleIssue}
+          disabled={loading}
+          className="bg-[#14B8A6] hover:bg-[#0D9488] text-white rounded-md px-5 py-2 text-sm font-semibold whitespace-nowrap"
+        >
+          {loading ? '発行中...' : '発行する'}
+        </Button>
       </div>
+
+      {/* メッセージ */}
+      {message && (
+        <p
+          className="text-sm mt-3"
+          style={{ color: isError ? '#DC2626' : '#16A34A' }}
+        >
+          {message}
+        </p>
+      )}
     </div>
   )
 }

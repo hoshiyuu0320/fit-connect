@@ -121,7 +121,7 @@ export function EditIssuedTicketModal({
             <Label htmlFor="ticket_name">チケット名</Label>
             <Input id="ticket_name" {...register('ticket_name')} />
             {errors.ticket_name && (
-              <p className="text-sm text-rose-600">{errors.ticket_name.message}</p>
+              <p className="text-sm text-[#DC2626]">{errors.ticket_name.message}</p>
             )}
           </div>
 
@@ -141,7 +141,7 @@ export function EditIssuedTicketModal({
               </SelectContent>
             </Select>
             {errors.ticket_type && (
-              <p className="text-sm text-rose-600">{errors.ticket_type.message}</p>
+              <p className="text-sm text-[#DC2626]">{errors.ticket_type.message}</p>
             )}
           </div>
 
@@ -154,7 +154,7 @@ export function EditIssuedTicketModal({
               {...register('total_sessions', { valueAsNumber: true })}
             />
             {errors.total_sessions && (
-              <p className="text-sm text-rose-600">{errors.total_sessions.message}</p>
+              <p className="text-sm text-[#DC2626]">{errors.total_sessions.message}</p>
             )}
           </div>
 
@@ -167,7 +167,7 @@ export function EditIssuedTicketModal({
               {...register('remaining_sessions', { valueAsNumber: true })}
             />
             {errors.remaining_sessions && (
-              <p className="text-sm text-rose-600">{errors.remaining_sessions.message}</p>
+              <p className="text-sm text-[#DC2626]">{errors.remaining_sessions.message}</p>
             )}
           </div>
 
@@ -176,7 +176,7 @@ export function EditIssuedTicketModal({
             <Label htmlFor="valid_from">開始日</Label>
             <Input id="valid_from" type="date" {...register('valid_from')} />
             {errors.valid_from && (
-              <p className="text-sm text-rose-600">{errors.valid_from.message}</p>
+              <p className="text-sm text-[#DC2626]">{errors.valid_from.message}</p>
             )}
           </div>
 
@@ -185,7 +185,7 @@ export function EditIssuedTicketModal({
             <Label htmlFor="valid_until">終了日</Label>
             <Input id="valid_until" type="date" {...register('valid_until')} />
             {errors.valid_until && (
-              <p className="text-sm text-rose-600">{errors.valid_until.message}</p>
+              <p className="text-sm text-[#DC2626]">{errors.valid_until.message}</p>
             )}
           </div>
 
@@ -193,7 +193,11 @@ export function EditIssuedTicketModal({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               キャンセル
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="bg-[#14B8A6] hover:bg-[#0D9488] text-white"
+            >
               {isSubmitting ? '更新中...' : '更新'}
             </Button>
           </DialogFooter>

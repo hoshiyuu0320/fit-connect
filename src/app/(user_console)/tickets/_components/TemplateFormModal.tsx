@@ -145,7 +145,7 @@ export function TemplateFormModal({
           {/* テンプレート名 */}
           <div className="space-y-2">
             <Label htmlFor="template_name">
-              テンプレート名 <span className="text-red-500">*</span>
+              テンプレート名 <span className="text-[#DC2626]">*</span>
             </Label>
             <Input
               id="template_name"
@@ -154,7 +154,7 @@ export function TemplateFormModal({
               disabled={submitting}
             />
             {form.formState.errors.template_name && (
-              <p className="text-sm text-red-500">
+              <p className="text-sm text-[#DC2626]">
                 {form.formState.errors.template_name.message}
               </p>
             )}
@@ -163,7 +163,7 @@ export function TemplateFormModal({
           {/* 種別 */}
           <div className="space-y-2">
             <Label htmlFor="ticket_type">
-              種別 <span className="text-red-500">*</span>
+              種別 <span className="text-[#DC2626]">*</span>
             </Label>
             <Select
               value={form.watch('ticket_type')}
@@ -182,50 +182,53 @@ export function TemplateFormModal({
               </SelectContent>
             </Select>
             {form.formState.errors.ticket_type && (
-              <p className="text-sm text-red-500">
+              <p className="text-sm text-[#DC2626]">
                 {form.formState.errors.ticket_type.message}
               </p>
             )}
           </div>
 
-          {/* 合計回数 */}
-          <div className="space-y-2">
-            <Label htmlFor="total_sessions">
-              合計回数 <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="total_sessions"
-              type="number"
-              min="1"
-              {...form.register('total_sessions', { valueAsNumber: true })}
-              placeholder="8"
-              disabled={submitting}
-            />
-            {form.formState.errors.total_sessions && (
-              <p className="text-sm text-red-500">
-                {form.formState.errors.total_sessions.message}
-              </p>
-            )}
-          </div>
+          {/* 合計回数 / 有効月数 横並び */}
+          <div className="grid grid-cols-2 gap-3">
+            {/* 合計回数 */}
+            <div className="space-y-2">
+              <Label htmlFor="total_sessions">
+                合計回数 <span className="text-[#DC2626]">*</span>
+              </Label>
+              <Input
+                id="total_sessions"
+                type="number"
+                min="1"
+                {...form.register('total_sessions', { valueAsNumber: true })}
+                placeholder="8"
+                disabled={submitting}
+              />
+              {form.formState.errors.total_sessions && (
+                <p className="text-sm text-[#DC2626]">
+                  {form.formState.errors.total_sessions.message}
+                </p>
+              )}
+            </div>
 
-          {/* 有効月数 */}
-          <div className="space-y-2">
-            <Label htmlFor="valid_months">
-              有効月数 <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="valid_months"
-              type="number"
-              min="1"
-              {...form.register('valid_months', { valueAsNumber: true })}
-              placeholder="3"
-              disabled={submitting}
-            />
-            {form.formState.errors.valid_months && (
-              <p className="text-sm text-red-500">
-                {form.formState.errors.valid_months.message}
-              </p>
-            )}
+            {/* 有効月数 */}
+            <div className="space-y-2">
+              <Label htmlFor="valid_months">
+                有効月数 <span className="text-[#DC2626]">*</span>
+              </Label>
+              <Input
+                id="valid_months"
+                type="number"
+                min="1"
+                {...form.register('valid_months', { valueAsNumber: true })}
+                placeholder="3"
+                disabled={submitting}
+              />
+              {form.formState.errors.valid_months && (
+                <p className="text-sm text-[#DC2626]">
+                  {form.formState.errors.valid_months.message}
+                </p>
+              )}
+            </div>
           </div>
 
           {/* 月契約チェックボックス */}
@@ -234,7 +237,7 @@ export function TemplateFormModal({
               type="checkbox"
               id="is_recurring"
               {...form.register('is_recurring')}
-              className="rounded border-gray-300"
+              className="rounded border-[#E2E8F0]"
               disabled={submitting}
             />
             <Label htmlFor="is_recurring" className="text-sm cursor-pointer">
@@ -256,6 +259,7 @@ export function TemplateFormModal({
             type="button"
             onClick={form.handleSubmit(onSubmit)}
             disabled={submitting}
+            className="bg-[#14B8A6] hover:bg-[#0D9488] text-white"
           >
             {submitting ? '保存中...' : template ? '更新' : '作成'}
           </Button>

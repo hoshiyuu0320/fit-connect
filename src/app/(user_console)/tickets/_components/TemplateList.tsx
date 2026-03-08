@@ -5,6 +5,7 @@ import type { TicketTemplate } from '@/types/client'
 import { TICKET_TYPE_OPTIONS } from '@/types/client'
 import { TemplateFormModal } from './TemplateFormModal'
 import { DeleteTemplateDialog } from './DeleteTemplateDialog'
+import { LayoutGrid, Clock, Calendar } from 'lucide-react'
 
 interface TemplateListProps {
   templates: TicketTemplate[]
@@ -21,10 +22,13 @@ export function TemplateList({ templates, trainerId, onRefetch }: TemplateListPr
     <div className="space-y-4">
       {/* ヘッダー */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">テンプレート</h2>
+        <h2 className="text-base font-semibold" style={{ color: '#0F172A' }}>テンプレート一覧</h2>
         <button
           onClick={() => setCreateOpen(true)}
-          className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white rounded-md transition-colors"
+          style={{ backgroundColor: '#14B8A6' }}
+          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#0D9488')}
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#14B8A6')}
         >
           + テンプレート作成
         </button>
@@ -36,45 +40,107 @@ export function TemplateList({ templates, trainerId, onRefetch }: TemplateListPr
           {templates.map((template) => (
             <div
               key={template.id}
-              className="bg-white rounded-lg shadow-sm border p-5"
+              className="bg-white border rounded-md transition-colors cursor-pointer"
+              style={{
+                borderColor: '#E2E8F0',
+                borderLeft: template.is_recurring ? '3px solid #2563EB' : undefined,
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.borderColor = template.is_recurring ? '#2563EB' : '#14B8A6')}
+              onMouseLeave={(e) => (e.currentTarget.style.borderColor = template.is_recurring ? '#2563EB' : '#E2E8F0')}
             >
-              {/* テンプレート名 */}
-              <h3 className="text-base font-bold text-gray-900 mb-2">
-                {template.template_name}
-              </h3>
+              {/* カード上部 */}
+              <div className="p-5">
+                {/* テンプレート名 */}
+                <h3 className="text-base font-bold mb-3" style={{ color: '#0F172A' }}>
+                  {template.template_name}
+                </h3>
 
-              {/* 種別バッジ */}
-              <div className="flex items-center space-x-2 mb-2">
-                <span className="inline-block px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded">
-                  {TICKET_TYPE_OPTIONS[template.ticket_type as keyof typeof TICKET_TYPE_OPTIONS] || template.ticket_type}
-                </span>
-                {template.is_recurring ? (
-                  <span className="inline-block px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded">
-                    月契約
+                {/* 種別バッジ */}
+                <div className="flex items-center gap-2 mb-4">
+                  <span
+                    className="inline-block px-2 py-0.5 text-xs font-medium border rounded-md"
+                    style={{
+                      backgroundColor: '#F0FDFA',
+                      color: '#14B8A6',
+                      borderColor: '#CCFBF1',
+                    }}
+                  >
+                    {TICKET_TYPE_OPTIONS[template.ticket_type as keyof typeof TICKET_TYPE_OPTIONS] || template.ticket_type}
                   </span>
-                ) : (
-                  <span className="inline-block px-2 py-1 text-xs font-medium bg-gray-100 text-gray-500 rounded">
-                    都度
+                  {template.is_recurring ? (
+                    <span
+                      className="inline-block px-2 py-0.5 text-xs font-medium border rounded-md"
+                      style={{
+                        backgroundColor: '#EFF6FF',
+                        color: '#2563EB',
+                        borderColor: '#BFDBFE',
+                      }}
+                    >
+                      月契約
+                    </span>
+                  ) : (
+                    <span
+                      className="inline-block px-2 py-0.5 text-xs font-medium border rounded-md"
+                      style={{
+                        backgroundColor: '#F8FAFC',
+                        color: '#94A3B8',
+                        borderColor: '#E2E8F0',
+                      }}
+                    >
+                      都度
+                    </span>
+                  )}
+                </div>
+
+                {/* 回数/有効期間 */}
+                <div className="flex items-center gap-4">
+                  <span className="flex items-center gap-1.5 text-sm" style={{ color: '#475569' }}>
+                    <Clock size={14} style={{ color: '#94A3B8' }} />
+                    {template.total_sessions}回
                   </span>
-                )}
+                  <span className="flex items-center gap-1.5 text-sm" style={{ color: '#475569' }}>
+                    <Calendar size={14} style={{ color: '#94A3B8' }} />
+                    {template.valid_months}ヶ月有効
+                  </span>
+                </div>
               </div>
 
-              {/* 回数/有効期間 */}
-              <p className="text-sm text-gray-600 mb-4">
-                {template.total_sessions}回 / {template.valid_months}ヶ月有効
-              </p>
+              {/* 区切り線 */}
+              <div style={{ borderTop: '1px solid #E2E8F0' }} />
 
               {/* アクションボタン */}
-              <div className="flex items-center justify-end space-x-2">
+              <div className="flex items-center justify-end gap-2 px-5 py-3">
                 <button
                   onClick={() => setEditTemplate(template)}
-                  className="px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                  className="px-3 py-1 text-xs font-medium border rounded-md transition-colors"
+                  style={{
+                    backgroundColor: '#F8FAFC',
+                    color: '#475569',
+                    borderColor: '#E2E8F0',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#F1F5F9'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#F8FAFC'
+                  }}
                 >
                   編集
                 </button>
                 <button
                   onClick={() => setDeleteTemplate(template)}
-                  className="px-3 py-1 text-xs font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100"
+                  className="px-3 py-1 text-xs font-medium border rounded-md transition-colors"
+                  style={{
+                    backgroundColor: '#FEF2F2',
+                    color: '#DC2626',
+                    borderColor: '#FECACA',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#FEE2E2'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#FEF2F2'
+                  }}
                 >
                   削除
                 </button>
@@ -83,12 +149,24 @@ export function TemplateList({ templates, trainerId, onRefetch }: TemplateListPr
           ))}
         </div>
       ) : (
-        <div className="flex items-center justify-center h-48 bg-white rounded-lg shadow-sm border">
+        <div
+          className="flex items-center justify-center h-48 bg-white border rounded-md"
+          style={{ borderColor: '#E2E8F0', borderStyle: 'dashed' }}
+        >
           <div className="text-center">
-            <p className="text-gray-500 mb-2">テンプレートがありません</p>
+            <div
+              className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3"
+              style={{ backgroundColor: '#F0FDFA' }}
+            >
+              <LayoutGrid size={24} style={{ color: '#14B8A6' }} />
+            </div>
+            <p className="text-sm mb-2" style={{ color: '#94A3B8' }}>テンプレートがありません</p>
             <button
               onClick={() => setCreateOpen(true)}
-              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              className="text-sm font-medium transition-colors"
+              style={{ color: '#14B8A6' }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = '#0D9488')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = '#14B8A6')}
             >
               最初のテンプレートを作成する
             </button>

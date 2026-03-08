@@ -86,21 +86,21 @@ export function SubscriptionStatusDialog({
             <Button
               onClick={() => handleStatusChange('active')}
               disabled={loading || currentStatus === 'active'}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              className="bg-[#16A34A] hover:bg-[#15803D] text-white"
             >
               有効にする
             </Button>
             <Button
               onClick={() => handleStatusChange('paused')}
               disabled={loading || currentStatus === 'paused'}
-              className="bg-amber-500 hover:bg-amber-600 text-white"
+              className="bg-[#F59E0B] hover:bg-[#D97706] text-white"
             >
               一時停止
             </Button>
             <Button
               onClick={() => handleStatusChange('cancelled')}
               disabled={loading || currentStatus === 'cancelled'}
-              className="bg-rose-600 hover:bg-rose-700 text-white"
+              className="bg-[#DC2626] hover:bg-[#B91C1C] text-white"
               variant="destructive"
             >
               解約する

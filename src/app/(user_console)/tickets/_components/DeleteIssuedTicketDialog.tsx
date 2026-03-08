@@ -63,7 +63,11 @@ export function DeleteIssuedTicketDialog({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={loading}>キャンセル</AlertDialogCancel>
-          <AlertDialogAction onClick={handleDelete} disabled={loading}>
+          <AlertDialogAction
+            onClick={handleDelete}
+            disabled={loading}
+            className="bg-[#DC2626] hover:bg-[#B91C1C] text-white rounded-md"
+          >
             {loading ? '削除中...' : '削除'}
           </AlertDialogAction>
         </AlertDialogFooter>

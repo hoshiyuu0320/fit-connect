@@ -1,0 +1,1991 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FIT-CONNECT - Schedule Redesign Wireframe</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif;
+      background: #F8FAFC;
+      color: #0F172A;
+    }
+
+    /* ===== Layout ===== */
+    .app-container { display: flex; height: 100vh; }
+    .sidebar {
+      width: 240px;
+      background: #0F172A;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 16px 0;
+    }
+    .sidebar-logo {
+      padding: 0 20px 16px;
+      color: #fff;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      margin-bottom: 8px;
+    }
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 20px;
+      color: #94A3B8;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .sidebar-item:hover { color: #E2E8F0; background: rgba(255,255,255,0.04); }
+    .sidebar-item.active {
+      color: #14B8A6;
+      background: rgba(20,184,166,0.08);
+      border-right: 3px solid #14B8A6;
+    }
+    .sidebar-icon {
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.08);
+      flex-shrink: 0;
+    }
+    .sidebar-item.active .sidebar-icon {
+      background: rgba(20,184,166,0.15);
+    }
+
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ===== Page Header ===== */
+    .page-header {
+      padding: 24px 24px 0;
+      flex-shrink: 0;
+    }
+    .page-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #0F172A;
+    }
+    .page-subtitle {
+      font-size: 13px;
+      color: #94A3B8;
+      margin-top: 4px;
+    }
+
+    /* ===== KPI Summary ===== */
+    .kpi-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      padding: 20px 24px;
+      flex-shrink: 0;
+    }
+    .kpi-card {
+      background: #fff;
+      border: 1px solid #E2E8F0;
+      border-radius: 6px;
+      padding: 16px;
+    }
+    .kpi-card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .kpi-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .kpi-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: #475569;
+    }
+    .kpi-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: #0F172A;
+    }
+    .kpi-sub {
+      font-size: 11px;
+      color: #94A3B8;
+      margin-top: 2px;
+    }
+
+    /* ===== Toolbar ===== */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px 12px;
+      flex-shrink: 0;
+    }
+    .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* View Mode Segment */
+    .view-segment {
+      display: flex;
+      background: #F1F5F9;
+      border-radius: 6px;
+      padding: 3px;
+    }
+    .view-segment-btn {
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #94A3B8;
+      background: transparent;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .view-segment-btn.active {
+      background: #fff;
+      color: #0F172A;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+
+    /* Nav Buttons */
+    .nav-group {
+      display: flex;
+      align-items: center;
+      background: #F1F5F9;
+      border-radius: 6px;
+      padding: 3px;
+      gap: 2px;
+    }
+    .nav-btn {
+      padding: 6px 8px;
+      background: transparent;
+      border: none;
+      color: #475569;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+    }
+    .nav-btn:hover {
+      background: #fff;
+    }
+    .nav-btn svg { width: 16px; height: 16px; }
+
+    .current-date-label {
+      font-size: 15px;
+      font-weight: 600;
+      color: #0F172A;
+      margin-left: 4px;
+    }
+
+    /* Search */
+    .search-input {
+      position: relative;
+    }
+    .search-input input {
+      width: 180px;
+      height: 36px;
+      padding: 0 12px 0 34px;
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 6px;
+      font-size: 12px;
+      color: #0F172A;
+      font-family: inherit;
+      outline: none;
+      transition: all 0.15s;
+    }
+    .search-input input:focus {
+      background: #fff;
+      border-color: #14B8A6;
+      box-shadow: 0 0 0 3px rgba(20,184,166,0.1);
+    }
+    .search-input svg {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 14px;
+      height: 14px;
+      color: #94A3B8;
+    }
+
+    /* Client Selector */
+    .client-selector {
+      height: 36px;
+      padding: 0 12px;
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #0F172A;
+      font-family: inherit;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 140px;
+    }
+    .client-avatar {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #F0FDFA;
+      border: 1px solid #CCFBF1;
+      color: #14B8A6;
+      font-size: 10px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* Add Session Button */
+    .add-session-btn {
+      height: 36px;
+      padding: 0 16px;
+      background: #0F172A;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s;
+    }
+    .add-session-btn:hover {
+      background: #1E293B;
+    }
+
+    /* Workout Panel Toggle */
+    .workout-toggle {
+      height: 36px;
+      padding: 0 14px;
+      background: #F0FDFA;
+      color: #14B8A6;
+      border: 1px solid #CCFBF1;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s;
+    }
+    .workout-toggle:hover {
+      background: #CCFBF1;
+    }
+    .workout-toggle.active {
+      background: #14B8A6;
+      color: #fff;
+      border-color: #14B8A6;
+    }
+
+    /* ===== Calendar Container ===== */
+    .calendar-container {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      padding: 0 24px 24px;
+    }
+    .calendar-body {
+      flex: 1;
+      background: #fff;
+      border: 1px solid #E2E8F0;
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    /* ===== Week View ===== */
+    .week-header {
+      display: flex;
+      border-bottom: 1px solid #E2E8F0;
+      flex-shrink: 0;
+    }
+    .week-header-time {
+      width: 60px;
+      flex-shrink: 0;
+      border-right: 1px solid #E2E8F0;
+      background: #F8FAFC;
+    }
+    .week-header-days {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+    }
+    .week-header-day {
+      text-align: center;
+      padding: 12px 4px;
+      border-right: 1px solid #F1F5F9;
+    }
+    .week-header-day:last-child { border-right: none; }
+    .week-header-day .day-name {
+      font-size: 11px;
+      font-weight: 600;
+      color: #94A3B8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .week-header-day .day-num {
+      font-size: 18px;
+      font-weight: 600;
+      color: #0F172A;
+      margin-top: 4px;
+    }
+    .week-header-day.today .day-name { color: #14B8A6; }
+    .week-header-day.today .day-num {
+      color: #fff;
+      background: #14B8A6;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* All-day Area */
+    .allday-area {
+      display: flex;
+      border-bottom: 1px solid #E2E8F0;
+      background: #FAFBFC;
+      flex-shrink: 0;
+    }
+    .allday-label {
+      width: 60px;
+      flex-shrink: 0;
+      border-right: 1px solid #E2E8F0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: #94A3B8;
+      font-weight: 500;
+    }
+    .allday-days {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+    }
+    .allday-day {
+      padding: 4px;
+      border-right: 1px solid #F1F5F9;
+      min-height: 32px;
+    }
+    .allday-day:last-child { border-right: none; }
+
+    /* Time Grid */
+    .time-grid {
+      flex: 1;
+      display: flex;
+      overflow-y: auto;
+    }
+    .time-column {
+      width: 60px;
+      flex-shrink: 0;
+      border-right: 1px solid #E2E8F0;
+      background: #F8FAFC;
+    }
+    .time-slot-label {
+      height: 80px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-end;
+      padding: 4px 8px 0 0;
+      font-size: 11px;
+      font-weight: 500;
+      color: #94A3B8;
+      border-bottom: 1px solid #F1F5F9;
+    }
+    .days-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      position: relative;
+    }
+    .day-column {
+      border-right: 1px solid #F1F5F9;
+      position: relative;
+    }
+    .day-column:last-child { border-right: none; }
+    .hour-slot {
+      height: 80px;
+      border-bottom: 1px solid #F1F5F9;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .hour-slot:hover { background: #FAFBFC; }
+
+    /* ===== Session Card (Week View) ===== */
+    .session-card {
+      position: absolute;
+      left: 2px;
+      right: 2px;
+      border-radius: 4px;
+      padding: 4px 6px;
+      font-size: 11px;
+      cursor: pointer;
+      border-left: 3px solid;
+      overflow: hidden;
+      z-index: 5;
+      transition: box-shadow 0.15s;
+    }
+    .session-card:hover {
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .session-card .session-time {
+      font-weight: 600;
+      font-size: 10px;
+    }
+    .session-card .session-client {
+      font-weight: 500;
+      margin-top: 1px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .session-card .session-type-label {
+      font-size: 9px;
+      margin-top: 2px;
+      opacity: 0.8;
+    }
+
+    /* Session Type Colors (Project Design Tokens) */
+    .session-training {
+      background: #F0FDFA;
+      border-color: #14B8A6;
+      color: #0D9488;
+    }
+    .session-cardio {
+      background: #FFF7ED;
+      border-color: #F97316;
+      color: #C2410C;
+    }
+    .session-stretch {
+      background: #F0FDF4;
+      border-color: #22C55E;
+      color: #15803D;
+    }
+    .session-consultation {
+      background: #FAF5FF;
+      border-color: #A855F7;
+      color: #7E22CE;
+    }
+
+    /* Session Status */
+    .session-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 9px;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+    .status-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+    }
+
+    /* Assignment Mini Card */
+    .assignment-card {
+      padding: 3px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 500;
+      border-left: 3px solid;
+      margin-bottom: 2px;
+      cursor: grab;
+    }
+    .assignment-session {
+      background: #F0FDFA;
+      border-color: #14B8A6;
+      color: #0D9488;
+    }
+    .assignment-homework {
+      background: #EFF6FF;
+      border-color: #3B82F6;
+      color: #1D4ED8;
+    }
+
+    /* ===== Month View ===== */
+    .month-header {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      border-bottom: 1px solid #E2E8F0;
+      background: #F8FAFC;
+    }
+    .month-header-cell {
+      text-align: center;
+      padding: 10px 4px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #94A3B8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .month-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      grid-template-rows: repeat(6, 1fr);
+    }
+    .month-cell {
+      border-right: 1px solid #F1F5F9;
+      border-bottom: 1px solid #F1F5F9;
+      padding: 4px;
+      min-height: 100px;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .month-cell:hover { background: #FAFBFC; }
+    .month-cell:nth-child(7n) { border-right: none; }
+    .month-cell.other-month { background: #FAFBFC; }
+    .month-cell.other-month .month-day-num { color: #CBD5E1; }
+    .month-day-num {
+      font-size: 12px;
+      font-weight: 500;
+      color: #475569;
+      text-align: right;
+      margin-bottom: 4px;
+    }
+    .month-day-num.today {
+      color: #fff;
+      background: #14B8A6;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      float: right;
+    }
+    .month-event {
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 500;
+      margin-bottom: 2px;
+      border-left: 3px solid;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: pointer;
+    }
+
+    /* ===== Side Panel ===== */
+    .side-panel {
+      width: 300px;
+      flex-shrink: 0;
+      border-left: 1px solid #E2E8F0;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      border-radius: 0 6px 6px 0;
+      overflow: hidden;
+    }
+    .side-panel.hidden { width: 0; border: none; }
+    .side-panel-header {
+      padding: 16px;
+      border-bottom: 1px solid #E2E8F0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .side-panel-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #0F172A;
+    }
+    .side-panel-close {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      background: #F8FAFC;
+      border-radius: 6px;
+      cursor: pointer;
+      color: #94A3B8;
+      transition: all 0.15s;
+    }
+    .side-panel-close:hover {
+      background: #F1F5F9;
+      color: #475569;
+    }
+
+    .side-panel-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+    }
+
+    /* Template Card in Side Panel */
+    .template-card {
+      padding: 10px 12px;
+      border: 1px solid #E2E8F0;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      cursor: grab;
+      transition: all 0.15s;
+      background: #fff;
+    }
+    .template-card:hover {
+      border-color: #14B8A6;
+      background: #F0FDFA;
+    }
+    .template-card:active {
+      cursor: grabbing;
+    }
+    .template-card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #0F172A;
+    }
+    .template-card-meta {
+      font-size: 11px;
+      color: #94A3B8;
+      margin-top: 3px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .template-card-badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+    .badge-session {
+      background: #F0FDFA;
+      color: #14B8A6;
+      border: 1px solid #CCFBF1;
+    }
+    .badge-homework {
+      background: #EFF6FF;
+      color: #3B82F6;
+      border: 1px solid #DBEAFE;
+    }
+
+    /* ===== Session Modal ===== */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    .modal-content {
+      background: #fff;
+      border-radius: 6px;
+      width: 480px;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    .modal-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid #E2E8F0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0F172A;
+    }
+    .modal-body {
+      padding: 24px;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #475569;
+      margin-bottom: 6px;
+    }
+    .form-input {
+      width: 100%;
+      height: 40px;
+      padding: 0 12px;
+      border: 1px solid #E2E8F0;
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: inherit;
+      color: #0F172A;
+      outline: none;
+      transition: all 0.15s;
+    }
+    .form-input:focus {
+      border-color: #14B8A6;
+      box-shadow: 0 0 0 3px rgba(20,184,166,0.1);
+    }
+    .form-select {
+      width: 100%;
+      height: 40px;
+      padding: 0 12px;
+      border: 1px solid #E2E8F0;
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: inherit;
+      color: #0F172A;
+      outline: none;
+      background: #fff;
+      cursor: pointer;
+    }
+    .form-textarea {
+      width: 100%;
+      min-height: 80px;
+      padding: 10px 12px;
+      border: 1px solid #E2E8F0;
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: inherit;
+      color: #0F172A;
+      outline: none;
+      resize: vertical;
+    }
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid #E2E8F0;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+    .btn-secondary {
+      height: 38px;
+      padding: 0 16px;
+      background: #F8FAFC;
+      color: #475569;
+      border: 1px solid #E2E8F0;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-secondary:hover { background: #F1F5F9; }
+    .btn-primary {
+      height: 38px;
+      padding: 0 20px;
+      background: #0F172A;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-primary:hover { background: #1E293B; }
+    .btn-danger {
+      height: 38px;
+      padding: 0 16px;
+      background: #FEF2F2;
+      color: #DC2626;
+      border: 1px solid #FECACA;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-danger:hover { background: #FEE2E2; }
+
+    /* ===== Session Type Selector ===== */
+    .session-type-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+    .session-type-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border: 1px solid #E2E8F0;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .session-type-option:hover {
+      border-color: #14B8A6;
+    }
+    .session-type-option.selected {
+      border-color: #14B8A6;
+      background: #F0FDFA;
+    }
+    .session-type-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .session-type-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: #0F172A;
+    }
+
+    /* ===== Skeleton Loading ===== */
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .skeleton {
+      background: #E2E8F0;
+      border-radius: 4px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    .skeleton-header {
+      display: flex;
+      border-bottom: 1px solid #E2E8F0;
+      flex-shrink: 0;
+    }
+
+    /* ===== Improvement Notes ===== */
+    .improvement-notes {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 400px;
+      height: 100vh;
+      background: #0F172A;
+      color: #E2E8F0;
+      overflow-y: auto;
+      padding: 24px;
+      z-index: 200;
+      transform: translateX(100%);
+      transition: transform 0.3s;
+    }
+    .improvement-notes.open {
+      transform: translateX(0);
+    }
+    .improvement-notes h2 {
+      font-size: 16px;
+      font-weight: 700;
+      color: #14B8A6;
+      margin-bottom: 16px;
+    }
+    .improvement-item {
+      margin-bottom: 20px;
+      padding: 12px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 6px;
+      border-left: 3px solid #14B8A6;
+    }
+    .improvement-item h3 {
+      font-size: 13px;
+      font-weight: 600;
+      color: #14B8A6;
+      margin-bottom: 6px;
+    }
+    .improvement-item p {
+      font-size: 12px;
+      line-height: 1.6;
+      color: #94A3B8;
+    }
+    .improvement-item .before-after {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .improvement-item .ba-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: #DC2626;
+      margin-bottom: 4px;
+    }
+    .improvement-item .ba-label.after {
+      color: #16A34A;
+    }
+    .improvement-item .ba-code {
+      font-size: 10px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      background: rgba(0,0,0,0.3);
+      padding: 4px 6px;
+      border-radius: 4px;
+      color: #CBD5E1;
+    }
+
+    /* Toggle Button */
+    .notes-toggle {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      z-index: 201;
+      width: 44px;
+      height: 44px;
+      background: #0F172A;
+      color: #14B8A6;
+      border: 2px solid #14B8A6;
+      border-radius: 50%;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+    }
+    .notes-toggle:hover {
+      background: #14B8A6;
+      color: #fff;
+    }
+
+    /* ===== View Tabs ===== */
+    .view-tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 20px;
+      background: #F1F5F9;
+      padding: 4px;
+      border-radius: 6px;
+    }
+    .view-tab {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 600;
+      color: #94A3B8;
+      background: transparent;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .view-tab.active {
+      background: #fff;
+      color: #0F172A;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+  </style>
+</head>
+<body>
+  <!-- Notes Toggle Button -->
+  <button class="notes-toggle" onclick="toggleNotes()" title="改善提案を表示">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+  </button>
+
+  <!-- Improvement Notes Panel -->
+  <div class="improvement-notes" id="notesPanel">
+    <h2>スケジュール画面 改善提案（10項目）</h2>
+
+    <div class="improvement-item">
+      <h3>1. ページヘッダー統一</h3>
+      <p>他画面（ダッシュボード、チケット等）と同様に、タイトル + サブテキストを配置。現状はカレンダーがいきなり表示されている。</p>
+      <div class="before-after">
+        <div>
+          <div class="ba-label">Before</div>
+          <div class="ba-code">ヘッダーなし</div>
+        </div>
+        <div>
+          <div class="ba-label after">After</div>
+          <div class="ba-code">スケジュール管理 + サブテキスト</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="improvement-item">
+      <h3>2. KPIサマリーバー</h3>
+      <p>今週のセッション数、本日の予定数、完了/キャンセル数、アサインメント数を一目で把握可能にする。</p>
+    </div>
+
+    <div class="improvement-item">
+      <h3>3. カラーシステム統一</h3>
+      <p>Tailwindデフォルト色（blue-500, orange-50等）を全てプロジェクトのデザイントークンに置き換え。</p>
+      <div class="before-after">
+        <div>
+          <div class="ba-label">Before</div>
+          <div class="ba-code">bg-blue-50<br>border-blue-500<br>text-blue-700<br>bg-blue-600 (today)</div>
+        </div>
+        <div>
+          <div class="ba-label after">After</div>
+          <div class="ba-code">bg: #F0FDFA<br>border: #14B8A6<br>text: #0D9488<br>bg: #14B8A6 (today)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="improvement-item">
+      <h3>4. セッションカード刷新</h3>
+      <p>左ボーダー色でセッション種別を表現。顧客名・時間・種別・ステータスを小カード内に整理。emojiアイコン（📋）を排除。</p>
+    </div>
+
+    <div class="improvement-item">
+      <h3>5. ツールバー整理</h3>
+      <p>ビュー切替をセグメントコントロール化。ナビゲーションと日付表示を一体化。検索・クライアント選択・アクションボタンを右寄せで整列。</p>
+      <div class="before-after">
+        <div>
+          <div class="ba-label">Before</div>
+          <div class="ba-code">2段構成のヘッダー<br>bg-gray-100 p-1<br>bg-blue-100 (active)</div>
+        </div>
+        <div>
+          <div class="ba-label after">After</div>
+          <div class="ba-code">1段ツールバー<br>bg: #F1F5F9<br>統一パレット</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="improvement-item">
+      <h3>6. 月ビュー刷新</h3>
+      <p>セルの高さ・パディングを統一。イベントカードの左ボーダー色を種別に合わせる。todayインジケータをティール色に。</p>
+    </div>
+
+    <div class="improvement-item">
+      <h3>7. サイドパネル（ワークアウト）統一</h3>
+      <p>パネルヘッダー・テンプレートカードのスタイルをデザイントークンで統一。テンプレート種別バッジ（セッション/宿題）を見やすく。</p>
+      <div class="before-after">
+        <div>
+          <div class="ba-label">Before</div>
+          <div class="ba-code">border-blue-500<br>bg-blue-50 (session)<br>bg-teal-50 (homework)</div>
+        </div>
+        <div>
+          <div class="ba-label after">After</div>
+          <div class="ba-code">border: #E2E8F0<br>hover: #F0FDFA<br>badge: 統一パレット</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="improvement-item">
+      <h3>8. セッションモーダル統一</h3>
+      <p>フォーム入力のスタイル・focus色・ボタン色を全てデザイントークンに。セッション種別は色付きドット + グリッド選択に変更。</p>
+    </div>
+
+    <div class="improvement-item">
+      <h3>9. アサインメントカード統一</h3>
+      <p>ワークアウトアサインメントの小カードもプロジェクトカラーに統一。セッション種別: ティール、宿題種別: ブルーのボーダーで視認性UP。</p>
+    </div>
+
+    <div class="improvement-item">
+      <h3>10. スケルトンローディング</h3>
+      <p>初期ロード中にスケルトンUIを表示（他画面と同様）。現状は何も表示されない（return null）。</p>
+    </div>
+  </div>
+
+  <div class="app-container" id="app">
+    <!-- Sidebar -->
+    <nav class="sidebar">
+      <div class="sidebar-logo">FIT-CONNECT</div>
+      <div class="sidebar-item"><div class="sidebar-icon"></div>ダッシュボード</div>
+      <div class="sidebar-item"><div class="sidebar-icon"></div>顧客管理</div>
+      <div class="sidebar-item active"><div class="sidebar-icon"></div>スケジュール</div>
+      <div class="sidebar-item"><div class="sidebar-icon"></div>メッセージ</div>
+      <div class="sidebar-item"><div class="sidebar-icon"></div>チケット管理</div>
+      <div class="sidebar-item"><div class="sidebar-icon"></div>レポート</div>
+      <div class="sidebar-item"><div class="sidebar-icon"></div>設定</div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- View Tab Selector -->
+      <div style="padding: 20px 24px 0; display: flex; justify-content: center;">
+        <div class="view-tabs" style="max-width: 600px; width: 100%;">
+          <button class="view-tab active" onclick="showView('week')">週ビュー</button>
+          <button class="view-tab" onclick="showView('month')">月ビュー</button>
+          <button class="view-tab" onclick="showView('modal')">セッションモーダル</button>
+          <button class="view-tab" onclick="showView('skeleton')">スケルトン</button>
+        </div>
+      </div>
+
+      <!-- ========== WEEK VIEW ========== -->
+      <div id="view-week">
+        <!-- Page Header -->
+        <div class="page-header">
+          <h1 class="page-title">スケジュール管理</h1>
+          <p class="page-subtitle">セッション予約・ワークアウト割当の管理</p>
+        </div>
+
+        <!-- KPI Summary Bar -->
+        <div class="kpi-bar">
+          <div class="kpi-card">
+            <div class="kpi-card-header">
+              <div class="kpi-icon" style="background: #F0FDFA;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              </div>
+              <span class="kpi-label">今週のセッション</span>
+            </div>
+            <div class="kpi-value">12</div>
+            <div class="kpi-sub">先週比 +3</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-card-header">
+              <div class="kpi-icon" style="background: #EFF6FF;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+              </div>
+              <span class="kpi-label">本日の予定</span>
+            </div>
+            <div class="kpi-value">3</div>
+            <div class="kpi-sub">次の予定: 14:00</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-card-header">
+              <div class="kpi-icon" style="background: #F0FDF4;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              </div>
+              <span class="kpi-label">完了セッション</span>
+            </div>
+            <div class="kpi-value">8</div>
+            <div class="kpi-sub">今週の完了率 67%</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-card-header">
+              <div class="kpi-icon" style="background: #FFFBEB;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              </div>
+              <span class="kpi-label">キャンセル</span>
+            </div>
+            <div class="kpi-value">1</div>
+            <div class="kpi-sub">今週のキャンセル</div>
+          </div>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <div class="view-segment">
+              <button class="view-segment-btn">日</button>
+              <button class="view-segment-btn active">週</button>
+              <button class="view-segment-btn">月</button>
+            </div>
+            <div class="nav-group">
+              <button class="nav-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+              </button>
+              <button class="nav-btn">今週</button>
+              <button class="nav-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+              </button>
+            </div>
+            <span class="current-date-label">2026年3月 第2週</span>
+          </div>
+          <div class="toolbar-right">
+            <div class="search-input">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" placeholder="スケジュールを検索..." />
+            </div>
+            <div class="client-selector">
+              <div class="client-avatar">全</div>
+              <span>全クライアント</span>
+            </div>
+            <button class="workout-toggle active">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+              ワークアウト
+            </button>
+            <button class="add-session-btn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              セッション追加
+            </button>
+          </div>
+        </div>
+
+        <!-- Calendar -->
+        <div class="calendar-container">
+          <div class="calendar-body">
+            <!-- Week Header -->
+            <div class="week-header">
+              <div class="week-header-time"></div>
+              <div class="week-header-days">
+                <div class="week-header-day">
+                  <div class="day-name">月</div>
+                  <div class="day-num">2</div>
+                </div>
+                <div class="week-header-day">
+                  <div class="day-name">火</div>
+                  <div class="day-num">3</div>
+                </div>
+                <div class="week-header-day">
+                  <div class="day-name">水</div>
+                  <div class="day-num">4</div>
+                </div>
+                <div class="week-header-day">
+                  <div class="day-name">木</div>
+                  <div class="day-num">5</div>
+                </div>
+                <div class="week-header-day today">
+                  <div class="day-name">金</div>
+                  <div class="day-num">6</div>
+                </div>
+                <div class="week-header-day">
+                  <div class="day-name">土</div>
+                  <div class="day-num">7</div>
+                </div>
+                <div class="week-header-day">
+                  <div class="day-name">日</div>
+                  <div class="day-num">8</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- All-day Area -->
+            <div class="allday-area">
+              <div class="allday-label">終日</div>
+              <div class="allday-days">
+                <div class="allday-day"></div>
+                <div class="allday-day">
+                  <div class="assignment-card assignment-homework">宿題: 自主トレメニュー</div>
+                </div>
+                <div class="allday-day"></div>
+                <div class="allday-day">
+                  <div class="assignment-card assignment-homework">宿題: ストレッチ</div>
+                </div>
+                <div class="allday-day"></div>
+                <div class="allday-day"></div>
+                <div class="allday-day"></div>
+              </div>
+            </div>
+
+            <!-- Time Grid -->
+            <div class="time-grid">
+              <div class="time-column">
+                <div class="time-slot-label">6:00</div>
+                <div class="time-slot-label">7:00</div>
+                <div class="time-slot-label">8:00</div>
+                <div class="time-slot-label">9:00</div>
+                <div class="time-slot-label">10:00</div>
+                <div class="time-slot-label">11:00</div>
+                <div class="time-slot-label">12:00</div>
+                <div class="time-slot-label">13:00</div>
+                <div class="time-slot-label">14:00</div>
+                <div class="time-slot-label">15:00</div>
+                <div class="time-slot-label">16:00</div>
+                <div class="time-slot-label">17:00</div>
+                <div class="time-slot-label">18:00</div>
+                <div class="time-slot-label">19:00</div>
+                <div class="time-slot-label">20:00</div>
+                <div class="time-slot-label">21:00</div>
+                <div class="time-slot-label">22:00</div>
+              </div>
+              <div class="days-grid">
+                <!-- Monday -->
+                <div class="day-column">
+                  <div class="hour-slot"></div>
+                  <div class="hour-slot"></div>
+                  <div class="hour-slot"></div>
+                  <div class="hour-slot"></div>
+                  <div class="hour-slot"></div>
+                  <div class="hour-slot"></div>
+                  <div class="hour-slot"></div>
+                  <div class="hour-slot"></div>
+                  <div class="hour-slot"></div>
+                  <div class="hour-slot"></div>
+                  <div class="hour-slot"></div>
+                  <div class="hour-slot"></div>
+                  <div class="hour-slot"></div>
+                  <div class="hour-slot"></div>
+                  <div class="hour-slot"></div>
+                  <div class="hour-slot"></div>
+                  <div class="hour-slot"></div>
+                  <!-- Session: 9:00-10:00 Training -->
+                  <div class="session-card session-training" style="top: 240px; height: 80px;">
+                    <div class="session-time">9:00 - 10:00</div>
+                    <div class="session-client">田中 太郎</div>
+                    <div class="session-type-label">トレーニング</div>
+                    <div class="session-status">
+                      <span class="status-dot" style="background: #14B8A6;"></span>
+                      確定
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Tuesday -->
+                <div class="day-column">
+                  <div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div>
+                  <!-- Session: 10:00-11:30 Cardio -->
+                  <div class="session-card session-cardio" style="top: 320px; height: 120px;">
+                    <div class="session-time">10:00 - 11:30</div>
+                    <div class="session-client">佐藤 花子</div>
+                    <div class="session-type-label">有酸素トレーニング</div>
+                    <div class="session-status">
+                      <span class="status-dot" style="background: #16A34A;"></span>
+                      完了
+                    </div>
+                  </div>
+                  <!-- Session: 14:00-15:00 Training -->
+                  <div class="session-card session-training" style="top: 640px; height: 80px;">
+                    <div class="session-time">14:00 - 15:00</div>
+                    <div class="session-client">鈴木 一郎</div>
+                    <div class="session-type-label">トレーニング</div>
+                    <div class="session-status">
+                      <span class="status-dot" style="background: #14B8A6;"></span>
+                      確定
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Wednesday -->
+                <div class="day-column">
+                  <div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div>
+                  <!-- Session: 11:00-12:00 Stretch -->
+                  <div class="session-card session-stretch" style="top: 400px; height: 80px;">
+                    <div class="session-time">11:00 - 12:00</div>
+                    <div class="session-client">山田 美咲</div>
+                    <div class="session-type-label">ストレッチ</div>
+                    <div class="session-status">
+                      <span class="status-dot" style="background: #14B8A6;"></span>
+                      確定
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Thursday -->
+                <div class="day-column">
+                  <div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div>
+                  <!-- Session: 9:00-10:00 Consultation -->
+                  <div class="session-card session-consultation" style="top: 240px; height: 80px;">
+                    <div class="session-time">9:00 - 10:00</div>
+                    <div class="session-client">高橋 健太</div>
+                    <div class="session-type-label">カウンセリング</div>
+                    <div class="session-status">
+                      <span class="status-dot" style="background: #14B8A6;"></span>
+                      確定
+                    </div>
+                  </div>
+                  <!-- Session: 16:00-17:00 Training -->
+                  <div class="session-card session-training" style="top: 800px; height: 80px;">
+                    <div class="session-time">16:00 - 17:00</div>
+                    <div class="session-client">田中 太郎</div>
+                    <div class="session-type-label">トレーニング</div>
+                    <div class="session-status">
+                      <span class="status-dot" style="background: #DC2626;"></span>
+                      キャンセル
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Friday (Today) -->
+                <div class="day-column" style="background: rgba(20,184,166,0.02);">
+                  <div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div>
+                  <!-- Session: 10:00-11:00 Training -->
+                  <div class="session-card session-training" style="top: 320px; height: 80px;">
+                    <div class="session-time">10:00 - 11:00</div>
+                    <div class="session-client">佐藤 花子</div>
+                    <div class="session-type-label">トレーニング</div>
+                    <div class="session-status">
+                      <span class="status-dot" style="background: #F59E0B;"></span>
+                      予定
+                    </div>
+                  </div>
+                  <!-- Session: 14:00-15:30 Cardio -->
+                  <div class="session-card session-cardio" style="top: 640px; height: 120px;">
+                    <div class="session-time">14:00 - 15:30</div>
+                    <div class="session-client">山田 美咲</div>
+                    <div class="session-type-label">有酸素トレーニング</div>
+                    <div class="session-status">
+                      <span class="status-dot" style="background: #F59E0B;"></span>
+                      予定
+                    </div>
+                  </div>
+                  <!-- Session: 18:00-19:00 Training -->
+                  <div class="session-card session-training" style="top: 960px; height: 80px;">
+                    <div class="session-time">18:00 - 19:00</div>
+                    <div class="session-client">渡辺 翔太</div>
+                    <div class="session-type-label">トレーニング</div>
+                    <div class="session-status">
+                      <span class="status-dot" style="background: #F59E0B;"></span>
+                      予定
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Saturday -->
+                <div class="day-column">
+                  <div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div>
+                  <!-- Session: 9:00-10:30 Training -->
+                  <div class="session-card session-training" style="top: 240px; height: 120px;">
+                    <div class="session-time">9:00 - 10:30</div>
+                    <div class="session-client">伊藤 真希</div>
+                    <div class="session-type-label">トレーニング</div>
+                    <div class="session-status">
+                      <span class="status-dot" style="background: #F59E0B;"></span>
+                      予定
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Sunday -->
+                <div class="day-column">
+                  <div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div><div class="hour-slot"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Side Panel (Workout Templates) -->
+          <div class="side-panel">
+            <div class="side-panel-header">
+              <span class="side-panel-title">ワークアウト</span>
+              <button class="side-panel-close">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div class="side-panel-body">
+              <div style="margin-bottom: 12px;">
+                <div class="search-input" style="width: 100%;">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <input type="text" placeholder="テンプレートを検索..." style="width: 100%;" />
+                </div>
+              </div>
+
+              <div class="template-card">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                  <span class="template-card-badge badge-session">セッション</span>
+                </div>
+                <div class="template-card-title">上半身強化プログラム</div>
+                <div class="template-card-meta">
+                  <span>6種目</span>
+                  <span>60分</span>
+                </div>
+              </div>
+
+              <div class="template-card">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                  <span class="template-card-badge badge-session">セッション</span>
+                </div>
+                <div class="template-card-title">下半身 & コア</div>
+                <div class="template-card-meta">
+                  <span>8種目</span>
+                  <span>90分</span>
+                </div>
+              </div>
+
+              <div class="template-card">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                  <span class="template-card-badge badge-homework">宿題</span>
+                </div>
+                <div class="template-card-title">自主トレメニュー A</div>
+                <div class="template-card-meta">
+                  <span>4種目</span>
+                  <span>30分</span>
+                </div>
+              </div>
+
+              <div class="template-card">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                  <span class="template-card-badge badge-homework">宿題</span>
+                </div>
+                <div class="template-card-title">ストレッチルーティン</div>
+                <div class="template-card-meta">
+                  <span>5種目</span>
+                  <span>20分</span>
+                </div>
+              </div>
+
+              <div class="template-card">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                  <span class="template-card-badge badge-session">セッション</span>
+                </div>
+                <div class="template-card-title">HIIT プログラム</div>
+                <div class="template-card-meta">
+                  <span>10種目</span>
+                  <span>45分</span>
+                </div>
+              </div>
+
+              <div style="text-align: center; padding: 16px 0;">
+                <p style="font-size: 11px; color: #94A3B8;">ドラッグ&ドロップでカレンダーに配置</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== MONTH VIEW ========== -->
+      <div id="view-month" style="display: none;">
+        <div class="page-header">
+          <h1 class="page-title">スケジュール管理</h1>
+          <p class="page-subtitle">セッション予約・ワークアウト割当の管理</p>
+        </div>
+
+        <div class="kpi-bar">
+          <div class="kpi-card">
+            <div class="kpi-card-header">
+              <div class="kpi-icon" style="background: #F0FDFA;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              </div>
+              <span class="kpi-label">今月のセッション</span>
+            </div>
+            <div class="kpi-value">48</div>
+            <div class="kpi-sub">先月比 +5</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-card-header">
+              <div class="kpi-icon" style="background: #EFF6FF;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+              </div>
+              <span class="kpi-label">本日の予定</span>
+            </div>
+            <div class="kpi-value">3</div>
+            <div class="kpi-sub">次の予定: 14:00</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-card-header">
+              <div class="kpi-icon" style="background: #F0FDF4;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              </div>
+              <span class="kpi-label">完了セッション</span>
+            </div>
+            <div class="kpi-value">31</div>
+            <div class="kpi-sub">完了率 65%</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-card-header">
+              <div class="kpi-icon" style="background: #FFFBEB;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              </div>
+              <span class="kpi-label">キャンセル</span>
+            </div>
+            <div class="kpi-value">3</div>
+            <div class="kpi-sub">今月のキャンセル</div>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <div class="view-segment">
+              <button class="view-segment-btn">日</button>
+              <button class="view-segment-btn">週</button>
+              <button class="view-segment-btn active">月</button>
+            </div>
+            <div class="nav-group">
+              <button class="nav-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+              </button>
+              <button class="nav-btn">今月</button>
+              <button class="nav-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+              </button>
+            </div>
+            <span class="current-date-label">2026年3月</span>
+          </div>
+          <div class="toolbar-right">
+            <div class="search-input">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" placeholder="スケジュールを検索..." />
+            </div>
+            <div class="client-selector">
+              <div class="client-avatar">全</div>
+              <span>全クライアント</span>
+            </div>
+            <button class="add-session-btn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              セッション追加
+            </button>
+          </div>
+        </div>
+
+        <div class="calendar-container">
+          <div class="calendar-body">
+            <div class="month-header">
+              <div class="month-header-cell">月</div>
+              <div class="month-header-cell">火</div>
+              <div class="month-header-cell">水</div>
+              <div class="month-header-cell">木</div>
+              <div class="month-header-cell">金</div>
+              <div class="month-header-cell">土</div>
+              <div class="month-header-cell">日</div>
+            </div>
+            <div class="month-grid">
+              <!-- Week 1: Feb 23 - Mar 1 -->
+              <div class="month-cell other-month"><div class="month-day-num">23</div></div>
+              <div class="month-cell other-month"><div class="month-day-num">24</div></div>
+              <div class="month-cell other-month"><div class="month-day-num">25</div></div>
+              <div class="month-cell other-month"><div class="month-day-num">26</div></div>
+              <div class="month-cell other-month"><div class="month-day-num">27</div></div>
+              <div class="month-cell other-month"><div class="month-day-num">28</div></div>
+              <div class="month-cell">
+                <div class="month-day-num">1</div>
+              </div>
+
+              <!-- Week 2: Mar 2-8 -->
+              <div class="month-cell">
+                <div class="month-day-num">2</div>
+                <div class="month-event session-training">9:00 田中太郎</div>
+              </div>
+              <div class="month-cell">
+                <div class="month-day-num">3</div>
+                <div class="month-event session-cardio">10:00 佐藤花子</div>
+                <div class="month-event session-training">14:00 鈴木一郎</div>
+              </div>
+              <div class="month-cell">
+                <div class="month-day-num">4</div>
+                <div class="month-event session-stretch">11:00 山田美咲</div>
+              </div>
+              <div class="month-cell">
+                <div class="month-day-num">5</div>
+                <div class="month-event session-consultation">9:00 高橋健太</div>
+              </div>
+              <div class="month-cell">
+                <div class="month-day-num today">6</div>
+                <div class="month-event session-training">10:00 佐藤花子</div>
+                <div class="month-event session-cardio">14:00 山田美咲</div>
+                <div class="month-event session-training">18:00 渡辺翔太</div>
+              </div>
+              <div class="month-cell">
+                <div class="month-day-num">7</div>
+                <div class="month-event session-training">9:00 伊藤真希</div>
+              </div>
+              <div class="month-cell">
+                <div class="month-day-num">8</div>
+              </div>
+
+              <!-- Week 3: Mar 9-15 -->
+              <div class="month-cell">
+                <div class="month-day-num">9</div>
+                <div class="month-event session-training">10:00 田中太郎</div>
+              </div>
+              <div class="month-cell">
+                <div class="month-day-num">10</div>
+                <div class="month-event session-stretch">11:00 佐藤花子</div>
+              </div>
+              <div class="month-cell">
+                <div class="month-day-num">11</div>
+              </div>
+              <div class="month-cell">
+                <div class="month-day-num">12</div>
+                <div class="month-event session-training">14:00 鈴木一郎</div>
+                <div class="month-event session-consultation">16:00 高橋健太</div>
+              </div>
+              <div class="month-cell">
+                <div class="month-day-num">13</div>
+                <div class="month-event session-training">10:00 渡辺翔太</div>
+              </div>
+              <div class="month-cell">
+                <div class="month-day-num">14</div>
+                <div class="month-event session-cardio">9:00 伊藤真希</div>
+              </div>
+              <div class="month-cell">
+                <div class="month-day-num">15</div>
+              </div>
+
+              <!-- Week 4: Mar 16-22 -->
+              <div class="month-cell"><div class="month-day-num">16</div></div>
+              <div class="month-cell"><div class="month-day-num">17</div><div class="month-event session-training">10:00 田中太郎</div></div>
+              <div class="month-cell"><div class="month-day-num">18</div><div class="month-event session-stretch">11:00 山田美咲</div></div>
+              <div class="month-cell"><div class="month-day-num">19</div></div>
+              <div class="month-cell"><div class="month-day-num">20</div><div class="month-event session-training">10:00 佐藤花子</div></div>
+              <div class="month-cell"><div class="month-day-num">21</div><div class="month-event session-training">9:00 伊藤真希</div></div>
+              <div class="month-cell"><div class="month-day-num">22</div></div>
+
+              <!-- Week 5: Mar 23-29 -->
+              <div class="month-cell"><div class="month-day-num">23</div><div class="month-event session-training">10:00 鈴木一郎</div></div>
+              <div class="month-cell"><div class="month-day-num">24</div></div>
+              <div class="month-cell"><div class="month-day-num">25</div><div class="month-event session-consultation">14:00 高橋健太</div></div>
+              <div class="month-cell"><div class="month-day-num">26</div></div>
+              <div class="month-cell"><div class="month-day-num">27</div><div class="month-event session-cardio">10:00 渡辺翔太</div></div>
+              <div class="month-cell"><div class="month-day-num">28</div></div>
+              <div class="month-cell"><div class="month-day-num">29</div></div>
+
+              <!-- Week 6: Mar 30-Apr 5 -->
+              <div class="month-cell"><div class="month-day-num">30</div></div>
+              <div class="month-cell"><div class="month-day-num">31</div><div class="month-event session-training">10:00 田中太郎</div></div>
+              <div class="month-cell other-month"><div class="month-day-num">1</div></div>
+              <div class="month-cell other-month"><div class="month-day-num">2</div></div>
+              <div class="month-cell other-month"><div class="month-day-num">3</div></div>
+              <div class="month-cell other-month"><div class="month-day-num">4</div></div>
+              <div class="month-cell other-month"><div class="month-day-num">5</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== SESSION MODAL ========== -->
+      <div id="view-modal" style="display: none;">
+        <div style="padding: 24px; display: flex; align-items: center; justify-content: center; height: calc(100vh - 60px);">
+          <div class="modal-content" style="box-shadow: 0 25px 50px rgba(0,0,0,0.1);">
+            <div class="modal-header">
+              <span class="modal-title">セッション追加</span>
+              <button class="side-panel-close">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div class="modal-body">
+              <div class="form-group">
+                <label class="form-label">顧客</label>
+                <select class="form-select">
+                  <option>田中 太郎</option>
+                  <option>佐藤 花子</option>
+                  <option>鈴木 一郎</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">セッション種別</label>
+                <div class="session-type-grid">
+                  <div class="session-type-option selected">
+                    <div class="session-type-dot" style="background: #14B8A6;"></div>
+                    <span class="session-type-name">トレーニング</span>
+                  </div>
+                  <div class="session-type-option">
+                    <div class="session-type-dot" style="background: #F97316;"></div>
+                    <span class="session-type-name">有酸素</span>
+                  </div>
+                  <div class="session-type-option">
+                    <div class="session-type-dot" style="background: #22C55E;"></div>
+                    <span class="session-type-name">ストレッチ</span>
+                  </div>
+                  <div class="session-type-option">
+                    <div class="session-type-dot" style="background: #A855F7;"></div>
+                    <span class="session-type-name">カウンセリング</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div class="form-group">
+                  <label class="form-label">日付</label>
+                  <input type="date" class="form-input" value="2026-03-06" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">時間</label>
+                  <input type="time" class="form-input" value="10:00" />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">所要時間（分）</label>
+                <input type="number" class="form-input" value="60" />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">チケット</label>
+                <select class="form-select">
+                  <option>パーソナルトレーニング 10回券（残5回）</option>
+                  <option>なし</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">ステータス</label>
+                <select class="form-select">
+                  <option>予定</option>
+                  <option>確定</option>
+                  <option>完了</option>
+                  <option>キャンセル</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">メモ</label>
+                <textarea class="form-textarea" placeholder="セッションに関するメモを入力..."></textarea>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn-danger" style="margin-right: auto;">削除</button>
+              <button class="btn-secondary">キャンセル</button>
+              <button class="btn-primary">保存</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== SKELETON ========== -->
+      <div id="view-skeleton" style="display: none;">
+        <div class="page-header">
+          <div class="skeleton" style="width: 200px; height: 28px;"></div>
+          <div class="skeleton" style="width: 280px; height: 16px; margin-top: 8px;"></div>
+        </div>
+
+        <div class="kpi-bar">
+          <div class="kpi-card">
+            <div class="kpi-card-header">
+              <div class="skeleton" style="width: 36px; height: 36px; border-radius: 6px;"></div>
+              <div class="skeleton" style="width: 100px; height: 14px;"></div>
+            </div>
+            <div class="skeleton" style="width: 48px; height: 28px; margin-top: 4px;"></div>
+            <div class="skeleton" style="width: 80px; height: 12px; margin-top: 6px;"></div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-card-header">
+              <div class="skeleton" style="width: 36px; height: 36px; border-radius: 6px;"></div>
+              <div class="skeleton" style="width: 80px; height: 14px;"></div>
+            </div>
+            <div class="skeleton" style="width: 32px; height: 28px; margin-top: 4px;"></div>
+            <div class="skeleton" style="width: 100px; height: 12px; margin-top: 6px;"></div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-card-header">
+              <div class="skeleton" style="width: 36px; height: 36px; border-radius: 6px;"></div>
+              <div class="skeleton" style="width: 100px; height: 14px;"></div>
+            </div>
+            <div class="skeleton" style="width: 40px; height: 28px; margin-top: 4px;"></div>
+            <div class="skeleton" style="width: 120px; height: 12px; margin-top: 6px;"></div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-card-header">
+              <div class="skeleton" style="width: 36px; height: 36px; border-radius: 6px;"></div>
+              <div class="skeleton" style="width: 60px; height: 14px;"></div>
+            </div>
+            <div class="skeleton" style="width: 24px; height: 28px; margin-top: 4px;"></div>
+            <div class="skeleton" style="width: 100px; height: 12px; margin-top: 6px;"></div>
+          </div>
+        </div>
+
+        <!-- Toolbar Skeleton -->
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <div class="skeleton" style="width: 140px; height: 36px; border-radius: 6px;"></div>
+            <div class="skeleton" style="width: 160px; height: 36px; border-radius: 6px;"></div>
+            <div class="skeleton" style="width: 120px; height: 20px;"></div>
+          </div>
+          <div class="toolbar-right">
+            <div class="skeleton" style="width: 180px; height: 36px; border-radius: 6px;"></div>
+            <div class="skeleton" style="width: 140px; height: 36px; border-radius: 6px;"></div>
+            <div class="skeleton" style="width: 140px; height: 36px; border-radius: 6px;"></div>
+          </div>
+        </div>
+
+        <!-- Calendar Skeleton -->
+        <div class="calendar-container">
+          <div class="calendar-body">
+            <!-- Week Header Skeleton -->
+            <div class="week-header">
+              <div class="week-header-time"></div>
+              <div class="week-header-days">
+                <div class="week-header-day">
+                  <div class="skeleton" style="width: 16px; height: 12px; margin: 0 auto;"></div>
+                  <div class="skeleton" style="width: 24px; height: 20px; margin: 6px auto 0;"></div>
+                </div>
+                <div class="week-header-day">
+                  <div class="skeleton" style="width: 16px; height: 12px; margin: 0 auto;"></div>
+                  <div class="skeleton" style="width: 24px; height: 20px; margin: 6px auto 0;"></div>
+                </div>
+                <div class="week-header-day">
+                  <div class="skeleton" style="width: 16px; height: 12px; margin: 0 auto;"></div>
+                  <div class="skeleton" style="width: 24px; height: 20px; margin: 6px auto 0;"></div>
+                </div>
+                <div class="week-header-day">
+                  <div class="skeleton" style="width: 16px; height: 12px; margin: 0 auto;"></div>
+                  <div class="skeleton" style="width: 24px; height: 20px; margin: 6px auto 0;"></div>
+                </div>
+                <div class="week-header-day">
+                  <div class="skeleton" style="width: 16px; height: 12px; margin: 0 auto;"></div>
+                  <div class="skeleton" style="width: 24px; height: 20px; margin: 6px auto 0;"></div>
+                </div>
+                <div class="week-header-day">
+                  <div class="skeleton" style="width: 16px; height: 12px; margin: 0 auto;"></div>
+                  <div class="skeleton" style="width: 24px; height: 20px; margin: 6px auto 0;"></div>
+                </div>
+                <div class="week-header-day">
+                  <div class="skeleton" style="width: 16px; height: 12px; margin: 0 auto;"></div>
+                  <div class="skeleton" style="width: 24px; height: 20px; margin: 6px auto 0;"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Time Grid Skeleton -->
+            <div class="time-grid">
+              <div class="time-column">
+                <div class="time-slot-label"><div class="skeleton" style="width: 32px; height: 12px;"></div></div>
+                <div class="time-slot-label"><div class="skeleton" style="width: 32px; height: 12px;"></div></div>
+                <div class="time-slot-label"><div class="skeleton" style="width: 32px; height: 12px;"></div></div>
+                <div class="time-slot-label"><div class="skeleton" style="width: 32px; height: 12px;"></div></div>
+                <div class="time-slot-label"><div class="skeleton" style="width: 32px; height: 12px;"></div></div>
+                <div class="time-slot-label"><div class="skeleton" style="width: 32px; height: 12px;"></div></div>
+                <div class="time-slot-label"><div class="skeleton" style="width: 32px; height: 12px;"></div></div>
+                <div class="time-slot-label"><div class="skeleton" style="width: 32px; height: 12px;"></div></div>
+                <div class="time-slot-label"><div class="skeleton" style="width: 32px; height: 12px;"></div></div>
+                <div class="time-slot-label"><div class="skeleton" style="width: 32px; height: 12px;"></div></div>
+              </div>
+              <div class="days-grid">
+                <!-- Skeleton session blocks -->
+                <div class="day-column" style="position: relative;">
+                  <div class="skeleton" style="position: absolute; top: 240px; left: 4px; right: 4px; height: 72px; border-radius: 4px;"></div>
+                </div>
+                <div class="day-column" style="position: relative;">
+                  <div class="skeleton" style="position: absolute; top: 160px; left: 4px; right: 4px; height: 72px; border-radius: 4px;"></div>
+                  <div class="skeleton" style="position: absolute; top: 480px; left: 4px; right: 4px; height: 72px; border-radius: 4px;"></div>
+                </div>
+                <div class="day-column" style="position: relative;">
+                  <div class="skeleton" style="position: absolute; top: 320px; left: 4px; right: 4px; height: 72px; border-radius: 4px;"></div>
+                </div>
+                <div class="day-column" style="position: relative;">
+                  <div class="skeleton" style="position: absolute; top: 80px; left: 4px; right: 4px; height: 72px; border-radius: 4px;"></div>
+                  <div class="skeleton" style="position: absolute; top: 560px; left: 4px; right: 4px; height: 72px; border-radius: 4px;"></div>
+                </div>
+                <div class="day-column" style="position: relative;">
+                  <div class="skeleton" style="position: absolute; top: 240px; left: 4px; right: 4px; height: 72px; border-radius: 4px;"></div>
+                  <div class="skeleton" style="position: absolute; top: 400px; left: 4px; right: 4px; height: 100px; border-radius: 4px;"></div>
+                </div>
+                <div class="day-column" style="position: relative;">
+                  <div class="skeleton" style="position: absolute; top: 160px; left: 4px; right: 4px; height: 100px; border-radius: 4px;"></div>
+                </div>
+                <div class="day-column" style="position: relative;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function showView(view) {
+      ['week', 'month', 'modal', 'skeleton'].forEach(v => {
+        document.getElementById('view-' + v).style.display = v === view ? '' : 'none';
+      });
+      document.querySelectorAll('.view-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.textContent.includes(
+          view === 'week' ? '週' : view === 'month' ? '月' : view === 'modal' ? 'モーダル' : 'スケルトン'
+        ));
+      });
+    }
+
+    let notesOpen = false;
+    function toggleNotes() {
+      notesOpen = !notesOpen;
+      document.getElementById('notesPanel').classList.toggle('open', notesOpen);
+      document.querySelector('.notes-toggle svg').style.transform = notesOpen ? 'rotate(180deg)' : '';
+    }
+  </script>
+</body>
+</html>
