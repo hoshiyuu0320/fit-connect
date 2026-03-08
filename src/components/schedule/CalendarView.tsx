@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { format, startOfMonth, endOfMonth, startOfWeek, isSameMonth, isSameDay, addMonths, addDays, getDay } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Plus, Search, ClipboardList } from 'lucide-react';
@@ -61,6 +62,9 @@ function MonthDayCell({ date, isCurrentMonth, isToday, children, onClick }: {
 }
 
 export default function CalendarView() {
+    const searchParams = useSearchParams();
+    const initialClientId = searchParams.get('clientId');
+
     const [currentDate, setCurrentDate] = useState<Date | null>(null);
     const [viewMode, setViewMode] = useState<ViewMode>('week');
     const [sessions, setSessions] = useState<Session[]>([]);
@@ -72,7 +76,7 @@ export default function CalendarView() {
 
     // 追加 state
     const [trainerId, setTrainerId] = useState('');
-    const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+    const [selectedClientId, setSelectedClientId] = useState<string | null>(initialClientId);
     const [isWorkoutPanelOpen, setIsWorkoutPanelOpen] = useState(false);
     const [templates, setTemplates] = useState<WorkoutPlan[]>([]);
     const [assignments, setAssignments] = useState<WorkoutAssignment[]>([]);

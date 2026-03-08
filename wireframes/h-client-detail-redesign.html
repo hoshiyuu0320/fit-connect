@@ -1,0 +1,1959 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FitConnect - Client Detail Redesign Wireframe</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #0F172A;
+    --text-secondary: #475569;
+    --text-muted: #94A3B8;
+    --accent: #14B8A6;
+    --accent-hover: #0D9488;
+    --accent-light: #F0FDFA;
+    --accent-subtle: #CCFBF1;
+    --background: #F8FAFC;
+    --surface: #FFFFFF;
+    --border: #E2E8F0;
+    --radius: 6px;
+    --success: #16A34A;
+    --warning: #F59E0B;
+    --danger: #DC2626;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif;
+    background: #E5E7EB;
+    color: var(--primary);
+    min-height: 100vh;
+    padding: 32px 16px;
+  }
+
+  /* ===== Section Divider ===== */
+  .section-divider {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 48px 0 24px;
+  }
+  .section-divider-line {
+    flex: 1;
+    height: 1px;
+    background: #9CA3AF;
+  }
+  .section-divider-label {
+    background: #374151;
+    color: #F9FAFB;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 6px 20px;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+
+  /* ===== Screen Frame ===== */
+  .screen-frame {
+    max-width: 960px;
+    margin: 0 auto;
+    background: var(--background);
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #D1D5DB;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+  }
+
+  /* ===== Global Top Bar (App Shell) ===== */
+  .app-topbar {
+    height: 48px;
+    background: var(--primary);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 12px;
+    border-bottom: 1px solid #1E293B;
+  }
+  .app-topbar-logo {
+    background: var(--accent);
+    color: var(--primary);
+    font-weight: 800;
+    font-size: 12px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+  }
+  .app-topbar-title {
+    color: #94A3B8;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .app-topbar-spacer { flex: 1; }
+  .app-topbar-user {
+    width: 28px;
+    height: 28px;
+    background: #334155;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: #94A3B8;
+  }
+
+  /* ===== Page Wrapper ===== */
+  .page-content {
+    padding: 0;
+  }
+
+  /* ===== Sticky Header ===== */
+  .sticky-header {
+    position: relative;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 20;
+  }
+
+  /* Breadcrumb */
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-right: 4px;
+  }
+  .breadcrumb a {
+    color: var(--text-muted);
+    text-decoration: none;
+  }
+  .breadcrumb a:hover { color: var(--accent); }
+  .breadcrumb-sep {
+    color: #CBD5E1;
+    font-size: 11px;
+  }
+  .breadcrumb-current {
+    color: var(--primary);
+    font-weight: 600;
+  }
+
+  /* Avatar small */
+  .avatar-sm {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, #14B8A6 0%, #0D9488 100%);
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+  }
+
+  /* Client name + meta in header */
+  .header-client-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .header-client-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--primary);
+    line-height: 1.2;
+  }
+  .header-client-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .header-client-meta span { display: flex; align-items: center; gap: 2px; }
+  .header-spacer { flex: 1; }
+
+  /* Mode Toggle */
+  .mode-toggle {
+    display: inline-flex;
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2px;
+    gap: 2px;
+  }
+  .mode-btn {
+    padding: 5px 14px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .mode-btn.active {
+    background: var(--surface);
+    color: var(--primary);
+    border: 1px solid var(--border);
+  }
+  .mode-btn.inactive {
+    background: transparent;
+    color: var(--text-muted);
+  }
+  .mode-btn.session-active {
+    background: var(--accent);
+    color: white;
+    border: 1px solid var(--accent);
+  }
+
+  /* Header Buttons */
+  .header-btn {
+    padding: 6px 14px;
+    border-radius: var(--radius);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-secondary);
+    transition: all 0.15s;
+  }
+  .header-btn:hover { border-color: var(--border); background: var(--background); }
+  .header-btn-primary {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  .header-btn-primary:hover { background: var(--accent-hover); }
+
+  /* ===== KPI Bar ===== */
+  .kpi-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .kpi-card {
+    background: var(--surface);
+    padding: 12px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .kpi-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .kpi-value {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--primary);
+    line-height: 1;
+  }
+  .kpi-sub {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 1px;
+  }
+  .kpi-delta-pos { color: var(--success); font-size: 11px; font-weight: 600; }
+  .kpi-delta-neg { color: var(--danger); font-size: 11px; font-weight: 600; }
+  .kpi-unit { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+
+  /* ===== Tab Nav ===== */
+  .tab-nav {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    padding: 0 24px;
+    gap: 0;
+    position: relative;
+  }
+  .tab-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 10px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .tab-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+  .tab-btn:hover:not(.active) { color: var(--text-secondary); }
+  .tab-icon { font-size: 13px; }
+
+  /* ===== Main Content Area ===== */
+  .main-content {
+    padding: 20px 24px;
+    background: var(--background);
+    min-height: 500px;
+  }
+
+  /* ===== 2-Column Layout ===== */
+  .two-col {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+    align-items: start;
+  }
+
+  /* ===== Cards ===== */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .card-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--primary);
+  }
+  .card-body { padding: 16px; }
+  .card-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  /* ===== Chart Placeholder ===== */
+  .chart-placeholder {
+    height: 180px;
+    background: var(--background);
+    border-radius: var(--radius);
+    border: 1px dashed var(--border);
+    display: flex;
+    align-items: flex-end;
+    padding: 12px;
+    gap: 4px;
+    position: relative;
+    overflow: hidden;
+  }
+  .chart-bar {
+    flex: 1;
+    background: var(--accent-subtle);
+    border-radius: 3px 3px 0 0;
+    position: relative;
+  }
+  .chart-bar.highlight {
+    background: var(--accent);
+  }
+  .chart-target-line {
+    position: absolute;
+    left: 0; right: 0;
+    height: 1px;
+    background: var(--danger);
+    border-top: 1px dashed var(--danger);
+    opacity: 0.5;
+  }
+  .chart-area-line {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+  }
+
+  /* Period Buttons */
+  .period-btns {
+    display: flex;
+    gap: 4px;
+  }
+  .period-btn {
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+  .period-btn.active {
+    background: var(--accent-light);
+    color: var(--accent);
+    border-color: var(--accent-subtle);
+  }
+
+  /* ===== Activity Timeline ===== */
+  .timeline-item {
+    display: flex;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    align-items: flex-start;
+  }
+  .timeline-item:last-child { border-bottom: none; }
+  .timeline-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    background: var(--accent-subtle);
+    flex-shrink: 0;
+    margin-top: 4px;
+  }
+  .timeline-dot.meal { background: #FED7AA; }
+  .timeline-dot.exercise { background: #BBF7D0; }
+  .timeline-dot.weight { background: var(--accent-subtle); }
+  .timeline-content { flex: 1; }
+  .timeline-type {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .timeline-desc {
+    font-size: 12px;
+    color: var(--primary);
+    font-weight: 500;
+    margin-top: 1px;
+  }
+  .timeline-time {
+    font-size: 10px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    margin-top: 3px;
+  }
+
+  /* ===== Client Info Card ===== */
+  .info-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .info-row:last-child { border-bottom: none; }
+  .info-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+  .info-value {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--primary);
+  }
+
+  /* ===== Ticket Status ===== */
+  .ticket-item {
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 8px;
+  }
+  .ticket-item:last-child { margin-bottom: 0; }
+  .ticket-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 6px;
+  }
+  .ticket-progress {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    margin: 6px 0;
+  }
+  .ticket-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+  .ticket-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+  .ticket-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: var(--accent-light);
+    color: var(--accent);
+    border: 1px solid var(--accent-subtle);
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+  }
+
+  /* ===== Weight Record List ===== */
+  .weight-record {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    background: var(--background);
+    border-radius: var(--radius);
+    margin-bottom: 6px;
+  }
+  .weight-record:last-child { margin-bottom: 0; }
+  .weight-date {
+    font-size: 11px;
+    color: var(--text-muted);
+    width: 48px;
+    flex-shrink: 0;
+  }
+  .weight-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--primary);
+    flex: 1;
+  }
+  .weight-unit { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+  .weight-delta-pos { font-size: 11px; color: var(--danger); font-weight: 600; }
+  .weight-delta-neg { font-size: 11px; color: var(--success); font-weight: 600; }
+
+  /* ===== Note Card ===== */
+  .note-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    display: flex;
+    margin-bottom: 12px;
+  }
+  .note-card:last-child { margin-bottom: 0; }
+  .note-sidebar {
+    width: 40px;
+    background: var(--accent);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 14px 6px;
+    flex-shrink: 0;
+  }
+  .note-session-num {
+    font-size: 11px;
+    font-weight: 800;
+    color: white;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    letter-spacing: 0.05em;
+  }
+  .note-body {
+    flex: 1;
+    padding: 12px 14px;
+  }
+  .note-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .note-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--primary);
+  }
+  .note-date {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .note-actions { display: flex; gap: 4px; }
+  .note-action-btn {
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-secondary);
+    cursor: pointer;
+  }
+  .note-action-btn.danger { color: var(--danger); border-color: #FECACA; background: #FEF2F2; }
+  .note-content {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 10px;
+  }
+
+  /* Attachment Thumbnails */
+  .note-attachments {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .attachment-thumb {
+    width: 56px;
+    height: 56px;
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+    overflow: hidden;
+    position: relative;
+  }
+  .attachment-thumb:hover { border-color: var(--accent); }
+  .attachment-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .attachment-pdf {
+    width: 56px;
+    height: 56px;
+    background: #FEF2F2;
+    border: 1px solid #FECACA;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--danger);
+    gap: 2px;
+    cursor: pointer;
+  }
+
+  /* Shared Status */
+  .share-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .share-badge.shared { color: var(--success); }
+  .share-badge.private { color: var(--text-muted); }
+
+  /* ===== Session Mode Header ===== */
+  .session-header {
+    position: relative;
+    background: var(--surface);
+    border-bottom: 3px solid var(--accent);
+    padding: 0;
+  }
+  .session-header-inner {
+    padding: 10px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .session-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: var(--accent-light);
+    border: 1px solid var(--accent-subtle);
+    border-radius: 4px;
+  }
+  .session-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--accent);
+    border-radius: 2px;
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .session-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+  }
+  .session-timer {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--primary);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+  .session-timer-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+  .session-finish-btn {
+    padding: 7px 18px;
+    background: var(--danger);
+    color: white;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  /* ===== Date Picker ===== */
+  .date-picker {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 2px;
+  }
+  .date-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 52px;
+    padding: 8px 6px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .date-btn.selected {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }
+  .date-btn.today:not(.selected) { border-color: var(--accent-subtle); }
+  .date-day { font-size: 10px; font-weight: 600; color: inherit; }
+  .date-num { font-size: 16px; font-weight: 800; color: inherit; }
+  .date-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 1px;
+    background: var(--accent);
+    margin-top: 2px;
+  }
+  .date-btn.selected .date-dot { background: white; }
+
+  /* ===== Exercise Card ===== */
+  .exercise-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+  .exercise-card:last-child { margin-bottom: 0; }
+  .exercise-card-header {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--background);
+  }
+  .exercise-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--primary);
+  }
+  .exercise-target {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 1px;
+  }
+  .exercise-status {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+  }
+  .exercise-status.pending { background: #F1F5F9; color: var(--text-muted); }
+  .exercise-status.done { background: #DCFCE7; color: var(--success); }
+
+  /* Set Input Row */
+  .set-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .set-row:last-of-type { border-bottom: none; }
+  .set-num {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-muted);
+    width: 20px;
+    flex-shrink: 0;
+  }
+  .set-prev {
+    font-size: 10px;
+    color: var(--text-muted);
+    width: 70px;
+    flex-shrink: 0;
+  }
+  .set-input {
+    flex: 1;
+    height: 28px;
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .set-unit { font-size: 10px; color: var(--text-muted); flex-shrink: 0; }
+  .set-check {
+    width: 20px;
+    height: 20px;
+    border: 1.5px solid var(--border);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .set-check.checked {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  /* Save Button */
+  .save-btn {
+    margin: 10px 14px;
+    width: calc(100% - 28px);
+    padding: 8px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  /* ===== Annotation ===== */
+  .annotation-wrapper {
+    position: relative;
+  }
+  .annotation-num {
+    position: absolute;
+    background: var(--danger);
+    color: white;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 800;
+    z-index: 50;
+    border: 2px solid white;
+    box-shadow: 0 2px 8px rgba(220,38,38,0.4);
+  }
+  .annotation-label {
+    position: absolute;
+    background: var(--danger);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    z-index: 50;
+    box-shadow: 0 2px 8px rgba(220,38,38,0.3);
+    pointer-events: none;
+  }
+  .annotation-label::before {
+    content: '';
+    position: absolute;
+    left: -5px;
+    top: 50%;
+    transform: translateY(-50%);
+    border-width: 4px 5px 4px 0;
+    border-style: solid;
+    border-color: transparent var(--danger) transparent transparent;
+  }
+
+  /* Highlight border */
+  .highlighted {
+    outline: 2px dashed var(--danger);
+    outline-offset: 3px;
+  }
+
+  /* ===== Empty State ===== */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 120px;
+    background: var(--background);
+    border-radius: var(--radius);
+    color: var(--text-muted);
+    font-size: 12px;
+    gap: 6px;
+  }
+  .empty-icon { font-size: 24px; opacity: 0.5; }
+
+  /* ===== Accent Badge ===== */
+  .accent-badge {
+    background: var(--accent-light);
+    color: var(--accent);
+    border: 1px solid var(--accent-subtle);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  /* ===== Superset Badge ===== */
+  .superset-connector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 14px;
+    margin-bottom: -1px;
+  }
+  .superset-badge {
+    padding: 2px 8px;
+    background: #EDE9FE;
+    color: #7C3AED;
+    border: 1px solid #DDD6FE;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+  }
+  .superset-line {
+    flex: 1;
+    height: 1px;
+    background: #DDD6FE;
+    border-top: 1px dashed #DDD6FE;
+  }
+</style>
+</head>
+<body>
+
+<!-- ==================== SECTION 1: 情報モード 全体ビュー ==================== -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">SECTION 1 &nbsp;|&nbsp; 情報モード 全体ビュー（サマリータブ）</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="screen-frame">
+  <!-- App Shell Top Bar -->
+  <div class="app-topbar">
+    <div class="app-topbar-logo">FC</div>
+    <div class="app-topbar-title">FIT-CONNECT</div>
+    <div class="app-topbar-spacer"></div>
+    <div class="app-topbar-user">T</div>
+  </div>
+
+  <!-- Sticky Header -->
+  <div class="sticky-header annotation-wrapper highlighted" style="position:relative;">
+    <!-- Annotation 1 -->
+    <div class="annotation-num" style="top:-12px; left:50%; transform:translateX(-50%);">1</div>
+    <div class="annotation-label" style="top:-36px; left:calc(50% + 20px);">ヘッダーのコンパクト化 & スティッキー化</div>
+
+    <!-- Annotation 8 (Breadcrumb) -->
+    <div class="annotation-num" style="top:-12px; left:20px;">8</div>
+
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb">
+      <a href="#">顧客一覧</a>
+      <span class="breadcrumb-sep">›</span>
+      <span class="breadcrumb-current">田中 太郎</span>
+    </nav>
+
+    <div style="width:1px;height:20px;background:var(--border);flex-shrink:0;"></div>
+
+    <!-- Avatar + Name -->
+    <div class="avatar-sm">田</div>
+    <div class="header-client-info">
+      <div class="header-client-name">田中 太郎</div>
+      <div class="header-client-meta">
+        <span>男性</span>
+        <span style="color:var(--border);">·</span>
+        <span>35歳</span>
+        <span style="color:var(--border);">·</span>
+        <span>会社員</span>
+      </div>
+    </div>
+
+    <div class="header-spacer"></div>
+
+    <!-- Mode Toggle -->
+    <div class="mode-toggle annotation-wrapper highlighted" style="position:relative; outline-color:#DC262650;">
+      <div class="annotation-num" style="top:-12px; right:-10px;">6</div>
+      <button class="mode-btn active">情報</button>
+      <button class="mode-btn inactive">セッション</button>
+    </div>
+
+    <!-- Action Buttons -->
+    <button class="header-btn">編集</button>
+    <button class="header-btn header-btn-primary">メッセージ</button>
+  </div>
+
+  <!-- KPI Bar -->
+  <div class="kpi-bar annotation-wrapper highlighted" style="position:relative;">
+    <div class="annotation-num" style="top:-12px; left:50%; transform:translateX(-50%);">2</div>
+    <div class="annotation-label" style="top:-36px; left:calc(50% + 20px);">クイック統計バーの独立化</div>
+
+    <div class="kpi-card">
+      <div class="kpi-label">現在体重</div>
+      <div class="kpi-value">72.3 <span class="kpi-unit">kg</span></div>
+      <div class="kpi-sub">2月 4日 更新</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">目標体重</div>
+      <div class="kpi-value">68.0 <span class="kpi-unit">kg</span></div>
+      <div class="kpi-sub">あと 4.3 kg</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">月間体重変動</div>
+      <div class="kpi-value" style="display:flex;align-items:baseline;gap:4px;">-1.2 <span class="kpi-unit">kg</span></div>
+      <div class="kpi-delta-pos">&#9660; 順調に減量中</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">残チケット</div>
+      <div class="kpi-value">8 <span class="kpi-unit">回</span></div>
+      <div class="kpi-sub">2枚 有効</div>
+    </div>
+  </div>
+
+  <!-- Tab Nav -->
+  <div class="tab-nav annotation-wrapper" style="position:relative;">
+    <div class="annotation-num" style="top:-12px; left:50%; transform:translateX(-50%);">3</div>
+    <div class="annotation-label" style="top:-36px; left:calc(50% + 20px);">タブデザインの刷新（Teal下線 + アイコン）</div>
+
+    <button class="tab-btn active">
+      <span class="tab-icon">📊</span> サマリー
+    </button>
+    <button class="tab-btn">
+      <span class="tab-icon">⚖️</span> 体重
+    </button>
+    <button class="tab-btn">
+      <span class="tab-icon">🍽</span> 食事
+    </button>
+    <button class="tab-btn">
+      <span class="tab-icon">🏃</span> 運動
+    </button>
+    <button class="tab-btn">
+      <span class="tab-icon">📋</span> カルテ
+    </button>
+    <button class="tab-btn">
+      <span class="tab-icon">🎟</span> チケット
+    </button>
+  </div>
+
+  <!-- Main Content - Summary Tab -->
+  <div class="main-content">
+    <!-- 2-Column Layout -->
+    <div class="two-col annotation-wrapper" style="position:relative;">
+      <div class="annotation-num" style="top:-12px; left:50%; transform:translateX(-50%);">4</div>
+      <div class="annotation-label" style="top:-36px; left:calc(50% + 20px);">サマリータブ 2カラム再構成</div>
+
+      <!-- Left Column: Chart + Timeline -->
+      <div style="display:flex;flex-direction:column;gap:16px;">
+
+        <!-- Weight Chart Card -->
+        <div class="card annotation-wrapper highlighted" style="position:relative;">
+          <div class="annotation-num" style="top:-12px; right:-10px;">5</div>
+          <div class="annotation-label" style="top:-36px; right:12px;">グラフのインタラクション強化（期間切替 + 目標破線）</div>
+          <div class="card-header">
+            <div class="card-title">体重推移</div>
+            <div class="period-btns">
+              <button class="period-btn">1W</button>
+              <button class="period-btn active">1M</button>
+              <button class="period-btn">3M</button>
+              <button class="period-btn">ALL</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <!-- Chart -->
+            <div class="chart-placeholder" style="height:160px;">
+              <!-- Target line at 60% height -->
+              <div class="chart-target-line" style="bottom:38%;"></div>
+
+              <!-- Bars (simulated weight line) -->
+              <div class="chart-bar" style="height:62%;"></div>
+              <div class="chart-bar" style="height:65%;"></div>
+              <div class="chart-bar" style="height:63%;"></div>
+              <div class="chart-bar" style="height:60%;"></div>
+              <div class="chart-bar" style="height:58%;"></div>
+              <div class="chart-bar" style="height:56%;"></div>
+              <div class="chart-bar" style="height:54%;"></div>
+              <div class="chart-bar" style="height:55%;"></div>
+              <div class="chart-bar" style="height:52%;"></div>
+              <div class="chart-bar" style="height:50%;"></div>
+              <div class="chart-bar highlight" style="height:48%;"></div>
+              <div class="chart-bar" style="height:46%;"></div>
+
+              <!-- Legend overlay -->
+              <div style="position:absolute;top:8px;left:12px;display:flex;align-items:center;gap:12px;">
+                <div style="display:flex;align-items:center;gap:4px;">
+                  <div style="width:10px;height:10px;background:var(--accent-subtle);border-radius:2px;"></div>
+                  <span style="font-size:10px;color:var(--text-muted);">体重</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:4px;">
+                  <div style="width:10px;height:1px;background:var(--danger);border-top:1px dashed var(--danger);"></div>
+                  <span style="font-size:10px;color:var(--text-muted);">目標: 68.0 kg</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Latest 3 records compact -->
+            <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px;">
+              <div style="font-size:10px;color:var(--text-muted);font-weight:600;margin-bottom:6px;letter-spacing:0.05em;">最近の記録</div>
+              <div style="display:flex;flex-direction:column;gap:4px;">
+                <div class="weight-record">
+                  <span class="weight-date">3/4</span>
+                  <span class="weight-value">72.3 <span class="weight-unit">kg</span></span>
+                  <span class="weight-delta-neg">-0.5</span>
+                </div>
+                <div class="weight-record">
+                  <span class="weight-date">3/1</span>
+                  <span class="weight-value">72.8 <span class="weight-unit">kg</span></span>
+                  <span class="weight-delta-neg">-0.2</span>
+                </div>
+                <div class="weight-record">
+                  <span class="weight-date">2/27</span>
+                  <span class="weight-value">73.0 <span class="weight-unit">kg</span></span>
+                  <span class="weight-delta-pos">+0.1</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Activity Timeline Card -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">最近の活動</div>
+            <div class="card-sub">直近7日間</div>
+          </div>
+          <div class="card-body" style="padding:8px 16px;">
+            <div class="timeline-item">
+              <div class="timeline-dot meal"></div>
+              <div class="timeline-content">
+                <div class="timeline-type">食事</div>
+                <div class="timeline-desc">昼食 — 鶏肉サラダ・玄米 (520 kcal)</div>
+              </div>
+              <div class="timeline-time">今日 12:34</div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-dot weight"></div>
+              <div class="timeline-content">
+                <div class="timeline-type">体重</div>
+                <div class="timeline-desc">72.3 kg 記録</div>
+              </div>
+              <div class="timeline-time">今日 07:15</div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-dot exercise"></div>
+              <div class="timeline-content">
+                <div class="timeline-type">運動</div>
+                <div class="timeline-desc">ランニング 30分 / 4.2 km</div>
+              </div>
+              <div class="timeline-time">昨日 18:00</div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-dot meal"></div>
+              <div class="timeline-content">
+                <div class="timeline-type">食事</div>
+                <div class="timeline-desc">朝食 — 卵・トースト (380 kcal)</div>
+              </div>
+              <div class="timeline-time">昨日 07:30</div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-dot exercise"></div>
+              <div class="timeline-content">
+                <div class="timeline-type">運動</div>
+                <div class="timeline-desc">筋力トレーニング 45分</div>
+              </div>
+              <div class="timeline-time">3/3 19:00</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Client Info + Ticket -->
+      <div style="display:flex;flex-direction:column;gap:16px;">
+
+        <!-- Client Info Card -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">クライアント情報</div>
+          </div>
+          <div class="card-body">
+            <div class="info-row">
+              <span class="info-label">身長</span>
+              <span class="info-value">175 cm</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">目標体重</span>
+              <span class="info-value">68.0 kg</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">目的</span>
+              <span class="accent-badge">ダイエット</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">職業</span>
+              <span class="info-value">会社員</span>
+            </div>
+            <div style="padding:10px 0 2px;">
+              <div class="info-label" style="margin-bottom:6px;">目標・備考</div>
+              <div style="font-size:12px;color:var(--text-secondary);line-height:1.6;background:var(--background);border-radius:4px;padding:8px 10px;">
+                3月末の健康診断に向けて体重を落としたい。週3回トレーニング継続中。
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ticket Status Card -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">チケットステータス</div>
+            <span class="ticket-badge">2枚 有効</span>
+          </div>
+          <div class="card-body">
+            <div class="ticket-item">
+              <div class="ticket-name">パーソナル月10回 — 3月</div>
+              <div class="ticket-progress">
+                <div class="ticket-fill" style="width:80%;"></div>
+              </div>
+              <div class="ticket-meta">
+                <span>残り 8 / 10 回</span>
+                <span>〜3/31</span>
+              </div>
+            </div>
+            <div class="ticket-item">
+              <div class="ticket-name">スポット (単回) × 2</div>
+              <div class="ticket-progress">
+                <div class="ticket-fill" style="width:100%;"></div>
+              </div>
+              <div class="ticket-meta">
+                <span>残り 2 / 2 回</span>
+                <span>〜4/30</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div><!-- end two-col -->
+  </div><!-- end main-content -->
+</div><!-- end screen-frame -->
+
+
+<!-- ==================== SECTION 2: 体重タブ ==================== -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">SECTION 2 &nbsp;|&nbsp; 体重タブ</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="screen-frame">
+  <div class="app-topbar">
+    <div class="app-topbar-logo">FC</div>
+    <div class="app-topbar-title">FIT-CONNECT</div>
+    <div class="app-topbar-spacer"></div>
+    <div class="app-topbar-user">T</div>
+  </div>
+
+  <!-- Compact Sticky Header -->
+  <div class="sticky-header">
+    <nav class="breadcrumb">
+      <a href="#">顧客一覧</a>
+      <span class="breadcrumb-sep">›</span>
+      <span class="breadcrumb-current">田中 太郎</span>
+    </nav>
+    <div style="width:1px;height:20px;background:var(--border);flex-shrink:0;"></div>
+    <div class="avatar-sm">田</div>
+    <div class="header-client-info">
+      <div class="header-client-name">田中 太郎</div>
+      <div class="header-client-meta"><span>男性</span><span style="color:var(--border);">·</span><span>35歳</span></div>
+    </div>
+    <div class="header-spacer"></div>
+    <div class="mode-toggle">
+      <button class="mode-btn active">情報</button>
+      <button class="mode-btn inactive">セッション</button>
+    </div>
+    <button class="header-btn">編集</button>
+    <button class="header-btn header-btn-primary">メッセージ</button>
+  </div>
+
+  <!-- KPI Bar -->
+  <div class="kpi-bar">
+    <div class="kpi-card"><div class="kpi-label">現在体重</div><div class="kpi-value">72.3 <span class="kpi-unit">kg</span></div><div class="kpi-sub">3/4 更新</div></div>
+    <div class="kpi-card"><div class="kpi-label">目標体重</div><div class="kpi-value">68.0 <span class="kpi-unit">kg</span></div><div class="kpi-sub">あと 4.3 kg</div></div>
+    <div class="kpi-card"><div class="kpi-label">月間体重変動</div><div class="kpi-value">-1.2 <span class="kpi-unit">kg</span></div><div class="kpi-delta-pos">&#9660; 順調</div></div>
+    <div class="kpi-card"><div class="kpi-label">残チケット</div><div class="kpi-value">8 <span class="kpi-unit">回</span></div><div class="kpi-sub">2枚 有効</div></div>
+  </div>
+
+  <!-- Tab Nav -->
+  <div class="tab-nav">
+    <button class="tab-btn"><span class="tab-icon">📊</span> サマリー</button>
+    <button class="tab-btn active"><span class="tab-icon">⚖️</span> 体重</button>
+    <button class="tab-btn"><span class="tab-icon">🍽</span> 食事</button>
+    <button class="tab-btn"><span class="tab-icon">🏃</span> 運動</button>
+    <button class="tab-btn"><span class="tab-icon">📋</span> カルテ</button>
+    <button class="tab-btn"><span class="tab-icon">🎟</span> チケット</button>
+  </div>
+
+  <!-- Weight Tab Content -->
+  <div class="main-content">
+
+    <!-- Chart Card with Period Toggle -->
+    <div class="card annotation-wrapper" style="margin-bottom:16px;position:relative;">
+      <div class="annotation-num" style="top:-12px; right:-10px;">5</div>
+      <div class="annotation-label" style="top:-36px; right:12px;">期間切替 + 目標体重破線で視認性UP</div>
+      <div class="card-header">
+        <div>
+          <div class="card-title">体重推移グラフ</div>
+          <div class="card-sub" style="margin-top:2px;">目標: 68.0 kg（--- 破線）</div>
+        </div>
+        <div class="period-btns">
+          <button class="period-btn">1W</button>
+          <button class="period-btn active">1M</button>
+          <button class="period-btn">3M</button>
+          <button class="period-btn">ALL</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="chart-placeholder" style="height:200px;">
+          <div class="chart-target-line" style="bottom:35%;"></div>
+          <div class="chart-bar" style="height:68%;"></div>
+          <div class="chart-bar" style="height:70%;"></div>
+          <div class="chart-bar" style="height:67%;"></div>
+          <div class="chart-bar" style="height:65%;"></div>
+          <div class="chart-bar" style="height:62%;"></div>
+          <div class="chart-bar" style="height:60%;"></div>
+          <div class="chart-bar" style="height:59%;"></div>
+          <div class="chart-bar" style="height:57%;"></div>
+          <div class="chart-bar" style="height:55%;"></div>
+          <div class="chart-bar" style="height:53%;"></div>
+          <div class="chart-bar highlight" style="height:51%;"></div>
+          <div class="chart-bar" style="height:49%;"></div>
+
+          <div style="position:absolute;top:8px;left:12px;display:flex;align-items:center;gap:12px;">
+            <div style="display:flex;align-items:center;gap:4px;">
+              <div style="width:10px;height:10px;background:var(--accent-subtle);border-radius:2px;"></div>
+              <span style="font-size:10px;color:var(--text-muted);">体重</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:4px;">
+              <div style="width:16px;height:0;border-top:2px dashed var(--danger);"></div>
+              <span style="font-size:10px;color:var(--text-muted);">目標 68.0 kg</span>
+            </div>
+          </div>
+
+          <!-- Axis Labels -->
+          <div style="position:absolute;bottom:4px;left:12px;right:12px;display:flex;justify-content:space-between;">
+            <span style="font-size:9px;color:var(--text-muted);">2/4</span>
+            <span style="font-size:9px;color:var(--text-muted);">2/14</span>
+            <span style="font-size:9px;color:var(--text-muted);">2/24</span>
+            <span style="font-size:9px;color:var(--text-muted);">3/4</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Record List -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">記録一覧</div>
+        <div class="card-sub">最新10件</div>
+      </div>
+      <div class="card-body" style="padding:12px 16px;">
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <span style="font-size:13px;font-weight:600;color:var(--primary);">3/4</span>
+              <div style="display:flex;align-items:baseline;gap:4px;">
+                <span style="font-size:18px;font-weight:800;color:var(--primary);">72.3</span>
+                <span style="font-size:12px;color:var(--text-muted);">kg</span>
+                <span class="kpi-delta-pos" style="margin-left:8px;">-0.5</span>
+              </div>
+            </div>
+            <div style="margin-top:8px;background:var(--background);border-radius:4px;padding:6px 10px;display:flex;align-items:flex-start;gap:6px;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-muted);flex-shrink:0;margin-top:1px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <span style="font-size:12px;color:var(--text-secondary);">朝一番に測定。少し動けた。</span>
+            </div>
+            <!-- Body photo -->
+            <div style="margin-top:8px;border-top:1px dashed var(--border);padding-top:8px;">
+              <div style="width:72px;height:72px;background:var(--background);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--text-muted);">📷</div>
+            </div>
+          </div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <span style="font-size:13px;font-weight:600;color:var(--primary);">3/1</span>
+              <div style="display:flex;align-items:baseline;gap:4px;">
+                <span style="font-size:18px;font-weight:800;color:var(--primary);">72.8</span>
+                <span style="font-size:12px;color:var(--text-muted);">kg</span>
+                <span class="kpi-delta-pos" style="margin-left:8px;">-0.2</span>
+              </div>
+            </div>
+          </div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <span style="font-size:13px;font-weight:600;color:var(--primary);">2/27</span>
+              <div style="display:flex;align-items:baseline;gap:4px;">
+                <span style="font-size:18px;font-weight:800;color:var(--primary);">73.0</span>
+                <span style="font-size:12px;color:var(--text-muted);">kg</span>
+                <span class="kpi-delta-neg" style="margin-left:8px;">+0.1</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ==================== SECTION 3: カルテタブ ==================== -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">SECTION 3 &nbsp;|&nbsp; カルテタブ</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="screen-frame">
+  <div class="app-topbar">
+    <div class="app-topbar-logo">FC</div>
+    <div class="app-topbar-title">FIT-CONNECT</div>
+    <div class="app-topbar-spacer"></div>
+    <div class="app-topbar-user">T</div>
+  </div>
+
+  <div class="sticky-header">
+    <nav class="breadcrumb">
+      <a href="#">顧客一覧</a>
+      <span class="breadcrumb-sep">›</span>
+      <span class="breadcrumb-current">田中 太郎</span>
+    </nav>
+    <div style="width:1px;height:20px;background:var(--border);flex-shrink:0;"></div>
+    <div class="avatar-sm">田</div>
+    <div class="header-client-info">
+      <div class="header-client-name">田中 太郎</div>
+      <div class="header-client-meta"><span>男性</span><span style="color:var(--border);">·</span><span>35歳</span></div>
+    </div>
+    <div class="header-spacer"></div>
+    <div class="mode-toggle">
+      <button class="mode-btn active">情報</button>
+      <button class="mode-btn inactive">セッション</button>
+    </div>
+    <button class="header-btn">編集</button>
+    <button class="header-btn header-btn-primary">メッセージ</button>
+  </div>
+
+  <div class="kpi-bar">
+    <div class="kpi-card"><div class="kpi-label">現在体重</div><div class="kpi-value">72.3 <span class="kpi-unit">kg</span></div><div class="kpi-sub">3/4 更新</div></div>
+    <div class="kpi-card"><div class="kpi-label">目標体重</div><div class="kpi-value">68.0 <span class="kpi-unit">kg</span></div><div class="kpi-sub">あと 4.3 kg</div></div>
+    <div class="kpi-card"><div class="kpi-label">月間体重変動</div><div class="kpi-value">-1.2 <span class="kpi-unit">kg</span></div><div class="kpi-delta-pos">&#9660; 順調</div></div>
+    <div class="kpi-card"><div class="kpi-label">残チケット</div><div class="kpi-value">8 <span class="kpi-unit">回</span></div><div class="kpi-sub">2枚 有効</div></div>
+  </div>
+
+  <div class="tab-nav">
+    <button class="tab-btn"><span class="tab-icon">📊</span> サマリー</button>
+    <button class="tab-btn"><span class="tab-icon">⚖️</span> 体重</button>
+    <button class="tab-btn"><span class="tab-icon">🍽</span> 食事</button>
+    <button class="tab-btn"><span class="tab-icon">🏃</span> 運動</button>
+    <button class="tab-btn active"><span class="tab-icon">📋</span> カルテ</button>
+    <button class="tab-btn"><span class="tab-icon">🎟</span> チケット</button>
+  </div>
+
+  <div class="main-content">
+    <!-- Notes Tab Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div>
+        <div style="font-size:14px;font-weight:700;color:var(--primary);">カルテ</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:1px;">3件のカルテ</div>
+      </div>
+      <button class="header-btn header-btn-primary" style="padding:7px 16px;font-size:12px;">+ カルテを追加</button>
+    </div>
+
+    <!-- Note Cards -->
+    <div class="annotation-wrapper" style="position:relative;">
+      <div class="annotation-num" style="top:-12px; right:-10px;">7</div>
+      <div class="annotation-label" style="top:-36px; right:12px;">カルテカードの視認性向上（サイドバー + サムネイル）</div>
+
+      <!-- Note 1 -->
+      <div class="note-card highlighted">
+        <div class="note-sidebar">
+          <span class="note-session-num">#3</span>
+        </div>
+        <div class="note-body">
+          <div class="note-header">
+            <div>
+              <div class="note-title">3月度 セッション記録</div>
+              <div class="note-date">2026/03/04 10:30 · 編集済み</div>
+            </div>
+            <div class="note-actions">
+              <button class="note-action-btn">編集</button>
+              <button class="note-action-btn danger">削除</button>
+            </div>
+          </div>
+          <div class="note-content">
+            スクワット・デッドリフトを中心に実施。前回より5kg増量に成功。フォームも安定してきた。次回はベンチプレスのフォームを確認予定。食事指導: 夕食の炭水化物を控えめにするよう指示。
+          </div>
+          <!-- Attachment thumbnails -->
+          <div class="note-attachments">
+            <div class="attachment-thumb">📷</div>
+            <div class="attachment-thumb">📷</div>
+            <div class="attachment-pdf">
+              <span>PDF</span>
+              <span>食事記録.pdf</span>
+            </div>
+          </div>
+          <!-- Share status -->
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span class="share-badge shared">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              共有中 (3/4)
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Note 2 -->
+      <div class="note-card" style="margin-top:12px;">
+        <div class="note-sidebar" style="background:var(--accent-hover);">
+          <span class="note-session-num">#2</span>
+        </div>
+        <div class="note-body">
+          <div class="note-header">
+            <div>
+              <div class="note-title">2月度 体組成測定</div>
+              <div class="note-date">2026/02/18 14:00</div>
+            </div>
+            <div class="note-actions">
+              <button class="note-action-btn">編集</button>
+              <button class="note-action-btn danger">削除</button>
+            </div>
+          </div>
+          <div class="note-content">
+            体脂肪率 22.4% → 21.8%。筋肉量が微増。引き続き有酸素運動との組み合わせを推奨。
+          </div>
+          <div class="note-attachments">
+            <div class="attachment-thumb">📷</div>
+          </div>
+          <div>
+            <span class="share-badge private">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              非公開
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Note 3 -->
+      <div class="note-card" style="margin-top:12px;">
+        <div class="note-sidebar" style="background:#64748B;">
+          <span class="note-session-num">#1</span>
+        </div>
+        <div class="note-body">
+          <div class="note-header">
+            <div>
+              <div class="note-title">初回カウンセリング</div>
+              <div class="note-date">2026/01/15 11:00</div>
+            </div>
+            <div class="note-actions">
+              <button class="note-action-btn">編集</button>
+              <button class="note-action-btn danger">削除</button>
+            </div>
+          </div>
+          <div class="note-content">
+            目標: ダイエット目的。週3回トレーニング可能。膝に若干の痛みあり → 低負荷からスタート。
+          </div>
+          <div>
+            <span class="share-badge shared">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              共有中 (1/15)
+            </span>
+          </div>
+        </div>
+      </div>
+    </div><!-- end annotation-wrapper -->
+  </div>
+</div>
+
+
+<!-- ==================== SECTION 4: セッションモードビュー ==================== -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">SECTION 4 &nbsp;|&nbsp; セッションモードビュー</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="screen-frame">
+  <div class="app-topbar">
+    <div class="app-topbar-logo">FC</div>
+    <div class="app-topbar-title">FIT-CONNECT</div>
+    <div class="app-topbar-spacer"></div>
+    <div class="app-topbar-user">T</div>
+  </div>
+
+  <!-- Session Header (with Teal accent bottom border) -->
+  <div class="session-header annotation-wrapper" style="position:relative;">
+    <div class="annotation-num" style="top:-12px; left:50%; transform:translateX(-50%);">6</div>
+    <div class="annotation-label" style="top:-36px; left:calc(50% + 20px);">セッション中: Tealアクセントバー + タイマー統合</div>
+
+    <div class="session-header-inner highlighted">
+      <!-- Breadcrumb -->
+      <nav class="breadcrumb">
+        <a href="#">顧客一覧</a>
+        <span class="breadcrumb-sep">›</span>
+        <span class="breadcrumb-current">田中 太郎</span>
+      </nav>
+      <div style="width:1px;height:20px;background:var(--border);flex-shrink:0;"></div>
+      <div class="avatar-sm">田</div>
+      <div class="header-client-info">
+        <div class="header-client-name">田中 太郎</div>
+        <div class="header-client-meta"><span>男性</span><span style="color:var(--border);">·</span><span>35歳</span></div>
+      </div>
+
+      <!-- Session Indicator + Timer -->
+      <div class="session-indicator" style="margin-left:8px;">
+        <div class="session-dot"></div>
+        <span class="session-label">セッション中</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;margin:0 4px;">
+        <div class="session-timer">34:17</div>
+        <div class="session-timer-label">経過時間</div>
+      </div>
+
+      <div class="header-spacer"></div>
+
+      <!-- Mode Toggle (session active) -->
+      <div class="mode-toggle">
+        <button class="mode-btn inactive">情報</button>
+        <button class="mode-btn session-active">セッション</button>
+      </div>
+
+      <button class="session-finish-btn">終了</button>
+    </div>
+  </div>
+
+  <!-- KPI Bar (Session mode shows relevant stats) -->
+  <div class="kpi-bar">
+    <div class="kpi-card"><div class="kpi-label">現在体重</div><div class="kpi-value">72.3 <span class="kpi-unit">kg</span></div><div class="kpi-sub">3/4 更新</div></div>
+    <div class="kpi-card"><div class="kpi-label">目標体重</div><div class="kpi-value">68.0 <span class="kpi-unit">kg</span></div><div class="kpi-sub">あと 4.3 kg</div></div>
+    <div class="kpi-card"><div class="kpi-label">月間体重変動</div><div class="kpi-value">-1.2 <span class="kpi-unit">kg</span></div><div class="kpi-delta-pos">&#9660; 順調</div></div>
+    <div class="kpi-card"><div class="kpi-label">残チケット</div><div class="kpi-value">8 <span class="kpi-unit">回</span></div><div class="kpi-sub">2枚 有効</div></div>
+  </div>
+
+  <!-- Session Content -->
+  <div class="main-content">
+
+    <!-- Date Picker -->
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-body" style="padding:12px 16px;">
+        <div style="font-size:11px;color:var(--text-muted);font-weight:600;margin-bottom:8px;letter-spacing:0.05em;">日付を選択</div>
+        <div class="date-picker">
+          <div class="date-btn">
+            <span class="date-day" style="color:var(--text-muted);">月</span>
+            <span class="date-num" style="color:var(--text-muted);">3</span>
+          </div>
+          <div class="date-btn">
+            <span class="date-day" style="color:var(--text-muted);">火</span>
+            <span class="date-num" style="color:var(--text-muted);">4</span>
+          </div>
+          <div class="date-btn">
+            <span class="date-day" style="color:var(--text-muted);">水</span>
+            <span class="date-num" style="color:var(--text-muted);">5</span>
+            <div class="date-dot"></div>
+          </div>
+          <div class="date-btn selected today">
+            <span class="date-day">木</span>
+            <span class="date-num">6</span>
+            <div class="date-dot"></div>
+          </div>
+          <div class="date-btn">
+            <span class="date-day" style="color:var(--text-muted);">金</span>
+            <span class="date-num" style="color:var(--text-muted);">7</span>
+          </div>
+          <div class="date-btn">
+            <span class="date-day" style="color:var(--text-muted);">土</span>
+            <span class="date-num" style="color:var(--text-muted);">8</span>
+          </div>
+          <div class="date-btn">
+            <span class="date-day" style="color:var(--text-muted);">日</span>
+            <span class="date-num" style="color:var(--text-muted);">9</span>
+          </div>
+        </div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:6px;">2026年3月6日（木）</div>
+      </div>
+    </div>
+
+    <!-- Workout Assignment Card -->
+    <div class="exercise-card">
+      <!-- Assignment Header -->
+      <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--background);">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--primary);">上半身トレーニング A</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">目安: 60分</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="padding:3px 10px;background:#FEF9C3;color:#854D0E;border-radius:4px;font-size:11px;font-weight:600;border:1px solid #FDE68A;">進行中</span>
+        </div>
+      </div>
+
+      <!-- Session Timer Bar (within card) -->
+      <div style="padding:10px 14px;border-bottom:1px solid var(--border);background:#F0FDFA;display:flex;align-items:center;gap:12px;">
+        <div class="session-indicator" style="flex-shrink:0;">
+          <div class="session-dot"></div>
+          <span class="session-label">セッション中</span>
+        </div>
+        <div style="font-size:20px;font-weight:800;color:var(--accent);flex:1;font-variant-numeric:tabular-nums;">34:17</div>
+        <button style="padding:5px 14px;background:var(--danger);color:white;border:none;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer;">終了</button>
+      </div>
+
+      <!-- Exercise 1: Bench Press -->
+      <div style="padding:0;">
+        <div class="exercise-card-header">
+          <div>
+            <div class="exercise-name">ベンチプレス</div>
+            <div class="exercise-target">目標: 3セット × 10回 / 60 kg</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:10px;color:var(--success);font-weight:600;">完了</span>
+            <button style="padding:4px 12px;background:var(--accent);color:white;border:none;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer;">保存</button>
+          </div>
+        </div>
+
+        <!-- Set headers -->
+        <div style="display:flex;align-items:center;gap:8px;padding:5px 14px;background:var(--background);border-bottom:1px solid var(--border);">
+          <div style="width:20px;font-size:10px;color:var(--text-muted);font-weight:600;">Set</div>
+          <div style="width:70px;font-size:10px;color:var(--text-muted);font-weight:600;">前回</div>
+          <div style="flex:1;font-size:10px;color:var(--text-muted);font-weight:600;text-align:center;">重量 (kg)</div>
+          <div style="flex:1;font-size:10px;color:var(--text-muted);font-weight:600;text-align:center;">回数</div>
+          <div style="width:20px;"></div>
+        </div>
+
+        <div class="set-row">
+          <div class="set-num">1</div>
+          <div class="set-prev">60kg × 10</div>
+          <div class="set-input">60</div>
+          <div class="set-unit">kg</div>
+          <div class="set-input">10</div>
+          <div class="set-unit">回</div>
+          <div class="set-check checked">&#10003;</div>
+        </div>
+        <div class="set-row">
+          <div class="set-num">2</div>
+          <div class="set-prev">60kg × 8</div>
+          <div class="set-input">62</div>
+          <div class="set-unit">kg</div>
+          <div class="set-input">10</div>
+          <div class="set-unit">回</div>
+          <div class="set-check checked">&#10003;</div>
+        </div>
+        <div class="set-row">
+          <div class="set-num">3</div>
+          <div class="set-prev">60kg × 8</div>
+          <div class="set-input">60</div>
+          <div class="set-unit">kg</div>
+          <div class="set-input" style="color:var(--text-muted);">—</div>
+          <div class="set-unit">回</div>
+          <div class="set-check"></div>
+        </div>
+
+        <!-- Memo -->
+        <div style="padding:8px 14px 10px;">
+          <div style="width:100%;height:36px;background:var(--background);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;padding:0 10px;font-size:11px;color:var(--text-muted);">メモを入力...</div>
+        </div>
+      </div>
+
+      <!-- Superset Connector -->
+      <div class="superset-connector" style="padding:4px 14px;">
+        <div class="superset-line"></div>
+        <span class="superset-badge">スーパーセット</span>
+        <div class="superset-line"></div>
+      </div>
+
+      <!-- Exercise 2: Tricep Pushdown (Superset) -->
+      <div style="border:1px solid #DDD6FE;border-radius:4px;margin:0 14px 12px;">
+        <div class="exercise-card-header" style="background:#FAF5FF;">
+          <div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="padding:2px 6px;background:#EDE9FE;color:#7C3AED;border-radius:3px;font-size:10px;font-weight:700;">SS</span>
+              <div class="exercise-name">トライセプスプッシュダウン</div>
+            </div>
+            <div class="exercise-target">目標: 3セット × 12回 / 25 kg</div>
+          </div>
+          <button style="padding:4px 12px;background:var(--accent);color:white;border:none;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer;">保存</button>
+        </div>
+        <div class="set-row">
+          <div class="set-num">1</div>
+          <div class="set-prev">25kg × 12</div>
+          <div class="set-input">27</div>
+          <div class="set-unit">kg</div>
+          <div class="set-input">12</div>
+          <div class="set-unit">回</div>
+          <div class="set-check checked">&#10003;</div>
+        </div>
+        <div class="set-row">
+          <div class="set-num">2</div>
+          <div class="set-prev">25kg × 10</div>
+          <div class="set-input">25</div>
+          <div class="set-unit">kg</div>
+          <div class="set-input" style="color:var(--text-muted);">—</div>
+          <div class="set-unit">回</div>
+          <div class="set-check"></div>
+        </div>
+        <div style="padding:8px 14px 10px;">
+          <div style="width:100%;height:36px;background:var(--background);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;padding:0 10px;font-size:11px;color:var(--text-muted);">メモを入力...</div>
+        </div>
+      </div>
+
+      <!-- Exercise 3: Lat Pulldown -->
+      <div style="padding:0;">
+        <div class="exercise-card-header">
+          <div>
+            <div class="exercise-name">ラットプルダウン</div>
+            <div class="exercise-target">目標: 4セット × 10回 / 50 kg</div>
+          </div>
+          <button style="padding:4px 12px;background:var(--accent);color:white;border:none;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer;">保存</button>
+        </div>
+        <div class="set-row">
+          <div class="set-num">1</div>
+          <div class="set-prev">50kg × 10</div>
+          <div class="set-input" style="color:var(--text-muted);">50</div>
+          <div class="set-unit">kg</div>
+          <div class="set-input" style="color:var(--text-muted);">—</div>
+          <div class="set-unit">回</div>
+          <div class="set-check"></div>
+        </div>
+        <div class="set-row">
+          <div class="set-num">2</div>
+          <div class="set-prev">50kg × 10</div>
+          <div class="set-input" style="color:var(--text-muted);">50</div>
+          <div class="set-unit">kg</div>
+          <div class="set-input" style="color:var(--text-muted);">—</div>
+          <div class="set-unit">回</div>
+          <div class="set-check"></div>
+        </div>
+        <div style="padding:8px 14px 10px;">
+          <div style="width:100%;height:36px;background:var(--background);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;padding:0 10px;font-size:11px;color:var(--text-muted);">メモを入力...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ==================== Annotation Legend ==================== -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">改善提案 一覧</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div style="max-width:960px;margin:0 auto;background:var(--surface);border:1px solid #D1D5DB;border-radius:8px;overflow:hidden;padding:24px 28px;">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 32px;">
+
+    <div style="display:flex;gap:12px;align-items:flex-start;padding:12px;border:1px solid var(--border);border-radius:var(--radius);">
+      <div style="background:var(--danger);color:white;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;">1</div>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:2px;">ヘッダーのコンパクト化 & スティッキー化</div>
+        <div style="font-size:11px;color:var(--text-secondary);line-height:1.5;">アバター(40px)・名前・属性を1行に。スクロールしても名前が常に見える。ボタン群も同行。</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px;align-items:flex-start;padding:12px;border:1px solid var(--border);border-radius:var(--radius);">
+      <div style="background:var(--danger);color:white;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;">2</div>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:2px;">クイック統計バーの独立化</div>
+        <div style="font-size:11px;color:var(--text-secondary);line-height:1.5;">現在体重 / 目標体重 / 月間変動 / 残チケットを4列KPIバーとして常時表示。数値を大きく。</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px;align-items:flex-start;padding:12px;border:1px solid var(--border);border-radius:var(--radius);">
+      <div style="background:var(--danger);color:white;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;">3</div>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:2px;">タブデザインの刷新</div>
+        <div style="font-size:11px;color:var(--text-secondary);line-height:1.5;">アクティブタブにTealの下線(2px)。各タブにアイコン追加。視認性・識別性が向上。</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px;align-items:flex-start;padding:12px;border:1px solid var(--border);border-radius:var(--radius);">
+      <div style="background:var(--danger);color:white;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;">4</div>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:2px;">サマリータブの再構成</div>
+        <div style="font-size:11px;color:var(--text-secondary);line-height:1.5;">左2/3: 体重グラフ + 活動タイムライン。右1/3: クライアント情報 + チケットステータス。2カラムで視線の流れを明確化。</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px;align-items:flex-start;padding:12px;border:1px solid var(--border);border-radius:var(--radius);">
+      <div style="background:var(--danger);color:white;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;">5</div>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:2px;">体重グラフのインタラクション強化</div>
+        <div style="font-size:11px;color:var(--text-secondary);line-height:1.5;">1W/1M/3M/ALL の期間切替ボタン追加。目標体重を赤破線で表示。グラフ下に最新3件をコンパクト表示。</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px;align-items:flex-start;padding:12px;border:1px solid var(--border);border-radius:var(--radius);">
+      <div style="background:var(--danger);color:white;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;">6</div>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:2px;">セッションモードの視覚分離</div>
+        <div style="font-size:11px;color:var(--text-secondary);line-height:1.5;">ヘッダー下にTeal(3px)アクセントラインを表示。タイマーをヘッダー内に統合。セッション中であることを一目で認識。</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px;align-items:flex-start;padding:12px;border:1px solid var(--border);border-radius:var(--radius);">
+      <div style="background:var(--danger);color:white;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;">7</div>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:2px;">カルテカードの視認性向上</div>
+        <div style="font-size:11px;color:var(--text-secondary);line-height:1.5;">セッション番号をTealのサイドバーで強調。添付ファイルをサムネイルグリッドで表示。共有/非公開をアイコン+テキストで明示。</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px;align-items:flex-start;padding:12px;border:1px solid var(--border);border-radius:var(--radius);">
+      <div style="background:var(--danger);color:white;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;">8</div>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:2px;">BreadcrumbナビゲーションへのUI刷新</div>
+        <div style="font-size:11px;color:var(--text-secondary);line-height:1.5;">「← 顧客リストに戻る」をBreadcrumb形式(顧客一覧 › 田中太郎)に変更。コンパクトで文脈がわかりやすい。</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted);text-align:center;">
+    FIT-CONNECT — Client Detail Redesign Wireframe &nbsp;|&nbsp; 2026-03-07 &nbsp;|&nbsp; Design System: Primary #0F172A / Accent #14B8A6
+  </div>
+</div>
+
+<div style="height:48px;"></div>
+
+</body>
+</html>

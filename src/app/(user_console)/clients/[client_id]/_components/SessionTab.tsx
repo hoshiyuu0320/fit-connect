@@ -284,7 +284,7 @@ export function SessionTab({ clientId, trainerId }: SessionTabProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-4 border-blue-600 border-t-transparent"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-4 border-[#14B8A6] border-t-transparent"></div>
       </div>
     )
   }
@@ -292,8 +292,8 @@ export function SessionTab({ clientId, trainerId }: SessionTabProps) {
   return (
     <div className="space-y-4">
       {/* 日付ピッカー */}
-      <div className="bg-white rounded-lg shadow-sm border p-4">
-        <h2 className="text-sm font-medium text-gray-600 mb-3">日付を選択</h2>
+      <div className="bg-white border border-[#E2E8F0] rounded-md p-4">
+        <h2 className="text-sm font-medium text-[#64748B] mb-3">日付を選択</h2>
         <div className="flex gap-2 overflow-x-auto pb-1">
           {dateRange.map((date) => {
             const dateObj = new Date(date + 'T00:00:00')
@@ -305,12 +305,12 @@ export function SessionTab({ clientId, trainerId }: SessionTabProps) {
               <button
                 key={date}
                 onClick={() => setSelectedDate(date)}
-                className={`flex flex-col items-center min-w-[60px] px-3 py-2 rounded-lg border transition-colors ${
+                className={`flex flex-col items-center min-w-[60px] px-3 py-2 rounded-md border transition-colors ${
                   isSelected
-                    ? 'bg-blue-600 text-white border-blue-600'
+                    ? 'bg-[#14B8A6] text-white border-[#14B8A6]'
                     : isToday
-                    ? 'border-blue-300 text-blue-600'
-                    : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                    ? 'border-[#14B8A6] text-[#14B8A6]'
+                    : 'border-[#E2E8F0] text-[#64748B] hover:border-[#CBD5E1]'
                 }`}
               >
                 <span className="text-xs">
@@ -322,7 +322,7 @@ export function SessionTab({ clientId, trainerId }: SessionTabProps) {
                 {dayAssignments.length > 0 && (
                   <span
                     className={`w-1.5 h-1.5 rounded-full mt-0.5 ${
-                      isSelected ? 'bg-white' : 'bg-blue-400'
+                      isSelected ? 'bg-white' : 'bg-[#14B8A6]'
                     }`}
                   />
                 )}
@@ -330,17 +330,17 @@ export function SessionTab({ clientId, trainerId }: SessionTabProps) {
             )
           })}
         </div>
-        <p className="text-xs text-gray-400 mt-2">
+        <p className="text-xs text-[#94A3B8] mt-2">
           {format(new Date(selectedDate + 'T00:00:00'), 'yyyy年M月d日(E)', { locale: ja })}
         </p>
       </div>
 
       {/* アサインメント一覧 */}
       {todayAssignments.length === 0 ? (
-        <div className="flex items-center justify-center h-48 bg-white rounded-lg shadow-sm border">
+        <div className="flex items-center justify-center h-48 bg-white border border-[#E2E8F0] rounded-md">
           <div className="text-center">
-            <p className="text-gray-500 mb-1">この日のワークアウトはありません</p>
-            <p className="text-xs text-gray-400">カレンダーからプランを割り当ててください</p>
+            <p className="text-[#94A3B8] mb-1">この日のワークアウトはありません</p>
+            <p className="text-xs text-[#94A3B8]">カレンダーからプランを割り当ててください</p>
           </div>
         </div>
       ) : (
@@ -350,15 +350,15 @@ export function SessionTab({ clientId, trainerId }: SessionTabProps) {
             const prevAssignment = getPreviousAssignment(assignment)
 
             return (
-              <div key={assignment.id} className="bg-white rounded-lg shadow-sm border overflow-hidden">
+              <div key={assignment.id} className="bg-white border border-[#E2E8F0] rounded-md overflow-hidden">
                 {/* アサインメントヘッダー */}
-                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-[#E2E8F0]">
                   <div>
-                    <h3 className="font-semibold text-gray-900">
+                    <h3 className="font-semibold text-[#0F172A]">
                       {assignment.plan?.title ?? 'ワークアウト'}
                     </h3>
                     {assignment.plan?.estimated_minutes && (
-                      <p className="text-xs text-gray-500 mt-0.5">
+                      <p className="text-xs text-[#94A3B8] mt-0.5">
                         目安: {assignment.plan.estimated_minutes}分
                       </p>
                     )}
@@ -394,22 +394,22 @@ export function SessionTab({ clientId, trainerId }: SessionTabProps) {
                           .map((exercise) => (
                             <div
                               key={exercise.id}
-                              className="rounded-lg border border-gray-100 px-3 py-2"
+                              className="rounded-md border border-[#E2E8F0] px-3 py-2"
                             >
                               <div className="flex items-center justify-between">
                                 <div>
-                                  <h4 className="font-medium text-gray-900 text-sm">
+                                  <h4 className="font-medium text-[#0F172A] text-sm">
                                     {exercise.exercise_name}
                                   </h4>
-                                  <p className="text-xs text-gray-500">
+                                  <p className="text-xs text-[#94A3B8]">
                                     目標: {exercise.target_sets}セット × {exercise.target_reps}回
                                     {exercise.target_weight && ` ${exercise.target_weight}kg`}
                                   </p>
                                 </div>
                                 {exercise.is_completed ? (
-                                  <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded">完了</span>
+                                  <span className="text-xs font-medium text-[#16A34A] bg-[#F0FDF4] px-2 py-1 rounded-md">完了</span>
                                 ) : (
-                                  <span className="text-xs font-medium text-gray-400 bg-gray-50 px-2 py-1 rounded">未実施</span>
+                                  <span className="text-xs font-medium text-[#94A3B8] bg-[#F8FAFC] px-2 py-1 rounded-md">未実施</span>
                                 )}
                               </div>
                               {/* セットごとの実績 */}
@@ -418,11 +418,11 @@ export function SessionTab({ clientId, trainerId }: SessionTabProps) {
                                   {exercise.actual_sets.map((set) => (
                                     <div
                                       key={set.set_number}
-                                      className="flex items-center gap-3 text-xs text-gray-600"
+                                      className="flex items-center gap-3 text-xs text-[#64748B]"
                                     >
-                                      <span className="text-gray-400 w-4">{set.set_number}</span>
+                                      <span className="text-[#94A3B8] w-4">{set.set_number}</span>
                                       <span>{set.weight ?? '-'}kg × {set.reps ?? '-'}回</span>
-                                      {set.done && <span className="text-green-500">&#10003;</span>}
+                                      {set.done && <span className="text-[#16A34A]">&#10003;</span>}
                                     </div>
                                   ))}
                                 </div>
@@ -453,30 +453,30 @@ export function SessionTab({ clientId, trainerId }: SessionTabProps) {
                               )}
 
                               <div
-                                className={`rounded-lg border p-3 ${
-                                  isSuperset ? 'border-purple-200' : 'border-gray-100'
+                                className={`rounded-md border p-3 ${
+                                  isSuperset ? 'border-purple-200' : 'border-[#E2E8F0]'
                                 }`}
                               >
                                 {/* 種目ヘッダー */}
                                 <div className="flex items-center justify-between mb-2">
                                   <div className="flex items-center gap-2">
                                     {isSuperset && (
-                                      <span className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded">
+                                      <span className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-md">
                                         SS
                                       </span>
                                     )}
-                                    <h4 className="font-medium text-gray-900 text-sm">
+                                    <h4 className="font-medium text-[#0F172A] text-sm">
                                       {exercise.exercise_name}
                                     </h4>
                                   </div>
                                   <div className="flex items-center gap-2">
                                     {exercise.is_completed && (
-                                      <span className="text-xs text-green-600 font-medium">完了</span>
+                                      <span className="text-xs text-[#16A34A] font-medium">完了</span>
                                     )}
                                     <button
                                       onClick={() => handleSave(exercise, assignment.id)}
                                       disabled={savingExerciseId === exercise.id}
-                                      className="text-sm px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium"
+                                      className="text-sm px-5 py-2 bg-[#14B8A6] text-white rounded-md hover:bg-[#0D9488] disabled:opacity-50 font-medium"
                                     >
                                       {savingExerciseId === exercise.id ? '保存中...' : '保存'}
                                     </button>
@@ -484,7 +484,7 @@ export function SessionTab({ clientId, trainerId }: SessionTabProps) {
                                 </div>
 
                                 {/* 目標表示 */}
-                                <p className="text-xs text-gray-500 mb-2">
+                                <p className="text-xs text-[#94A3B8] mb-2">
                                   目標: {exercise.target_sets}セット ×{' '}
                                   {exercise.target_reps}回
                                   {exercise.target_weight && ` ${exercise.target_weight}kg`}
@@ -517,7 +517,7 @@ export function SessionTab({ clientId, trainerId }: SessionTabProps) {
                                   placeholder="メモを入力..."
                                   rows={2}
                                   onBlur={(e) => handleMemoSave(exercise.id, e.target.value)}
-                                  className="w-full mt-2 text-xs rounded border border-gray-200 px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none bg-gray-50"
+                                  className="w-full mt-2 text-xs rounded-md border border-[#E2E8F0] px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#14B8A6] resize-none bg-[#F8FAFC]"
                                 />
                               </div>
                             </div>
@@ -525,7 +525,7 @@ export function SessionTab({ clientId, trainerId }: SessionTabProps) {
                         })
                     )
                   ) : (
-                    <p className="text-sm text-gray-500 py-2">種目が登録されていません</p>
+                    <p className="text-sm text-[#94A3B8] py-2">種目が登録されていません</p>
                   )}
                 </div>
               </div>
@@ -554,8 +554,8 @@ export function SessionTab({ clientId, trainerId }: SessionTabProps) {
       {/* 保存完了トースト */}
       {saveToast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-fade-in">
-          <div className="flex items-center gap-2 bg-gray-800 text-white text-sm px-4 py-2.5 rounded-lg shadow-lg">
-            <span className="text-green-400">&#10003;</span>
+          <div className="flex items-center gap-2 bg-[#0F172A] text-white text-sm px-4 py-2.5 rounded-md">
+            <span className="text-[#14B8A6]">&#10003;</span>
             {saveToast}
           </div>
         </div>

@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FitConnect - Clients Page Redesign</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #0F172A;
+    --text-secondary: #475569;
+    --text-muted: #94A3B8;
+    --accent: #14B8A6;
+    --accent-hover: #0D9488;
+    --accent-light: #F0FDFA;
+    --accent-subtle: #CCFBF1;
+    --background: #F8FAFC;
+    --surface: #FFFFFF;
+    --border: #E2E8F0;
+    --radius: 6px;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif;
+    background: var(--background);
+    color: var(--primary);
+    min-height: 100vh;
+  }
+
+  /* ===== Header ===== */
+  .header {
+    position: fixed; top: 0; left: 0; right: 0;
+    height: 56px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center;
+    padding: 0 24px;
+    z-index: 100;
+  }
+  .header-logo {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .logo-badge {
+    background: var(--primary);
+    color: var(--accent);
+    font-weight: 800; font-size: 13px;
+    padding: 4px 8px; border-radius: var(--radius);
+  }
+  .logo-text {
+    font-weight: 700; font-size: 16px; color: var(--primary);
+  }
+  .header-right {
+    margin-left: auto; display: flex; align-items: center; gap: 8px;
+  }
+  .header-icon-btn {
+    width: 36px; height: 36px; border-radius: var(--radius);
+    border: 1px solid var(--border); background: var(--surface);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-muted); cursor: pointer;
+  }
+
+  /* ===== Sidebar ===== */
+  .sidebar {
+    position: fixed; top: 56px; left: 0; bottom: 0;
+    width: 80px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    padding: 12px 0;
+    z-index: 90;
+  }
+  .nav-item {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 10px 0; margin: 2px 8px;
+    border-radius: var(--radius);
+    color: var(--text-muted);
+    font-size: 10px; font-weight: 500;
+    cursor: pointer; text-decoration: none;
+    transition: all 0.15s;
+  }
+  .nav-item:hover { background: var(--background); }
+  .nav-item.active {
+    background: var(--accent-light);
+    color: var(--accent);
+  }
+  .nav-item svg { margin-bottom: 4px; }
+  .nav-spacer { flex: 1; }
+
+  /* ===== Main Content ===== */
+  .main {
+    margin-left: 80px;
+    padding-top: 56px;
+    min-height: 100vh;
+  }
+  .content {
+    padding: 28px 32px;
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+
+  /* ===== Page Header ===== */
+  .page-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  .page-title {
+    font-size: 22px; font-weight: 700; color: var(--primary);
+    letter-spacing: -0.02em;
+  }
+  .page-description {
+    font-size: 13px; color: var(--text-muted); margin-top: 4px;
+  }
+  .btn-primary {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--accent);
+    color: white;
+    border: none; border-radius: var(--radius);
+    padding: 9px 16px;
+    font-size: 13px; font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s;
+  }
+  .btn-primary:hover { background: var(--accent-hover); }
+
+  /* ===== NEW: Summary Stats ===== */
+  .stats-row {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .stat-mini {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .stat-mini-icon {
+    width: 36px; height: 36px; border-radius: var(--radius);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .stat-mini-icon.teal { background: var(--accent-light); color: var(--accent); }
+  .stat-mini-icon.amber { background: #FFFBEB; color: #D97706; }
+  .stat-mini-icon.green { background: #F0FDF4; color: #16A34A; }
+  .stat-mini-icon.red { background: #FEF2F2; color: #DC2626; }
+  .stat-mini-value {
+    font-size: 20px; font-weight: 700; color: var(--primary);
+    line-height: 1;
+  }
+  .stat-mini-label {
+    font-size: 11px; color: var(--text-muted); margin-top: 2px;
+  }
+
+  /* ===== NEW: Search & Filter Toolbar ===== */
+  .toolbar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .toolbar-top {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 12px;
+  }
+  .search-box {
+    flex: 1;
+    position: relative;
+  }
+  .search-box input {
+    width: 100%;
+    padding: 9px 12px 9px 36px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--primary);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .search-box input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+  }
+  .search-box input::placeholder {
+    color: var(--text-muted);
+  }
+  .search-icon {
+    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    color: var(--text-muted);
+  }
+  .view-toggle {
+    display: flex;
+    background: var(--background);
+    border-radius: var(--radius);
+    padding: 2px;
+    border: 1px solid var(--border);
+  }
+  .view-toggle-btn {
+    width: 34px; height: 32px;
+    border: none; border-radius: 4px;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .view-toggle-btn.active {
+    background: var(--surface);
+    color: var(--primary);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .toolbar-filters {
+    display: flex; align-items: center; gap: 8px;
+    flex-wrap: wrap;
+  }
+  .filter-select {
+    padding: 7px 28px 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 12px; font-weight: 500;
+    font-family: inherit;
+    color: var(--text-secondary);
+    background: var(--surface);
+    cursor: pointer;
+    outline: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%2394A3B8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+  }
+  .filter-select:focus {
+    border-color: var(--accent);
+  }
+  .filter-select.active {
+    border-color: var(--accent);
+    background-color: var(--accent-light);
+    color: var(--accent);
+  }
+
+  /* NEW: Sort dropdown */
+  .sort-select {
+    margin-left: auto;
+    padding: 7px 28px 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 12px; font-weight: 500;
+    font-family: inherit;
+    color: var(--text-secondary);
+    background: var(--surface);
+    cursor: pointer;
+    outline: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%2394A3B8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+  }
+
+  /* NEW: Active filters bar */
+  .active-filters {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .active-filters-label {
+    font-size: 11px; color: var(--text-muted); font-weight: 500;
+    white-space: nowrap;
+  }
+  .filter-tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: var(--accent-light);
+    color: var(--accent);
+    border: 1px solid var(--accent-subtle);
+    border-radius: var(--radius);
+    padding: 3px 8px;
+    font-size: 11px; font-weight: 600;
+  }
+  .filter-tag-remove {
+    width: 14px; height: 14px;
+    background: none; border: none;
+    color: var(--accent);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    line-height: 1;
+  }
+  .filter-reset {
+    font-size: 11px; color: var(--text-muted); font-weight: 500;
+    background: none; border: none; cursor: pointer;
+    text-decoration: underline;
+    margin-left: 4px;
+  }
+  .filter-reset:hover { color: var(--accent); }
+
+  /* ===== Results count ===== */
+  .results-info {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px;
+    font-size: 12px; color: var(--text-muted);
+  }
+
+  /* ===== Grid View ===== */
+  .client-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+  /* ===== Client Card (Grid) ===== */
+  .client-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+  .client-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 2px 8px rgba(20, 184, 166, 0.08);
+  }
+
+  .card-top {
+    display: flex; align-items: flex-start; gap: 14px;
+    margin-bottom: 14px;
+  }
+  .avatar {
+    width: 44px; height: 44px;
+    border-radius: var(--radius);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 15px;
+    flex-shrink: 0;
+  }
+  .avatar.male { background: #DBEAFE; color: #2563EB; }
+  .avatar.female { background: #FCE7F3; color: #DB2777; }
+  .avatar.other { background: #FEF3C7; color: #D97706; }
+
+  .card-info { flex: 1; min-width: 0; }
+  .card-name {
+    font-size: 15px; font-weight: 700; color: var(--primary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    line-height: 1.3;
+  }
+  .card-meta {
+    font-size: 12px; color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  /* NEW: Workout status badge on card */
+  .card-status {
+    position: absolute;
+    top: 14px; right: 14px;
+  }
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 8px;
+    border-radius: var(--radius);
+    font-size: 10px; font-weight: 600;
+    line-height: 1;
+  }
+  .status-badge.done {
+    background: #F0FDF4;
+    color: #16A34A;
+    border: 1px solid #BBF7D0;
+  }
+  .status-badge.not-done {
+    background: #F8FAFC;
+    color: #94A3B8;
+    border: 1px solid #E2E8F0;
+  }
+
+  /* NEW: Quick metrics row */
+  .card-metrics {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+    padding: 10px;
+    background: var(--background);
+    border-radius: var(--radius);
+  }
+  .metric {
+    text-align: center;
+  }
+  .metric-value {
+    font-size: 15px; font-weight: 700; color: var(--primary);
+    line-height: 1;
+  }
+  .metric-label {
+    font-size: 10px; color: var(--text-muted); margin-top: 3px;
+  }
+
+  /* Purpose badge */
+  .card-purpose {
+    display: inline-flex; align-items: center;
+    background: var(--accent-light);
+    color: var(--accent);
+    border: 1px solid var(--accent-subtle);
+    border-radius: var(--radius);
+    padding: 3px 8px;
+    font-size: 11px; font-weight: 600;
+  }
+
+  /* Card footer with actions */
+  .card-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+  .card-footer-left {
+    display: flex; align-items: center; gap: 4px;
+  }
+  .card-action {
+    width: 30px; height: 30px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text-muted);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .card-action:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-light);
+  }
+  .last-activity {
+    font-size: 11px; color: var(--text-muted);
+  }
+
+  /* ===== List View ===== */
+  .client-list {
+    display: none; /* toggle via JS */
+    flex-direction: column;
+    gap: 2px;
+  }
+  .client-list.active { display: flex; }
+  .client-grid.hidden { display: none; }
+
+  .list-header {
+    display: grid;
+    grid-template-columns: 2fr 80px 100px 80px 120px 100px 100px 80px;
+    gap: 12px;
+    padding: 10px 16px;
+    font-size: 11px; font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .list-item {
+    display: grid;
+    grid-template-columns: 2fr 80px 100px 80px 120px 100px 100px 80px;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .list-item:hover {
+    border-color: var(--accent);
+    background: var(--accent-light);
+  }
+  .list-client-info {
+    display: flex; align-items: center; gap: 10px;
+    min-width: 0;
+  }
+  .list-avatar {
+    width: 32px; height: 32px;
+    border-radius: var(--radius);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 12px;
+    flex-shrink: 0;
+  }
+  .list-name {
+    font-size: 13px; font-weight: 600; color: var(--primary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .list-cell {
+    font-size: 12px; color: var(--text-secondary);
+  }
+  .list-badge {
+    display: inline-flex;
+    background: var(--accent-light);
+    color: var(--accent);
+    border: 1px solid var(--accent-subtle);
+    border-radius: var(--radius);
+    padding: 2px 6px;
+    font-size: 10px; font-weight: 600;
+  }
+  .list-actions {
+    display: flex; gap: 4px;
+    justify-content: flex-end;
+  }
+
+  /* ===== Improvement annotations ===== */
+  .annotation {
+    position: relative;
+  }
+  .annotation::after {
+    content: attr(data-note);
+    position: absolute;
+    top: -8px; right: -8px;
+    background: #EF4444;
+    color: white;
+    font-size: 9px; font-weight: 700;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 10;
+    box-shadow: 0 2px 4px rgba(239,68,68,0.3);
+  }
+
+  /* ===== Improvement Legend ===== */
+  .legend {
+    margin-top: 32px;
+    background: var(--surface);
+    border: 2px solid #EF4444;
+    border-radius: var(--radius);
+    padding: 24px;
+  }
+  .legend-title {
+    font-size: 16px; font-weight: 700; color: #EF4444;
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .legend-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
+  }
+  .legend-item {
+    display: flex; gap: 10px; align-items: flex-start;
+    padding: 12px;
+    background: #FEF2F2;
+    border-radius: var(--radius);
+  }
+  .legend-number {
+    width: 22px; height: 22px;
+    background: #EF4444;
+    color: white;
+    font-size: 11px; font-weight: 700;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .legend-text {
+    font-size: 12px; color: var(--primary); line-height: 1.5;
+  }
+  .legend-text strong { color: #EF4444; }
+
+  /* ===== Section divider ===== */
+  .section-divider {
+    margin: 40px 0 24px;
+    padding: 12px 0;
+    border-top: 2px dashed var(--border);
+    text-align: center;
+    font-size: 18px; font-weight: 700;
+    color: var(--text-muted);
+  }
+
+  /* ===== Table View Header Toggle ===== */
+  .view-section-label {
+    font-size: 14px; font-weight: 600; color: var(--text-secondary);
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .view-label-badge {
+    font-size: 10px;
+    background: var(--accent-light);
+    color: var(--accent);
+    border: 1px solid var(--accent-subtle);
+    padding: 2px 6px;
+    border-radius: var(--radius);
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== Header ===== -->
+<div class="header">
+  <div class="header-logo">
+    <div class="logo-badge">FC</div>
+    <div class="logo-text">FitConnect</div>
+  </div>
+  <div class="header-right">
+    <button class="header-icon-btn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </button>
+    <button class="header-icon-btn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- ===== Sidebar ===== -->
+<div class="sidebar">
+  <a class="nav-item" href="#">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    <span>Dashboard</span>
+  </a>
+  <a class="nav-item active" href="#">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <span>Clients</span>
+  </a>
+  <a class="nav-item" href="#">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    <span>Message</span>
+  </a>
+  <a class="nav-item" href="#">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    <span>Schedule</span>
+  </a>
+  <a class="nav-item" href="#">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+    <span>Report</span>
+  </a>
+  <a class="nav-item" href="#">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+    <span>Workout</span>
+  </a>
+  <div class="nav-spacer"></div>
+  <a class="nav-item" href="#" style="border-top: 1px solid var(--border); padding-top: 14px; margin-top: 4px;">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    <span>Settings</span>
+  </a>
+</div>
+
+<!-- ===== Main Content ===== -->
+<div class="main">
+  <div class="content">
+
+    <!-- Page Header -->
+    <div class="page-header">
+      <div>
+        <div class="page-title">Clients</div>
+        <div class="page-description">担当クライアントの一覧と管理</div>
+      </div>
+      <button class="btn-primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h3v3H7z"/><path d="M14 7h3v3h-3z"/><path d="M7 14h3v3H7z"/></svg>
+        <span>QRコード招待</span>
+      </button>
+    </div>
+
+    <!-- NEW: Summary Stats -->
+    <div class="stats-row annotation" data-note="1">
+      <div class="stat-mini">
+        <div class="stat-mini-icon teal">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div>
+          <div class="stat-mini-value">24</div>
+          <div class="stat-mini-label">Total Clients</div>
+        </div>
+      </div>
+      <div class="stat-mini">
+        <div class="stat-mini-icon green">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </div>
+        <div>
+          <div class="stat-mini-value">18</div>
+          <div class="stat-mini-label">Active (7 days)</div>
+        </div>
+      </div>
+      <div class="stat-mini">
+        <div class="stat-mini-icon amber">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </div>
+        <div>
+          <div class="stat-mini-value">5</div>
+          <div class="stat-mini-label">Today's Sessions</div>
+        </div>
+      </div>
+      <div class="stat-mini">
+        <div class="stat-mini-icon red">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <div>
+          <div class="stat-mini-value">3</div>
+          <div class="stat-mini-label">Tickets Expiring</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Search & Filters -->
+    <div class="toolbar">
+      <div class="toolbar-top">
+        <div class="search-box" style="flex: 1;">
+          <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" placeholder="名前でクライアントを検索..." value="田中" />
+        </div>
+        <div class="view-toggle annotation" data-note="2">
+          <button class="view-toggle-btn active" onclick="toggleView('grid')" title="Grid View">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          </button>
+          <button class="view-toggle-btn" onclick="toggleView('list')" title="List View">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="toolbar-filters">
+        <select class="filter-select active">
+          <option>男性</option>
+        </select>
+        <select class="filter-select">
+          <option>年齢層</option>
+        </select>
+        <select class="filter-select">
+          <option>目的</option>
+        </select>
+        <select class="sort-select annotation" data-note="3">
+          <option>名前順 (A-Z)</option>
+          <option>最終アクティビティ順</option>
+          <option>登録日順</option>
+        </select>
+      </div>
+      <!-- Active filters display -->
+      <div class="active-filters annotation" data-note="4">
+        <span class="active-filters-label">Filters:</span>
+        <span class="filter-tag">
+          男性
+          <button class="filter-tag-remove">&times;</button>
+        </span>
+        <span class="filter-tag">
+          "田中"
+          <button class="filter-tag-remove">&times;</button>
+        </span>
+        <button class="filter-reset">すべてリセット</button>
+      </div>
+    </div>
+
+    <!-- Results count -->
+    <div class="results-info">
+      <span>3 件のクライアントが見つかりました</span>
+    </div>
+
+    <!-- ===== GRID VIEW ===== -->
+    <div class="view-section-label">
+      Grid View
+      <span class="view-label-badge">DEFAULT</span>
+    </div>
+
+    <div class="client-grid" id="gridView">
+      <!-- Card 1 -->
+      <div class="client-card">
+        <div class="card-status annotation" data-note="5">
+          <span class="status-badge done">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+            完了
+          </span>
+        </div>
+        <div class="card-top">
+          <div class="avatar male">田T</div>
+          <div class="card-info">
+            <div class="card-name">田中 太郎</div>
+            <div class="card-meta">男性 / 32歳 / 会社員</div>
+          </div>
+        </div>
+        <div class="card-metrics annotation" data-note="6">
+          <div class="metric">
+            <div class="metric-value">72.5</div>
+            <div class="metric-label">体重 (kg)</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">8</div>
+            <div class="metric-label">残チケット</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">-2.3</div>
+            <div class="metric-label">月間変動</div>
+          </div>
+        </div>
+        <div class="card-purpose">ダイエット</div>
+        <div class="card-footer">
+          <div class="card-footer-left annotation" data-note="7">
+            <button class="card-action" title="メッセージ">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </button>
+            <button class="card-action" title="カルテ">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            </button>
+            <button class="card-action" title="スケジュール">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </button>
+          </div>
+          <span class="last-activity">2h ago</span>
+        </div>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="client-card">
+        <div class="card-status">
+          <span class="status-badge not-done">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            未実施
+          </span>
+        </div>
+        <div class="card-top">
+          <div class="avatar male">田K</div>
+          <div class="card-info">
+            <div class="card-name">田中 健二</div>
+            <div class="card-meta">男性 / 45歳 / 経営者</div>
+          </div>
+        </div>
+        <div class="card-metrics">
+          <div class="metric">
+            <div class="metric-value">85.0</div>
+            <div class="metric-label">体重 (kg)</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">3</div>
+            <div class="metric-label">残チケット</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">+0.5</div>
+            <div class="metric-label">月間変動</div>
+          </div>
+        </div>
+        <div class="card-purpose">健康改善</div>
+        <div class="card-footer">
+          <div class="card-footer-left">
+            <button class="card-action" title="メッセージ">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </button>
+            <button class="card-action" title="カルテ">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            </button>
+            <button class="card-action" title="スケジュール">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </button>
+          </div>
+          <span class="last-activity">1d ago</span>
+        </div>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="client-card">
+        <div class="card-status">
+          <span class="status-badge not-done">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            未実施
+          </span>
+        </div>
+        <div class="card-top">
+          <div class="avatar male">田Y</div>
+          <div class="card-info">
+            <div class="card-name">田中 裕太</div>
+            <div class="card-meta">男性 / 28歳 / エンジニア</div>
+          </div>
+        </div>
+        <div class="card-metrics">
+          <div class="metric">
+            <div class="metric-value">68.2</div>
+            <div class="metric-label">体重 (kg)</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">0</div>
+            <div class="metric-label">残チケット</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">--</div>
+            <div class="metric-label">月間変動</div>
+          </div>
+        </div>
+        <div class="card-purpose">ボディメイク</div>
+        <div class="card-footer">
+          <div class="card-footer-left">
+            <button class="card-action" title="メッセージ">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </button>
+            <button class="card-action" title="カルテ">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            </button>
+            <button class="card-action" title="スケジュール">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </button>
+          </div>
+          <span class="last-activity">12d ago</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== LIST VIEW (alternative) ===== -->
+    <div class="section-divider">--- List View (切替時) ---</div>
+
+    <div class="view-section-label">
+      List View
+      <span class="view-label-badge">TOGGLE</span>
+    </div>
+
+    <div class="client-list active">
+      <div class="list-header">
+        <span>クライアント</span>
+        <span>ステータス</span>
+        <span>性別 / 年齢</span>
+        <span>体重</span>
+        <span>目的</span>
+        <span>残チケット</span>
+        <span>最終活動</span>
+        <span></span>
+      </div>
+      <div class="list-item">
+        <div class="list-client-info">
+          <div class="list-avatar male">田T</div>
+          <span class="list-name">田中 太郎</span>
+        </div>
+        <span><span class="status-badge done" style="font-size:10px;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>完了</span></span>
+        <span class="list-cell">男性 / 32歳</span>
+        <span class="list-cell" style="font-weight: 600;">72.5 kg</span>
+        <span><span class="list-badge">ダイエット</span></span>
+        <span class="list-cell">8 回</span>
+        <span class="list-cell">2時間前</span>
+        <div class="list-actions">
+          <button class="card-action" title="メッセージ">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="list-item">
+        <div class="list-client-info">
+          <div class="list-avatar male">田K</div>
+          <span class="list-name">田中 健二</span>
+        </div>
+        <span><span class="status-badge not-done" style="font-size:10px;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>未実施</span></span>
+        <span class="list-cell">男性 / 45歳</span>
+        <span class="list-cell" style="font-weight: 600;">85.0 kg</span>
+        <span><span class="list-badge">健康改善</span></span>
+        <span class="list-cell">3 回</span>
+        <span class="list-cell">1日前</span>
+        <div class="list-actions">
+          <button class="card-action" title="メッセージ">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="list-item">
+        <div class="list-client-info">
+          <div class="list-avatar male">田Y</div>
+          <span class="list-name">田中 裕太</span>
+        </div>
+        <span><span class="status-badge not-done" style="font-size:10px;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>未実施</span></span>
+        <span class="list-cell">男性 / 28歳</span>
+        <span class="list-cell" style="font-weight: 600;">68.2 kg</span>
+        <span><span class="list-badge">ボディメイク</span></span>
+        <span class="list-cell" style="color: #DC2626; font-weight: 600;">0 回</span>
+        <span class="list-cell" style="color: #D97706;">12日前</span>
+        <div class="list-actions">
+          <button class="card-action" title="メッセージ">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== IMPROVEMENT LEGEND ===== -->
+    <div class="legend">
+      <div class="legend-title">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        改善提案 (UX Improvements)
+      </div>
+      <div class="legend-grid">
+        <div class="legend-item">
+          <div class="legend-number">1</div>
+          <div class="legend-text">
+            <strong>サマリー統計バー追加</strong><br>
+            現状: 顧客数の概要がなく、一覧を見るまで全体像がわからない<br>
+            提案: Total / Active / Today's Sessions / Expiring Tickets を上部に表示。トレーナーが「今日何をすべきか」を一目で判断可能に
+          </div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-number">2</div>
+          <div class="legend-text">
+            <strong>Grid / List 表示切替</strong><br>
+            現状: カードグリッドのみ<br>
+            提案: クライアント数が多い場合、コンパクトなリスト表示で一覧性向上。体重・残チケット等のデータ比較もしやすい
+          </div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-number">3</div>
+          <div class="legend-text">
+            <strong>ソート機能追加</strong><br>
+            現状: ソート機能なし<br>
+            提案: 名前順 / 最終アクティビティ順 / 登録日順で並び替え可能に。最近連絡のないクライアントを発見しやすくなる
+          </div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-number">4</div>
+          <div class="legend-text">
+            <strong>アクティブフィルタ表示 + 一括リセット</strong><br>
+            現状: フィルターを適用しても視覚的フィードバックがなく、リセット手段もない<br>
+            提案: 適用中のフィルターをタグ表示、個別削除(&times;)と一括リセットボタンを追加
+          </div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-number">5</div>
+          <div class="legend-text">
+            <strong>ワークアウトステータスバッジ</strong><br>
+            現状: ワークアウトバッジが文字ベースで視認性が低い<br>
+            提案: カード右上にアイコン付きバッジで2状態を明確表示。<br>
+            <span style="color:#16A34A;">&#10003; 完了</span>（緑バッジ）/ <span style="color:#94A3B8;">&#8722; 未実施</span>（グレーバッジ）で即座にステータス把握
+          </div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-number">6</div>
+          <div class="legend-text">
+            <strong>カード内にクイックメトリクス表示</strong><br>
+            現状: カードには名前・性別・年齢・目的のみ。体重やチケット情報は詳細ページに遷移しないとわからない<br>
+            提案: 体重 / 残チケット / 月間体重変動 をカード内にコンパクト表示。一覧画面で重要な数値を把握可能に
+          </div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-number">7</div>
+          <div class="legend-text">
+            <strong>クイックアクションボタン拡張</strong><br>
+            現状: カード上のアクションは「メッセージ」ボタンのみ<br>
+            提案: メッセージ / カルテ / スケジュール の3アクションをアイコンボタンで追加。最も頻繁に使う操作への最短経路を提供
+          </div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-number">8</div>
+          <div class="legend-text">
+            <strong>デザインシステム統一</strong><br>
+            現状: bg-blue-600ボタン、rounded-full バッジ、border-l-4 カラーバーなど旧デザイン<br>
+            提案: Tealアクセント、rounded-md、ボーダーベースのフラットカードに統一。ダッシュボードとの一貫性確保
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  function toggleView(view) {
+    const grid = document.getElementById('gridView');
+    const btns = document.querySelectorAll('.view-toggle-btn');
+    if (view === 'grid') {
+      btns[0].classList.add('active');
+      btns[1].classList.remove('active');
+    } else {
+      btns[0].classList.remove('active');
+      btns[1].classList.add('active');
+    }
+  }
+</script>
+
+</body>
+</html>
