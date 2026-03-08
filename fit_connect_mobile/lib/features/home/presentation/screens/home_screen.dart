@@ -30,7 +30,8 @@ class HomeScreen extends ConsumerWidget {
     final latestWeightAsync = ref.watch(latestWeightRecordProvider);
     final achievementRateAsync = ref.watch(achievementRateProvider);
     final trainerProfile = ref.watch(trainerProfileProvider);
-    final isTrainerOnline = ref.watch(trainerCurrentStatusProvider);
+    final trainerPresence = ref.watch(trainerPresenceNotifierProvider);
+    final isTrainerOnline = trainerPresence.isOnline;
 
     return Scaffold(
       body: SafeArea(
@@ -58,6 +59,7 @@ class HomeScreen extends ConsumerWidget {
                 trainerName: trainerProfile.valueOrNull?.name ?? 'トレーナー',
                 isOnline: isTrainerOnline,
                 profileImageUrl: trainerProfile.valueOrNull?.profileImageUrl,
+                lastSeenAt: trainerPresence.lastSeenAt,
               ),
 
               const SizedBox(height: 16),

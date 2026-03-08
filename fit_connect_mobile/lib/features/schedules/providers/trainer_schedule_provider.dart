@@ -1,9 +1,21 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:fit_connect_mobile/services/supabase_service.dart';
 import 'package:fit_connect_mobile/features/schedules/models/trainer_schedule_model.dart';
 import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
 
 part 'trainer_schedule_provider.g.dart';
+
+/// トレーナーのプレゼンス（オンライン状態）を表すクラス
+class TrainerPresence {
+  final bool isOnline;
+  final DateTime? lastSeenAt;
+
+  const TrainerPresence({
+    required this.isOnline,
+    this.lastSeenAt,
+  });
+}
 
 /// トレーナーのスケジュール一覧を取得するProvider
 @riverpod
@@ -22,38 +34,66 @@ Future<List<TrainerSchedule>> trainerSchedules(TrainerSchedulesRef ref) async {
       .toList();
 }
 
-/// トレーナーの現在の稼働状態を判定するProvider
-/// - スケジュール未設定 → true（常時オン扱い）
-/// - 今日のスケジュールなし or is_available=false → false
-/// - start_time〜end_time内 → true
+/// トレーナーのプレゼンス（オンライン状態）を Realtime で監視する Notifier
 @riverpod
-bool trainerCurrentStatus(TrainerCurrentStatusRef ref) {
-  final schedules = ref.watch(trainerSchedulesProvider).valueOrNull;
+class TrainerPresenceNotifier extends _$TrainerPresenceNotifier {
+  RealtimeChannel? _channel;
 
-  // スケジュール未設定の場合は常時オン扱い
-  if (schedules == null || schedules.isEmpty) return true;
+  @override
+  TrainerPresence build() {
+    // trainerProfileProvider から初期値を取得
+    final trainer = ref.watch(trainerProfileProvider).valueOrNull;
 
-  final now = DateTime.now();
-  final currentDayOfWeek = now.weekday % 7; // 日=0, 月=1, ..., 土=6
+    // Realtime subscription をセットアップ
+    _setupRealtimeChannel();
 
-  // 今日のスケジュールを取得
-  final todaySchedules =
-      schedules.where((s) => s.dayOfWeek == currentDayOfWeek).toList();
+    // dispose 時にチャンネルをクリーンアップ
+    ref.onDispose(() {
+      _channel?.unsubscribe();
+      _channel = null;
+    });
 
-  if (todaySchedules.isEmpty) return false;
-
-  // 複数スケジュールがある場合は、いずれか1つでも稼働中ならtrue
-  final nowTime =
-      '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:00';
-
-  for (final schedule in todaySchedules) {
-    if (!schedule.isAvailable) continue;
-
-    final isInTimeRange = nowTime.compareTo(schedule.startTime) >= 0 &&
-        nowTime.compareTo(schedule.endTime) < 0;
-
-    if (isInTimeRange) return true;
+    return TrainerPresence(
+      isOnline: trainer?.isOnline ?? false,
+      lastSeenAt: trainer?.lastSeenAt,
+    );
   }
 
-  return false;
+  void _setupRealtimeChannel() {
+    final trainerId = ref.read(currentTrainerIdProvider);
+    if (trainerId == null) return;
+
+    _channel = SupabaseService.client
+        .channel('trainer-presence:$trainerId');
+
+    _channel!
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'trainers',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'id',
+            value: trainerId,
+          ),
+          callback: (payload) {
+            final newRecord = payload.newRecord;
+            state = TrainerPresence(
+              isOnline: newRecord['is_online'] as bool? ?? false,
+              lastSeenAt: newRecord['last_seen_at'] != null
+                  ? DateTime.parse(newRecord['last_seen_at'] as String).toLocal()
+                  : null,
+            );
+          },
+        )
+        .subscribe();
+  }
+}
+
+/// トレーナーの現在の稼働状態を返すProvider（後方互換用）
+///
+/// 既存の UI で `trainerCurrentStatusProvider` を使っている箇所に影響を与えない。
+@riverpod
+bool trainerCurrentStatus(TrainerCurrentStatusRef ref) {
+  return ref.watch(trainerPresenceNotifierProvider).isOnline;
 }

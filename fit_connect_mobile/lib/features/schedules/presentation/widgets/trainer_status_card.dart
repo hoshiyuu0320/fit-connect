@@ -8,13 +8,36 @@ class TrainerStatusCard extends StatelessWidget {
   final String trainerName;
   final bool isOnline;
   final String? profileImageUrl;
+  final DateTime? lastSeenAt;
 
   const TrainerStatusCard({
     super.key,
     required this.trainerName,
     required this.isOnline,
     this.profileImageUrl,
+    this.lastSeenAt,
   });
+
+  String _formatLastSeen(DateTime lastSeen) {
+    final now = DateTime.now();
+    final diff = now.difference(lastSeen);
+
+    if (diff.inMinutes < 1) {
+      return 'たった今';
+    } else if (diff.inMinutes < 60) {
+      return '最終ログイン: ${diff.inMinutes}分前';
+    } else if (diff.inHours < 24) {
+      return '最終ログイン: ${diff.inHours}時間前';
+    } else {
+      return '最終ログイン: ${diff.inDays}日前';
+    }
+  }
+
+  String get _statusLabel {
+    if (isOnline) return 'オンライン';
+    if (lastSeenAt != null) return _formatLastSeen(lastSeenAt!);
+    return 'オフライン';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -91,14 +114,13 @@ class TrainerStatusCard extends StatelessWidget {
                       width: 8,
                       height: 8,
                       decoration: BoxDecoration(
-                        color:
-                            isOnline ? AppColors.success : colors.textHint,
+                        color: isOnline ? AppColors.success : colors.textHint,
                         shape: BoxShape.circle,
                       ),
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      isOnline ? '対応可能' : 'オフライン',
+                      _statusLabel,
                       style: TextStyle(
                         color: isOnline ? AppColors.success : colors.textHint,
                         fontSize: 12,
@@ -157,6 +179,42 @@ Widget previewTrainerStatusCardOffline() {
           child: const TrainerStatusCard(
             trainerName: '山田トレーナー',
             isOnline: false,
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+@Preview(name: 'TrainerStatusCard - Offline with LastSeen')
+Widget previewTrainerStatusCardOfflineWithLastSeen() {
+  return MaterialApp(
+    theme: AppTheme.lightTheme,
+    home: Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              TrainerStatusCard(
+                trainerName: '山田トレーナー',
+                isOnline: false,
+                lastSeenAt: DateTime.now().subtract(const Duration(minutes: 30)),
+              ),
+              const SizedBox(height: 16),
+              TrainerStatusCard(
+                trainerName: '鈴木トレーナー',
+                isOnline: false,
+                lastSeenAt: DateTime.now().subtract(const Duration(hours: 3)),
+              ),
+              const SizedBox(height: 16),
+              TrainerStatusCard(
+                trainerName: '田中トレーナー',
+                isOnline: false,
+                lastSeenAt: DateTime.now().subtract(const Duration(days: 2)),
+              ),
+            ],
           ),
         ),
       ),
