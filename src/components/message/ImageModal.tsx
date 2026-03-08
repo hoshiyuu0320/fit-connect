@@ -14,13 +14,13 @@ interface ImageModalProps {
 export function ImageModal({ imageUrl, onClose }: ImageModalProps) {
   return (
     <Dialog open={!!imageUrl} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl p-2">
+      <DialogContent className="max-w-4xl p-2 rounded-md border border-[#E2E8F0]">
         <DialogTitle className="sr-only">画像プレビュー</DialogTitle>
         {imageUrl && (
           <img
             src={imageUrl}
             alt="拡大画像"
-            className="w-full h-auto max-h-[80vh] object-contain rounded"
+            className="w-full h-auto max-h-[80vh] object-contain rounded-md"
           />
         )}
       </DialogContent>
