@@ -79,6 +79,11 @@ export default function Sidebar({ children }: { children: React.ReactNode }) {
 
             refreshCount();
 
+            const debouncedRefresh = () => {
+                if (debounceTimer) clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(refreshCount, 300);
+            };
+
             channel = supabase
                 .channel('sidebar-unread')
                 .on('postgres_changes', {
@@ -86,19 +91,18 @@ export default function Sidebar({ children }: { children: React.ReactNode }) {
                     schema: 'public',
                     table: 'messages',
                     filter: `receiver_id=eq.${user.id}`,
-                }, () => {
-                    setTotalUnread((prev) => prev + 1);
+                }, (payload) => {
+                    // 新着メッセージ: read_atがnullなら即+1（体感リアルタイム）
+                    if (payload.new && !(payload.new as { read_at: string | null }).read_at) {
+                        setTotalUnread((prev) => prev + 1);
+                    }
                 })
                 .on('postgres_changes', {
                     event: 'UPDATE',
                     schema: 'public',
                     table: 'messages',
                     filter: `receiver_id=eq.${user.id}`,
-                }, () => {
-                    // 既読更新は複数メッセージ同時に発生するためデバウンス
-                    if (debounceTimer) clearTimeout(debounceTimer);
-                    debounceTimer = setTimeout(refreshCount, 500);
-                })
+                }, debouncedRefresh)
                 .subscribe();
         };
 

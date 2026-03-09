@@ -674,7 +674,7 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
                                     <button
                                         type="submit"
                                         disabled={isLoading}
-                                        className="inline-flex items-center justify-center text-sm font-medium rounded-md px-4 py-2 bg-[#0F172A] text-white hover:bg-[#1E293B] transition-colors disabled:pointer-events-none disabled:opacity-50"
+                                        className="inline-flex items-center justify-center text-sm font-medium rounded-md px-4 py-2 bg-[#14B8A6] text-white hover:bg-[#0D9488] transition-colors disabled:pointer-events-none disabled:opacity-50"
                                     >
                                         {isLoading ? '保存中...' : '保存'}
                                     </button>
