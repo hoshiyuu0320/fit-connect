@@ -18,6 +18,11 @@ interface AssignmentMiniCardProps {
   onDelete?: (id: string) => void
 }
 
+const PLAN_TYPE_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+  session: { bg: '#F0FDFA', border: '#14B8A6', text: '#0D9488' },
+  self_guided: { bg: '#EFF6FF', border: '#3B82F6', text: '#1D4ED8' },
+}
+
 export const AssignmentMiniCard: React.FC<AssignmentMiniCardProps> = ({
   assignment,
   viewMode,
@@ -42,23 +47,22 @@ export const AssignmentMiniCard: React.FC<AssignmentMiniCardProps> = ({
   const title = assignment.plan?.title ?? '無題'
   const category = assignment.plan?.category as keyof typeof WORKOUT_CATEGORY_OPTIONS | undefined
 
-  const borderClass =
-    planType === 'session' ? 'border-l-[3px] border-blue-500' : 'border-l-[3px] border-teal-500'
-  const bgClass = planType === 'session' ? 'bg-blue-50' : 'bg-teal-50'
-  const textClass = planType === 'session' ? 'text-blue-700' : 'text-teal-700'
+  const colors = PLAN_TYPE_COLORS[planType] ?? PLAN_TYPE_COLORS['self_guided']
 
   if (viewMode === 'month') {
     return (
       <div
         ref={!isDragOverlay ? setNodeRef : undefined}
-        style={dragStyle}
+        style={{
+          ...dragStyle,
+          backgroundColor: colors.bg,
+          borderLeft: `3px solid ${colors.border}`,
+          color: colors.text,
+          borderRadius: '4px',
+        }}
         {...(!isDragOverlay ? listeners : {})}
         {...(!isDragOverlay ? attributes : {})}
-        className={`
-          group/card flex items-center gap-1 px-1.5 py-0.5 mb-0.5 mx-1 rounded-sm text-xs truncate cursor-grab active:cursor-grabbing
-          shadow-sm hover:shadow-md hover:scale-[1.01] transition-all relative
-          ${borderClass} ${bgClass} ${textClass}
-        `}
+        className="group/card flex items-center gap-1 px-1.5 py-0.5 mb-0.5 mx-1 text-xs truncate cursor-grab active:cursor-grabbing transition-all relative"
       >
         <span
           className={`flex-shrink-0 w-1.5 h-1.5 rounded-full ${statusColors.dot}`}
@@ -81,14 +85,16 @@ export const AssignmentMiniCard: React.FC<AssignmentMiniCardProps> = ({
   return (
     <div
       ref={!isDragOverlay ? setNodeRef : undefined}
-      style={dragStyle}
+      style={{
+        ...dragStyle,
+        backgroundColor: colors.bg,
+        borderLeft: `3px solid ${colors.border}`,
+        color: colors.text,
+        borderRadius: '6px',
+      }}
       {...(!isDragOverlay ? listeners : {})}
       {...(!isDragOverlay ? attributes : {})}
-      className={`
-        group/card flex flex-col gap-0.5 px-2 py-1 mb-1 mx-1 rounded text-xs cursor-grab active:cursor-grabbing
-        shadow-sm hover:shadow-md hover:scale-[1.01] transition-all relative
-        ${borderClass} ${bgClass} ${textClass}
-      `}
+      className="group/card flex flex-col gap-0.5 px-2 py-1 mb-1 mx-1 text-xs cursor-grab active:cursor-grabbing transition-all relative"
     >
       {onDelete && (
         <button

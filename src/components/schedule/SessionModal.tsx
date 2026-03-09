@@ -5,7 +5,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -55,6 +54,19 @@ interface SessionModalProps {
     session?: Session | null;
     onSuccess: () => void;
 }
+
+// フォーカス時のティール系スタイルを適用するためのヘルパー
+const tealFocusHandlers = {
+    onFocus: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        e.currentTarget.style.borderColor = '#14B8A6';
+        e.currentTarget.style.boxShadow = '0 0 0 3px rgba(20,184,166,0.1)';
+        e.currentTarget.style.outline = 'none';
+    },
+    onBlur: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        e.currentTarget.style.borderColor = '#E2E8F0';
+        e.currentTarget.style.boxShadow = 'none';
+    },
+};
 
 export default function SessionModal({ isOpen, onClose, selectedDate, session, onSuccess }: SessionModalProps) {
     const [userId, setUserId] = useState<string | null>(null);
@@ -330,22 +342,24 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
     return (
         <>
             <Dialog open={isOpen} onOpenChange={onClose}>
-                <DialogContent className="sm:max-w-[425px] bg-white">
-                    <DialogHeader>
-                        <DialogTitle>{session ? 'セッション編集' : 'セッション予約'}</DialogTitle>
+                <DialogContent className="sm:max-w-[425px] bg-[#FFFFFF] border border-[#E2E8F0] rounded-md">
+                    <DialogHeader className="border-b border-[#E2E8F0] pb-4">
+                        <DialogTitle className="text-[#0F172A] text-base font-semibold">
+                            {session ? 'セッション編集' : 'セッション予約'}
+                        </DialogTitle>
                     </DialogHeader>
-                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-2">
                         <div className="space-y-2">
-                            <Label htmlFor="client">顧客</Label>
+                            <Label htmlFor="client" className="text-sm font-medium text-[#0F172A]">顧客</Label>
                             <Select
                                 onValueChange={(value) => setValue('client_id', value)}
                                 defaultValue={session?.client_id}
-                                disabled={!!session} // 編集時は顧客変更不可（簡易実装）
+                                disabled={!!session}
                             >
-                                <SelectTrigger>
+                                <SelectTrigger className="border-[#E2E8F0] rounded-md text-[#0F172A] focus:ring-0 focus:border-[#14B8A6]">
                                     <SelectValue placeholder="顧客を選択" />
                                 </SelectTrigger>
-                                <SelectContent className="bg-white">
+                                <SelectContent className="bg-[#FFFFFF] border border-[#E2E8F0] rounded-md">
                                     {clients.map((client) => (
                                         <SelectItem key={client.client_id} value={client.client_id}>
                                             {client.name}
@@ -353,20 +367,20 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
                                     ))}
                                 </SelectContent>
                             </Select>
-                            {errors.client_id && <p className="text-sm text-red-500">{errors.client_id.message}</p>}
+                            {errors.client_id && <p className="text-sm text-[#DC2626]">{errors.client_id.message}</p>}
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="ticket">使用チケット</Label>
+                            <Label htmlFor="ticket" className="text-sm font-medium text-[#0F172A]">使用チケット</Label>
                             <Select
                                 onValueChange={(value) => setValue('ticket_id', value === 'none' ? undefined : value)}
                                 defaultValue={session?.ticket_id || undefined}
                                 disabled={!selectedClientId}
                             >
-                                <SelectTrigger>
+                                <SelectTrigger className="border-[#E2E8F0] rounded-md text-[#0F172A] focus:ring-0 focus:border-[#14B8A6]">
                                     <SelectValue placeholder="チケットを選択（任意）" />
                                 </SelectTrigger>
-                                <SelectContent className="bg-white">
+                                <SelectContent className="bg-[#FFFFFF] border border-[#E2E8F0] rounded-md">
                                     <SelectItem value="none">使用しない</SelectItem>
                                     {tickets.map((ticket) => (
                                         <SelectItem key={ticket.id} value={ticket.id}>
@@ -379,36 +393,51 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="date">日付</Label>
-                                <Input type="date" {...register('session_date')} />
-                                {errors.session_date && <p className="text-sm text-red-500">{errors.session_date.message}</p>}
+                                <Label htmlFor="date" className="text-sm font-medium text-[#0F172A]">日付</Label>
+                                <Input
+                                    type="date"
+                                    {...register('session_date')}
+                                    className="border-[#E2E8F0] rounded-md text-[#0F172A] focus-visible:ring-0"
+                                    style={{ borderColor: '#E2E8F0' }}
+                                    {...tealFocusHandlers}
+                                />
+                                {errors.session_date && <p className="text-sm text-[#DC2626]">{errors.session_date.message}</p>}
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="time">時間</Label>
-                                <Input type="time" {...register('session_time')} />
-                                {errors.session_time && <p className="text-sm text-red-500">{errors.session_time.message}</p>}
+                                <Label htmlFor="time" className="text-sm font-medium text-[#0F172A]">時間</Label>
+                                <Input
+                                    type="time"
+                                    {...register('session_time')}
+                                    className="border-[#E2E8F0] rounded-md text-[#0F172A] focus-visible:ring-0"
+                                    style={{ borderColor: '#E2E8F0' }}
+                                    {...tealFocusHandlers}
+                                />
+                                {errors.session_time && <p className="text-sm text-[#DC2626]">{errors.session_time.message}</p>}
                             </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="duration">所要時間 (分)</Label>
+                                <Label htmlFor="duration" className="text-sm font-medium text-[#0F172A]">所要時間 (分)</Label>
                                 <Input
                                     type="number"
                                     {...register('duration_minutes', { valueAsNumber: true })}
+                                    className="border-[#E2E8F0] rounded-md text-[#0F172A] focus-visible:ring-0"
+                                    style={{ borderColor: '#E2E8F0' }}
+                                    {...tealFocusHandlers}
                                 />
-                                {errors.duration_minutes && <p className="text-sm text-red-500">{errors.duration_minutes.message}</p>}
+                                {errors.duration_minutes && <p className="text-sm text-[#DC2626]">{errors.duration_minutes.message}</p>}
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="status">ステータス</Label>
+                                <Label htmlFor="status" className="text-sm font-medium text-[#0F172A]">ステータス</Label>
                                 <Select
                                     onValueChange={(value: 'scheduled' | 'confirmed' | 'completed' | 'cancelled') => setValue('status', value)}
                                     defaultValue={session?.status || 'scheduled'}
                                 >
-                                    <SelectTrigger>
+                                    <SelectTrigger className="border-[#E2E8F0] rounded-md text-[#0F172A] focus:ring-0 focus:border-[#14B8A6]">
                                         <SelectValue />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-white">
+                                    <SelectContent className="bg-[#FFFFFF] border border-[#E2E8F0] rounded-md">
                                         <SelectItem value="scheduled">予定</SelectItem>
                                         <SelectItem value="confirmed">確定</SelectItem>
                                         <SelectItem value="completed">完了</SelectItem>
@@ -419,7 +448,7 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="type">セッション種別</Label>
+                            <Label htmlFor="type" className="text-sm font-medium text-[#0F172A]">セッション種別</Label>
                             <Select
                                 onValueChange={(value) => {
                                     setValue('session_type', value);
@@ -430,10 +459,10 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
                                 }}
                                 value={selectedSessionType || ''}
                             >
-                                <SelectTrigger>
+                                <SelectTrigger className="border-[#E2E8F0] rounded-md text-[#0F172A] focus:ring-0 focus:border-[#14B8A6]">
                                     <SelectValue placeholder="種別を選択" />
                                 </SelectTrigger>
-                                <SelectContent className="bg-white">
+                                <SelectContent className="bg-[#FFFFFF] border border-[#E2E8F0] rounded-md">
                                     {SESSION_TYPE_OPTIONS.map((option) => (
                                         <SelectItem key={option.value} value={option.value}>
                                             {option.label}
@@ -446,13 +475,24 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
                                     value={customSessionType}
                                     onChange={(e) => setCustomSessionType(e.target.value)}
                                     placeholder="種別を入力"
+                                    className="border-[#E2E8F0] rounded-md text-[#0F172A] focus-visible:ring-0"
+                                    style={{ borderColor: '#E2E8F0' }}
+                                    onFocus={(e) => {
+                                        e.currentTarget.style.borderColor = '#14B8A6';
+                                        e.currentTarget.style.boxShadow = '0 0 0 3px rgba(20,184,166,0.1)';
+                                        e.currentTarget.style.outline = 'none';
+                                    }}
+                                    onBlur={(e) => {
+                                        e.currentTarget.style.borderColor = '#E2E8F0';
+                                        e.currentTarget.style.boxShadow = 'none';
+                                    }}
                                 />
                             )}
                         </div>
 
                         {isTrainingType && workoutPlans.length > 0 && (
                             <div className="space-y-2">
-                                <Label>ワークアウトプラン（任意）</Label>
+                                <Label className="text-sm font-medium text-[#0F172A]">ワークアウトプラン（任意）</Label>
                                 <Select
                                     onValueChange={(value) => {
                                         const planId = value === 'none' ? null : value;
@@ -466,10 +506,10 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
                                     }}
                                     value={selectedPlanId ?? 'none'}
                                 >
-                                    <SelectTrigger>
+                                    <SelectTrigger className="border-[#E2E8F0] rounded-md text-[#0F172A] focus:ring-0 focus:border-[#14B8A6]">
                                         <SelectValue placeholder="プランを選択（任意）" />
                                     </SelectTrigger>
-                                    <SelectContent className="bg-white">
+                                    <SelectContent className="bg-[#FFFFFF] border border-[#E2E8F0] rounded-md">
                                         <SelectItem value="none">プランなし</SelectItem>
                                         {workoutPlans.map((plan) => (
                                             <SelectItem key={plan.id} value={plan.id}>
@@ -484,16 +524,16 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
 
                         {/* 繰り返し設定（新規作成時のみ） */}
                         {!session && (
-                            <div className="space-y-3 rounded-md border border-gray-200 p-3">
+                            <div className="space-y-3 rounded-md border border-[#E2E8F0] p-3 bg-[#F8FAFC]">
                                 <div className="flex items-center gap-2">
                                     <input
                                         type="checkbox"
                                         id="isRecurring"
                                         checked={isRecurring}
                                         onChange={(e) => setIsRecurring(e.target.checked)}
-                                        className="h-4 w-4 rounded border-gray-300"
+                                        className="h-4 w-4 rounded border-[#E2E8F0] accent-[#14B8A6]"
                                     />
-                                    <Label htmlFor="isRecurring" className="cursor-pointer font-medium">
+                                    <Label htmlFor="isRecurring" className="cursor-pointer font-medium text-[#0F172A]">
                                         繰り返し設定
                                     </Label>
                                 </div>
@@ -501,15 +541,15 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
                                 {isRecurring && (
                                     <div className="space-y-3 pl-1">
                                         <div className="space-y-1">
-                                            <Label>繰り返しパターン</Label>
+                                            <Label className="text-sm font-medium text-[#0F172A]">繰り返しパターン</Label>
                                             <Select
                                                 onValueChange={(value: 'weekly' | 'biweekly') => setRecurrencePattern(value)}
                                                 defaultValue={recurrencePattern}
                                             >
-                                                <SelectTrigger>
+                                                <SelectTrigger className="border-[#E2E8F0] rounded-md text-[#0F172A] focus:ring-0 focus:border-[#14B8A6]">
                                                     <SelectValue />
                                                 </SelectTrigger>
-                                                <SelectContent className="bg-white">
+                                                <SelectContent className="bg-[#FFFFFF] border border-[#E2E8F0] rounded-md">
                                                     <SelectItem value="weekly">毎週</SelectItem>
                                                     <SelectItem value="biweekly">隔週</SelectItem>
                                                     <SelectItem value="monthly">毎月</SelectItem>
@@ -518,15 +558,15 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
                                         </div>
 
                                         <div className="space-y-1">
-                                            <Label>終了条件</Label>
+                                            <Label className="text-sm font-medium text-[#0F172A]">終了条件</Label>
                                             <Select
                                                 onValueChange={(value: 'date' | 'count') => setRecurrenceEndType(value)}
                                                 defaultValue={recurrenceEndType}
                                             >
-                                                <SelectTrigger>
+                                                <SelectTrigger className="border-[#E2E8F0] rounded-md text-[#0F172A] focus:ring-0 focus:border-[#14B8A6]">
                                                     <SelectValue />
                                                 </SelectTrigger>
-                                                <SelectContent className="bg-white">
+                                                <SelectContent className="bg-[#FFFFFF] border border-[#E2E8F0] rounded-md">
                                                     <SelectItem value="count">指定回数</SelectItem>
                                                     <SelectItem value="date">指定日まで</SelectItem>
                                                 </SelectContent>
@@ -535,24 +575,46 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
 
                                         {recurrenceEndType === 'count' && (
                                             <div className="space-y-1">
-                                                <Label>回数</Label>
+                                                <Label className="text-sm font-medium text-[#0F172A]">回数</Label>
                                                 <Input
                                                     type="number"
                                                     min={1}
                                                     max={52}
                                                     value={recurrenceCount}
                                                     onChange={(e) => setRecurrenceCount(Number(e.target.value))}
+                                                    className="border-[#E2E8F0] rounded-md text-[#0F172A] focus-visible:ring-0"
+                                                    style={{ borderColor: '#E2E8F0' }}
+                                                    onFocus={(e) => {
+                                                        e.currentTarget.style.borderColor = '#14B8A6';
+                                                        e.currentTarget.style.boxShadow = '0 0 0 3px rgba(20,184,166,0.1)';
+                                                        e.currentTarget.style.outline = 'none';
+                                                    }}
+                                                    onBlur={(e) => {
+                                                        e.currentTarget.style.borderColor = '#E2E8F0';
+                                                        e.currentTarget.style.boxShadow = 'none';
+                                                    }}
                                                 />
                                             </div>
                                         )}
 
                                         {recurrenceEndType === 'date' && (
                                             <div className="space-y-1">
-                                                <Label>終了日</Label>
+                                                <Label className="text-sm font-medium text-[#0F172A]">終了日</Label>
                                                 <Input
                                                     type="date"
                                                     value={recurrenceEndDate}
                                                     onChange={(e) => setRecurrenceEndDate(e.target.value)}
+                                                    className="border-[#E2E8F0] rounded-md text-[#0F172A] focus-visible:ring-0"
+                                                    style={{ borderColor: '#E2E8F0' }}
+                                                    onFocus={(e) => {
+                                                        e.currentTarget.style.borderColor = '#14B8A6';
+                                                        e.currentTarget.style.boxShadow = '0 0 0 3px rgba(20,184,166,0.1)';
+                                                        e.currentTarget.style.outline = 'none';
+                                                    }}
+                                                    onBlur={(e) => {
+                                                        e.currentTarget.style.borderColor = '#E2E8F0';
+                                                        e.currentTarget.style.boxShadow = 'none';
+                                                    }}
                                                 />
                                             </div>
                                         )}
@@ -562,16 +624,29 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
                         )}
 
                         <div className="space-y-2">
-                            <Label htmlFor="memo">メモ</Label>
-                            <Textarea {...register('memo')} placeholder="メモを入力" />
+                            <Label htmlFor="memo" className="text-sm font-medium text-[#0F172A]">メモ</Label>
+                            <Textarea
+                                {...register('memo')}
+                                placeholder="メモを入力"
+                                className="border-[#E2E8F0] rounded-md text-[#0F172A] placeholder:text-[#94A3B8] focus-visible:ring-0 resize-none"
+                                style={{ borderColor: '#E2E8F0' }}
+                                onFocus={(e) => {
+                                    e.currentTarget.style.borderColor = '#14B8A6';
+                                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(20,184,166,0.1)';
+                                    e.currentTarget.style.outline = 'none';
+                                }}
+                                onBlur={(e) => {
+                                    e.currentTarget.style.borderColor = '#E2E8F0';
+                                    e.currentTarget.style.boxShadow = 'none';
+                                }}
+                            />
                         </div>
 
-                        <DialogFooter>
-                            <div className="flex justify-between space-x-2 pt-4 w-full">
+                        <DialogFooter className="border-t border-[#E2E8F0] pt-4">
+                            <div className="flex justify-between space-x-2 w-full">
                                 {session ? (
-                                    <Button
+                                    <button
                                         type="button"
-                                        variant="destructive"
                                         disabled={isLoading}
                                         onClick={() => {
                                             if (session.recurrence_group_id) {
@@ -580,19 +655,29 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
                                                 setIsDeleteConfirmOpen(true);
                                             }
                                         }}
+                                        className="inline-flex items-center justify-center text-sm font-medium rounded-md px-4 py-2 border border-[#FECACA] bg-[#FEF2F2] text-[#DC2626] hover:bg-[#FEE2E2] transition-colors disabled:pointer-events-none disabled:opacity-50"
                                     >
                                         削除
-                                    </Button>
+                                    </button>
                                 ) : (
                                     <div></div>
                                 )}
                                 <div className="flex gap-2">
-                                    <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
+                                    <button
+                                        type="button"
+                                        onClick={onClose}
+                                        disabled={isLoading}
+                                        className="inline-flex items-center justify-center text-sm font-medium rounded-md px-4 py-2 border border-[#E2E8F0] bg-[#F8FAFC] text-[#475569] hover:bg-[#F1F5F9] transition-colors disabled:pointer-events-none disabled:opacity-50"
+                                    >
                                         キャンセル
-                                    </Button>
-                                    <Button type="submit" disabled={isLoading}>
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={isLoading}
+                                        className="inline-flex items-center justify-center text-sm font-medium rounded-md px-4 py-2 bg-[#0F172A] text-white hover:bg-[#1E293B] transition-colors disabled:pointer-events-none disabled:opacity-50"
+                                    >
                                         {isLoading ? '保存中...' : '保存'}
-                                    </Button>
+                                    </button>
                                 </div>
                             </div>
                         </DialogFooter>
@@ -603,16 +688,24 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
             {session && (
                 <>
                     <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
-                        <AlertDialogContent>
+                        <AlertDialogContent className="bg-[#FFFFFF] border border-[#E2E8F0] rounded-md">
                             <AlertDialogHeader>
-                                <AlertDialogTitle>本当に削除しますか？</AlertDialogTitle>
-                                <AlertDialogDescription>
+                                <AlertDialogTitle className="text-[#0F172A]">本当に削除しますか？</AlertDialogTitle>
+                                <AlertDialogDescription className="text-[#475569]">
                                     この操作は取り消せません。
                                 </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                                <AlertDialogCancel>キャンセル</AlertDialogCancel>
-                                <AlertDialogAction onClick={handleDelete} disabled={isLoading}>削除</AlertDialogAction>
+                                <AlertDialogCancel className="border border-[#E2E8F0] bg-[#F8FAFC] text-[#475569] hover:bg-[#F1F5F9] rounded-md">
+                                    キャンセル
+                                </AlertDialogCancel>
+                                <AlertDialogAction
+                                    onClick={handleDelete}
+                                    disabled={isLoading}
+                                    className="border border-[#FECACA] bg-[#FEF2F2] text-[#DC2626] hover:bg-[#FEE2E2] rounded-md"
+                                >
+                                    削除
+                                </AlertDialogAction>
                             </AlertDialogFooter>
                         </AlertDialogContent>
                     </AlertDialog>
