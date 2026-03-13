@@ -11,6 +11,12 @@ import { getExpiringTickets } from '@/lib/supabase/getExpiringTickets'
 import { getInactiveClients } from '@/lib/supabase/getInactiveClients'
 import { getTodaysSessions } from '@/lib/supabase/getTodaysSessions'
 import { getUndonePlanCount } from '@/lib/supabase/getUndonePlanCount'
+import { getRecentRecords } from '@/lib/supabase/getRecentRecords'
+import { getRecordStats } from '@/lib/supabase/getRecordStats'
+import { getSessionStats } from '@/lib/supabase/getSessionStats'
+import { getDailyRecordTrend } from '@/lib/supabase/getDailyRecordTrend'
+import { getClientActivityRanking } from '@/lib/supabase/getClientActivityRanking'
+import { getGoalProgress } from '@/lib/supabase/getGoalProgress'
 import { useUserStore } from '@/store/userStore'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { MessagePreviewList } from '@/components/dashboard/MessagePreviewList'
@@ -18,9 +24,18 @@ import { QuickActions } from '@/components/dashboard/QuickActions'
 import { AlertList } from '@/components/dashboard/AlertList'
 import { TodaysSchedule } from '@/components/dashboard/TodaysSchedule'
 import { DashboardSkeleton } from '@/components/dashboard/DashboardSkeleton'
+import { RecentRecordsTimeline } from '@/components/dashboard/RecentRecordsTimeline'
+import { ActivityOverview } from '@/components/dashboard/ActivityOverview'
+import { GoalProgressCarousel } from '@/components/dashboard/GoalProgressCarousel'
 import type { RecentMessage } from '@/lib/supabase/getRecentMessages'
 import type { AlertItemProps } from '@/components/dashboard/AlertItem'
 import type { TodaysSession } from '@/lib/supabase/getTodaysSessions'
+import type { RecentRecord } from '@/lib/supabase/getRecentRecords'
+import type { RecordStats } from '@/lib/supabase/getRecordStats'
+import type { SessionStats } from '@/lib/supabase/getSessionStats'
+import type { DailyRecordPoint } from '@/lib/supabase/getDailyRecordTrend'
+import type { ClientActivityRank } from '@/lib/supabase/getClientActivityRanking'
+import type { GoalProgressByCategory } from '@/lib/supabase/getGoalProgress'
 import React from 'react'
 
 function UsersIcon() {
@@ -95,6 +110,23 @@ export default function DashboardPage() {
   // 本日の予定データ
   const [todaysSessions, setTodaysSessions] = useState<TodaysSession[]>([])
 
+  // 最近の記録データ
+  const [recentRecords, setRecentRecords] = useState<RecentRecord[]>([])
+  const [recordStats, setRecordStats] = useState<RecordStats>({
+    mealCount: 0, mealCountLastWeek: 0,
+    weightCount: 0, weightCountLastWeek: 0,
+    exerciseCount: 0, exerciseCountLastWeek: 0,
+    activeRecordingClients: 0, totalActiveClients: 0,
+  })
+
+  // チャート・プログレスデータ
+  const [sessionStats, setSessionStats] = useState<SessionStats>({
+    completed: 0, scheduled: 0, cancelled: 0, total: 0, completionRate: 0,
+  })
+  const [dailyTrend, setDailyTrend] = useState<DailyRecordPoint[]>([])
+  const [clientRanking, setClientRanking] = useState<ClientActivityRank[]>([])
+  const [goalCategories, setGoalCategories] = useState<GoalProgressByCategory[]>([])
+
   // 日付フォーマット
   const today = new Date()
   const formatted = today.toLocaleDateString('ja-JP', {
@@ -137,6 +169,12 @@ export default function DashboardPage() {
             inactiveClients,
             sessions,
             undonePlans,
+            records,
+            stats,
+            sessStats,
+            trend,
+            ranking,
+            goals,
           ] = await Promise.all([
             getClientCount(user.id),
             getRecentMessageCount(user.id),
@@ -146,6 +184,12 @@ export default function DashboardPage() {
             getInactiveClients(user.id),
             getTodaysSessions(user.id),
             getUndonePlanCount(user.id),
+            getRecentRecords(user.id, { limit: 20 }),
+            getRecordStats(user.id),
+            getSessionStats(user.id),
+            getDailyRecordTrend(user.id),
+            getClientActivityRanking(user.id),
+            getGoalProgress(user.id),
           ])
 
           setClientCount(clients)
@@ -154,6 +198,12 @@ export default function DashboardPage() {
           setActiveClientCount(activeClients)
           setExpiringTicketCount(expiringTickets.length)
           setTodaysSessions(sessions)
+          setRecentRecords(records)
+          setRecordStats(stats)
+          setSessionStats(sessStats)
+          setDailyTrend(trend)
+          setClientRanking(ranking)
+          setGoalCategories(goals)
 
           // アラートリストを作成
           const alertList: AlertItemProps[] = []
@@ -253,6 +303,20 @@ export default function DashboardPage() {
 
         {/* 本日の予定 */}
         <TodaysSchedule sessions={todaysSessions} />
+
+        {/* 最近の記録 */}
+        <RecentRecordsTimeline records={recentRecords} stats={recordStats} />
+
+        {/* アクティビティ概況チャート */}
+        <ActivityOverview
+          sessionStats={sessionStats}
+          recordStats={recordStats}
+          dailyTrend={dailyTrend}
+          clientRanking={clientRanking}
+        />
+
+        {/* 目標達成プログレス */}
+        <GoalProgressCarousel categories={goalCategories} />
 
         {/* メインコンテンツエリア */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

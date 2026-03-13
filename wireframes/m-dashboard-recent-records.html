@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FitConnect Dashboard - 最近の記録セクション ワイヤーフレーム</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif; background: #F8FAFC; color: #0F172A; }
+
+  /* ===== Layout ===== */
+  .container { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+
+  /* ===== Tab Navigation ===== */
+  .tabs { display: flex; gap: 0; margin-bottom: 32px; border-bottom: 1px solid #E2E8F0; }
+  .tab {
+    padding: 12px 24px; font-size: 14px; font-weight: 600; color: #94A3B8;
+    background: none; border: none; cursor: pointer; position: relative;
+    transition: color 0.2s;
+  }
+  .tab:hover { color: #475569; }
+  .tab.active { color: #0F172A; }
+  .tab.active::after {
+    content: ''; position: absolute; bottom: -1px; left: 0; right: 0;
+    height: 2px; background: #14B8A6; border-radius: 1px;
+  }
+
+  /* ===== View Panels ===== */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ===== Section Title ===== */
+  .section-title {
+    font-size: 16px; font-weight: 700; color: #0F172A; margin-bottom: 4px;
+  }
+  .section-subtitle {
+    font-size: 13px; color: #94A3B8; margin-bottom: 20px;
+  }
+
+  /* ===== Proposal Panel ===== */
+  .page-layout { display: flex; gap: 32px; }
+  .main-content { flex: 1; min-width: 0; }
+  .side-panel {
+    width: 340px; flex-shrink: 0; background: #fff; border: 1px solid #E2E8F0;
+    border-radius: 6px; padding: 24px; height: fit-content; position: sticky; top: 24px;
+  }
+  .side-panel h2 { font-size: 15px; font-weight: 700; margin-bottom: 16px; color: #0F172A; }
+
+  .proposal-item {
+    padding: 12px 0; border-bottom: 1px solid #F1F5F9;
+  }
+  .proposal-item:last-child { border-bottom: none; }
+  .proposal-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: 50%; background: #14B8A6;
+    color: #fff; font-size: 11px; font-weight: 700; margin-right: 8px;
+    flex-shrink: 0;
+  }
+  .proposal-title {
+    font-size: 13px; font-weight: 600; color: #0F172A; display: inline;
+  }
+  .proposal-desc {
+    font-size: 12px; color: #475569; margin-top: 4px; line-height: 1.6;
+    padding-left: 30px;
+  }
+
+  /* ===== Dashboard Mock ===== */
+  .dashboard-mock { background: #F8FAFC; border-radius: 6px; border: 1px solid #E2E8F0; overflow: hidden; }
+
+  /* Existing sections (dimmed) */
+  .existing-section {
+    padding: 20px 24px; border-bottom: 1px solid #E2E8F0;
+    opacity: 0.4;
+  }
+  .existing-label {
+    font-size: 12px; font-weight: 600; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .existing-placeholder {
+    margin-top: 8px; height: 48px; background: #E2E8F0; border-radius: 6px;
+  }
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 8px; }
+  .kpi-placeholder { height: 72px; background: #E2E8F0; border-radius: 6px; }
+
+  /* ===== NEW: Recent Records Section ===== */
+  .new-section {
+    padding: 24px; background: #fff; border: 2px dashed #14B8A6; border-radius: 0;
+    position: relative;
+  }
+  .new-badge {
+    position: absolute; top: -12px; left: 24px; background: #14B8A6; color: #fff;
+    font-size: 11px; font-weight: 700; padding: 3px 12px; border-radius: 4px;
+    letter-spacing: 0.05em;
+  }
+
+  /* Record Header */
+  .record-header {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;
+  }
+  .record-title { font-size: 15px; font-weight: 700; color: #0F172A; }
+  .record-filter-group { display: flex; gap: 6px; }
+  .filter-chip {
+    padding: 5px 14px; font-size: 12px; font-weight: 500; border-radius: 6px;
+    border: 1px solid #E2E8F0; background: #fff; color: #475569; cursor: pointer;
+    transition: all 0.2s;
+  }
+  .filter-chip:hover { border-color: #14B8A6; color: #14B8A6; }
+  .filter-chip.active { background: #0F172A; color: #fff; border-color: #0F172A; }
+
+  /* Summary Stats Row */
+  .summary-stats {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;
+  }
+  .summary-card {
+    background: #F8FAFC; border: 1px solid #F1F5F9; border-radius: 6px; padding: 14px 16px;
+  }
+  .summary-label { font-size: 11px; color: #94A3B8; font-weight: 500; margin-bottom: 4px; }
+  .summary-value { font-size: 22px; font-weight: 700; color: #0F172A; }
+  .summary-value span { font-size: 13px; font-weight: 500; color: #94A3B8; margin-left: 2px; }
+  .summary-change { font-size: 11px; margin-top: 2px; }
+  .summary-change.up { color: #14B8A6; }
+  .summary-change.down { color: #DC2626; }
+
+  /* Record Feed */
+  .record-feed { display: flex; flex-direction: column; gap: 0; }
+  .record-item {
+    display: flex; align-items: center; gap: 14px; padding: 14px 0;
+    border-bottom: 1px solid #F1F5F9; cursor: pointer; transition: background 0.15s;
+  }
+  .record-item:last-child { border-bottom: none; }
+  .record-item:hover { background: #F8FAFC; margin: 0 -12px; padding-left: 12px; padding-right: 12px; border-radius: 6px; }
+
+  /* Record type icon */
+  .record-icon {
+    width: 36px; height: 36px; border-radius: 6px; display: flex; align-items: center;
+    justify-content: center; flex-shrink: 0;
+  }
+  .record-icon.meal { background: #FFF7ED; color: #F97316; }
+  .record-icon.weight { background: #F0FDFA; color: #14B8A6; }
+  .record-icon.exercise { background: #FAF5FF; color: #A855F7; }
+
+  .record-icon svg { width: 18px; height: 18px; }
+
+  /* Record content */
+  .record-content { flex: 1; min-width: 0; }
+  .record-client-name { font-size: 13px; font-weight: 600; color: #0F172A; }
+  .record-detail { font-size: 12px; color: #475569; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .record-meta { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .record-time { font-size: 11px; color: #94A3B8; }
+  .record-tag {
+    font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px;
+  }
+  .record-tag.meal-tag { background: #FFF7ED; color: #C2410C; }
+  .record-tag.weight-tag { background: #F0FDFA; color: #0D9488; }
+  .record-tag.exercise-tag { background: #FAF5FF; color: #7E22CE; }
+
+  /* Thumbnail */
+  .record-thumb {
+    width: 40px; height: 40px; border-radius: 6px; background: #E2E8F0;
+    flex-shrink: 0; overflow: hidden; object-fit: cover;
+  }
+
+  /* View all link */
+  .view-all-link {
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+    padding: 12px; font-size: 13px; font-weight: 500; color: #14B8A6;
+    cursor: pointer; transition: color 0.2s; margin-top: 8px;
+  }
+  .view-all-link:hover { color: #0D9488; }
+
+  /* ===== View B: Card Grid ===== */
+  .record-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .record-grid-card {
+    background: #fff; border: 1px solid #F1F5F9; border-radius: 6px; padding: 16px;
+    cursor: pointer; transition: border-color 0.2s;
+  }
+  .record-grid-card:hover { border-color: #14B8A6; }
+  .record-grid-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .record-grid-avatar {
+    width: 32px; height: 32px; border-radius: 50%; background: #E2E8F0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: #475569;
+  }
+  .record-grid-name { font-size: 13px; font-weight: 600; color: #0F172A; }
+  .record-grid-time { font-size: 11px; color: #94A3B8; }
+  .record-grid-body { font-size: 12px; color: #475569; line-height: 1.6; }
+  .record-grid-body strong { color: #0F172A; font-weight: 600; }
+  .record-grid-images { display: flex; gap: 6px; margin-top: 10px; }
+  .record-grid-img {
+    width: 56px; height: 56px; border-radius: 6px; background: #E2E8F0;
+    overflow: hidden; object-fit: cover;
+  }
+  .record-grid-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+
+  /* ===== View C: Timeline ===== */
+  .timeline { position: relative; padding-left: 32px; }
+  .timeline::before {
+    content: ''; position: absolute; left: 14px; top: 0; bottom: 0;
+    width: 1px; background: #E2E8F0;
+  }
+  .timeline-group { margin-bottom: 24px; }
+  .timeline-date {
+    font-size: 12px; font-weight: 600; color: #94A3B8; margin-bottom: 12px;
+    position: relative;
+  }
+  .timeline-date::before {
+    content: ''; position: absolute; left: -24px; top: 50%; transform: translateY(-50%);
+    width: 9px; height: 9px; border-radius: 50%; background: #14B8A6; border: 2px solid #fff;
+  }
+  .timeline-items { display: flex; flex-direction: column; gap: 8px; }
+  .timeline-item {
+    background: #fff; border: 1px solid #F1F5F9; border-radius: 6px; padding: 12px 16px;
+    display: flex; align-items: center; gap: 12px; position: relative; cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .timeline-item:hover { border-color: #14B8A6; }
+  .timeline-item::before {
+    content: ''; position: absolute; left: -26px; top: 50%; transform: translateY(-50%);
+    width: 5px; height: 5px; border-radius: 50%; background: #94A3B8;
+  }
+
+  /* ===== Existing (dimmed) below ===== */
+  .existing-below {
+    padding: 20px 24px; opacity: 0.4; border-top: 1px solid #E2E8F0;
+  }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+  .col-placeholder { height: 120px; background: #E2E8F0; border-radius: 6px; }
+
+  /* ===== Responsive ===== */
+  @media (max-width: 960px) {
+    .page-layout { flex-direction: column; }
+    .side-panel { width: 100%; position: static; }
+    .summary-stats { grid-template-columns: repeat(2, 1fr); }
+    .record-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div style="text-align: center; margin-bottom: 8px;">
+    <span style="font-size: 11px; font-weight: 600; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.08em;">WIREFRAME</span>
+  </div>
+  <h1 style="font-size: 24px; font-weight: 700; text-align: center; margin-bottom: 4px;">ダッシュボード — 最近の記録セクション</h1>
+  <p style="font-size: 14px; color: #475569; text-align: center; margin-bottom: 32px;">顧客の食事・体重・運動記録をダッシュボードから一覧確認</p>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchView('a')">A. リストビュー</button>
+    <button class="tab" onclick="switchView('b')">B. カードグリッド</button>
+    <button class="tab" onclick="switchView('c')">C. タイムライン</button>
+  </div>
+
+  <div class="page-layout">
+    <div class="main-content">
+
+      <!-- ============================================ -->
+      <!-- VIEW A: List Feed -->
+      <!-- ============================================ -->
+      <div id="view-a" class="view active">
+        <div class="dashboard-mock">
+          <!-- Existing: Header (dimmed) -->
+          <div class="existing-section">
+            <div class="existing-label">既存: ヘッダー + KPI</div>
+            <div class="kpi-row">
+              <div class="kpi-placeholder"></div>
+              <div class="kpi-placeholder"></div>
+              <div class="kpi-placeholder"></div>
+              <div class="kpi-placeholder"></div>
+            </div>
+          </div>
+
+          <!-- Existing: Today's Schedule (dimmed) -->
+          <div class="existing-section">
+            <div class="existing-label">既存: 本日のセッション</div>
+            <div class="existing-placeholder"></div>
+          </div>
+
+          <!-- ★ NEW SECTION ★ -->
+          <div class="new-section">
+            <div class="new-badge">NEW</div>
+
+            <!-- Header -->
+            <div class="record-header">
+              <div class="record-title">最近の記録</div>
+              <div class="record-filter-group">
+                <button class="filter-chip active">すべて</button>
+                <button class="filter-chip">食事</button>
+                <button class="filter-chip">体重</button>
+                <button class="filter-chip">運動</button>
+              </div>
+            </div>
+
+            <!-- Summary Stats -->
+            <div class="summary-stats">
+              <div class="summary-card">
+                <div class="summary-label">今週の食事記録</div>
+                <div class="summary-value">47<span>件</span></div>
+                <div class="summary-change up">+12% vs 先週</div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-label">今週の体重記録</div>
+                <div class="summary-value">18<span>件</span></div>
+                <div class="summary-change up">+5% vs 先週</div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-label">今週の運動記録</div>
+                <div class="summary-value">32<span>件</span></div>
+                <div class="summary-change down">-3% vs 先週</div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-label">記録率</div>
+                <div class="summary-value">78<span>%</span></div>
+                <div class="summary-change up">+4pt vs 先週</div>
+              </div>
+            </div>
+
+            <!-- Record Feed -->
+            <div class="record-feed">
+              <!-- Meal record -->
+              <div class="record-item">
+                <div class="record-icon meal">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                </div>
+                <div class="record-content">
+                  <div class="record-client-name">田中さとし</div>
+                  <div class="record-detail">朝食 — グリルチキンサラダ, 玄米 (420 kcal)</div>
+                </div>
+                <div class="record-meta">
+                  <span class="record-tag meal-tag">食事</span>
+                  <span class="record-time">10分前</span>
+                </div>
+              </div>
+
+              <!-- Weight record -->
+              <div class="record-item">
+                <div class="record-icon weight">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>
+                </div>
+                <div class="record-content">
+                  <div class="record-client-name">岡田 康太</div>
+                  <div class="record-detail">体重: 72.3 kg (前回比 -0.4 kg)</div>
+                </div>
+                <div class="record-meta">
+                  <span class="record-tag weight-tag">体重</span>
+                  <span class="record-time">25分前</span>
+                </div>
+              </div>
+
+              <!-- Exercise record -->
+              <div class="record-item">
+                <div class="record-icon exercise">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                </div>
+                <div class="record-content">
+                  <div class="record-client-name">ほしおテスト3.1</div>
+                  <div class="record-detail">ランニング — 45分 / 5.2 km / 320 kcal</div>
+                </div>
+                <div class="record-meta">
+                  <span class="record-tag exercise-tag">運動</span>
+                  <span class="record-time">1時間前</span>
+                </div>
+              </div>
+
+              <!-- Meal record with image -->
+              <div class="record-item">
+                <div class="record-icon meal">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                </div>
+                <div class="record-content">
+                  <div class="record-client-name">ほしお5.1</div>
+                  <div class="record-detail">昼食 — パスタ, サラダ (580 kcal)</div>
+                </div>
+                <div style="width: 40px; height: 40px; border-radius: 6px; background: #E2E8F0; flex-shrink: 0;"></div>
+                <div class="record-meta">
+                  <span class="record-tag meal-tag">食事</span>
+                  <span class="record-time">2時間前</span>
+                </div>
+              </div>
+
+              <!-- Weight record -->
+              <div class="record-item">
+                <div class="record-icon weight">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>
+                </div>
+                <div class="record-content">
+                  <div class="record-client-name">テストほしお4</div>
+                  <div class="record-detail">体重: 65.1 kg (前回比 +0.2 kg)</div>
+                </div>
+                <div class="record-meta">
+                  <span class="record-tag weight-tag">体重</span>
+                  <span class="record-time">3時間前</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="view-all-link">
+              すべての記録を見る →
+            </div>
+          </div>
+
+          <!-- Existing: Messages + Alerts (dimmed) -->
+          <div class="existing-below">
+            <div class="existing-label">既存: メッセージ + アラート</div>
+            <div class="two-col">
+              <div class="col-placeholder"></div>
+              <div class="col-placeholder"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================ -->
+      <!-- VIEW B: Card Grid -->
+      <!-- ============================================ -->
+      <div id="view-b" class="view">
+        <div class="dashboard-mock">
+          <div class="existing-section">
+            <div class="existing-label">既存: ヘッダー + KPI + 本日のセッション</div>
+            <div class="existing-placeholder"></div>
+          </div>
+
+          <div class="new-section">
+            <div class="new-badge">NEW</div>
+
+            <div class="record-header">
+              <div class="record-title">最近の記録</div>
+              <div class="record-filter-group">
+                <button class="filter-chip active">すべて</button>
+                <button class="filter-chip">食事</button>
+                <button class="filter-chip">体重</button>
+                <button class="filter-chip">運動</button>
+              </div>
+            </div>
+
+            <div class="summary-stats">
+              <div class="summary-card">
+                <div class="summary-label">今週の食事記録</div>
+                <div class="summary-value">47<span>件</span></div>
+                <div class="summary-change up">+12% vs 先週</div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-label">今週の体重記録</div>
+                <div class="summary-value">18<span>件</span></div>
+                <div class="summary-change up">+5% vs 先週</div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-label">今週の運動記録</div>
+                <div class="summary-value">32<span>件</span></div>
+                <div class="summary-change down">-3% vs 先週</div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-label">記録率</div>
+                <div class="summary-value">78<span>%</span></div>
+                <div class="summary-change up">+4pt vs 先週</div>
+              </div>
+            </div>
+
+            <div class="record-grid">
+              <!-- Card 1: Meal with images -->
+              <div class="record-grid-card">
+                <div class="record-grid-header">
+                  <div class="record-grid-avatar" style="background: #FFF7ED; color: #F97316;">田</div>
+                  <div>
+                    <div class="record-grid-name">田中さとし</div>
+                    <div class="record-grid-time">10分前</div>
+                  </div>
+                  <span class="record-tag meal-tag" style="margin-left: auto;">食事</span>
+                </div>
+                <div class="record-grid-body">
+                  <strong>朝食</strong> — グリルチキンサラダ, 玄米<br>
+                  カロリー: 420 kcal
+                </div>
+                <div class="record-grid-images">
+                  <div class="record-grid-img"></div>
+                  <div class="record-grid-img"></div>
+                </div>
+              </div>
+
+              <!-- Card 2: Weight -->
+              <div class="record-grid-card">
+                <div class="record-grid-header">
+                  <div class="record-grid-avatar" style="background: #F0FDFA; color: #14B8A6;">岡</div>
+                  <div>
+                    <div class="record-grid-name">岡田 康太</div>
+                    <div class="record-grid-time">25分前</div>
+                  </div>
+                  <span class="record-tag weight-tag" style="margin-left: auto;">体重</span>
+                </div>
+                <div class="record-grid-body">
+                  <strong>72.3 kg</strong><br>
+                  前回比: <span style="color: #14B8A6; font-weight: 600;">-0.4 kg</span>
+                </div>
+                <div class="record-grid-footer">
+                  <span style="font-size: 11px; color: #94A3B8;">目標: 70.0 kg</span>
+                  <span style="font-size: 11px; color: #14B8A6; font-weight: 600;">あと 2.3 kg</span>
+                </div>
+              </div>
+
+              <!-- Card 3: Exercise -->
+              <div class="record-grid-card">
+                <div class="record-grid-header">
+                  <div class="record-grid-avatar" style="background: #FAF5FF; color: #A855F7;">ほ</div>
+                  <div>
+                    <div class="record-grid-name">ほしおテスト3.1</div>
+                    <div class="record-grid-time">1時間前</div>
+                  </div>
+                  <span class="record-tag exercise-tag" style="margin-left: auto;">運動</span>
+                </div>
+                <div class="record-grid-body">
+                  <strong>ランニング</strong><br>
+                  45分 / 5.2 km / 320 kcal
+                </div>
+              </div>
+
+              <!-- Card 4: Meal -->
+              <div class="record-grid-card">
+                <div class="record-grid-header">
+                  <div class="record-grid-avatar" style="background: #FFF7ED; color: #F97316;">ほ</div>
+                  <div>
+                    <div class="record-grid-name">ほしお5.1</div>
+                    <div class="record-grid-time">2時間前</div>
+                  </div>
+                  <span class="record-tag meal-tag" style="margin-left: auto;">食事</span>
+                </div>
+                <div class="record-grid-body">
+                  <strong>昼食</strong> — パスタ, サラダ<br>
+                  カロリー: 580 kcal
+                </div>
+                <div class="record-grid-images">
+                  <div class="record-grid-img"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="view-all-link">
+              すべての記録を見る →
+            </div>
+          </div>
+
+          <div class="existing-below">
+            <div class="existing-label">既存: メッセージ + アラート + クイックアクション</div>
+            <div class="two-col">
+              <div class="col-placeholder"></div>
+              <div class="col-placeholder"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================ -->
+      <!-- VIEW C: Timeline -->
+      <!-- ============================================ -->
+      <div id="view-c" class="view">
+        <div class="dashboard-mock">
+          <div class="existing-section">
+            <div class="existing-label">既存: ヘッダー + KPI + 本日のセッション</div>
+            <div class="existing-placeholder"></div>
+          </div>
+
+          <div class="new-section">
+            <div class="new-badge">NEW</div>
+
+            <div class="record-header">
+              <div class="record-title">最近の記録</div>
+              <div class="record-filter-group">
+                <button class="filter-chip active">すべて</button>
+                <button class="filter-chip">食事</button>
+                <button class="filter-chip">体重</button>
+                <button class="filter-chip">運動</button>
+              </div>
+            </div>
+
+            <div class="summary-stats">
+              <div class="summary-card">
+                <div class="summary-label">今週の食事記録</div>
+                <div class="summary-value">47<span>件</span></div>
+                <div class="summary-change up">+12% vs 先週</div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-label">今週の体重記録</div>
+                <div class="summary-value">18<span>件</span></div>
+                <div class="summary-change up">+5% vs 先週</div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-label">今週の運動記録</div>
+                <div class="summary-value">32<span>件</span></div>
+                <div class="summary-change down">-3% vs 先週</div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-label">記録率</div>
+                <div class="summary-value">78<span>%</span></div>
+                <div class="summary-change up">+4pt vs 先週</div>
+              </div>
+            </div>
+
+            <div class="timeline">
+              <!-- Today -->
+              <div class="timeline-group">
+                <div class="timeline-date">今日</div>
+                <div class="timeline-items">
+                  <div class="timeline-item">
+                    <div class="record-icon meal" style="width: 32px; height: 32px;">
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 16px; height: 16px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                    </div>
+                    <div class="record-content">
+                      <div class="record-client-name">田中さとし</div>
+                      <div class="record-detail">朝食 — グリルチキンサラダ, 玄米 (420 kcal)</div>
+                    </div>
+                    <span class="record-time">10分前</span>
+                  </div>
+                  <div class="timeline-item">
+                    <div class="record-icon weight" style="width: 32px; height: 32px;">
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 16px; height: 16px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>
+                    </div>
+                    <div class="record-content">
+                      <div class="record-client-name">岡田 康太</div>
+                      <div class="record-detail">体重: 72.3 kg (前回比 -0.4 kg)</div>
+                    </div>
+                    <span class="record-time">25分前</span>
+                  </div>
+                  <div class="timeline-item">
+                    <div class="record-icon exercise" style="width: 32px; height: 32px;">
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 16px; height: 16px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    </div>
+                    <div class="record-content">
+                      <div class="record-client-name">ほしおテスト3.1</div>
+                      <div class="record-detail">ランニング — 45分 / 5.2 km / 320 kcal</div>
+                    </div>
+                    <span class="record-time">1時間前</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Yesterday -->
+              <div class="timeline-group">
+                <div class="timeline-date">昨日</div>
+                <div class="timeline-items">
+                  <div class="timeline-item">
+                    <div class="record-icon meal" style="width: 32px; height: 32px;">
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 16px; height: 16px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                    </div>
+                    <div class="record-content">
+                      <div class="record-client-name">ほしお5.1</div>
+                      <div class="record-detail">夕食 — 鮭の塩焼き定食 (650 kcal)</div>
+                    </div>
+                    <span class="record-time">18:30</span>
+                  </div>
+                  <div class="timeline-item">
+                    <div class="record-icon weight" style="width: 32px; height: 32px;">
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 16px; height: 16px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>
+                    </div>
+                    <div class="record-content">
+                      <div class="record-client-name">テストほしお4</div>
+                      <div class="record-detail">体重: 65.1 kg (前回比 +0.2 kg)</div>
+                    </div>
+                    <span class="record-time">08:15</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="view-all-link">
+              すべての記録を見る →
+            </div>
+          </div>
+
+          <div class="existing-below">
+            <div class="existing-label">既存: メッセージ + アラート + クイックアクション</div>
+            <div class="two-col">
+              <div class="col-placeholder"></div>
+              <div class="col-placeholder"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ===== Side Panel: Proposals ===== -->
+    <div class="side-panel">
+      <h2>改善提案（7項目）</h2>
+
+      <div class="proposal-item">
+        <span class="proposal-num">1</span>
+        <span class="proposal-title">記録サマリーKPI</span>
+        <div class="proposal-desc">今週の食事・体重・運動の記録件数と前週比を4カードで表示。顧客全体の記録習慣を一目で把握。</div>
+      </div>
+
+      <div class="proposal-item">
+        <span class="proposal-num">2</span>
+        <span class="proposal-title">種別フィルターチップ</span>
+        <div class="proposal-desc">「すべて / 食事 / 体重 / 運動」のフィルターで記録種別を素早く絞り込み。</div>
+      </div>
+
+      <div class="proposal-item">
+        <span class="proposal-num">3</span>
+        <span class="proposal-title">記録フィード（リスト）</span>
+        <div class="proposal-desc">全顧客の最新記録を時系列で表示。アイコン+タグで種別を色分け。クリックで顧客詳細へ遷移。</div>
+      </div>
+
+      <div class="proposal-item">
+        <span class="proposal-num">4</span>
+        <span class="proposal-title">食事画像サムネイル</span>
+        <div class="proposal-desc">食事記録に画像がある場合、サムネイルを表示。視覚的に顧客の食生活を確認。</div>
+      </div>
+
+      <div class="proposal-item">
+        <span class="proposal-num">5</span>
+        <span class="proposal-title">体重の前回比表示</span>
+        <div class="proposal-desc">体重記録は前回との差分を自動計算して表示。増減が一目で分かる。</div>
+      </div>
+
+      <div class="proposal-item">
+        <span class="proposal-num">6</span>
+        <span class="proposal-title">記録率メトリクス</span>
+        <div class="proposal-desc">アクティブ顧客のうち今週記録を送った割合を表示。顧客のエンゲージメント指標。</div>
+      </div>
+
+      <div class="proposal-item">
+        <span class="proposal-num">7</span>
+        <span class="proposal-title">配置: セッションの下</span>
+        <div class="proposal-desc">「本日のセッション」の下、「メッセージ＋アラート」の上に配置。トレーナーが朝一番にチェックする流れに合致。</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function switchView(viewId) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('view-' + viewId).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+
+</body>
+</html>

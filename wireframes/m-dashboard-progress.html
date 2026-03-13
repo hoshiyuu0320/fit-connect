@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FitConnect Dashboard — 成果・改善ビジュアライズ ワイヤーフレーム</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif; background: #F8FAFC; color: #0F172A; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+
+  /* Header */
+  .page-header { text-align: center; margin-bottom: 32px; }
+  .page-header .label { font-size: 11px; font-weight: 600; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.08em; }
+  .page-header h1 { font-size: 24px; font-weight: 700; margin: 4px 0; }
+  .page-header p { font-size: 14px; color: #475569; }
+
+  /* Layout */
+  .page-layout { display: flex; gap: 32px; }
+  .main-content { flex: 1; min-width: 0; }
+  .side-panel { width: 340px; flex-shrink: 0; background: #fff; border: 1px solid #E2E8F0; border-radius: 6px; padding: 24px; height: fit-content; position: sticky; top: 24px; }
+  .side-panel h2 { font-size: 15px; font-weight: 700; margin-bottom: 16px; }
+
+  /* Proposals */
+  .proposal-item { padding: 12px 0; border-bottom: 1px solid #F1F5F9; }
+  .proposal-item:last-child { border-bottom: none; }
+  .proposal-num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: #14B8A6; color: #fff; font-size: 11px; font-weight: 700; margin-right: 8px; }
+  .proposal-title { font-size: 13px; font-weight: 600; display: inline; }
+  .proposal-desc { font-size: 12px; color: #475569; margin-top: 4px; line-height: 1.6; padding-left: 30px; }
+
+  /* Dashboard Mock */
+  .dashboard-mock { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; overflow: hidden; }
+  .existing-section { padding: 20px 24px; border-bottom: 1px solid #E2E8F0; opacity: 0.35; }
+  .existing-label { font-size: 12px; font-weight: 600; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.05em; }
+  .existing-placeholder { margin-top: 8px; height: 48px; background: #E2E8F0; border-radius: 6px; }
+
+  /* NEW Section */
+  .new-section { padding: 24px; background: #fff; border: 2px dashed #14B8A6; position: relative; }
+  .new-badge { position: absolute; top: -12px; left: 24px; background: #14B8A6; color: #fff; font-size: 11px; font-weight: 700; padding: 3px 12px; border-radius: 4px; }
+  .section-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .section-subtitle { font-size: 12px; color: #94A3B8; margin-bottom: 20px; }
+
+  /* ===== 1. Goal Progress Cards ===== */
+  .goal-cards { display: flex; flex-direction: column; gap: 14px; }
+  .goal-card {
+    background: #F8FAFC; border: 1px solid #F1F5F9; border-radius: 6px; padding: 16px 20px;
+    cursor: pointer; transition: border-color 0.2s;
+  }
+  .goal-card:hover { border-color: #14B8A6; }
+  .goal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .goal-client { display: flex; align-items: center; gap: 10px; }
+  .goal-avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+  .goal-name { font-size: 13px; font-weight: 600; }
+  .goal-purpose { font-size: 11px; color: #94A3B8; }
+  .goal-badge { font-size: 10px; font-weight: 600; padding: 3px 10px; border-radius: 4px; }
+
+  /* Bullet-style progress bar */
+  .bullet-bar { position: relative; height: 28px; background: #F1F5F9; border-radius: 4px; overflow: visible; margin-bottom: 8px; }
+  .bullet-range-good { position: absolute; top: 0; height: 100%; background: #E0F7F0; border-radius: 4px; }
+  .bullet-range-ok { position: absolute; top: 0; height: 100%; background: #FEF3C7; border-radius: 4px; }
+  .bullet-fill { position: absolute; top: 6px; height: 16px; border-radius: 3px; transition: width 0.8s ease; }
+  .bullet-target { position: absolute; top: -2px; width: 3px; height: 32px; background: #0F172A; border-radius: 2px; }
+  .bullet-start { position: absolute; top: -2px; width: 3px; height: 32px; border-radius: 2px; border: 1px dashed #94A3B8; }
+  .goal-labels { display: flex; justify-content: space-between; font-size: 11px; color: #94A3B8; }
+  .goal-labels .current { color: #0F172A; font-weight: 600; }
+
+  /* ===== 2. Sparklines ===== */
+  .sparkline-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .sparkline-card {
+    background: #F8FAFC; border: 1px solid #F1F5F9; border-radius: 6px; padding: 14px 16px;
+    cursor: pointer; transition: border-color 0.2s;
+  }
+  .sparkline-card:hover { border-color: #14B8A6; }
+  .sparkline-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .sparkline-name { font-size: 12px; font-weight: 600; }
+  .sparkline-change { font-size: 11px; font-weight: 600; }
+  .sparkline-change.down { color: #14B8A6; } /* weight down = good */
+  .sparkline-change.up { color: #DC2626; }
+  .sparkline-chart { height: 40px; width: 100%; }
+  .sparkline-footer { display: flex; justify-content: space-between; font-size: 10px; color: #94A3B8; margin-top: 4px; }
+
+  /* ===== 3. Heatmap ===== */
+  .heatmap-container { }
+  .heatmap-client { margin-bottom: 16px; }
+  .heatmap-client-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .heatmap-client-name { font-size: 12px; font-weight: 600; }
+  .heatmap-streak { font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 4px; }
+  .heatmap-grid { display: flex; gap: 3px; flex-wrap: wrap; }
+  .heatmap-cell { width: 16px; height: 16px; border-radius: 3px; }
+  .heatmap-legend { display: flex; align-items: center; gap: 4px; margin-top: 12px; }
+  .heatmap-legend-label { font-size: 10px; color: #94A3B8; }
+
+  /* ===== 4. Monthly Comparison ===== */
+  .month-compare-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .month-card { background: #F8FAFC; border: 1px solid #F1F5F9; border-radius: 6px; padding: 16px; text-align: center; }
+  .month-card-title { font-size: 11px; color: #94A3B8; font-weight: 500; margin-bottom: 12px; }
+  .month-bars { display: flex; align-items: flex-end; justify-content: center; gap: 8px; height: 80px; margin-bottom: 8px; }
+  .month-bar-group { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .month-bar { width: 32px; border-radius: 4px 4px 0 0; }
+  .month-bar-label { font-size: 10px; color: #94A3B8; }
+  .month-card-change { font-size: 12px; font-weight: 600; }
+
+  /* ===== 5. Achievement Highlights ===== */
+  .achievements { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .achievement-card {
+    background: #F8FAFC; border: 1px solid #F1F5F9; border-radius: 6px; padding: 16px;
+    display: flex; align-items: flex-start; gap: 12px; cursor: pointer; transition: border-color 0.2s;
+  }
+  .achievement-card:hover { border-color: #14B8A6; }
+  .achievement-icon {
+    width: 40px; height: 40px; border-radius: 6px; display: flex; align-items: center;
+    justify-content: center; flex-shrink: 0; font-size: 18px;
+  }
+  .achievement-content { flex: 1; }
+  .achievement-title { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+  .achievement-desc { font-size: 11px; color: #475569; line-height: 1.5; }
+  .achievement-client { font-size: 11px; color: #94A3B8; margin-top: 4px; }
+
+  /* Divider */
+  .section-divider { height: 1px; background: #F1F5F9; margin: 24px 0; }
+
+  /* Existing below */
+  .existing-below { padding: 20px 24px; opacity: 0.35; border-top: 1px solid #E2E8F0; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+  .col-placeholder { height: 80px; background: #E2E8F0; border-radius: 6px; }
+
+  @media (max-width: 960px) {
+    .page-layout { flex-direction: column; }
+    .side-panel { width: 100%; position: static; }
+    .sparkline-grid { grid-template-columns: 1fr; }
+    .month-compare-grid { grid-template-columns: 1fr; }
+    .achievements { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="page-header">
+    <span class="label">WIREFRAME</span>
+    <h1>ダッシュボード — 成果・改善ビジュアライズ</h1>
+    <p>顧客のビフォーアフター・目標達成度・習慣の定着を可視化</p>
+  </div>
+
+  <div class="page-layout">
+    <div class="main-content">
+      <div class="dashboard-mock">
+
+        <!-- Existing sections (dimmed) -->
+        <div class="existing-section">
+          <div class="existing-label">既存: ヘッダー + KPI + セッション + タイムライン + グラフ</div>
+          <div class="existing-placeholder"></div>
+        </div>
+
+        <!-- ★ NEW: Progress Section ★ -->
+        <div class="new-section">
+          <div class="new-badge">NEW</div>
+
+          <!-- ===== 1. Goal Progress ===== -->
+          <div class="section-title">目標達成プログレス</div>
+          <div class="section-subtitle">各顧客の体重目標に対する現在の進捗</div>
+
+          <div class="goal-cards">
+            <!-- Client 1: Good progress -->
+            <div class="goal-card">
+              <div class="goal-header">
+                <div class="goal-client">
+                  <div class="goal-avatar" style="background: #F0FDFA; color: #14B8A6;">田</div>
+                  <div>
+                    <div class="goal-name">田中さとし</div>
+                    <div class="goal-purpose">ダイエット</div>
+                  </div>
+                </div>
+                <span class="goal-badge" style="background: #F0FDFA; color: #0D9488;">達成率 76%</span>
+              </div>
+              <div class="bullet-bar">
+                <div class="bullet-range-good" style="left: 0; width: 100%;"></div>
+                <div class="bullet-fill" style="width: 76%; background: #14B8A6;"></div>
+                <div class="bullet-start" style="left: 0%;"></div>
+                <div class="bullet-target" style="left: calc(100% - 3px);"></div>
+              </div>
+              <div class="goal-labels">
+                <span>開始 78.5 kg</span>
+                <span class="current">現在 72.3 kg (-6.2)</span>
+                <span>目標 70.0 kg</span>
+              </div>
+            </div>
+
+            <!-- Client 2: Moderate -->
+            <div class="goal-card">
+              <div class="goal-header">
+                <div class="goal-client">
+                  <div class="goal-avatar" style="background: #FFF7ED; color: #F97316;">岡</div>
+                  <div>
+                    <div class="goal-name">岡田 康太</div>
+                    <div class="goal-purpose">ボディメイク</div>
+                  </div>
+                </div>
+                <span class="goal-badge" style="background: #FEF3C7; color: #92400E;">達成率 45%</span>
+              </div>
+              <div class="bullet-bar">
+                <div class="bullet-range-ok" style="left: 0; width: 100%;"></div>
+                <div class="bullet-fill" style="width: 45%; background: #F59E0B;"></div>
+                <div class="bullet-start" style="left: 0%;"></div>
+                <div class="bullet-target" style="left: calc(100% - 3px);"></div>
+              </div>
+              <div class="goal-labels">
+                <span>開始 85.0 kg</span>
+                <span class="current">現在 80.5 kg (-4.5)</span>
+                <span>目標 75.0 kg</span>
+              </div>
+            </div>
+
+            <!-- Client 3: Just started -->
+            <div class="goal-card">
+              <div class="goal-header">
+                <div class="goal-client">
+                  <div class="goal-avatar" style="background: #FAF5FF; color: #A855F7;">ほ</div>
+                  <div>
+                    <div class="goal-name">ほしおテスト3.1</div>
+                    <div class="goal-purpose">健康改善</div>
+                  </div>
+                </div>
+                <span class="goal-badge" style="background: #F8FAFC; color: #94A3B8;">達成率 12%</span>
+              </div>
+              <div class="bullet-bar">
+                <div class="bullet-fill" style="width: 12%; background: #94A3B8;"></div>
+                <div class="bullet-start" style="left: 0%;"></div>
+                <div class="bullet-target" style="left: calc(100% - 3px);"></div>
+              </div>
+              <div class="goal-labels">
+                <span>開始 90.0 kg</span>
+                <span class="current">現在 88.8 kg (-1.2)</span>
+                <span>目標 80.0 kg</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <!-- ===== 2. Weight Sparklines ===== -->
+          <div class="section-title">体重推移スパークライン</div>
+          <div class="section-subtitle">過去30日間の体重変化トレンド</div>
+
+          <div class="sparkline-grid">
+            <div class="sparkline-card">
+              <div class="sparkline-header">
+                <span class="sparkline-name">田中さとし</span>
+                <span class="sparkline-change down">-2.1 kg</span>
+              </div>
+              <div class="sparkline-chart">
+                <svg viewBox="0 0 200 40" preserveAspectRatio="none" width="100%" height="40">
+                  <polyline points="0,35 20,32 40,30 60,28 80,30 100,25 120,22 140,20 160,18 180,15 200,10"
+                    fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round"/>
+                  <circle cx="200" cy="10" r="3" fill="#14B8A6"/>
+                </svg>
+              </div>
+              <div class="sparkline-footer"><span>74.4 kg</span><span>72.3 kg</span></div>
+            </div>
+
+            <div class="sparkline-card">
+              <div class="sparkline-header">
+                <span class="sparkline-name">岡田 康太</span>
+                <span class="sparkline-change down">-0.8 kg</span>
+              </div>
+              <div class="sparkline-chart">
+                <svg viewBox="0 0 200 40" preserveAspectRatio="none" width="100%" height="40">
+                  <polyline points="0,20 20,22 40,18 60,20 80,22 100,20 120,18 140,20 160,16 180,14 200,15"
+                    fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round"/>
+                  <circle cx="200" cy="15" r="3" fill="#14B8A6"/>
+                </svg>
+              </div>
+              <div class="sparkline-footer"><span>81.3 kg</span><span>80.5 kg</span></div>
+            </div>
+
+            <div class="sparkline-card">
+              <div class="sparkline-header">
+                <span class="sparkline-name">ほしお5.1</span>
+                <span class="sparkline-change up">+0.3 kg</span>
+              </div>
+              <div class="sparkline-chart">
+                <svg viewBox="0 0 200 40" preserveAspectRatio="none" width="100%" height="40">
+                  <polyline points="0,18 20,20 40,18 60,22 80,20 100,22 120,24 140,22 160,24 180,22 200,22"
+                    fill="none" stroke="#DC2626" stroke-width="2" stroke-linecap="round"/>
+                  <circle cx="200" cy="22" r="3" fill="#DC2626"/>
+                </svg>
+              </div>
+              <div class="sparkline-footer"><span>64.8 kg</span><span>65.1 kg</span></div>
+            </div>
+
+            <div class="sparkline-card">
+              <div class="sparkline-header">
+                <span class="sparkline-name">テストほしお4</span>
+                <span class="sparkline-change down">-1.5 kg</span>
+              </div>
+              <div class="sparkline-chart">
+                <svg viewBox="0 0 200 40" preserveAspectRatio="none" width="100%" height="40">
+                  <polyline points="0,30 20,28 40,25 60,22 80,20 100,22 120,18 140,16 160,14 180,12 200,10"
+                    fill="none" stroke="#14B8A6" stroke-width="2" stroke-linecap="round"/>
+                  <circle cx="200" cy="10" r="3" fill="#14B8A6"/>
+                </svg>
+              </div>
+              <div class="sparkline-footer"><span>67.5 kg</span><span>66.0 kg</span></div>
+            </div>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <!-- ===== 3. Habit Heatmap ===== -->
+          <div class="section-title">記録習慣ヒートマップ</div>
+          <div class="section-subtitle">過去28日間の記録状況（濃いほど多い）</div>
+
+          <div class="heatmap-container">
+            <!-- Client 1 -->
+            <div class="heatmap-client">
+              <div class="heatmap-client-header">
+                <span class="heatmap-client-name">田中さとし</span>
+                <span class="heatmap-streak" style="background: #F0FDFA; color: #0D9488;">14日連続</span>
+              </div>
+              <div class="heatmap-grid">
+                <!-- 28 cells - darker = more records that day -->
+                <div class="heatmap-cell" style="background: #B2DFDB;"></div>
+                <div class="heatmap-cell" style="background: #14B8A6;"></div>
+                <div class="heatmap-cell" style="background: #F1F5F9;"></div>
+                <div class="heatmap-cell" style="background: #B2DFDB;"></div>
+                <div class="heatmap-cell" style="background: #14B8A6;"></div>
+                <div class="heatmap-cell" style="background: #14B8A6;"></div>
+                <div class="heatmap-cell" style="background: #0D9488;"></div>
+                <div class="heatmap-cell" style="background: #B2DFDB;"></div>
+                <div class="heatmap-cell" style="background: #F1F5F9;"></div>
+                <div class="heatmap-cell" style="background: #14B8A6;"></div>
+                <div class="heatmap-cell" style="background: #14B8A6;"></div>
+                <div class="heatmap-cell" style="background: #0D9488;"></div>
+                <div class="heatmap-cell" style="background: #14B8A6;"></div>
+                <div class="heatmap-cell" style="background: #B2DFDB;"></div>
+                <div class="heatmap-cell" style="background: #14B8A6;"></div>
+                <div class="heatmap-cell" style="background: #14B8A6;"></div>
+                <div class="heatmap-cell" style="background: #0D9488;"></div>
+                <div class="heatmap-cell" style="background: #14B8A6;"></div>
+                <div class="heatmap-cell" style="background: #14B8A6;"></div>
+                <div class="heatmap-cell" style="background: #0D9488;"></div>
+                <div class="heatmap-cell" style="background: #14B8A6;"></div>
+                <div class="heatmap-cell" style="background: #14B8A6;"></div>
+                <div class="heatmap-cell" style="background: #0D9488;"></div>
+                <div class="heatmap-cell" style="background: #14B8A6;"></div>
+                <div class="heatmap-cell" style="background: #14B8A6;"></div>
+                <div class="heatmap-cell" style="background: #0D9488;"></div>
+                <div class="heatmap-cell" style="background: #14B8A6;"></div>
+                <div class="heatmap-cell" style="background: #0D9488;"></div>
+              </div>
+            </div>
+
+            <!-- Client 2 -->
+            <div class="heatmap-client">
+              <div class="heatmap-client-header">
+                <span class="heatmap-client-name">岡田 康太</span>
+                <span class="heatmap-streak" style="background: #FEF3C7; color: #92400E;">3日連続</span>
+              </div>
+              <div class="heatmap-grid">
+                <div class="heatmap-cell" style="background: #F1F5F9;"></div>
+                <div class="heatmap-cell" style="background: #F1F5F9;"></div>
+                <div class="heatmap-cell" style="background: #B2DFDB;"></div>
+                <div class="heatmap-cell" style="background: #F1F5F9;"></div>
+                <div class="heatmap-cell" style="background: #F1F5F9;"></div>
+                <div class="heatmap-cell" style="background: #B2DFDB;"></div>
+                <div class="heatmap-cell" style="background: #14B8A6;"></div>
+                <div class="heatmap-cell" style="background: #F1F5F9;"></div>
+                <div class="heatmap-cell" style="background: #F1F5F9;"></div>
+                <div class="heatmap-cell" style="background: #F1F5F9;"></div>
+                <div class="heatmap-cell" style="background: #B2DFDB;"></div>
+                <div class="heatmap-cell" style="background: #14B8A6;"></div>
+                <div class="heatmap-cell" style="background: #F1F5F9;"></div>
+                <div class="heatmap-cell" style="background: #F1F5F9;"></div>
+                <div class="heatmap-cell" style="background: #F1F5F9;"></div>
+                <div class="heatmap-cell" style="background: #B2DFDB;"></div>
+                <div class="heatmap-cell" style="background: #F1F5F9;"></div>
+                <div class="heatmap-cell" style="background: #F1F5F9;"></div>
+                <div class="heatmap-cell" style="background: #B2DFDB;"></div>
+                <div class="heatmap-cell" style="background: #F1F5F9;"></div>
+                <div class="heatmap-cell" style="background: #F1F5F9;"></div>
+                <div class="heatmap-cell" style="background: #F1F5F9;"></div>
+                <div class="heatmap-cell" style="background: #F1F5F9;"></div>
+                <div class="heatmap-cell" style="background: #F1F5F9;"></div>
+                <div class="heatmap-cell" style="background: #F1F5F9;"></div>
+                <div class="heatmap-cell" style="background: #B2DFDB;"></div>
+                <div class="heatmap-cell" style="background: #14B8A6;"></div>
+                <div class="heatmap-cell" style="background: #14B8A6;"></div>
+              </div>
+            </div>
+
+            <!-- Client 3 -->
+            <div class="heatmap-client">
+              <div class="heatmap-client-header">
+                <span class="heatmap-client-name">ほしおテスト3.1</span>
+                <span class="heatmap-streak" style="background: #FEE2E2; color: #991B1B;">5日未記録</span>
+              </div>
+              <div class="heatmap-grid">
+                <div class="heatmap-cell" style="background: #B2DFDB;"></div>
+                <div class="heatmap-cell" style="background: #14B8A6;"></div>
+                <div class="heatmap-cell" style="background: #14B8A6;"></div>
+                <div class="heatmap-cell" style="background: #B2DFDB;"></div>
+                <div class="heatmap-cell" style="background: #F1F5F9;"></div>
+                <div class="heatmap-cell" style="background: #14B8A6;"></div>
+                <div class="heatmap-cell" style="background: #14B8A6;"></div>
+                <div class="heatmap-cell" style="background: #B2DFDB;"></div>
+                <div class="heatmap-cell" style="background: #14B8A6;"></div>
+                <div class="heatmap-cell" style="background: #F1F5F9;"></div>
+                <div class="heatmap-cell" style="background: #B2DFDB;"></div>
+                <div class="heatmap-cell" style="background: #14B8A6;"></div>
+                <div class="heatmap-cell" style="background: #14B8A6;"></div>
+                <div class="heatmap-cell" style="background: #B2DFDB;"></div>
+                <div class="heatmap-cell" style="background: #14B8A6;"></div>
+                <div class="heatmap-cell" style="background: #B2DFDB;"></div>
+                <div class="heatmap-cell" style="background: #14B8A6;"></div>
+                <div class="heatmap-cell" style="background: #B2DFDB;"></div>
+                <div class="heatmap-cell" style="background: #14B8A6;"></div>
+                <div class="heatmap-cell" style="background: #14B8A6;"></div>
+                <div class="heatmap-cell" style="background: #B2DFDB;"></div>
+                <div class="heatmap-cell" style="background: #14B8A6;"></div>
+                <div class="heatmap-cell" style="background: #B2DFDB;"></div>
+                <div class="heatmap-cell" style="background: #F1F5F9;"></div>
+                <div class="heatmap-cell" style="background: #F1F5F9;"></div>
+                <div class="heatmap-cell" style="background: #F1F5F9;"></div>
+                <div class="heatmap-cell" style="background: #F1F5F9;"></div>
+                <div class="heatmap-cell" style="background: #F1F5F9;"></div>
+              </div>
+            </div>
+
+            <!-- Legend -->
+            <div class="heatmap-legend">
+              <span class="heatmap-legend-label">少ない</span>
+              <div class="heatmap-cell" style="background: #F1F5F9; width: 12px; height: 12px;"></div>
+              <div class="heatmap-cell" style="background: #B2DFDB; width: 12px; height: 12px;"></div>
+              <div class="heatmap-cell" style="background: #14B8A6; width: 12px; height: 12px;"></div>
+              <div class="heatmap-cell" style="background: #0D9488; width: 12px; height: 12px;"></div>
+              <span class="heatmap-legend-label">多い</span>
+            </div>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <!-- ===== 4. Monthly Comparison ===== -->
+          <div class="section-title">月次比較</div>
+          <div class="section-subtitle">先月 vs 今月（全顧客合計）</div>
+
+          <div class="month-compare-grid">
+            <div class="month-card">
+              <div class="month-card-title">運動回数</div>
+              <div class="month-bars">
+                <div class="month-bar-group">
+                  <div class="month-bar" style="height: 48px; background: #E2E8F0;"></div>
+                  <div class="month-bar-label">先月</div>
+                </div>
+                <div class="month-bar-group">
+                  <div class="month-bar" style="height: 68px; background: #14B8A6;"></div>
+                  <div class="month-bar-label">今月</div>
+                </div>
+              </div>
+              <div class="month-card-change" style="color: #14B8A6;">+42% (68 → 97回)</div>
+            </div>
+
+            <div class="month-card">
+              <div class="month-card-title">総消費カロリー</div>
+              <div class="month-bars">
+                <div class="month-bar-group">
+                  <div class="month-bar" style="height: 52px; background: #E2E8F0;"></div>
+                  <div class="month-bar-label">先月</div>
+                </div>
+                <div class="month-bar-group">
+                  <div class="month-bar" style="height: 64px; background: #A855F7;"></div>
+                  <div class="month-bar-label">今月</div>
+                </div>
+              </div>
+              <div class="month-card-change" style="color: #14B8A6;">+23% (12.4k → 15.3k kcal)</div>
+            </div>
+
+            <div class="month-card">
+              <div class="month-card-title">食事記録率</div>
+              <div class="month-bars">
+                <div class="month-bar-group">
+                  <div class="month-bar" style="height: 44px; background: #E2E8F0;"></div>
+                  <div class="month-bar-label">先月</div>
+                </div>
+                <div class="month-bar-group">
+                  <div class="month-bar" style="height: 60px; background: #F97316;"></div>
+                  <div class="month-bar-label">今月</div>
+                </div>
+              </div>
+              <div class="month-card-change" style="color: #14B8A6;">+18pt (54% → 72%)</div>
+            </div>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <!-- ===== 5. Achievement Highlights ===== -->
+          <div class="section-title">成果ハイライト</div>
+          <div class="section-subtitle">自動検出された顧客の成果</div>
+
+          <div class="achievements">
+            <div class="achievement-card">
+              <div class="achievement-icon" style="background: #F0FDFA; color: #14B8A6;">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+              </div>
+              <div class="achievement-content">
+                <div class="achievement-title" style="color: #0D9488;">体重 -6.2 kg 達成</div>
+                <div class="achievement-desc">目標 70.0 kg まであと 2.3 kg。過去最高ペースで減量中。</div>
+                <div class="achievement-client">田中さとし</div>
+              </div>
+            </div>
+
+            <div class="achievement-card">
+              <div class="achievement-icon" style="background: #FFF7ED; color: #F97316;">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z"/></svg>
+              </div>
+              <div class="achievement-content">
+                <div class="achievement-title" style="color: #C2410C;">14日連続記録</div>
+                <div class="achievement-desc">食事・体重・運動の記録を2週間継続中。習慣が定着。</div>
+                <div class="achievement-client">田中さとし</div>
+              </div>
+            </div>
+
+            <div class="achievement-card">
+              <div class="achievement-icon" style="background: #FAF5FF; color: #A855F7;">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              </div>
+              <div class="achievement-content">
+                <div class="achievement-title" style="color: #7E22CE;">運動量 2倍に増加</div>
+                <div class="achievement-desc">先月比で運動回数が 8回 → 16回に。週4ペースを維持。</div>
+                <div class="achievement-client">岡田 康太</div>
+              </div>
+            </div>
+
+            <div class="achievement-card">
+              <div class="achievement-icon" style="background: #F0FDFA; color: #14B8A6;">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              </div>
+              <div class="achievement-content">
+                <div class="achievement-title" style="color: #0D9488;">セッション皆勤</div>
+                <div class="achievement-desc">今月の予定セッション 8回中 8回すべて出席。キャンセルゼロ。</div>
+                <div class="achievement-client">ほしお5.1</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Existing below -->
+        <div class="existing-below">
+          <div class="existing-label">既存: メッセージ + アラート + クイックアクション</div>
+          <div class="two-col">
+            <div class="col-placeholder"></div>
+            <div class="col-placeholder"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Side Panel -->
+    <div class="side-panel">
+      <h2>改善提案（5項目）</h2>
+
+      <div class="proposal-item">
+        <span class="proposal-num">1</span>
+        <span class="proposal-title">目標達成プログレスバー</span>
+        <div class="proposal-desc">Bullet Chart形式で開始体重→現在→目標を1本のバーで表示。達成率バッジの色が進捗に応じて変化（緑/黄/グレー）。クリックで顧客詳細へ。</div>
+      </div>
+
+      <div class="proposal-item">
+        <span class="proposal-num">2</span>
+        <span class="proposal-title">体重推移スパークライン</span>
+        <div class="proposal-desc">顧客ごとのミニ折れ線（30日間）で体重トレンドを一覧。減少=ティール、増加=レッドで方向性が一目瞭然。クリックで詳細グラフへ。</div>
+      </div>
+
+      <div class="proposal-item">
+        <span class="proposal-num">3</span>
+        <span class="proposal-title">記録習慣ヒートマップ</span>
+        <div class="proposal-desc">GitHub風の28日間ヒートマップで記録の有無と量を可視化。連続記録日数バッジ付き。未記録が続く顧客にはアラートバッジ。</div>
+      </div>
+
+      <div class="proposal-item">
+        <span class="proposal-num">4</span>
+        <span class="proposal-title">月次比較バーチャート</span>
+        <div class="proposal-desc">先月 vs 今月を3指標（運動回数・消費カロリー・食事記録率）で比較。全顧客合計なのでトレーナーとしての成果が見える。</div>
+      </div>
+
+      <div class="proposal-item">
+        <span class="proposal-num">5</span>
+        <span class="proposal-title">成果ハイライトカード</span>
+        <div class="proposal-desc">自動検出ロジックで「体重-Xkg達成」「連続N日記録」「運動量N倍増」「セッション皆勤」などをカードで表示。トレーナーの指導成果の証。</div>
+      </div>
+
+      <div style="margin-top: 20px; padding: 16px; background: #F8FAFC; border-radius: 6px; border: 1px solid #F1F5F9;">
+        <div style="font-size: 12px; font-weight: 600; color: #0F172A; margin-bottom: 6px;">配置案</div>
+        <div style="font-size: 12px; color: #475569; line-height: 1.6;">
+          前回のグラフセクション（アクティビティ概況）の下に配置。
+          セッション「量」→「質/成果」の流れで情報設計。
+          ダッシュボード全体の構成:
+          <br><br>
+          KPI → セッション → タイムライン → <strong>アクティビティ概況</strong> → <strong>成果ビジュアライズ</strong> → メッセージ + アラート
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

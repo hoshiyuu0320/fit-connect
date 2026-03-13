@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FitConnect Dashboard — グラフ・ゲージ ワイヤーフレーム</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif; background: #F8FAFC; color: #0F172A; }
+
+  .container { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+
+  /* Page Header */
+  .page-header { text-align: center; margin-bottom: 32px; }
+  .page-header .label { font-size: 11px; font-weight: 600; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.08em; }
+  .page-header h1 { font-size: 24px; font-weight: 700; margin: 4px 0; }
+  .page-header p { font-size: 14px; color: #475569; }
+
+  /* Layout */
+  .page-layout { display: flex; gap: 32px; }
+  .main-content { flex: 1; min-width: 0; }
+  .side-panel {
+    width: 340px; flex-shrink: 0; background: #fff; border: 1px solid #E2E8F0;
+    border-radius: 6px; padding: 24px; height: fit-content; position: sticky; top: 24px;
+  }
+  .side-panel h2 { font-size: 15px; font-weight: 700; margin-bottom: 16px; }
+
+  /* Proposals */
+  .proposal-item { padding: 12px 0; border-bottom: 1px solid #F1F5F9; }
+  .proposal-item:last-child { border-bottom: none; }
+  .proposal-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: 50%; background: #14B8A6;
+    color: #fff; font-size: 11px; font-weight: 700; margin-right: 8px;
+  }
+  .proposal-title { font-size: 13px; font-weight: 600; display: inline; }
+  .proposal-desc { font-size: 12px; color: #475569; margin-top: 4px; line-height: 1.6; padding-left: 30px; }
+
+  /* Dashboard Mock */
+  .dashboard-mock { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; overflow: hidden; }
+  .existing-section { padding: 20px 24px; border-bottom: 1px solid #E2E8F0; opacity: 0.35; }
+  .existing-label { font-size: 12px; font-weight: 600; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.05em; }
+  .existing-placeholder { margin-top: 8px; height: 48px; background: #E2E8F0; border-radius: 6px; }
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 8px; }
+  .kpi-placeholder { height: 72px; background: #E2E8F0; border-radius: 6px; }
+
+  /* NEW Section */
+  .new-section {
+    padding: 24px; background: #fff; border: 2px dashed #14B8A6; position: relative;
+  }
+  .new-badge {
+    position: absolute; top: -12px; left: 24px; background: #14B8A6; color: #fff;
+    font-size: 11px; font-weight: 700; padding: 3px 12px; border-radius: 4px;
+  }
+  .section-title { font-size: 15px; font-weight: 700; margin-bottom: 20px; }
+
+  /* Charts Grid: 3 columns */
+  .charts-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .chart-card {
+    background: #F8FAFC; border: 1px solid #F1F5F9; border-radius: 6px; padding: 20px;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .chart-card-title { font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 4px; text-align: center; }
+  .chart-card-value { font-size: 11px; color: #94A3B8; margin-bottom: 16px; text-align: center; }
+
+  /* Full-width chart card */
+  .chart-card-full {
+    grid-column: 1 / -1;
+    background: #F8FAFC; border: 1px solid #F1F5F9; border-radius: 6px; padding: 20px;
+  }
+
+  /* ===== Ring Gauge (SVG) ===== */
+  .ring-container { position: relative; width: 120px; height: 120px; }
+  .ring-center-text {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    text-align: center;
+  }
+  .ring-center-text .pct { font-size: 28px; font-weight: 700; color: #0F172A; }
+  .ring-center-text .unit { font-size: 12px; color: #94A3B8; }
+
+  /* ===== Donut Chart ===== */
+  .donut-legend { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; width: 100%; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+  .legend-label { color: #475569; flex: 1; }
+  .legend-value { font-weight: 600; color: #0F172A; }
+
+  /* ===== Line Chart (fake) ===== */
+  .line-chart-area { width: 100%; height: 140px; position: relative; }
+  .line-chart-area svg { width: 100%; height: 100%; }
+  .chart-x-labels { display: flex; justify-content: space-between; font-size: 10px; color: #94A3B8; margin-top: 4px; padding: 0 4px; }
+
+  /* ===== Bar Chart ===== */
+  .bar-chart { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+  .bar-row { display: flex; align-items: center; gap: 10px; }
+  .bar-name { font-size: 12px; color: #475569; width: 80px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar-track { flex: 1; height: 20px; background: #F1F5F9; border-radius: 4px; overflow: hidden; position: relative; }
+  .bar-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+  .bar-count { font-size: 12px; font-weight: 600; color: #0F172A; width: 40px; text-align: right; flex-shrink: 0; }
+
+  /* Existing below */
+  .existing-below { padding: 20px 24px; opacity: 0.35; border-top: 1px solid #E2E8F0; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+  .col-placeholder { height: 100px; background: #E2E8F0; border-radius: 6px; }
+
+  @media (max-width: 960px) {
+    .page-layout { flex-direction: column; }
+    .side-panel { width: 100%; position: static; }
+    .charts-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="page-header">
+    <span class="label">WIREFRAME</span>
+    <h1>ダッシュボード — グラフ・ゲージセクション</h1>
+    <p>セッション消化率・記録推移・種別割合・顧客ランキングを可視化</p>
+  </div>
+
+  <div class="page-layout">
+    <div class="main-content">
+      <div class="dashboard-mock">
+
+        <!-- Existing: Header + KPI -->
+        <div class="existing-section">
+          <div class="existing-label">既存: ヘッダー + KPIカード</div>
+          <div class="kpi-row">
+            <div class="kpi-placeholder"></div>
+            <div class="kpi-placeholder"></div>
+            <div class="kpi-placeholder"></div>
+            <div class="kpi-placeholder"></div>
+          </div>
+        </div>
+
+        <!-- Existing: Today's Sessions -->
+        <div class="existing-section">
+          <div class="existing-label">既存: 本日のセッション</div>
+          <div class="existing-placeholder"></div>
+        </div>
+
+        <!-- Existing: Recent Records Timeline -->
+        <div class="existing-section">
+          <div class="existing-label">既存: 最近の記録タイムライン</div>
+          <div class="existing-placeholder"></div>
+        </div>
+
+        <!-- ★ NEW: Charts Section ★ -->
+        <div class="new-section">
+          <div class="new-badge">NEW</div>
+          <div class="section-title">アクティビティ概況</div>
+
+          <div class="charts-grid">
+
+            <!-- 1. Ring Gauge: Session Completion -->
+            <div class="chart-card">
+              <div class="chart-card-title">セッション消化率</div>
+              <div class="chart-card-value">今月の進捗</div>
+              <div class="ring-container">
+                <svg viewBox="0 0 120 120" width="120" height="120">
+                  <!-- Background ring -->
+                  <circle cx="60" cy="60" r="48" fill="none" stroke="#F1F5F9" stroke-width="10"/>
+                  <!-- Progress ring (72%) -->
+                  <circle cx="60" cy="60" r="48" fill="none" stroke="#14B8A6" stroke-width="10"
+                    stroke-dasharray="301.6" stroke-dashoffset="84.4"
+                    stroke-linecap="round" transform="rotate(-90 60 60)"/>
+                  <!-- Remaining cancelled (small red arc) -->
+                  <circle cx="60" cy="60" r="48" fill="none" stroke="#DC2626" stroke-width="10"
+                    stroke-dasharray="301.6" stroke-dashoffset="271.4"
+                    stroke-linecap="round" transform="rotate(169 60 60)" opacity="0.6"/>
+                </svg>
+                <div class="ring-center-text">
+                  <div class="pct">72</div>
+                  <div class="unit">%</div>
+                </div>
+              </div>
+              <div class="donut-legend" style="margin-top: 16px;">
+                <div class="legend-item">
+                  <div class="legend-dot" style="background: #14B8A6;"></div>
+                  <span class="legend-label">完了</span>
+                  <span class="legend-value">18</span>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-dot" style="background: #F1F5F9;"></div>
+                  <span class="legend-label">予定</span>
+                  <span class="legend-value">5</span>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-dot" style="background: #DC2626; opacity: 0.6;"></div>
+                  <span class="legend-label">キャンセル</span>
+                  <span class="legend-value">2</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. Donut: Record Type Breakdown -->
+            <div class="chart-card">
+              <div class="chart-card-title">記録種別の割合</div>
+              <div class="chart-card-value">今週の内訳</div>
+              <svg viewBox="0 0 120 120" width="120" height="120">
+                <!-- Meal: 48.5% -->
+                <circle cx="60" cy="60" r="48" fill="none" stroke="#F97316" stroke-width="10"
+                  stroke-dasharray="146.1 155.5" stroke-linecap="round" transform="rotate(-90 60 60)"/>
+                <!-- Exercise: 33% -->
+                <circle cx="60" cy="60" r="48" fill="none" stroke="#A855F7" stroke-width="10"
+                  stroke-dasharray="99.5 202.1" stroke-linecap="round" transform="rotate(84.6 60 60)"/>
+                <!-- Weight: 18.5% -->
+                <circle cx="60" cy="60" r="48" fill="none" stroke="#14B8A6" stroke-width="10"
+                  stroke-dasharray="55.8 245.8" stroke-linecap="round" transform="rotate(203.4 60 60)"/>
+              </svg>
+              <div class="donut-legend" style="margin-top: 16px;">
+                <div class="legend-item">
+                  <div class="legend-dot" style="background: #F97316;"></div>
+                  <span class="legend-label">食事</span>
+                  <span class="legend-value">47件 (48%)</span>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-dot" style="background: #A855F7;"></div>
+                  <span class="legend-label">運動</span>
+                  <span class="legend-value">32件 (33%)</span>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-dot" style="background: #14B8A6;"></div>
+                  <span class="legend-label">体重</span>
+                  <span class="legend-value">18件 (19%)</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 3. Ring Gauge: Recording Rate -->
+            <div class="chart-card">
+              <div class="chart-card-title">顧客記録率</div>
+              <div class="chart-card-value">今週記録した顧客の割合</div>
+              <div class="ring-container">
+                <svg viewBox="0 0 120 120" width="120" height="120">
+                  <circle cx="60" cy="60" r="48" fill="none" stroke="#F1F5F9" stroke-width="10"/>
+                  <!-- 78% -->
+                  <circle cx="60" cy="60" r="48" fill="none" stroke="#0F172A" stroke-width="10"
+                    stroke-dasharray="301.6" stroke-dashoffset="66.4"
+                    stroke-linecap="round" transform="rotate(-90 60 60)"/>
+                </svg>
+                <div class="ring-center-text">
+                  <div class="pct">78</div>
+                  <div class="unit">%</div>
+                </div>
+              </div>
+              <div style="text-align: center; margin-top: 16px;">
+                <span style="font-size: 13px; font-weight: 600; color: #0F172A;">7</span>
+                <span style="font-size: 12px; color: #94A3B8;"> / 9 人が記録</span>
+              </div>
+              <div style="text-align: center; margin-top: 4px;">
+                <span style="font-size: 11px; color: #14B8A6; font-weight: 500;">+4pt vs 先週</span>
+              </div>
+            </div>
+
+            <!-- 4. Line Chart: 7-Day Record Trend (full width) -->
+            <div class="chart-card-full">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                <div>
+                  <div class="chart-card-title" style="text-align: left; margin-bottom: 2px;">記録数の推移（過去7日間）</div>
+                  <div class="chart-card-value" style="text-align: left;">日別の食事・体重・運動記録件数</div>
+                </div>
+                <div class="donut-legend" style="flex-direction: row; gap: 16px; margin-top: 0; width: auto;">
+                  <div class="legend-item"><div class="legend-dot" style="background: #F97316;"></div><span class="legend-label">食事</span></div>
+                  <div class="legend-item"><div class="legend-dot" style="background: #14B8A6;"></div><span class="legend-label">体重</span></div>
+                  <div class="legend-item"><div class="legend-dot" style="background: #A855F7;"></div><span class="legend-label">運動</span></div>
+                </div>
+              </div>
+              <div class="line-chart-area">
+                <svg viewBox="0 0 600 140" preserveAspectRatio="none">
+                  <!-- Grid lines -->
+                  <line x1="0" y1="28" x2="600" y2="28" stroke="#F1F5F9" stroke-width="1"/>
+                  <line x1="0" y1="56" x2="600" y2="56" stroke="#F1F5F9" stroke-width="1"/>
+                  <line x1="0" y1="84" x2="600" y2="84" stroke="#F1F5F9" stroke-width="1"/>
+                  <line x1="0" y1="112" x2="600" y2="112" stroke="#F1F5F9" stroke-width="1"/>
+
+                  <!-- Meal line (orange) -->
+                  <polyline points="0,70 100,56 200,42 300,49 400,35 500,42 600,28"
+                    fill="none" stroke="#F97316" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <!-- Meal area -->
+                  <polygon points="0,70 100,56 200,42 300,49 400,35 500,42 600,28 600,140 0,140"
+                    fill="#F97316" opacity="0.06"/>
+
+                  <!-- Exercise line (purple) -->
+                  <polyline points="0,91 100,84 200,77 300,84 400,70 500,77 600,63"
+                    fill="none" stroke="#A855F7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <!-- Exercise area -->
+                  <polygon points="0,91 100,84 200,77 300,84 400,70 500,77 600,63 600,140 0,140"
+                    fill="#A855F7" opacity="0.06"/>
+
+                  <!-- Weight line (teal) -->
+                  <polyline points="0,112 100,105 200,105 300,98 400,105 500,98 600,91"
+                    fill="none" stroke="#14B8A6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+                  <!-- Dots for today (last point) -->
+                  <circle cx="600" cy="28" r="4" fill="#F97316"/>
+                  <circle cx="600" cy="63" r="4" fill="#A855F7"/>
+                  <circle cx="600" cy="91" r="4" fill="#14B8A6"/>
+                </svg>
+              </div>
+              <div class="chart-x-labels">
+                <span>3/5 (水)</span><span>3/6 (木)</span><span>3/7 (金)</span><span>3/8 (土)</span><span>3/9 (日)</span><span>3/10 (月)</span><span>3/11 (火)</span>
+              </div>
+            </div>
+
+            <!-- 5. Bar Chart: Client Activity Ranking (full width) -->
+            <div class="chart-card-full">
+              <div class="chart-card-title" style="text-align: left; margin-bottom: 2px;">顧客アクティビティランキング</div>
+              <div class="chart-card-value" style="text-align: left; margin-bottom: 16px;">今週の記録件数 TOP5</div>
+              <div class="bar-chart">
+                <div class="bar-row">
+                  <div class="bar-name">田中さとし</div>
+                  <div class="bar-track"><div class="bar-fill" style="width: 100%; background: #14B8A6;"></div></div>
+                  <div class="bar-count">24件</div>
+                </div>
+                <div class="bar-row">
+                  <div class="bar-name">岡田 康太</div>
+                  <div class="bar-track"><div class="bar-fill" style="width: 79%; background: #14B8A6; opacity: 0.85;"></div></div>
+                  <div class="bar-count">19件</div>
+                </div>
+                <div class="bar-row">
+                  <div class="bar-name">ほしおテスト3.1</div>
+                  <div class="bar-track"><div class="bar-fill" style="width: 63%; background: #14B8A6; opacity: 0.7;"></div></div>
+                  <div class="bar-count">15件</div>
+                </div>
+                <div class="bar-row">
+                  <div class="bar-name">ほしお5.1</div>
+                  <div class="bar-track"><div class="bar-fill" style="width: 46%; background: #14B8A6; opacity: 0.55;"></div></div>
+                  <div class="bar-count">11件</div>
+                </div>
+                <div class="bar-row">
+                  <div class="bar-name">テストほしお4</div>
+                  <div class="bar-track"><div class="bar-fill" style="width: 25%; background: #14B8A6; opacity: 0.4;"></div></div>
+                  <div class="bar-count">6件</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Existing: Messages + Alerts -->
+        <div class="existing-below">
+          <div class="existing-label">既存: メッセージ + アラート + クイックアクション</div>
+          <div class="two-col">
+            <div class="col-placeholder"></div>
+            <div class="col-placeholder"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Side Panel -->
+    <div class="side-panel">
+      <h2>改善提案（5項目）</h2>
+
+      <div class="proposal-item">
+        <span class="proposal-num">1</span>
+        <span class="proposal-title">セッション消化率リングゲージ</span>
+        <div class="proposal-desc">今月の完了/予定/キャンセルを円形ゲージで表示。sessions テーブルの status から集計。中央に完了率%を大きく表示。</div>
+      </div>
+
+      <div class="proposal-item">
+        <span class="proposal-num">2</span>
+        <span class="proposal-title">記録種別ドーナツチャート</span>
+        <div class="proposal-desc">今週の食事・運動・体重記録の割合をドーナツチャートで可視化。record_stats の件数から計算。色は各記録種別の既存カラーを流用。</div>
+      </div>
+
+      <div class="proposal-item">
+        <span class="proposal-num">3</span>
+        <span class="proposal-title">顧客記録率ゲージ</span>
+        <div class="proposal-desc">全顧客のうち今週記録を送った割合をリングゲージで表示。エンゲージメントの健全性を一目で判断。activeRecordingClients / totalActiveClients で計算。</div>
+      </div>
+
+      <div class="proposal-item">
+        <span class="proposal-num">4</span>
+        <span class="proposal-title">7日間推移の折れ線グラフ</span>
+        <div class="proposal-desc">過去7日間の日別記録件数を食事・体重・運動の3ラインで表示。Rechartsの LineChart + Area で実装。曜日ごとのパターンが見える。</div>
+      </div>
+
+      <div class="proposal-item">
+        <span class="proposal-num">5</span>
+        <span class="proposal-title">顧客アクティビティランキング</span>
+        <div class="proposal-desc">今週の記録件数TOP5を横棒グラフで表示。積極的な顧客とフォローが必要な顧客が一目で分かる。クリックで顧客詳細へ遷移。</div>
+      </div>
+
+      <div style="margin-top: 20px; padding: 16px; background: #F8FAFC; border-radius: 6px; border: 1px solid #F1F5F9;">
+        <div style="font-size: 12px; font-weight: 600; color: #0F172A; margin-bottom: 6px;">実装ライブラリ</div>
+        <div style="font-size: 12px; color: #475569; line-height: 1.6;">
+          <strong>Recharts</strong> — React向け軽量チャートライブラリ。
+          PieChart（ドーナツ）、LineChart（折れ線）、BarChart（横棒）、RadialBarChart（ゲージ）が全てカバーできる。
+          SVGベースでカスタムスタイリングが容易。
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
