@@ -201,18 +201,18 @@ export function GoalAchievementChart({
   const hasData = chartData.length > 0
 
   return (
-    <Card>
+    <Card className="border border-[#E2E8F0] rounded-md" style={{ boxShadow: 'none' }}>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>目標達成率推移</CardTitle>
-          <div className="inline-flex rounded-lg bg-gray-100 p-1" data-pdf-hide>
+          <CardTitle className="text-[#0F172A]">目標達成率推移</CardTitle>
+          <div className="inline-flex rounded-md border border-[#E2E8F0] p-1" data-pdf-hide>
             <button
               type="button"
               onClick={() => setViewMode('weekly')}
               className={`px-3 py-1 text-sm rounded-md transition-colors ${
                 viewMode === 'weekly'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'bg-[#14B8A6] text-white'
+                  : 'bg-[#F8FAFC] text-[#64748B] hover:text-[#475569]'
               }`}
             >
               週次
@@ -222,8 +222,8 @@ export function GoalAchievementChart({
               onClick={() => setViewMode('monthly')}
               className={`px-3 py-1 text-sm rounded-md transition-colors ${
                 viewMode === 'monthly'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'bg-[#14B8A6] text-white'
+                  : 'bg-[#F8FAFC] text-[#64748B] hover:text-[#475569]'
               }`}
             >
               月次
@@ -238,12 +238,12 @@ export function GoalAchievementChart({
               data={chartData}
               margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
             >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+              <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#94A3B8' }} />
               <YAxis
                 domain={[0, 100]}
                 unit="%"
-                tick={{ fontSize: 12 }}
+                tick={{ fontSize: 12, fill: '#94A3B8' }}
                 width={45}
               />
               <Tooltip
@@ -251,13 +251,19 @@ export function GoalAchievementChart({
                   if (value == null) return ['--', name]
                   return [`${value}%`, name]
                 }}
+                contentStyle={{
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: '6px',
+                  boxShadow: 'none',
+                }}
               />
               <Legend />
               {targetWeight !== 0 && (
                 <Line
                   type="monotone"
                   dataKey="weightProgress"
-                  stroke="#3B82F6"
+                  stroke="#2563EB"
                   name="体重進捗"
                   dot={{ r: 4 }}
                   connectNulls={true}
@@ -266,7 +272,7 @@ export function GoalAchievementChart({
               <Line
                 type="monotone"
                 dataKey="mealRate"
-                stroke="#22C55E"
+                stroke="#EA580C"
                 name="食事記録"
                 dot={{ r: 4 }}
                 connectNulls={true}
@@ -274,7 +280,7 @@ export function GoalAchievementChart({
               <Line
                 type="monotone"
                 dataKey="exerciseRate"
-                stroke="#F97316"
+                stroke="#16A34A"
                 name="運動記録"
                 dot={{ r: 4 }}
                 connectNulls={true}
@@ -282,7 +288,7 @@ export function GoalAchievementChart({
               <Line
                 type="monotone"
                 dataKey="totalScore"
-                stroke="#8B5CF6"
+                stroke="#14B8A6"
                 strokeWidth={3}
                 name="総合スコア"
                 dot={{ r: 4 }}
@@ -292,7 +298,7 @@ export function GoalAchievementChart({
           </ResponsiveContainer>
         ) : (
           <div className="flex items-center justify-center h-[300px]">
-            <p className="text-gray-500 text-sm">データがありません</p>
+            <p className="text-[#94A3B8] text-sm">データがありません</p>
           </div>
         )}
       </CardContent>

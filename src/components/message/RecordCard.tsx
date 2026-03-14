@@ -22,27 +22,27 @@ interface RecordCardProps {
 // 種別ごとのスタイル定義
 const styleMap: Record<
   RecordCardType,
-  { border: string; bg: string; headerText: string }
+  { borderLeft: string; headerBg: string; headerText: string }
 > = {
   weight: {
-    border: 'border-l-blue-400',
-    bg: 'bg-blue-50',
-    headerText: 'text-blue-700',
+    borderLeft: 'border-l-[#2563EB]',
+    headerBg: 'bg-[#EFF6FF]',
+    headerText: 'text-[#2563EB]',
   },
   meal: {
-    border: 'border-l-orange-400',
-    bg: 'bg-orange-50',
-    headerText: 'text-orange-700',
+    borderLeft: 'border-l-[#EA580C]',
+    headerBg: 'bg-[#FFF7ED]',
+    headerText: 'text-[#EA580C]',
   },
   exercise: {
-    border: 'border-l-green-400',
-    bg: 'bg-green-50',
-    headerText: 'text-green-700',
+    borderLeft: 'border-l-[#16A34A]',
+    headerBg: 'bg-[#F0FDF4]',
+    headerText: 'text-[#16A34A]',
   },
   achievement: {
-    border: 'border-l-purple-400',
-    bg: 'bg-purple-50',
-    headerText: 'text-purple-700',
+    borderLeft: 'border-l-[#7C3AED]',
+    headerBg: 'bg-[#FAF5FF]',
+    headerText: 'text-[#7C3AED]',
   },
 }
 
@@ -150,7 +150,7 @@ function renderDetailLine(line: string): React.ReactNode {
   if (line.startsWith('🔥 ')) {
     return (
       <>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-orange-500 flex-shrink-0">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#EA580C] flex-shrink-0">
           <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
         </svg>
         {line.slice(2)}
@@ -160,7 +160,7 @@ function renderDetailLine(line: string): React.ReactNode {
   if (line.startsWith('💬 ')) {
     return (
       <>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 flex-shrink-0">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#94A3B8] flex-shrink-0">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
         </svg>
         {line.slice(2)}
@@ -178,58 +178,60 @@ export function RecordCard({ data, clientId, imageUrls, onImageClick }: RecordCa
     <div
       className={`
         max-w-xs md:max-w-md lg:max-w-lg
-        rounded-lg border-l-4 p-3
-        ${style.border} ${style.bg}
+        border border-[#E2E8F0] border-l-4 rounded-md overflow-hidden
+        ${style.borderLeft}
         ${clientId ? 'hover:brightness-95 transition-all cursor-pointer' : ''}
       `}
     >
       {/* ヘッダー: アイコン + ラベル */}
-      <div className={`flex items-center justify-between mb-1.5`}>
+      <div className={`flex items-center justify-between px-3 py-2 ${style.headerBg}`}>
         <div className={`flex items-center gap-1.5 ${style.headerText}`}>
           <Icon />
           <span className="text-sm font-semibold">{data.label}</span>
         </div>
         {clientId && (
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#94A3B8]">
             <polyline points="9 18 15 12 9 6" />
           </svg>
         )}
       </div>
 
-      {/* ボディ: details を1行ずつ表示 */}
-      {data.details.length > 0 && (
-        <div className="space-y-0.5">
-          {data.details.map((line, index) => (
-            <p key={index} className="text-sm text-gray-700 break-words flex items-center gap-1">
-              {renderDetailLine(line)}
-            </p>
-          ))}
-        </div>
-      )}
+      {/* ボディ */}
+      <div className="bg-white px-3 py-2.5">
+        {data.details.length > 0 && (
+          <div className="space-y-0.5">
+            {data.details.map((line, index) => (
+              <p key={index} className="text-sm text-[#475569] break-words flex items-center gap-1">
+                {renderDetailLine(line)}
+              </p>
+            ))}
+          </div>
+        )}
 
-      {/* 添付画像（食事記録など） */}
-      {imageUrls && imageUrls.length > 0 && (
-        <div className="flex flex-wrap gap-2 mt-2">
-          {imageUrls.map((url, imgIndex) => (
-            <button
-              key={imgIndex}
-              type="button"
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                onImageClick?.(url)
-              }}
-              className="block"
-            >
-              <img
-                src={url}
-                alt={`添付画像 ${imgIndex + 1}`}
-                className="w-24 h-24 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
-              />
-            </button>
-          ))}
-        </div>
-      )}
+        {/* 添付画像（食事記録など） */}
+        {imageUrls && imageUrls.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            {imageUrls.map((url, imgIndex) => (
+              <button
+                key={imgIndex}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  onImageClick?.(url)
+                }}
+                className="block"
+              >
+                <img
+                  src={url}
+                  alt={`添付画像 ${imgIndex + 1}`}
+                  className="w-24 h-24 object-cover rounded-sm border border-black/5 cursor-pointer hover:opacity-80 transition-opacity"
+                />
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 

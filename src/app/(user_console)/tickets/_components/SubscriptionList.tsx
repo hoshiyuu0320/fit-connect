@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { format } from 'date-fns'
+import { Pencil } from 'lucide-react'
 import type { TicketSubscription, TicketTemplate, Client } from '@/types/client'
 import { CreateSubscriptionModal } from './CreateSubscriptionModal'
 import { SubscriptionStatusDialog } from './SubscriptionStatusDialog'
@@ -36,19 +37,22 @@ export function SubscriptionList({ subscriptions, templates, clients, onRefetch 
     switch (status) {
       case 'active':
         return (
-          <span className="inline-block px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-700 rounded">
+          <span className="inline-flex items-center gap-1.5 px-2 py-1 text-[11px] font-medium bg-[#F0FDF4] text-[#16A34A] border border-[#BBF7D0] rounded-md">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A] flex-shrink-0" />
             有効
           </span>
         )
       case 'paused':
         return (
-          <span className="inline-block px-2 py-1 text-xs font-medium bg-amber-100 text-amber-700 rounded">
+          <span className="inline-flex items-center gap-1.5 px-2 py-1 text-[11px] font-medium bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A] rounded-md">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#B45309] flex-shrink-0" />
             一時停止
           </span>
         )
       case 'cancelled':
         return (
-          <span className="inline-block px-2 py-1 text-xs font-medium bg-rose-100 text-rose-700 rounded">
+          <span className="inline-flex items-center gap-1.5 px-2 py-1 text-[11px] font-medium bg-[#F8FAFC] text-[#94A3B8] border border-[#E2E8F0] rounded-md">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#94A3B8] flex-shrink-0" />
             解約済
           </span>
         )
@@ -59,10 +63,10 @@ export function SubscriptionList({ subscriptions, templates, clients, onRefetch 
     <div className="space-y-4">
       {/* ヘッダー */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">月契約</h2>
+        <h2 className="text-lg font-semibold text-[#0F172A]">月契約</h2>
         <button
           onClick={() => setCreateOpen(true)}
-          className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+          className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-[#14B8A6] rounded-md hover:bg-[#0D9488]"
         >
           + 月契約を追加
         </button>
@@ -70,68 +74,90 @@ export function SubscriptionList({ subscriptions, templates, clients, onRefetch 
 
       {/* 月契約一覧 */}
       {subscriptions.length > 0 ? (
-        <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+        <div className="bg-white rounded-md border border-[#E2E8F0] overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full">
+              <thead className="bg-[#F8FAFC]">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-[#94A3B8] border-b border-[#E2E8F0]">
                     顧客名
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-[#94A3B8] border-b border-[#E2E8F0]">
                     テンプレート
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-[#94A3B8] border-b border-[#E2E8F0]">
                     ステータス
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-[#94A3B8] border-b border-[#E2E8F0]">
                     開始日
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-[11px] font-semibold text-[#94A3B8] border-b border-[#E2E8F0]">
                     次回発行日
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-right text-[11px] font-semibold text-[#94A3B8] border-b border-[#E2E8F0]">
                     操作
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white">
                 {subscriptions.map((sub) => (
-                  <tr key={sub.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {sub.client_name}
+                  <tr key={sub.id} className="border-b border-[#E2E8F0] hover:bg-[#FAFBFC]">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        {(() => {
+                          const clientImage = clients.find(c => c.client_id === sub.client_id)?.profile_image_url
+                          return clientImage ? (
+                            <img
+                              src={clientImage}
+                              alt={sub.client_name ?? ''}
+                              className="w-7 h-7 rounded-full object-cover flex-shrink-0"
+                            />
+                          ) : (
+                            <div
+                              className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-semibold flex-shrink-0 border ${
+                                sub.status === 'cancelled'
+                                  ? 'bg-[#F8FAFC] border-[#E2E8F0] text-[#94A3B8]'
+                                  : 'bg-[#F0FDFA] border-[#CCFBF1] text-[#14B8A6]'
+                              }`}
+                            >
+                              {(sub.client_name ?? '?').charAt(0)}
+                            </div>
+                          )
+                        })()}
+                        <span className="text-[13px] font-medium text-[#0F172A]">{sub.client_name ?? '—'}</span>
+                      </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                    <td className="px-6 py-4 whitespace-nowrap">
                       {sub.template ? (
-                        <>
-                          {sub.template.template_name}
-                          <span className="ml-2 text-gray-400">
-                            ({sub.template.total_sessions}回/{sub.template.valid_months}ヶ月)
-                          </span>
-                        </>
+                        <div>
+                          <p className="text-[13px] text-[#0F172A]">{sub.template.template_name}</p>
+                          <p className="text-[11px] text-[#94A3B8]">
+                            {sub.template.total_sessions}回/{sub.template.valid_months}ヶ月
+                          </p>
+                        </div>
                       ) : (
-                        <span className="text-gray-400">テンプレート削除済み</span>
+                        <span className="text-[13px] text-[#94A3B8]">テンプレート削除済み</span>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getStatusBadge(sub.status)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                    <td className="px-6 py-4 whitespace-nowrap text-[13px] text-[#0F172A]">
                       {format(new Date(sub.start_date), 'yyyy/MM/dd')}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                    <td className="px-6 py-4 whitespace-nowrap text-[13px] text-[#0F172A]">
                       {format(new Date(sub.next_issue_date), 'yyyy/MM/dd')}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm space-x-2">
+                    <td className="px-6 py-4 whitespace-nowrap text-right space-x-1">
                       <button
                         onClick={() => setStatusSub(sub)}
-                        className="px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                        className="px-2 py-1 text-[12px] font-medium text-[#475569] hover:text-[#0F172A] hover:bg-[#F8FAFC] rounded-md"
                       >
                         ステータス変更
                       </button>
                       <button
                         onClick={() => handleDelete(sub)}
-                        className="px-3 py-1 text-xs font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100"
+                        className="px-2 py-1 text-[12px] font-medium text-[#DC2626] hover:text-[#B91C1C] hover:bg-[#FEF2F2] rounded-md"
                       >
                         削除
                       </button>
@@ -143,12 +169,15 @@ export function SubscriptionList({ subscriptions, templates, clients, onRefetch 
           </div>
         </div>
       ) : (
-        <div className="flex items-center justify-center h-48 bg-white rounded-lg shadow-sm border">
+        <div className="flex items-center justify-center h-48 bg-white rounded-md border border-dashed border-[#E2E8F0]">
           <div className="text-center">
-            <p className="text-gray-500 mb-2">月契約はありません</p>
+            <div className="w-12 h-12 rounded-full bg-[#F0FDFA] border border-[#CCFBF1] flex items-center justify-center mx-auto mb-3">
+              <Pencil className="w-5 h-5 text-[#14B8A6]" />
+            </div>
+            <p className="text-[13px] text-[#475569] mb-2">月契約はありません</p>
             <button
               onClick={() => setCreateOpen(true)}
-              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              className="text-sm text-[#14B8A6] hover:text-[#0D9488] font-medium"
             >
               月契約を追加する
             </button>

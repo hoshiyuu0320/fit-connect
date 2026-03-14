@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>チケット管理画面 リデザイン ワイヤーフレーム</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root {
+    --primary: #0F172A;
+    --text-secondary: #475569;
+    --text-muted: #94A3B8;
+    --accent: #14B8A6;
+    --accent-hover: #0D9488;
+    --accent-light: #F0FDFA;
+    --accent-subtle: #CCFBF1;
+    --background: #F8FAFC;
+    --surface: #FFFFFF;
+    --border: #E2E8F0;
+    --radius: 6px;
+    --success: #16A34A;
+    --success-bg: #F0FDF4;
+    --warning: #F59E0B;
+    --warning-bg: #FFFBEB;
+    --danger: #DC2626;
+    --danger-bg: #FEF2F2;
+    --info: #2563EB;
+    --info-bg: #EFF6FF;
+    --purple: #7C3AED;
+    --purple-bg: #FAF5FF;
+    --orange: #EA580C;
+    --orange-bg: #FFF7ED;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif;
+    background: #E5E7EB;
+    color: var(--primary);
+    min-height: 100vh;
+    padding: 32px 16px;
+  }
+
+  .page-title-block { max-width: 1100px; margin: 0 auto 32px; }
+  .page-title-block h1 { font-size: 22px; font-weight: 800; color: #111827; letter-spacing: -0.01em; margin-bottom: 4px; }
+  .page-title-block p { font-size: 13px; color: #6B7280; }
+
+  .legend-block { max-width: 1100px; margin: 0 auto 40px; background: #FFF7F7; border: 1px solid #FECACA; border-radius: 6px; padding: 16px 20px; }
+  .legend-title { font-size: 12px; font-weight: 700; color: #DC2626; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .legend-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 16px; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #374151; }
+  .legend-badge { width: 22px; height: 22px; background: #DC2626; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+
+  .section-divider { display: flex; align-items: center; gap: 16px; max-width: 1100px; margin: 48px auto 24px; }
+  .section-divider-line { flex: 1; height: 1px; background: #9CA3AF; }
+  .section-divider-label { background: #374151; color: #F9FAFB; font-size: 13px; font-weight: 700; padding: 6px 20px; border-radius: 4px; letter-spacing: 0.05em; white-space: nowrap; }
+
+  .screen-frame { max-width: 1100px; margin: 0 auto; background: var(--background); border-radius: 8px; overflow: hidden; border: 1px solid #D1D5DB; box-shadow: 0 4px 24px rgba(0,0,0,0.10); }
+
+  .app-topbar { height: 48px; background: var(--primary); display: flex; align-items: center; padding: 0 20px; gap: 12px; border-bottom: 1px solid #1E293B; }
+  .app-topbar-logo { background: var(--accent); color: var(--primary); font-weight: 800; font-size: 12px; padding: 3px 8px; border-radius: 4px; letter-spacing: 0.05em; }
+  .app-topbar-title { color: #94A3B8; font-size: 13px; font-weight: 500; }
+  .app-topbar-spacer { flex: 1; }
+  .app-topbar-user { width: 28px; height: 28px; background: #334155; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #94A3B8; }
+
+  .anno-inline { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; background: #DC2626; color: white; border-radius: 50%; font-size: 9px; font-weight: 700; vertical-align: middle; margin-left: 4px; cursor: help; }
+
+  .design-note { max-width: 1100px; margin: 12px auto; padding: 12px 16px; background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 6px; font-size: 12px; color: #92400E; line-height: 1.6; }
+  .design-note strong { font-weight: 700; }
+
+  /* ===== Tickets Specific ===== */
+  .tkt-page-header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+  }
+  .tkt-breadcrumb {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+  .tkt-breadcrumb a { color: var(--text-muted); text-decoration: none; }
+  .tkt-breadcrumb a:hover { color: var(--accent); }
+
+  .tkt-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .tkt-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--primary);
+  }
+
+  .tkt-content {
+    padding: 24px;
+  }
+
+  /* KPI Bar */
+  .tkt-kpi-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .tkt-kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+  .tkt-kpi-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  .tkt-kpi-icon {
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .tkt-kpi-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--primary);
+  }
+  .tkt-kpi-unit {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--text-muted);
+    margin-left: 2px;
+  }
+  .tkt-kpi-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  /* Tabs */
+  .tkt-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+  .tkt-tab {
+    padding: 10px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .tkt-tab:hover { color: var(--text-secondary); }
+  .tkt-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* Template Cards */
+  .tkt-template-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  .tkt-template-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    position: relative;
+    transition: border-color 0.15s;
+    cursor: pointer;
+  }
+  .tkt-template-card:hover { border-color: var(--accent); }
+  .tkt-template-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 8px;
+  }
+  .tkt-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: var(--radius);
+    margin-right: 6px;
+  }
+  .tkt-badge-type {
+    background: var(--accent-light);
+    color: var(--accent);
+    border: 1px solid var(--accent-subtle);
+  }
+  .tkt-badge-recurring {
+    background: var(--info-bg);
+    color: var(--info);
+    border: 1px solid #BFDBFE;
+  }
+  .tkt-badge-onetime {
+    background: #F8FAFC;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+  }
+  .tkt-template-meta {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .tkt-template-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .tkt-template-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+  .tkt-btn-sm {
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: var(--radius);
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+  }
+  .tkt-btn-edit {
+    background: #F8FAFC;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+  }
+  .tkt-btn-edit:hover { background: #F1F5F9; }
+  .tkt-btn-delete {
+    background: var(--danger-bg);
+    color: var(--danger);
+    border: 1px solid #FECACA;
+  }
+  .tkt-btn-delete:hover { background: #FEE2E2; }
+
+  /* Table */
+  .tkt-table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .tkt-table { width: 100%; border-collapse: collapse; }
+  .tkt-table th {
+    padding: 10px 16px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-align: left;
+    background: #F8FAFC;
+    border-bottom: 1px solid var(--border);
+    letter-spacing: 0.04em;
+  }
+  .tkt-table td {
+    padding: 12px 16px;
+    font-size: 13px;
+    color: var(--primary);
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  .tkt-table tr:last-child td { border-bottom: none; }
+  .tkt-table tr:hover { background: #FAFBFC; }
+
+  /* Progress bar */
+  .tkt-progress-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tkt-progress-bar {
+    flex: 1;
+    height: 6px;
+    background: #F1F5F9;
+    border-radius: 3px;
+    overflow: hidden;
+    min-width: 60px;
+  }
+  .tkt-progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s;
+  }
+  .tkt-progress-text {
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  /* Status badge */
+  .tkt-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: var(--radius);
+  }
+  .tkt-status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+  .tkt-status-active {
+    background: var(--success-bg);
+    color: var(--success);
+    border: 1px solid #BBF7D0;
+  }
+  .tkt-status-active .tkt-status-dot { background: var(--success); }
+  .tkt-status-warning {
+    background: var(--warning-bg);
+    color: #B45309;
+    border: 1px solid #FDE68A;
+  }
+  .tkt-status-warning .tkt-status-dot { background: var(--warning); }
+  .tkt-status-expired {
+    background: var(--danger-bg);
+    color: var(--danger);
+    border: 1px solid #FECACA;
+  }
+  .tkt-status-expired .tkt-status-dot { background: var(--danger); }
+  .tkt-status-paused {
+    background: var(--warning-bg);
+    color: #B45309;
+    border: 1px solid #FDE68A;
+  }
+  .tkt-status-paused .tkt-status-dot { background: var(--warning); }
+  .tkt-status-cancelled {
+    background: #F8FAFC;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+  }
+  .tkt-status-cancelled .tkt-status-dot { background: var(--text-muted); }
+
+  /* Issue Section */
+  .tkt-issue-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 24px;
+  }
+  .tkt-issue-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+  }
+  .tkt-issue-field {
+    flex: 1;
+  }
+  .tkt-issue-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+  }
+  .tkt-issue-select {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 13px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--primary);
+  }
+
+  /* Buttons */
+  .tkt-btn-primary {
+    padding: 8px 20px;
+    font-size: 13px;
+    font-weight: 600;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+  .tkt-btn-primary:hover { background: var(--accent-hover); }
+
+  .tkt-btn-outline {
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    background: var(--surface);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .tkt-btn-outline:hover { background: #F8FAFC; }
+
+  /* Action link */
+  .tkt-action-link {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: color 0.15s;
+    border: none;
+    background: none;
+    padding: 4px 8px;
+    border-radius: var(--radius);
+  }
+  .tkt-action-link:hover { color: var(--primary); background: #F8FAFC; }
+  .tkt-action-link-danger { color: var(--danger); }
+  .tkt-action-link-danger:hover { color: #B91C1C; background: var(--danger-bg); }
+
+  /* Empty state */
+  .tkt-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    text-align: center;
+    background: var(--surface);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+  }
+  .tkt-empty-icon {
+    width: 48px;
+    height: 48px;
+    background: #F8FAFC;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+  .tkt-empty-text {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+  .tkt-empty-link {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--accent);
+    cursor: pointer;
+    border: none;
+    background: none;
+  }
+  .tkt-empty-link:hover { text-decoration: underline; }
+
+  /* Subscription inline actions */
+  .tkt-sub-actions {
+    display: flex;
+    gap: 4px;
+  }
+
+  /* Filter bar */
+  .tkt-filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .tkt-filter-search {
+    flex: 1;
+    max-width: 280px;
+    padding: 7px 12px 7px 32px;
+    font-size: 13px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--primary);
+    position: relative;
+  }
+  .tkt-filter-search::placeholder { color: var(--text-muted); }
+  .tkt-filter-select {
+    padding: 7px 12px;
+    font-size: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text-secondary);
+  }
+
+  /* Modal overlay */
+  .tkt-modal-overlay {
+    position: relative;
+    background: rgba(15, 23, 42, 0.4);
+    border-radius: 8px;
+    padding: 40px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 16px;
+  }
+  .tkt-modal {
+    background: var(--surface);
+    border-radius: var(--radius);
+    width: 100%;
+    max-width: 440px;
+    border: 1px solid var(--border);
+  }
+  .tkt-modal-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--primary);
+  }
+  .tkt-modal-body {
+    padding: 20px;
+  }
+  .tkt-modal-field {
+    margin-bottom: 16px;
+  }
+  .tkt-modal-field:last-child { margin-bottom: 0; }
+  .tkt-modal-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+  }
+  .tkt-modal-input {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 13px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--primary);
+  }
+  .tkt-modal-input:focus { outline: none; border-color: var(--accent); }
+  .tkt-modal-checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .tkt-modal-checkbox {
+    width: 16px;
+    height: 16px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    accent-color: var(--accent);
+  }
+  .tkt-modal-footer {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  /* Component map */
+  .component-map { max-width: 1100px; margin: 0 auto; background: #1E293B; border-radius: 8px; padding: 24px; color: #E2E8F0; }
+  .component-map h3 { font-size: 14px; font-weight: 700; color: #F1F5F9; margin-bottom: 16px; }
+  .cm-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .cm-item { background: #334155; border-radius: 6px; padding: 12px; }
+  .cm-file { font-size: 11px; font-weight: 600; color: var(--accent); font-family: 'JetBrains Mono', monospace; margin-bottom: 4px; }
+  .cm-desc { font-size: 11px; color: #94A3B8; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<!-- ============================================ -->
+<!-- タイトル -->
+<!-- ============================================ -->
+<div class="page-title-block">
+  <h1>L. チケット管理画面 リデザイン</h1>
+  <p>全体概要KPI + 3タブ構成（テンプレート/発行済み/月契約）のデザイントークン統一と構造改善</p>
+</div>
+
+<!-- ============================================ -->
+<!-- 凡例 -->
+<!-- ============================================ -->
+<div class="legend-block">
+  <div class="legend-title">改善提案 凡例</div>
+  <div class="legend-grid">
+    <div class="legend-item"><span class="legend-badge">1</span>KPIサマリーバーの追加</div>
+    <div class="legend-item"><span class="legend-badge">2</span>タブデザインの統一（Radixタブ → アンダーラインタブ）</div>
+    <div class="legend-item"><span class="legend-badge">3</span>テンプレートカードの洗練化</div>
+    <div class="legend-item"><span class="legend-badge">4</span>発行済みチケット: インラインフォーム + テーブルの統合</div>
+    <div class="legend-item"><span class="legend-badge">5</span>発行済みテーブルにステータスバッジ追加</div>
+    <div class="legend-item"><span class="legend-badge">6</span>月契約テーブルのステータスバッジ統一</div>
+    <div class="legend-item"><span class="legend-badge">7</span>空状態デザインの統一</div>
+    <div class="legend-item"><span class="legend-badge">8</span>モーダルデザインの統一</div>
+    <div class="legend-item"><span class="legend-badge">9</span>色・角丸・シャドウのデザイントークン完全統一</div>
+  </div>
+</div>
+
+
+<!-- ============================================ -->
+<!-- PROPOSAL 1: KPIサマリーバー -->
+<!-- ============================================ -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">PROPOSAL 1 — KPIサマリーバー</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="design-note">
+  <strong>改善点:</strong> 現在のチケット画面にはKPI的な全体情報がない。画面上部にチケット全体の状況（有効テンプレート数・発行済み・残回数合計・期限切れ間近）を一目で把握できるKPIバーを追加する。<br>
+  <strong>理由:</strong> ダッシュボード → レポート → 顧客詳細（チケットタブ）と統一的にKPIバーパターンを採用し、一貫性のあるUXを実現する。
+</div>
+
+<div class="screen-frame">
+  <div class="app-topbar">
+    <div class="app-topbar-logo">FC</div>
+    <div class="app-topbar-title">チケット管理</div>
+    <div class="app-topbar-spacer"></div>
+    <div class="app-topbar-user">星</div>
+  </div>
+
+  <div class="tkt-page-header">
+    <div class="tkt-breadcrumb"><a href="#">ホーム</a> / チケット管理</div>
+    <div class="tkt-title-row">
+      <div class="tkt-title">チケット管理</div>
+    </div>
+  </div>
+
+  <div class="tkt-content">
+    <!-- KPI Bar -->
+    <div class="tkt-kpi-bar">
+      <div class="tkt-kpi-card">
+        <div class="tkt-kpi-label">
+          <div class="tkt-kpi-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          </div>
+          テンプレート<span class="anno-inline">1</span>
+        </div>
+        <div class="tkt-kpi-value">4<span class="tkt-kpi-unit">件</span></div>
+        <div class="tkt-kpi-sub">都度: 3 / 月契約: 1</div>
+      </div>
+
+      <div class="tkt-kpi-card">
+        <div class="tkt-kpi-label">
+          <div class="tkt-kpi-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2"><path d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 0 0-2 2v3a2 2 0 1 1 0 4v3a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3a2 2 0 1 1 0-4V7a2 2 0 0 0-2-2H5z"/></svg>
+          </div>
+          発行済みチケット
+        </div>
+        <div class="tkt-kpi-value">12<span class="tkt-kpi-unit">枚</span></div>
+        <div class="tkt-kpi-sub">有効: 8 / 期限切れ: 4</div>
+      </div>
+
+      <div class="tkt-kpi-card">
+        <div class="tkt-kpi-label">
+          <div class="tkt-kpi-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>
+          </div>
+          総残回数
+        </div>
+        <div class="tkt-kpi-value">47<span class="tkt-kpi-unit">回</span></div>
+        <div class="tkt-kpi-sub">8名分の合計</div>
+      </div>
+
+      <div class="tkt-kpi-card">
+        <div class="tkt-kpi-label">
+          <div class="tkt-kpi-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <span style="color: var(--warning);">期限切れ間近</span>
+        </div>
+        <div class="tkt-kpi-value" style="color: var(--warning);">2<span class="tkt-kpi-unit">枚</span></div>
+        <div class="tkt-kpi-sub">30日以内に期限切れ</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================ -->
+<!-- PROPOSAL 2: タブデザイン -->
+<!-- ============================================ -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">PROPOSAL 2 — タブデザインの統一</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="design-note">
+  <strong>改善点:</strong> 現在のRadix TabsListの「ボタン型タブ（塗り潰し背景）」を、レポート画面と同様の「アンダーラインタブ」に統一。タブ名の横にカウントバッジを追加して各セクションのデータ件数を一目で把握可能にする。<br>
+  <strong>理由:</strong> アプリ全体のタブスタイルを統一し、視覚的な一貫性を維持する。
+</div>
+
+<div class="screen-frame">
+  <div style="padding: 24px;">
+    <!-- Before -->
+    <div style="margin-bottom: 24px;">
+      <div style="font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.06em;">BEFORE（現在の実装）</div>
+      <div style="display: flex; background: #F1F5F9; border-radius: var(--radius); padding: 3px; gap: 2px; max-width: 420px;">
+        <div style="flex: 1; text-align: center; padding: 8px; font-size: 13px; font-weight: 500; background: white; border-radius: 4px; color: var(--primary);">テンプレート</div>
+        <div style="flex: 1; text-align: center; padding: 8px; font-size: 13px; font-weight: 500; color: var(--text-muted);">チケット発行</div>
+        <div style="flex: 1; text-align: center; padding: 8px; font-size: 13px; font-weight: 500; color: var(--text-muted);">月契約</div>
+      </div>
+    </div>
+
+    <!-- After -->
+    <div>
+      <div style="font-size: 11px; font-weight: 600; color: var(--accent); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.06em;">AFTER（提案）<span class="anno-inline">2</span></div>
+      <div class="tkt-tabs">
+        <div class="tkt-tab active">
+          テンプレート
+          <span style="margin-left: 6px; padding: 1px 6px; font-size: 10px; background: var(--accent-light); color: var(--accent); border-radius: 10px; font-weight: 600;">4</span>
+        </div>
+        <div class="tkt-tab">
+          発行済みチケット
+          <span style="margin-left: 6px; padding: 1px 6px; font-size: 10px; background: #F1F5F9; color: var(--text-muted); border-radius: 10px; font-weight: 600;">12</span>
+        </div>
+        <div class="tkt-tab">
+          月契約
+          <span style="margin-left: 6px; padding: 1px 6px; font-size: 10px; background: #F1F5F9; color: var(--text-muted); border-radius: 10px; font-weight: 600;">3</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================ -->
+<!-- PROPOSAL 3: テンプレートカード -->
+<!-- ============================================ -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">PROPOSAL 3 — テンプレートカード</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="design-note">
+  <strong>改善点:</strong> shadow-sm → border のみ。blue-600 → accent（#14B8A6）。gray-100バッジ → デザイントークン準拠バッジ。ホバー時にborderカラーがaccentに変化するインタラクション追加。<br>
+  <strong>理由:</strong> 他画面（レポートのStatCards、顧客詳細のTicketCard等）と同じカードスタイルに統一。
+</div>
+
+<div class="screen-frame">
+  <div style="padding: 24px;">
+    <!-- Header -->
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+      <div style="font-size: 15px; font-weight: 600; color: var(--primary);">テンプレート<span class="anno-inline">3</span></div>
+      <button class="tkt-btn-primary">+ テンプレート作成</button>
+    </div>
+
+    <!-- Grid -->
+    <div class="tkt-template-grid">
+      <!-- Card 1 -->
+      <div class="tkt-template-card">
+        <div class="tkt-template-name">パーソナル8回券</div>
+        <div>
+          <span class="tkt-badge tkt-badge-type">パーソナル</span>
+          <span class="tkt-badge tkt-badge-onetime">都度</span>
+        </div>
+        <div class="tkt-template-meta">
+          <div class="tkt-template-meta-item">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>
+            8回
+          </div>
+          <div class="tkt-template-meta-item">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            3ヶ月有効
+          </div>
+        </div>
+        <div class="tkt-template-actions">
+          <button class="tkt-btn-sm tkt-btn-edit">編集</button>
+          <button class="tkt-btn-sm tkt-btn-delete">削除</button>
+        </div>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="tkt-template-card">
+        <div class="tkt-template-name">グループ4回券</div>
+        <div>
+          <span class="tkt-badge tkt-badge-type">グループ</span>
+          <span class="tkt-badge tkt-badge-onetime">都度</span>
+        </div>
+        <div class="tkt-template-meta">
+          <div class="tkt-template-meta-item">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>
+            4回
+          </div>
+          <div class="tkt-template-meta-item">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            2ヶ月有効
+          </div>
+        </div>
+        <div class="tkt-template-actions">
+          <button class="tkt-btn-sm tkt-btn-edit">編集</button>
+          <button class="tkt-btn-sm tkt-btn-delete">削除</button>
+        </div>
+      </div>
+
+      <!-- Card 3 - Recurring -->
+      <div class="tkt-template-card" style="border-left: 3px solid var(--info);">
+        <div class="tkt-template-name">月額パーソナル</div>
+        <div>
+          <span class="tkt-badge tkt-badge-type">パーソナル</span>
+          <span class="tkt-badge tkt-badge-recurring">月契約</span>
+        </div>
+        <div class="tkt-template-meta">
+          <div class="tkt-template-meta-item">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>
+            4回
+          </div>
+          <div class="tkt-template-meta-item">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            1ヶ月有効
+          </div>
+        </div>
+        <div class="tkt-template-actions">
+          <button class="tkt-btn-sm tkt-btn-edit">編集</button>
+          <button class="tkt-btn-sm tkt-btn-delete">削除</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================ -->
+<!-- PROPOSAL 4: 発行済みチケット（発行フォーム + テーブル統合） -->
+<!-- ============================================ -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">PROPOSAL 4 — 発行済みチケット（発行フォーム統合）</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="design-note">
+  <strong>改善点:</strong> 現在は「チケット発行」セクション（フォーム）と「発行済みチケット」リストが縦に並んでいるが、発行フォームをインラインバー形式にコンパクト化し、テーブルの上部に統合する。顧客名検索やステータスフィルタも追加。<br>
+  <strong>理由:</strong> 発行アクションと結果リストを1画面内で完結させ、操作効率を向上する。
+</div>
+
+<div class="screen-frame">
+  <div style="padding: 24px;">
+    <!-- Issue inline bar -->
+    <div class="tkt-issue-section">
+      <div style="font-size: 13px; font-weight: 600; color: var(--primary); margin-bottom: 12px;">チケット発行<span class="anno-inline">4</span></div>
+      <div class="tkt-issue-row">
+        <div class="tkt-issue-field">
+          <div class="tkt-issue-label">テンプレート</div>
+          <select class="tkt-issue-select">
+            <option>テンプレートを選択</option>
+            <option>パーソナル8回券</option>
+            <option>グループ4回券</option>
+          </select>
+        </div>
+        <div class="tkt-issue-field">
+          <div class="tkt-issue-label">顧客</div>
+          <select class="tkt-issue-select">
+            <option>顧客を選択</option>
+            <option>ほしおテスト3.1</option>
+            <option>田中さとし</option>
+          </select>
+        </div>
+        <button class="tkt-btn-primary" style="margin-bottom: 0;">発行する</button>
+      </div>
+    </div>
+
+    <!-- Filter bar -->
+    <div class="tkt-filter-bar">
+      <input type="text" class="tkt-filter-search" placeholder="顧客名で検索...">
+      <select class="tkt-filter-select">
+        <option>すべてのステータス</option>
+        <option>有効</option>
+        <option>期限切れ間近</option>
+        <option>期限切れ</option>
+      </select>
+      <select class="tkt-filter-select">
+        <option>すべての種別</option>
+        <option>パーソナル</option>
+        <option>グループ</option>
+        <option>オンライン</option>
+      </select>
+    </div>
+
+    <!-- Table -->
+    <div class="tkt-table-wrap">
+      <table class="tkt-table">
+        <thead>
+          <tr>
+            <th>顧客</th>
+            <th>チケット名</th>
+            <th>種別</th>
+            <th>残回数</th>
+            <th>有効期限</th>
+            <th>ステータス<span class="anno-inline">5</span></th>
+            <th style="text-align: right;">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 28px; height: 28px; border-radius: 50%; background: var(--accent-light); border: 1px solid var(--accent-subtle); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: var(--accent);">ほ</div>
+                <span style="font-weight: 500;">ほしおテスト3.1</span>
+              </div>
+            </td>
+            <td>パーソナル8回券</td>
+            <td><span class="tkt-badge tkt-badge-type">パーソナル</span></td>
+            <td>
+              <div class="tkt-progress-wrap">
+                <div class="tkt-progress-bar">
+                  <div class="tkt-progress-fill" style="width: 75%; background: var(--accent);"></div>
+                </div>
+                <span class="tkt-progress-text" style="color: var(--primary);">6/8</span>
+              </div>
+            </td>
+            <td style="font-size: 12px; color: var(--text-secondary);">2025/12/08 ~ 2026/03/08</td>
+            <td><span class="tkt-status tkt-status-active"><span class="tkt-status-dot"></span>有効</span></td>
+            <td style="text-align: right;">
+              <div class="tkt-sub-actions">
+                <button class="tkt-action-link">編集</button>
+                <button class="tkt-action-link tkt-action-link-danger">削除</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 28px; height: 28px; border-radius: 50%; background: var(--accent-light); border: 1px solid var(--accent-subtle); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: var(--accent);">田</div>
+                <span style="font-weight: 500;">田中さとし</span>
+              </div>
+            </td>
+            <td>グループ4回券</td>
+            <td><span class="tkt-badge tkt-badge-type">グループ</span></td>
+            <td>
+              <div class="tkt-progress-wrap">
+                <div class="tkt-progress-bar">
+                  <div class="tkt-progress-fill" style="width: 25%; background: var(--warning);"></div>
+                </div>
+                <span class="tkt-progress-text" style="color: var(--warning);">1/4</span>
+              </div>
+            </td>
+            <td style="font-size: 12px; color: var(--text-secondary);">2025/11/01 ~ 2026/04/01</td>
+            <td><span class="tkt-status tkt-status-warning"><span class="tkt-status-dot"></span>残りわずか</span></td>
+            <td style="text-align: right;">
+              <div class="tkt-sub-actions">
+                <button class="tkt-action-link">編集</button>
+                <button class="tkt-action-link tkt-action-link-danger">削除</button>
+              </div>
+            </td>
+          </tr>
+          <tr style="opacity: 0.5;">
+            <td>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 28px; height: 28px; border-radius: 50%; background: #F8FAFC; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: var(--text-muted);">岡</div>
+                <span style="font-weight: 500;">岡田 康太</span>
+              </div>
+            </td>
+            <td>パーソナル8回券</td>
+            <td><span class="tkt-badge tkt-badge-type">パーソナル</span></td>
+            <td>
+              <div class="tkt-progress-wrap">
+                <div class="tkt-progress-bar">
+                  <div class="tkt-progress-fill" style="width: 0%; background: var(--text-muted);"></div>
+                </div>
+                <span class="tkt-progress-text" style="color: var(--text-muted);">0/8</span>
+              </div>
+            </td>
+            <td style="font-size: 12px; color: var(--text-muted);">2025/06/01 ~ 2025/09/01</td>
+            <td><span class="tkt-status tkt-status-expired"><span class="tkt-status-dot"></span>期限切れ</span></td>
+            <td style="text-align: right;">
+              <div class="tkt-sub-actions">
+                <button class="tkt-action-link" style="opacity: 0.5; pointer-events: none;">編集</button>
+                <button class="tkt-action-link tkt-action-link-danger">削除</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================ -->
+<!-- PROPOSAL 5: 発行済みチケットのステータスバッジ -->
+<!-- ============================================ -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">PROPOSAL 5 — ステータスバッジの自動判定ルール</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="design-note">
+  <strong>改善点:</strong> 現在は「期限切れ→行が薄いグレー」のみだが、残回数やプログレスに応じた自動ステータスバッジとプログレスバー色を追加。<br>
+  <strong>ルール:</strong><br>
+  &nbsp;&nbsp;• <strong style="color: var(--success);">有効</strong> — 期限内 & 残回数 > 全回数の25%（プログレスバー: アクセント色）<br>
+  &nbsp;&nbsp;• <strong style="color: #B45309;">残りわずか</strong> — 期限内 & 残回数 ≤ 全回数の25%（プログレスバー: 警告色）<br>
+  &nbsp;&nbsp;• <strong style="color: #B45309;">期限切れ間近</strong> — 残り30日以内（プログレスバー: 警告色）<br>
+  &nbsp;&nbsp;• <strong style="color: var(--danger);">期限切れ</strong> — 有効期限超過 or 残回数0（プログレスバー: 灰色、行 opacity: 0.5）
+</div>
+
+<div class="screen-frame">
+  <div style="padding: 24px;">
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;">
+      <!-- Active -->
+      <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center;">
+        <span class="tkt-status tkt-status-active" style="margin-bottom: 8px;"><span class="tkt-status-dot"></span>有効</span>
+        <div style="margin-top: 10px;">
+          <div class="tkt-progress-bar" style="margin: 0 auto; max-width: 100px;">
+            <div class="tkt-progress-fill" style="width: 75%; background: var(--accent);"></div>
+          </div>
+        </div>
+        <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">残 > 25% & 期限内</div>
+      </div>
+      <!-- Low -->
+      <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center;">
+        <span class="tkt-status tkt-status-warning" style="margin-bottom: 8px;"><span class="tkt-status-dot"></span>残りわずか</span>
+        <div style="margin-top: 10px;">
+          <div class="tkt-progress-bar" style="margin: 0 auto; max-width: 100px;">
+            <div class="tkt-progress-fill" style="width: 25%; background: var(--warning);"></div>
+          </div>
+        </div>
+        <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">残 ≤ 25% & 期限内</div>
+      </div>
+      <!-- Expiring -->
+      <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center;">
+        <span class="tkt-status tkt-status-warning" style="margin-bottom: 8px;"><span class="tkt-status-dot"></span>期限切れ間近</span>
+        <div style="margin-top: 10px;">
+          <div class="tkt-progress-bar" style="margin: 0 auto; max-width: 100px;">
+            <div class="tkt-progress-fill" style="width: 50%; background: var(--warning);"></div>
+          </div>
+        </div>
+        <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">残り30日以内</div>
+      </div>
+      <!-- Expired -->
+      <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center; opacity: 0.5;">
+        <span class="tkt-status tkt-status-expired" style="margin-bottom: 8px;"><span class="tkt-status-dot"></span>期限切れ</span>
+        <div style="margin-top: 10px;">
+          <div class="tkt-progress-bar" style="margin: 0 auto; max-width: 100px;">
+            <div class="tkt-progress-fill" style="width: 0%; background: var(--text-muted);"></div>
+          </div>
+        </div>
+        <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">期限超過 or 残0</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================ -->
+<!-- PROPOSAL 6: 月契約テーブル -->
+<!-- ============================================ -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">PROPOSAL 6 — 月契約テーブル</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="design-note">
+  <strong>改善点:</strong> ステータスバッジを emerald/amber/rose のTailwind色から hex デザイントークンに統一。ステータス変更アクションをドロップダウンメニューではなくインラインボタンで表現（現在の「ステータス変更→ダイアログ」の流れは維持）。テーブルのスタイルも発行済みと統一。<br>
+  <strong>追加:</strong> 「+ 月契約を追加」ボタンのスタイルをアクセントカラーに統一。
+</div>
+
+<div class="screen-frame">
+  <div style="padding: 24px;">
+    <!-- Header -->
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+      <div style="font-size: 15px; font-weight: 600; color: var(--primary);">月契約<span class="anno-inline">6</span></div>
+      <button class="tkt-btn-primary">+ 月契約を追加</button>
+    </div>
+
+    <!-- Table -->
+    <div class="tkt-table-wrap">
+      <table class="tkt-table">
+        <thead>
+          <tr>
+            <th>顧客</th>
+            <th>テンプレート</th>
+            <th>ステータス</th>
+            <th>開始日</th>
+            <th>次回発行日</th>
+            <th style="text-align: right;">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 28px; height: 28px; border-radius: 50%; background: var(--accent-light); border: 1px solid var(--accent-subtle); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: var(--accent);">ほ</div>
+                <span style="font-weight: 500;">ほしおテスト3.1</span>
+              </div>
+            </td>
+            <td>
+              <div style="font-size: 13px;">月額パーソナル</div>
+              <div style="font-size: 11px; color: var(--text-muted);">4回/1ヶ月</div>
+            </td>
+            <td><span class="tkt-status tkt-status-active"><span class="tkt-status-dot"></span>有効</span></td>
+            <td style="font-size: 12px; color: var(--text-secondary);">2025/10/01</td>
+            <td style="font-size: 12px; color: var(--text-secondary);">2026/04/01</td>
+            <td style="text-align: right;">
+              <div class="tkt-sub-actions">
+                <button class="tkt-action-link">ステータス変更</button>
+                <button class="tkt-action-link tkt-action-link-danger">削除</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 28px; height: 28px; border-radius: 50%; background: var(--accent-light); border: 1px solid var(--accent-subtle); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: var(--accent);">星</div>
+                <span style="font-weight: 500;">星田優哉</span>
+              </div>
+            </td>
+            <td>
+              <div style="font-size: 13px;">月額パーソナル</div>
+              <div style="font-size: 11px; color: var(--text-muted);">4回/1ヶ月</div>
+            </td>
+            <td><span class="tkt-status tkt-status-paused"><span class="tkt-status-dot"></span>一時停止</span></td>
+            <td style="font-size: 12px; color: var(--text-secondary);">2025/08/01</td>
+            <td style="font-size: 12px; color: var(--text-muted);">—</td>
+            <td style="text-align: right;">
+              <div class="tkt-sub-actions">
+                <button class="tkt-action-link">ステータス変更</button>
+                <button class="tkt-action-link tkt-action-link-danger">削除</button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 28px; height: 28px; border-radius: 50%; background: #F8FAFC; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: var(--text-muted);">岡</div>
+                <span style="font-weight: 500; color: var(--text-muted);">岡田 康太</span>
+              </div>
+            </td>
+            <td>
+              <div style="font-size: 13px; color: var(--text-muted);">月額パーソナル</div>
+              <div style="font-size: 11px; color: var(--text-muted);">4回/1ヶ月</div>
+            </td>
+            <td><span class="tkt-status tkt-status-cancelled"><span class="tkt-status-dot"></span>解約済</span></td>
+            <td style="font-size: 12px; color: var(--text-muted);">2025/04/01</td>
+            <td style="font-size: 12px; color: var(--text-muted);">—</td>
+            <td style="text-align: right;">
+              <div class="tkt-sub-actions">
+                <button class="tkt-action-link">ステータス変更</button>
+                <button class="tkt-action-link tkt-action-link-danger">削除</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================ -->
+<!-- PROPOSAL 7: 空状態 -->
+<!-- ============================================ -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">PROPOSAL 7 — 空状態デザイン</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="design-note">
+  <strong>改善点:</strong> 各タブ共通の空状態コンポーネントを統一。破線ボーダー + アイコン + 説明テキスト + アクションリンクの構成で、他画面の空状態と一貫性を持たせる。<br>
+  <strong>理由:</strong> 現在のテンプレート空状態と発行済み空状態のスタイルがバラバラ（シャドウあり/なし等）。
+</div>
+
+<div class="screen-frame">
+  <div style="padding: 24px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+    <!-- Template empty -->
+    <div>
+      <div style="font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 8px;">テンプレートタブ</div>
+      <div class="tkt-empty" style="padding: 40px 16px;">
+        <div class="tkt-empty-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        </div>
+        <div class="tkt-empty-text">テンプレートがありません</div>
+        <button class="tkt-empty-link">最初のテンプレートを作成する</button>
+      </div>
+    </div>
+
+    <!-- Issued empty -->
+    <div>
+      <div style="font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 8px;">発行済みタブ</div>
+      <div class="tkt-empty" style="padding: 40px 16px;">
+        <div class="tkt-empty-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 0 0-2 2v3a2 2 0 1 1 0 4v3a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3a2 2 0 1 1 0-4V7a2 2 0 0 0-2-2H5z"/></svg>
+        </div>
+        <div class="tkt-empty-text">発行済みチケットはありません</div>
+        <button class="tkt-empty-link">テンプレートからチケットを発行する</button>
+      </div>
+    </div>
+
+    <!-- Subscription empty -->
+    <div>
+      <div style="font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 8px;">月契約タブ</div>
+      <div class="tkt-empty" style="padding: 40px 16px;">
+        <div class="tkt-empty-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+        </div>
+        <div class="tkt-empty-text">月契約はありません</div>
+        <button class="tkt-empty-link">月契約を追加する</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================ -->
+<!-- PROPOSAL 8: モーダルデザイン -->
+<!-- ============================================ -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">PROPOSAL 8 — モーダルデザインの統一</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="design-note">
+  <strong>改善点:</strong> テンプレート作成/編集モーダル、チケット編集モーダル、月契約追加モーダル、ステータス変更ダイアログのすべてをデザイントークンに統一。ボタン色 blue-600 → accent（#14B8A6）、削除ボタン red-600 → #DC2626、角丸やborder色を統一。<br>
+  <strong>注意:</strong> 機能的な変更はなし。色とスタイルの統一のみ。
+</div>
+
+<div class="screen-frame">
+  <div style="padding: 24px;">
+    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px;">
+      <!-- Template form modal -->
+      <div>
+        <div style="font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 8px;">テンプレート作成/編集<span class="anno-inline">8</span></div>
+        <div class="tkt-modal">
+          <div class="tkt-modal-header">テンプレートを作成</div>
+          <div class="tkt-modal-body">
+            <div class="tkt-modal-field">
+              <div class="tkt-modal-label">テンプレート名 <span style="color: var(--danger);">*</span></div>
+              <input type="text" class="tkt-modal-input" placeholder="例: パーソナル8回券">
+            </div>
+            <div class="tkt-modal-field">
+              <div class="tkt-modal-label">種別 <span style="color: var(--danger);">*</span></div>
+              <select class="tkt-modal-input">
+                <option>種別を選択</option>
+              </select>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div class="tkt-modal-field">
+                <div class="tkt-modal-label">合計回数 <span style="color: var(--danger);">*</span></div>
+                <input type="number" class="tkt-modal-input" value="8">
+              </div>
+              <div class="tkt-modal-field">
+                <div class="tkt-modal-label">有効月数 <span style="color: var(--danger);">*</span></div>
+                <input type="number" class="tkt-modal-input" value="3">
+              </div>
+            </div>
+            <div class="tkt-modal-checkbox-row" style="margin-top: 12px;">
+              <input type="checkbox" class="tkt-modal-checkbox">
+              <span>月契約（自動発行）にする</span>
+            </div>
+          </div>
+          <div class="tkt-modal-footer">
+            <button class="tkt-btn-outline">キャンセル</button>
+            <button class="tkt-btn-primary">作成</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Status change dialog -->
+      <div>
+        <div style="font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 8px;">ステータス変更ダイアログ</div>
+        <div class="tkt-modal">
+          <div class="tkt-modal-header">月契約のステータスを変更</div>
+          <div class="tkt-modal-body">
+            <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 6px;">
+              ほしおテスト3.1 の「月額パーソナル」
+            </div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">
+              現在のステータス: <span style="font-weight: 600; color: var(--success);">有効</span>
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button style="padding: 6px 16px; font-size: 12px; font-weight: 500; border-radius: var(--radius); border: 1px solid #BBF7D0; background: var(--success-bg); color: var(--success); cursor: pointer; opacity: 0.5;" disabled>有効にする</button>
+              <button style="padding: 6px 16px; font-size: 12px; font-weight: 500; border-radius: var(--radius); border: 1px solid #FDE68A; background: var(--warning-bg); color: #B45309; cursor: pointer;">一時停止</button>
+              <button style="padding: 6px 16px; font-size: 12px; font-weight: 500; border-radius: var(--radius); border: 1px solid #FECACA; background: var(--danger-bg); color: var(--danger); cursor: pointer;">解約する</button>
+            </div>
+          </div>
+          <div class="tkt-modal-footer">
+            <button class="tkt-btn-outline">キャンセル</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================ -->
+<!-- PROPOSAL 9: コンポーネント構成図 -->
+<!-- ============================================ -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">PROPOSAL 9 — コンポーネント構成図</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="design-note">
+  <strong>方針:</strong> 既存のファイル構成を維持し、各コンポーネント内のスタイルをデザイントークンに統一する。新規ファイルは不要。page.tsx の構造も維持（3タブ構成）。KPIバーは page.tsx に直接組み込む。<br>
+  <strong>変更対象:</strong> 全11ファイル（page.tsx + _components/ 下の10ファイル）
+</div>
+
+<div class="component-map">
+  <h3>コンポーネント構成 — 変更対象ファイル一覧</h3>
+  <div class="cm-grid">
+    <div class="cm-item">
+      <div class="cm-file">tickets/page.tsx</div>
+      <div class="cm-desc">メインページ。KPIバー追加、タブをアンダーラインスタイルに変更、bg-gray-50 → #F8FAFC、カウントバッジ追加。ローディングスピナーも統一。</div>
+    </div>
+    <div class="cm-item">
+      <div class="cm-file">_components/TemplateList.tsx</div>
+      <div class="cm-desc">カードスタイル統一。blue-600 → #14B8A6、shadow-sm → border、バッジ色変更、ホバーエフェクト追加。空状態の統一。</div>
+    </div>
+    <div class="cm-item">
+      <div class="cm-file">_components/IssueTicketSection.tsx</div>
+      <div class="cm-desc">インラインバー形式にレイアウト変更。セレクトとボタンを横並びに。emerald/rose → hex統一。</div>
+    </div>
+    <div class="cm-item">
+      <div class="cm-file">_components/IssuedTicketList.tsx</div>
+      <div class="cm-desc">テーブルスタイル統一。ステータスバッジ追加（有効/残りわずか/期限切れ間近/期限切れ）。プログレスバー色の条件分岐。顧客アバター追加。フィルタバー追加。</div>
+    </div>
+    <div class="cm-item">
+      <div class="cm-file">_components/SubscriptionList.tsx</div>
+      <div class="cm-desc">テーブルスタイル統一。ステータスバッジ emerald/amber/rose → hex。blue-600 → #14B8A6。空状態の統一。顧客アバター追加。</div>
+    </div>
+    <div class="cm-item">
+      <div class="cm-file">_components/TemplateFormModal.tsx</div>
+      <div class="cm-desc">ボタン色統一。合計回数/有効月数を横並びに。チェックボックスaccent色統一。</div>
+    </div>
+    <div class="cm-item">
+      <div class="cm-file">_components/EditIssuedTicketModal.tsx</div>
+      <div class="cm-desc">rose → #DC2626。ボタン色統一。SelectContent bg-white維持。</div>
+    </div>
+    <div class="cm-item">
+      <div class="cm-file">_components/CreateSubscriptionModal.tsx</div>
+      <div class="cm-desc">ボタン色統一。gray系テキスト → hex。</div>
+    </div>
+    <div class="cm-item">
+      <div class="cm-file">_components/SubscriptionStatusDialog.tsx</div>
+      <div class="cm-desc">emerald/amber/rose → hex デザイントークン統一。ボタンスタイル統一。</div>
+    </div>
+    <div class="cm-item">
+      <div class="cm-file">_components/DeleteTemplateDialog.tsx</div>
+      <div class="cm-desc">red-600 → #DC2626。ボタンスタイル統一。</div>
+    </div>
+    <div class="cm-item">
+      <div class="cm-file">_components/DeleteIssuedTicketDialog.tsx</div>
+      <div class="cm-desc">ボタンスタイル統一。AlertDialogAction色の統一。</div>
+    </div>
+  </div>
+</div>
+
+
+</body>
+</html>

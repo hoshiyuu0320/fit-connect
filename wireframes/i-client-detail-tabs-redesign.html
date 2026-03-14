@@ -1,0 +1,2075 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>顧客詳細画面 - 食事/運動/チケットタブ ワイヤーフレーム</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root {
+    --primary: #0F172A;
+    --text-secondary: #475569;
+    --text-muted: #94A3B8;
+    --accent: #14B8A6;
+    --accent-hover: #0D9488;
+    --accent-light: #F0FDFA;
+    --accent-subtle: #CCFBF1;
+    --background: #F8FAFC;
+    --surface: #FFFFFF;
+    --border: #E2E8F0;
+    --radius: 6px;
+    --success: #16A34A;
+    --warning: #F59E0B;
+    --danger: #DC2626;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif;
+    background: #E5E7EB;
+    color: var(--primary);
+    min-height: 100vh;
+    padding: 32px 16px;
+  }
+
+  /* ===== Page Title ===== */
+  .page-title-block {
+    max-width: 960px;
+    margin: 0 auto 32px;
+  }
+  .page-title-block h1 {
+    font-size: 22px;
+    font-weight: 800;
+    color: #111827;
+    letter-spacing: -0.01em;
+    margin-bottom: 4px;
+  }
+  .page-title-block p {
+    font-size: 13px;
+    color: #6B7280;
+  }
+
+  /* ===== Legend ===== */
+  .legend-block {
+    max-width: 960px;
+    margin: 0 auto 40px;
+    background: #FFF7F7;
+    border: 1px solid #FECACA;
+    border-radius: 6px;
+    padding: 16px 20px;
+  }
+  .legend-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #DC2626;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .legend-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px 16px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: #374151;
+  }
+  .legend-badge {
+    width: 22px;
+    height: 22px;
+    background: #DC2626;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  /* ===== Section Divider ===== */
+  .section-divider {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    max-width: 960px;
+    margin: 48px auto 24px;
+  }
+  .section-divider-line {
+    flex: 1;
+    height: 1px;
+    background: #9CA3AF;
+  }
+  .section-divider-label {
+    background: #374151;
+    color: #F9FAFB;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 6px 20px;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+
+  /* ===== Screen Frame ===== */
+  .screen-frame {
+    max-width: 960px;
+    margin: 0 auto;
+    background: var(--background);
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #D1D5DB;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+  }
+
+  /* ===== App Top Bar ===== */
+  .app-topbar {
+    height: 48px;
+    background: var(--primary);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 12px;
+    border-bottom: 1px solid #1E293B;
+  }
+  .app-topbar-logo {
+    background: var(--accent);
+    color: var(--primary);
+    font-weight: 800;
+    font-size: 12px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+  }
+  .app-topbar-title {
+    color: #94A3B8;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .app-topbar-spacer { flex: 1; }
+  .app-topbar-user {
+    width: 28px;
+    height: 28px;
+    background: #334155;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: #94A3B8;
+  }
+
+  /* ===== Sticky Header ===== */
+  .sticky-header {
+    position: relative;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .breadcrumb-sep { color: #CBD5E1; font-size: 11px; }
+  .breadcrumb-current { color: var(--primary); font-weight: 600; }
+  .header-spacer { flex: 1; }
+  .avatar-sm {
+    width: 36px;
+    height: 36px;
+    background: var(--accent);
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+  }
+  .header-client-name { font-size: 15px; font-weight: 700; color: var(--primary); }
+  .header-client-meta { font-size: 11px; color: var(--text-muted); }
+
+  /* ===== Tab Bar ===== */
+  .tab-bar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex;
+    gap: 0;
+  }
+  .tab-item {
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .tab-item.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  /* ===== Tab Content ===== */
+  .tab-content {
+    padding: 20px 24px;
+  }
+
+  /* ===== Period Filter ===== */
+  .period-filter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .period-btn {
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: var(--radius);
+    cursor: pointer;
+    border: 1px solid var(--border);
+  }
+  .period-btn.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  .period-btn.inactive {
+    background: var(--background);
+    color: #64748B;
+    border-color: var(--border);
+  }
+
+  /* ===== Meal Type Chips ===== */
+  .meal-chips {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .meal-chip {
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: var(--radius);
+    cursor: pointer;
+    border: 1px solid var(--border);
+  }
+  .meal-chip.active {
+    background: var(--accent-light);
+    color: var(--accent);
+    border-color: var(--accent-subtle);
+  }
+  .meal-chip.inactive {
+    background: var(--background);
+    color: #64748B;
+    border-color: var(--border);
+  }
+
+  /* ===== KPI Summary Bar ===== */
+  .kpi-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .kpi-item {
+    background: var(--surface);
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .kpi-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .kpi-value {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--primary);
+    line-height: 1.1;
+  }
+  .kpi-unit {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+  }
+  .kpi-accent { color: var(--accent); }
+
+  /* ===== View Toggle ===== */
+  .view-toggle {
+    display: inline-flex;
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2px;
+    gap: 2px;
+  }
+  .view-btn {
+    padding: 5px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .view-btn.active {
+    background: var(--surface);
+    color: var(--primary);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  }
+  .view-btn.inactive {
+    background: transparent;
+    color: var(--text-muted);
+  }
+
+  /* ===== Filter Row ===== */
+  .filter-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    gap: 12px;
+  }
+  .filter-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .filter-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .filter-separator {
+    width: 1px;
+    height: 20px;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+
+  /* ===== Meal Card ===== */
+  .meal-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    margin-bottom: 8px;
+  }
+  .meal-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .meal-type-badge {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--primary);
+  }
+  .meal-time {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .meal-kcal {
+    margin-left: auto;
+    font-size: 12px;
+    font-weight: 700;
+    color: #D97706;
+  }
+  .meal-notes {
+    font-size: 12px;
+    color: #475569;
+    background: var(--background);
+    border-radius: 4px;
+    padding: 6px 10px;
+    margin-bottom: 8px;
+  }
+  .meal-photos {
+    display: flex;
+    gap: 6px;
+  }
+  .meal-photo {
+    width: 64px;
+    height: 64px;
+    background: #E2E8F0;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .meal-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* ===== Date Group Header ===== */
+  .date-group-header {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .date-group-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ===== Gallery Grid ===== */
+  .gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+  .gallery-cell {
+    aspect-ratio: 1;
+    background: #E2E8F0;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    border: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+  .gallery-cell-label {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(15,23,42,0.6);
+    color: white;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 6px;
+  }
+  .gallery-no-photo {
+    aspect-ratio: 1;
+    background: var(--background);
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    border: 1px dashed var(--border);
+    color: var(--text-muted);
+    gap: 4px;
+  }
+  .gallery-no-photo span { font-size: 10px; font-weight: 600; }
+
+  /* ===== Side-by-side Layout ===== */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    align-items: start;
+  }
+  .col-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .col-label-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ===== Exercise Cards ===== */
+  .exercise-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 10px;
+    position: relative;
+  }
+  .exercise-card-accent {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--accent);
+    border-radius: 0;
+  }
+  .exercise-card-accent-gray {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 3px;
+    background: #CBD5E1;
+    border-radius: 0;
+  }
+  .exercise-card-body {
+    padding: 12px 14px 12px 18px;
+  }
+  .exercise-card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .exercise-icon {
+    width: 32px;
+    height: 32px;
+    background: var(--accent-light);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .exercise-icon-gray {
+    width: 32px;
+    height: 32px;
+    background: #F1F5F9;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .exercise-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--primary);
+    line-height: 1.3;
+  }
+  .exercise-subtitle {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .exercise-label-badge {
+    margin-left: auto;
+    padding: 2px 8px;
+    border-radius: var(--radius);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+  }
+  .exercise-label-plan {
+    background: var(--accent-light);
+    color: var(--accent);
+    border: 1px solid var(--accent-subtle);
+  }
+  .exercise-label-free {
+    background: #F1F5F9;
+    color: #64748B;
+    border: 1px solid var(--border);
+  }
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 8px;
+    border-radius: var(--radius);
+    font-size: 10px;
+    font-weight: 700;
+  }
+  .status-done { background: #F0FDF4; color: #16A34A; border: 1px solid #BBF7D0; }
+  .status-partial { background: #FFFBEB; color: #D97706; border: 1px solid #FDE68A; }
+
+  /* ===== Set Grid ===== */
+  .set-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    margin-top: 8px;
+  }
+  .set-item {
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 5px 8px;
+    font-size: 11px;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .set-label {
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 10px;
+  }
+  .set-value { font-weight: 700; font-size: 11px; }
+  .set-check { color: var(--success); font-size: 11px; }
+  .set-miss { color: #94A3B8; font-size: 11px; }
+
+  /* ===== Exercise Exercise Card (Free) ===== */
+  .free-exercise-stats {
+    display: flex;
+    gap: 16px;
+    margin-top: 6px;
+  }
+  .free-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .free-stat-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+  .free-stat-value {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--primary);
+  }
+  .free-stat-kcal { color: #D97706; }
+
+  /* ===== Trainer Note ===== */
+  .trainer-note {
+    background: var(--accent-light);
+    border: 1px solid var(--accent-subtle);
+    border-radius: 4px;
+    padding: 6px 10px;
+    margin-top: 8px;
+    font-size: 11px;
+    color: #0F766E;
+  }
+  .trainer-note-label {
+    font-weight: 700;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 2px;
+  }
+
+  /* ===== Exercise List Section ===== */
+  .exercise-section-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+    margin-top: 16px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .exercise-section-label .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+  .dot-teal { background: var(--accent); }
+  .dot-gray { background: #CBD5E1; }
+
+  /* ===== Ticket Summary ===== */
+  .ticket-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+  .ticket-kpi {
+    background: var(--surface);
+    padding: 12px 16px;
+  }
+  .ticket-kpi-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 4px;
+  }
+  .ticket-kpi-value {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--primary);
+    line-height: 1.1;
+  }
+  .ticket-kpi-unit {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+  .ticket-kpi-warning {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    color: #D97706;
+    font-weight: 700;
+    margin-top: 4px;
+  }
+
+  /* ===== Ticket Card ===== */
+  .ticket-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 10px;
+  }
+  .ticket-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    gap: 8px;
+  }
+  .ticket-card-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--primary);
+    line-height: 1.3;
+  }
+  .ticket-card-type {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .ticket-remaining-big {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--accent);
+    line-height: 1;
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .ticket-remaining-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-align: right;
+  }
+  .ticket-progress-wrap {
+    margin-bottom: 8px;
+  }
+  .ticket-progress-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .ticket-progress-bar-bg {
+    width: 100%;
+    height: 6px;
+    background: #E2E8F0;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .ticket-progress-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 3px;
+    transition: width 0.3s;
+  }
+  .ticket-progress-bar-fill-danger {
+    background: #DC2626;
+  }
+  .ticket-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 8px;
+  }
+  .ticket-validity {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .warning-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: #FFFBEB;
+    color: #D97706;
+    border: 1px solid #FDE68A;
+    border-radius: var(--radius);
+    font-size: 10px;
+    font-weight: 700;
+  }
+  .expired-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: #FEF2F2;
+    color: #DC2626;
+    border: 1px solid #FECACA;
+    border-radius: var(--radius);
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  /* ===== Mini Timeline ===== */
+  .mini-timeline {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+  }
+  .timeline-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+  .timeline-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  .timeline-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-left: 6px;
+    white-space: nowrap;
+  }
+
+  /* ===== Section Header with collapse ===== */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-header-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-count-badge {
+    padding: 1px 8px;
+    background: var(--accent-light);
+    color: var(--accent);
+    border: 1px solid var(--accent-subtle);
+    border-radius: var(--radius);
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .section-count-badge-expired {
+    padding: 1px 8px;
+    background: #F1F5F9;
+    color: #64748B;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .collapse-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--text-muted);
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 3px 10px;
+    cursor: pointer;
+  }
+
+  /* ===== Collapsed section ===== */
+  .collapsed-section {
+    background: var(--background);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .collapsed-info {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .expand-btn {
+    font-size: 11px;
+    color: var(--accent);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* ===== Expired Ticket Card ===== */
+  .ticket-card-expired {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    opacity: 0.55;
+  }
+
+  /* ===== Annotation ===== */
+  .annotation-wrapper {
+    position: relative;
+    display: block;
+  }
+  .annotation-badge {
+    position: absolute;
+    top: -11px;
+    right: -11px;
+    background: #DC2626;
+    color: white;
+    border-radius: 50%;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    z-index: 10;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    pointer-events: none;
+  }
+  .annotation-label {
+    position: absolute;
+    top: -11px;
+    right: -8px;
+    background: #DC2626;
+    color: white;
+    padding: 3px 9px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    white-space: nowrap;
+    z-index: 10;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    pointer-events: none;
+    transform: translateX(100%);
+  }
+
+  /* ===== Annotation note (inline below component) ===== */
+  .annotation-note {
+    margin-top: 6px;
+    padding: 6px 10px;
+    background: #FFF7F7;
+    border: 1px solid #FECACA;
+    border-radius: 4px;
+    font-size: 11px;
+    color: #B91C1C;
+    font-weight: 600;
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .annotation-note-num {
+    background: #DC2626;
+    color: white;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  /* ===== Workout exercise sub-items ===== */
+  .workout-exercises {
+    margin-top: 8px;
+    border-top: 1px solid var(--border);
+    padding-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .workout-exercise-item {
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px 10px;
+  }
+  .workout-exercise-name {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* ===== Chart bars ===== */
+  .mini-bar-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    height: 40px;
+    margin-top: 8px;
+    padding: 0 4px;
+  }
+  .mini-bar-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    height: 100%;
+    justify-content: flex-end;
+  }
+  .mini-bar {
+    width: 100%;
+    border-radius: 2px 2px 0 0;
+  }
+  .mini-bar-label {
+    font-size: 9px;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+
+  /* ===== Scrollable inner ===== */
+  .inner-scroll {
+    max-height: 400px;
+    overflow-y: auto;
+  }
+
+  /* ===== Ticket management link ===== */
+  .ticket-mgmt-link {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .ticket-mgmt-link:hover { color: var(--accent-hover); }
+</style>
+</head>
+<body>
+
+<!-- ===== Page Title ===== -->
+<div class="page-title-block">
+  <h1>顧客詳細画面 - 食事 / 運動 / チケットタブ リデザイン</h1>
+  <p>改善提案を赤色アノテーションで示したワイヤーフレーム。デザインシステム: Primary #0F172A / Accent #14B8A6 / Flat border only</p>
+</div>
+
+<!-- ===== Legend ===== -->
+<div class="legend-block">
+  <div class="legend-title">改善提案レジェンド（赤番号 = 提案箇所）</div>
+  <div class="legend-grid">
+    <div class="legend-item">
+      <div class="legend-badge">1</div>
+      <span>食事タブ: 4項目KPIサマリーバー（全期間対応）</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-badge">2</div>
+      <span>食事タブ: 食事種別チップフィルター追加</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-badge">3</div>
+      <span>食事タブ: リスト / ギャラリー切替トグル</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-badge">4</div>
+      <span>運動タブ: Teal/グレーアクセントバーで種別区別</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-badge">5</div>
+      <span>運動タブ: 全期間KPIサマリーバー + 週別ミニチャート</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-badge">6</div>
+      <span>運動タブ: セット実績を2列コンパクトグリッド表示</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-badge">7</div>
+      <span>チケットタブ: ダッシュボード型サマリーカード</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-badge">8</div>
+      <span>チケットタブ: Tealプログレス + 大きな残回数 + 警告バッジ</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-badge">9</div>
+      <span>チケットタブ: 有効 / 期限切れセクション分離・折りたたみ</span>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================== -->
+<!-- SECTION 1: 食事タブ                                       -->
+<!-- ======================================================== -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">Section 1: 食事タブ（MealTab）</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="screen-frame">
+  <!-- App Top Bar -->
+  <div class="app-topbar">
+    <div class="app-topbar-logo">FIT</div>
+    <span class="app-topbar-title">FIT-CONNECT</span>
+    <div class="app-topbar-spacer"></div>
+    <div class="app-topbar-user">T</div>
+  </div>
+
+  <!-- Sticky Header -->
+  <div class="sticky-header">
+    <div class="breadcrumb">
+      <span>顧客一覧</span>
+      <span class="breadcrumb-sep">›</span>
+      <span class="breadcrumb-current">山田 太郎</span>
+    </div>
+    <div class="avatar-sm">山</div>
+    <div>
+      <div class="header-client-name">山田 太郎</div>
+      <div class="header-client-meta">28歳 / 男性 / ダイエット</div>
+    </div>
+    <div class="header-spacer"></div>
+    <div style="display:flex;gap:8px;">
+      <div style="padding:5px 12px;background:var(--accent);color:white;border-radius:var(--radius);font-size:12px;font-weight:700;cursor:pointer;">セッション開始</div>
+    </div>
+  </div>
+
+  <!-- Tab Bar -->
+  <div class="tab-bar">
+    <div class="tab-item">サマリー</div>
+    <div class="tab-item active">食事</div>
+    <div class="tab-item">体重</div>
+    <div class="tab-item">運動</div>
+    <div class="tab-item">チケット</div>
+    <div class="tab-item">カルテ</div>
+  </div>
+
+  <!-- Tab Content -->
+  <div class="tab-content">
+
+    <!-- Filter Row: 期間フィルター + 食事種別チップ + ビュー切替 -->
+    <div class="filter-row">
+      <div class="filter-left">
+        <!-- 期間ボタン -->
+        <div class="period-filter">
+          <button class="period-btn active">本日</button>
+          <button class="period-btn inactive">今週</button>
+          <button class="period-btn inactive">今月</button>
+        </div>
+
+        <div class="filter-separator"></div>
+
+        <!-- 提案2: 食事種別チップ -->
+        <div style="position:relative;">
+          <div class="meal-chips">
+            <button class="meal-chip active">すべて</button>
+            <button class="meal-chip inactive">朝食</button>
+            <button class="meal-chip inactive">昼食</button>
+            <button class="meal-chip inactive">夕食</button>
+            <button class="meal-chip inactive">間食</button>
+          </div>
+          <!-- annotation -->
+          <div style="position:absolute;top:-20px;left:0;background:#DC2626;color:white;padding:2px 8px;border-radius:3px;font-size:10px;font-weight:700;white-space:nowrap;z-index:10;">提案2: 食事種別チップフィルター</div>
+        </div>
+      </div>
+
+      <!-- 提案3: ビュー切替トグル -->
+      <div style="position:relative;">
+        <div class="view-toggle">
+          <button class="view-btn active">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            リスト
+          </button>
+          <button class="view-btn inactive">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            ギャラリー
+          </button>
+        </div>
+        <div style="position:absolute;top:-20px;right:0;background:#DC2626;color:white;padding:2px 8px;border-radius:3px;font-size:10px;font-weight:700;white-space:nowrap;z-index:10;">提案3: ビュー切替</div>
+      </div>
+    </div>
+
+    <!-- 提案1: KPI サマリーバー -->
+    <div style="position:relative;margin-bottom:20px;">
+      <div class="kpi-bar">
+        <div class="kpi-item">
+          <div class="kpi-label">食事数</div>
+          <div style="display:flex;align-items:baseline;gap:4px;">
+            <span class="kpi-value kpi-accent">4</span>
+            <span class="kpi-unit">食</span>
+          </div>
+        </div>
+        <div class="kpi-item">
+          <div class="kpi-label">合計カロリー</div>
+          <div style="display:flex;align-items:baseline;gap:4px;">
+            <span class="kpi-value" style="color:#D97706;">1,550</span>
+            <span class="kpi-unit">kcal</span>
+          </div>
+        </div>
+        <div class="kpi-item">
+          <div class="kpi-label">平均カロリー</div>
+          <div style="display:flex;align-items:baseline;gap:4px;">
+            <span class="kpi-value" style="font-size:18px;">388</span>
+            <span class="kpi-unit">kcal/食</span>
+          </div>
+        </div>
+        <div class="kpi-item">
+          <div class="kpi-label">写真数</div>
+          <div style="display:flex;align-items:baseline;gap:4px;">
+            <span class="kpi-value" style="font-size:18px;">4</span>
+            <span class="kpi-unit">枚</span>
+          </div>
+        </div>
+      </div>
+      <div style="position:absolute;top:-20px;left:0;background:#DC2626;color:white;padding:2px 8px;border-radius:3px;font-size:10px;font-weight:700;white-space:nowrap;z-index:10;">提案1: 4項目KPIサマリーバー（全期間対応）</div>
+    </div>
+
+    <!-- Side-by-side: List View (left) | Gallery View (right) -->
+    <div class="two-col">
+
+      <!-- Left: リスト表示 -->
+      <div>
+        <div class="col-label">
+          リスト表示（アクティブ）
+          <div class="col-label-line"></div>
+        </div>
+
+        <!-- Today group -->
+        <div class="date-group-header">
+          Today
+          <div class="date-group-line"></div>
+        </div>
+
+        <!-- 朝食 -->
+        <div class="meal-card">
+          <div class="meal-card-header">
+            <span style="font-size:15px;">🍳</span>
+            <span class="meal-type-badge">朝食</span>
+            <span class="meal-time">7:30</span>
+            <span class="meal-kcal">320 kcal</span>
+          </div>
+          <div class="meal-notes">オートミール、プロテイン</div>
+          <div class="meal-photos">
+            <div class="meal-photo" style="background:#F0FDFA;border-color:#CCFBF1;">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="1.5"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- 昼食 -->
+        <div class="meal-card">
+          <div class="meal-card-header">
+            <span style="font-size:15px;">🥗</span>
+            <span class="meal-type-badge">昼食</span>
+            <span class="meal-time">12:15</span>
+            <span class="meal-kcal">550 kcal</span>
+          </div>
+          <div class="meal-notes">鶏胸肉サラダ、玄米</div>
+          <div class="meal-photos">
+            <div class="meal-photo" style="background:#F0FDFA;border-color:#CCFBF1;">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="1.5"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+            </div>
+            <div class="meal-photo" style="background:#F0FDFA;border-color:#CCFBF1;">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="1.5"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- 間食 -->
+        <div class="meal-card">
+          <div class="meal-card-header">
+            <span style="font-size:15px;">🍪</span>
+            <span class="meal-type-badge">間食</span>
+            <span class="meal-time">15:30</span>
+            <span class="meal-kcal">200 kcal</span>
+          </div>
+          <div class="meal-notes">プロテインバー</div>
+          <div style="padding:6px 0 2px;display:flex;align-items:center;gap:4px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+            <span style="font-size:10px;color:var(--text-muted);">写真なし</span>
+          </div>
+        </div>
+
+        <!-- 夕食 -->
+        <div class="meal-card">
+          <div class="meal-card-header">
+            <span style="font-size:15px;">🍖</span>
+            <span class="meal-type-badge">夕食</span>
+            <span class="meal-time">19:00</span>
+            <span class="meal-kcal">480 kcal</span>
+          </div>
+          <div class="meal-notes">サーモン、ブロッコリー、さつまいも</div>
+          <div class="meal-photos">
+            <div class="meal-photo" style="background:#F0FDFA;border-color:#CCFBF1;">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="1.5"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right: ギャラリー表示（提案3） -->
+      <div>
+        <div style="position:relative;">
+          <div class="col-label">
+            ギャラリー表示（切替後）
+            <div class="col-label-line"></div>
+          </div>
+          <div style="position:absolute;top:-20px;right:0;background:#DC2626;color:white;padding:2px 8px;border-radius:3px;font-size:10px;font-weight:700;white-space:nowrap;z-index:10;">提案3: 3列グリッド写真ギャラリー</div>
+        </div>
+
+        <div class="gallery-grid">
+          <!-- 朝食: 写真あり -->
+          <div class="gallery-cell">
+            <div style="width:100%;height:100%;background:linear-gradient(135deg,#ECFDF5,#D1FAE5);display:flex;align-items:center;justify-content:center;">
+              <span style="font-size:32px;">🍳</span>
+            </div>
+            <div class="gallery-cell-label">朝食 7:30</div>
+          </div>
+          <!-- 昼食: 写真2枚（+1バッジ）-->
+          <div class="gallery-cell">
+            <div style="width:100%;height:100%;background:linear-gradient(135deg,#ECFDF5,#D1FAE5);display:flex;align-items:center;justify-content:center;">
+              <span style="font-size:32px;">🥗</span>
+            </div>
+            <div style="position:absolute;top:5px;right:5px;background:rgba(15,23,42,0.7);color:white;font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;">+1</div>
+            <div class="gallery-cell-label">昼食 12:15</div>
+          </div>
+          <!-- 間食: 写真なし → Emoji代替 -->
+          <div class="gallery-no-photo">
+            <span style="font-size:26px;">🍪</span>
+            <span>間食 15:30</span>
+            <span style="font-size:9px;color:#CBD5E1;">写真なし</span>
+          </div>
+          <!-- 夕食: 写真あり -->
+          <div class="gallery-cell">
+            <div style="width:100%;height:100%;background:linear-gradient(135deg,#FFF7ED,#FED7AA);display:flex;align-items:center;justify-content:center;">
+              <span style="font-size:32px;">🍖</span>
+            </div>
+            <div class="gallery-cell-label">夕食 19:00</div>
+          </div>
+          <!-- placeholder -->
+          <div class="gallery-no-photo" style="border-style:dashed;background:transparent;">
+          </div>
+          <div class="gallery-no-photo" style="border-style:dashed;background:transparent;">
+          </div>
+        </div>
+
+        <!-- ギャラリー用 凡例 -->
+        <div style="margin-top:10px;font-size:10px;color:var(--text-muted);display:flex;gap:12px;">
+          <span style="display:flex;align-items:center;gap:4px;">
+            <span style="width:10px;height:10px;background:var(--accent-light);border:1px solid var(--accent-subtle);border-radius:2px;display:inline-block;"></span>写真あり
+          </span>
+          <span style="display:flex;align-items:center;gap:4px;">
+            <span style="width:10px;height:10px;background:var(--background);border:1px dashed var(--border);border-radius:2px;display:inline-block;"></span>写真なし（Emoji代替）
+          </span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /tab-content -->
+</div><!-- /screen-frame -->
+
+<!-- ======================================================== -->
+<!-- SECTION 2: 運動タブ                                       -->
+<!-- ======================================================== -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">Section 2: 運動タブ（ExerciseTab）</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="screen-frame">
+  <!-- App Top Bar -->
+  <div class="app-topbar">
+    <div class="app-topbar-logo">FIT</div>
+    <span class="app-topbar-title">FIT-CONNECT</span>
+    <div class="app-topbar-spacer"></div>
+    <div class="app-topbar-user">T</div>
+  </div>
+
+  <!-- Sticky Header -->
+  <div class="sticky-header">
+    <div class="breadcrumb">
+      <span>顧客一覧</span>
+      <span class="breadcrumb-sep">›</span>
+      <span class="breadcrumb-current">山田 太郎</span>
+    </div>
+    <div class="avatar-sm">山</div>
+    <div>
+      <div class="header-client-name">山田 太郎</div>
+      <div class="header-client-meta">28歳 / 男性 / ダイエット</div>
+    </div>
+    <div class="header-spacer"></div>
+  </div>
+
+  <!-- Tab Bar -->
+  <div class="tab-bar">
+    <div class="tab-item">サマリー</div>
+    <div class="tab-item">食事</div>
+    <div class="tab-item">体重</div>
+    <div class="tab-item active">運動</div>
+    <div class="tab-item">チケット</div>
+    <div class="tab-item">カルテ</div>
+  </div>
+
+  <!-- Tab Content -->
+  <div class="tab-content">
+
+    <!-- 期間フィルター -->
+    <div class="filter-row">
+      <div class="period-filter">
+        <button class="period-btn active">本日</button>
+        <button class="period-btn inactive">今週</button>
+        <button class="period-btn inactive">今月</button>
+      </div>
+    </div>
+
+    <!-- 提案5: KPI サマリーバー -->
+    <div style="position:relative;margin-bottom:20px;">
+      <div class="kpi-bar">
+        <div class="kpi-item">
+          <div class="kpi-label">運動数</div>
+          <div style="display:flex;align-items:baseline;gap:4px;">
+            <span class="kpi-value kpi-accent">2</span>
+            <span class="kpi-unit">件</span>
+          </div>
+        </div>
+        <div class="kpi-item">
+          <div class="kpi-label">合計時間</div>
+          <div style="display:flex;align-items:baseline;gap:4px;">
+            <span class="kpi-value" style="font-size:18px;">90</span>
+            <span class="kpi-unit">分</span>
+          </div>
+        </div>
+        <div class="kpi-item">
+          <div class="kpi-label">消費カロリー</div>
+          <div style="display:flex;align-items:baseline;gap:4px;">
+            <span class="kpi-value" style="color:#D97706;font-size:18px;">620</span>
+            <span class="kpi-unit">kcal</span>
+          </div>
+        </div>
+        <div class="kpi-item">
+          <div class="kpi-label">ワークアウト完了率</div>
+          <div style="display:flex;align-items:baseline;gap:4px;">
+            <span class="kpi-value" style="color:var(--success);font-size:18px;">78</span>
+            <span class="kpi-unit">%</span>
+          </div>
+          <div style="margin-top:4px;height:4px;background:#E2E8F0;border-radius:2px;overflow:hidden;">
+            <div style="width:78%;height:100%;background:var(--success);border-radius:2px;"></div>
+          </div>
+        </div>
+      </div>
+      <div style="position:absolute;top:-20px;left:0;background:#DC2626;color:white;padding:2px 8px;border-radius:3px;font-size:10px;font-weight:700;white-space:nowrap;z-index:10;">提案5: KPIサマリーバー（完了率付き）</div>
+    </div>
+
+    <!-- 週別ミニバーチャート（提案5） -->
+    <div style="position:relative;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;margin-bottom:20px;">
+      <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">今週の運動量（分）</div>
+      <div class="mini-bar-chart">
+        <div class="mini-bar-col">
+          <div class="mini-bar" style="height:18px;background:#CCFBF1;"></div>
+          <div class="mini-bar-label">月</div>
+        </div>
+        <div class="mini-bar-col">
+          <div class="mini-bar" style="height:30px;background:var(--accent);"></div>
+          <div class="mini-bar-label">火</div>
+        </div>
+        <div class="mini-bar-col">
+          <div class="mini-bar" style="height:10px;background:#CCFBF1;"></div>
+          <div class="mini-bar-label">水</div>
+        </div>
+        <div class="mini-bar-col">
+          <div class="mini-bar" style="height:40px;background:var(--accent);opacity:0.9;"></div>
+          <div class="mini-bar-label">木</div>
+        </div>
+        <div class="mini-bar-col">
+          <div class="mini-bar" style="height:22px;background:#CCFBF1;"></div>
+          <div class="mini-bar-label">金</div>
+        </div>
+        <div class="mini-bar-col">
+          <div class="mini-bar" style="height:6px;background:#E2E8F0;"></div>
+          <div class="mini-bar-label">土</div>
+        </div>
+        <div class="mini-bar-col" style="opacity:0.4;">
+          <div class="mini-bar" style="height:4px;background:#E2E8F0;"></div>
+          <div class="mini-bar-label">日</div>
+        </div>
+      </div>
+      <div style="position:absolute;top:-20px;left:0;background:#DC2626;color:white;padding:2px 8px;border-radius:3px;font-size:10px;font-weight:700;white-space:nowrap;z-index:10;">提案5: 週別ミニバーチャート</div>
+    </div>
+
+    <!-- Today Group -->
+    <div class="date-group-header">
+      Today — 2026/03/07
+      <div class="date-group-line"></div>
+    </div>
+
+    <!-- ワークアウトカード（提案4: Tealアクセントバー） -->
+    <div style="position:relative;margin-bottom:12px;">
+      <div class="exercise-card">
+        <div class="exercise-card-accent"></div>
+        <div class="exercise-card-body">
+          <!-- Header -->
+          <div class="exercise-card-header">
+            <div class="exercise-icon">🏋️</div>
+            <div>
+              <div class="exercise-title">上半身トレーニングA</div>
+              <div class="exercise-subtitle">ワークアウトプラン</div>
+            </div>
+            <span class="exercise-label-badge exercise-label-plan">プラン</span>
+            <span class="status-badge status-partial" style="margin-left:4px;">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              2/3完了
+            </span>
+          </div>
+
+          <!-- Exercise Items -->
+          <div class="workout-exercises">
+
+            <!-- ベンチプレス（提案6: コンパクトグリッド） -->
+            <div class="workout-exercise-item" style="position:relative;">
+              <div class="workout-exercise-name">
+                ベンチプレス
+                <span class="status-badge status-done" style="font-size:10px;padding:1px 6px;">
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  全完了
+                </span>
+              </div>
+              <div class="set-grid">
+                <div class="set-item">
+                  <div>
+                    <div class="set-label">Set 1</div>
+                    <div class="set-value">60kg × 10</div>
+                  </div>
+                  <span class="set-check">✓</span>
+                </div>
+                <div class="set-item">
+                  <div>
+                    <div class="set-label">Set 2</div>
+                    <div class="set-value">60kg × 8</div>
+                  </div>
+                  <span class="set-check">✓</span>
+                </div>
+                <div class="set-item">
+                  <div>
+                    <div class="set-label">Set 3</div>
+                    <div class="set-value">55kg × 6</div>
+                  </div>
+                  <span class="set-check">✓</span>
+                </div>
+              </div>
+              <!-- annotation 6 -->
+              <div style="position:absolute;top:-10px;right:-10px;background:#DC2626;color:white;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;z-index:10;">6</div>
+            </div>
+
+            <!-- インクラインダンベルプレス（提案6） -->
+            <div class="workout-exercise-item">
+              <div class="workout-exercise-name">
+                インクラインダンベルプレス
+                <span class="status-badge status-partial" style="font-size:10px;padding:1px 6px;">2/3</span>
+              </div>
+              <div class="set-grid">
+                <div class="set-item">
+                  <div>
+                    <div class="set-label">Set 1</div>
+                    <div class="set-value">20kg × 12</div>
+                  </div>
+                  <span class="set-check">✓</span>
+                </div>
+                <div class="set-item">
+                  <div>
+                    <div class="set-label">Set 2</div>
+                    <div class="set-value">20kg × 10</div>
+                  </div>
+                  <span class="set-check">✓</span>
+                </div>
+                <div class="set-item">
+                  <div>
+                    <div class="set-label">Set 3</div>
+                    <div class="set-value">18kg × 8</div>
+                  </div>
+                  <span class="set-miss">—</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- ラットプルダウン -->
+            <div class="workout-exercise-item">
+              <div class="workout-exercise-name">
+                ラットプルダウン
+                <span class="status-badge status-done" style="font-size:10px;padding:1px 6px;">
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  全完了
+                </span>
+              </div>
+              <div class="set-grid">
+                <div class="set-item">
+                  <div>
+                    <div class="set-label">Set 1</div>
+                    <div class="set-value">50kg × 12</div>
+                  </div>
+                  <span class="set-check">✓</span>
+                </div>
+                <div class="set-item">
+                  <div>
+                    <div class="set-label">Set 2</div>
+                    <div class="set-value">50kg × 10</div>
+                  </div>
+                  <span class="set-check">✓</span>
+                </div>
+                <div class="set-item">
+                  <div>
+                    <div class="set-label">Set 3</div>
+                    <div class="set-value">45kg × 10</div>
+                  </div>
+                  <span class="set-check">✓</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Trainer Note -->
+          <div class="trainer-note">
+            <div class="trainer-note-label">トレーナーノート</div>
+            <div>ベンチプレスは重量を維持。次回は65kgにトライ。</div>
+          </div>
+
+        </div>
+      </div>
+      <!-- annotation 4 -->
+      <div style="position:absolute;top:-11px;right:-11px;background:#DC2626;color:white;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;z-index:10;box-shadow:0 2px 4px rgba(0,0,0,0.2);">4</div>
+    </div>
+    <div class="annotation-note">
+      <div class="annotation-note-num">4</div>
+      <span>Teal色（#14B8A6）の左アクセントバー + 「プラン」バッジ → ワークアウト（プラン割当）と一目で区別可能</span>
+    </div>
+
+    <!-- 自由運動カード（提案4: グレーアクセントバー） -->
+    <div style="position:relative;margin-top:16px;margin-bottom:4px;">
+      <div class="exercise-card">
+        <div class="exercise-card-accent-gray"></div>
+        <div class="exercise-card-body">
+          <div class="exercise-card-header">
+            <div class="exercise-icon-gray">🏃</div>
+            <div>
+              <div class="exercise-title">ランニング</div>
+              <div class="exercise-subtitle">自由記録</div>
+            </div>
+            <span class="exercise-label-badge exercise-label-free">自由記録</span>
+          </div>
+          <div class="free-exercise-stats">
+            <div class="free-stat">
+              <div class="free-stat-label">時間</div>
+              <div class="free-stat-value">30 <span style="font-size:11px;font-weight:400;color:var(--text-muted);">分</span></div>
+            </div>
+            <div class="free-stat">
+              <div class="free-stat-label">距離</div>
+              <div class="free-stat-value">5.2 <span style="font-size:11px;font-weight:400;color:var(--text-muted);">km</span></div>
+            </div>
+            <div class="free-stat">
+              <div class="free-stat-label">消費カロリー</div>
+              <div class="free-stat-value free-stat-kcal">320 <span style="font-size:11px;font-weight:400;color:#D97706;">kcal</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- annotation 4 -->
+      <div style="position:absolute;top:-11px;right:-11px;background:#DC2626;color:white;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;z-index:10;box-shadow:0 2px 4px rgba(0,0,0,0.2);">4</div>
+    </div>
+    <div class="annotation-note">
+      <div class="annotation-note-num">4</div>
+      <span>グレー色（#CBD5E1）の左アクセントバー + 「自由記録」バッジ → 自由運動と視覚的に区別</span>
+    </div>
+
+  </div><!-- /tab-content -->
+</div><!-- /screen-frame -->
+
+<!-- ======================================================== -->
+<!-- SECTION 3: チケットタブ                                   -->
+<!-- ======================================================== -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">Section 3: チケットタブ（TicketsTab）</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="screen-frame">
+  <!-- App Top Bar -->
+  <div class="app-topbar">
+    <div class="app-topbar-logo">FIT</div>
+    <span class="app-topbar-title">FIT-CONNECT</span>
+    <div class="app-topbar-spacer"></div>
+    <div class="app-topbar-user">T</div>
+  </div>
+
+  <!-- Sticky Header -->
+  <div class="sticky-header">
+    <div class="breadcrumb">
+      <span>顧客一覧</span>
+      <span class="breadcrumb-sep">›</span>
+      <span class="breadcrumb-current">山田 太郎</span>
+    </div>
+    <div class="avatar-sm">山</div>
+    <div>
+      <div class="header-client-name">山田 太郎</div>
+      <div class="header-client-meta">28歳 / 男性 / ダイエット</div>
+    </div>
+    <div class="header-spacer"></div>
+    <a class="ticket-mgmt-link">チケット管理 →</a>
+  </div>
+
+  <!-- Tab Bar -->
+  <div class="tab-bar">
+    <div class="tab-item">サマリー</div>
+    <div class="tab-item">食事</div>
+    <div class="tab-item">体重</div>
+    <div class="tab-item">運動</div>
+    <div class="tab-item active">チケット</div>
+    <div class="tab-item">カルテ</div>
+  </div>
+
+  <!-- Tab Content -->
+  <div class="tab-content">
+
+    <!-- 提案7: ダッシュボード型サマリー -->
+    <div style="position:relative;margin-bottom:24px;">
+      <div class="ticket-summary-grid">
+        <div class="ticket-kpi">
+          <div class="ticket-kpi-label">有効チケット</div>
+          <div style="display:flex;align-items:baseline;gap:4px;">
+            <span class="ticket-kpi-value kpi-accent">2</span>
+            <span class="ticket-kpi-unit">件</span>
+          </div>
+        </div>
+        <div class="ticket-kpi">
+          <div class="ticket-kpi-label">総残回数</div>
+          <div style="display:flex;align-items:baseline;gap:4px;">
+            <span class="ticket-kpi-value">12</span>
+            <span class="ticket-kpi-unit">回</span>
+          </div>
+        </div>
+        <div class="ticket-kpi">
+          <div class="ticket-kpi-label">今月の消化数</div>
+          <div style="display:flex;align-items:baseline;gap:4px;">
+            <span class="ticket-kpi-value" style="font-size:18px;">3</span>
+            <span class="ticket-kpi-unit">回</span>
+          </div>
+        </div>
+        <div class="ticket-kpi">
+          <div class="ticket-kpi-label">期限切れ間近</div>
+          <div style="display:flex;align-items:baseline;gap:4px;">
+            <span class="ticket-kpi-value" style="color:#D97706;font-size:18px;">1</span>
+            <span class="ticket-kpi-unit">件</span>
+          </div>
+          <div class="ticket-kpi-warning">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            30日以内
+          </div>
+        </div>
+      </div>
+      <div style="position:absolute;top:-20px;left:0;background:#DC2626;color:white;padding:2px 8px;border-radius:3px;font-size:10px;font-weight:700;white-space:nowrap;z-index:10;">提案7: ダッシュボード型サマリーカード（4項目）</div>
+    </div>
+
+    <!-- 提案9: 有効なチケット セクション -->
+    <div style="position:relative;">
+      <div class="section-header">
+        <div class="section-header-title">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          有効なチケット
+          <span class="section-count-badge">2件</span>
+        </div>
+      </div>
+      <div style="position:absolute;top:-20px;left:0;background:#DC2626;color:white;padding:2px 8px;border-radius:3px;font-size:10px;font-weight:700;white-space:nowrap;z-index:10;">提案9: セクション分離</div>
+    </div>
+
+    <!-- チケット1: パーソナル16回（提案8） -->
+    <div style="position:relative;margin-bottom:4px;">
+      <div class="ticket-card">
+        <div class="ticket-card-header">
+          <div>
+            <div class="ticket-card-name">パーソナルトレーニング 16回券</div>
+            <div class="ticket-card-type">パーソナル</div>
+          </div>
+          <!-- 提案8: 大きな残回数 -->
+          <div style="text-align:right;flex-shrink:0;">
+            <div class="ticket-remaining-big">10</div>
+            <div class="ticket-remaining-label">残り回数</div>
+          </div>
+        </div>
+        <!-- 提案8: Tealプログレスバー -->
+        <div class="ticket-progress-wrap">
+          <div class="ticket-progress-meta">
+            <span>残り 10 / 16回</span>
+            <span>63%</span>
+          </div>
+          <div class="ticket-progress-bar-bg">
+            <div class="ticket-progress-bar-fill" style="width:63%;"></div>
+          </div>
+        </div>
+        <div class="ticket-footer">
+          <div class="ticket-validity">有効期限: 2025/01/01 〜 2025/06/30</div>
+        </div>
+        <!-- ミニタイムライン（使用履歴） -->
+        <div class="mini-timeline">
+          <div class="timeline-dot"></div>
+          <div class="timeline-line"></div>
+          <span class="timeline-label">最終利用: 2025/03/05</span>
+          <div class="timeline-line"></div>
+          <div class="timeline-dot" style="background:#E2E8F0;"></div>
+          <span class="timeline-label">前回: 2025/03/02</span>
+          <div class="timeline-line"></div>
+          <div class="timeline-dot" style="background:#E2E8F0;"></div>
+          <span class="timeline-label">2025/02/27</span>
+        </div>
+      </div>
+      <div style="position:absolute;top:-11px;right:-11px;background:#DC2626;color:white;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;z-index:10;box-shadow:0 2px 4px rgba(0,0,0,0.2);">8</div>
+    </div>
+    <div class="annotation-note" style="margin-bottom:12px;">
+      <div class="annotation-note-num">8</div>
+      <span>Tealプログレスバー + 残回数を大きな数字で強調 + ミニタイムライン（直近の消化日）で使用履歴を可視化</span>
+    </div>
+
+    <!-- チケット2: グループ8回（期限切れ間近） -->
+    <div class="ticket-card" style="border-color:#FDE68A;">
+      <div class="ticket-card-header">
+        <div>
+          <div class="ticket-card-name">グループレッスン 8回券</div>
+          <div class="ticket-card-type">グループ</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div class="ticket-remaining-big" style="color:#D97706;">2</div>
+          <div class="ticket-remaining-label">残り回数</div>
+        </div>
+      </div>
+      <!-- プログレスバー: 残り少ない -->
+      <div class="ticket-progress-wrap">
+        <div class="ticket-progress-meta">
+          <span>残り 2 / 8回</span>
+          <span>25%</span>
+        </div>
+        <div class="ticket-progress-bar-bg">
+          <div class="ticket-progress-bar-fill ticket-progress-bar-fill-danger" style="width:25%;"></div>
+        </div>
+      </div>
+      <div class="ticket-footer">
+        <div class="ticket-validity">有効期限: 2025/02/01 〜 2025/05/31</div>
+        <!-- 提案8: 警告バッジ -->
+        <div class="warning-badge">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          期限切れ間近 (86日)
+        </div>
+      </div>
+      <div class="mini-timeline">
+        <div class="timeline-dot" style="background:#D97706;"></div>
+        <div class="timeline-line"></div>
+        <span class="timeline-label">最終利用: 2025/03/01</span>
+        <div class="timeline-line"></div>
+        <div class="timeline-dot" style="background:#E2E8F0;"></div>
+        <span class="timeline-label">前回: 2025/02/22</span>
+      </div>
+    </div>
+
+    <!-- 提案9: 期限切れ・使い切りセクション（折りたたみ） -->
+    <div style="position:relative;margin-top:20px;">
+      <div class="section-header">
+        <div class="section-header-title">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          <span style="color:var(--text-muted);">期限切れ・使い切り</span>
+          <span class="section-count-badge-expired">1件</span>
+        </div>
+        <button class="collapse-btn">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          展開する
+        </button>
+      </div>
+      <div style="position:absolute;top:-20px;left:0;background:#DC2626;color:white;padding:2px 8px;border-radius:3px;font-size:10px;font-weight:700;white-space:nowrap;z-index:10;">提案9: デフォルト折りたたみ</div>
+    </div>
+
+    <!-- 折りたたまれた expired セクション -->
+    <div class="collapsed-section">
+      <div class="collapsed-info">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2" style="display:inline;vertical-align:middle;margin-right:4px;"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        パーソナルトレーニング 8回券（期限切れ: 2024/12/31）
+      </div>
+      <div class="expand-btn">展開 ›</div>
+    </div>
+
+    <!-- 展開時の期限切れカード（参考表示） -->
+    <div style="margin-top:12px;">
+      <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.06em;">展開時のイメージ（opacity: 0.55）</div>
+      <div class="ticket-card-expired">
+        <div class="ticket-card-header">
+          <div>
+            <div class="ticket-card-name">パーソナルトレーニング 8回券</div>
+            <div class="ticket-card-type">パーソナル</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+            <div class="expired-badge">
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+              期限切れ
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);">残り 0 / 8回</div>
+          </div>
+        </div>
+        <div class="ticket-progress-wrap">
+          <div class="ticket-progress-meta">
+            <span>使い切り (0回残)</span>
+            <span>0%</span>
+          </div>
+          <div class="ticket-progress-bar-bg">
+            <div class="ticket-progress-bar-fill" style="width:0%;background:#E2E8F0;"></div>
+          </div>
+        </div>
+        <div class="ticket-footer">
+          <div class="ticket-validity">有効期限: 2024/07/01 〜 2024/12/31</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /tab-content -->
+</div><!-- /screen-frame -->
+
+<!-- ======================================================== -->
+<!-- 改善提案まとめレジェンド                                   -->
+<!-- ======================================================== -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">改善提案 全9件まとめ</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div style="max-width:960px;margin:0 auto 48px;">
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+
+    <div style="background:white;border:1px solid #E2E8F0;border-radius:6px;padding:14px 16px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <div style="width:28px;height:28px;background:#DC2626;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">1</div>
+        <div style="font-size:12px;font-weight:700;color:#0F172A;">食事: KPIサマリーバー</div>
+      </div>
+      <div style="font-size:11px;color:#64748B;line-height:1.6;">食事数・合計カロリー・平均カロリー・写真数の4KPIを横1行のコンパクトバーで表示。期間に応じて集計。</div>
+    </div>
+
+    <div style="background:white;border:1px solid #E2E8F0;border-radius:6px;padding:14px 16px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <div style="width:28px;height:28px;background:#DC2626;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">2</div>
+        <div style="font-size:12px;font-weight:700;color:#0F172A;">食事: 種別チップフィルター</div>
+      </div>
+      <div style="font-size:11px;color:#64748B;line-height:1.6;">全て/朝食/昼食/夕食/間食の複数選択チップ。期間ボタンと横並びで省スペース配置。</div>
+    </div>
+
+    <div style="background:white;border:1px solid #E2E8F0;border-radius:6px;padding:14px 16px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <div style="width:28px;height:28px;background:#DC2626;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">3</div>
+        <div style="font-size:12px;font-weight:700;color:#0F172A;">食事: ギャラリーモード</div>
+      </div>
+      <div style="font-size:11px;color:#64748B;line-height:1.6;">リスト/ギャラリー切替トグル。ギャラリーは3列グリッド。写真なし記録はEmoji+テキストで代替。</div>
+    </div>
+
+    <div style="background:white;border:1px solid #E2E8F0;border-radius:6px;padding:14px 16px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <div style="width:28px;height:28px;background:#DC2626;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">4</div>
+        <div style="font-size:12px;font-weight:700;color:#0F172A;">運動: アクセントバー区別</div>
+      </div>
+      <div style="font-size:11px;color:#64748B;line-height:1.6;">ワークアウト=Teal(#14B8A6)左バー+「プラン」バッジ、自由運動=グレー左バー+「自由記録」バッジで瞬時に区別。</div>
+    </div>
+
+    <div style="background:white;border:1px solid #E2E8F0;border-radius:6px;padding:14px 16px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <div style="width:28px;height:28px;background:#DC2626;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">5</div>
+        <div style="font-size:12px;font-weight:700;color:#0F172A;">運動: 週間ボリュームサマリー</div>
+      </div>
+      <div style="font-size:11px;color:#64748B;line-height:1.6;">全期間KPIバー（運動数/合計時間/消費kcal/完了率）＋週別ミニバーチャートで傾向を可視化。</div>
+    </div>
+
+    <div style="background:white;border:1px solid #E2E8F0;border-radius:6px;padding:14px 16px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <div style="width:28px;height:28px;background:#DC2626;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">6</div>
+        <div style="font-size:12px;font-weight:700;color:#0F172A;">運動: セット実績コンパクト化</div>
+      </div>
+      <div style="font-size:11px;color:#64748B;line-height:1.6;">セット実績を2列グリッドで表示。3セット以上でも縦に長くなりすぎず省スペース。完了/未完了を✓/—で表現。</div>
+    </div>
+
+    <div style="background:white;border:1px solid #E2E8F0;border-radius:6px;padding:14px 16px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <div style="width:28px;height:28px;background:#DC2626;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">7</div>
+        <div style="font-size:12px;font-weight:700;color:#0F172A;">チケット: ダッシュボードサマリー</div>
+      </div>
+      <div style="font-size:11px;color:#64748B;line-height:1.6;">有効チケット数/総残回数/今月消化数/期限切れ間近件数の4KPIをサマリーカードで一覧表示。</div>
+    </div>
+
+    <div style="background:white;border:1px solid #E2E8F0;border-radius:6px;padding:14px 16px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <div style="width:28px;height:28px;background:#DC2626;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">8</div>
+        <div style="font-size:12px;font-weight:700;color:#0F172A;">チケット: プログレス強化</div>
+      </div>
+      <div style="font-size:11px;color:#64748B;line-height:1.6;">Tealプログレスバー+残回数を大きな数字で表示+30日以内警告バッジ(amber)+ミニタイムライン(直近消化日)。</div>
+    </div>
+
+    <div style="background:white;border:1px solid #E2E8F0;border-radius:6px;padding:14px 16px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <div style="width:28px;height:28px;background:#DC2626;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">9</div>
+        <div style="font-size:12px;font-weight:700;color:#0F172A;">チケット: セクション分離</div>
+      </div>
+      <div style="font-size:11px;color:#64748B;line-height:1.6;">「有効なチケット」と「期限切れ・使い切り」を明確にセクション分離。期限切れはデフォルト折りたたみ。</div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

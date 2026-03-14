@@ -21,11 +21,11 @@ export function AlertItem({
     severity === 'high' ? (
       <span className="w-2 h-2 rounded-full bg-red-500 inline-block flex-shrink-0 mt-1.5" />
     ) : (
-      <span className="w-2 h-2 rounded-full bg-yellow-500 inline-block flex-shrink-0 mt-1.5" />
+      <span className="w-2 h-2 rounded-full bg-amber-500 inline-block flex-shrink-0 mt-1.5" />
     )
 
-  const accentBorder = severity === 'high' ? 'border-l-red-400' : 'border-l-yellow-400'
-  const severityColor = severity === 'high' ? 'text-red-700' : 'text-yellow-700'
+  const accentBorder = severity === 'high' ? 'border-l-red-500' : 'border-l-amber-500'
+  const severityColor = severity === 'high' ? 'text-red-600' : 'text-amber-600'
 
   const content = (
     <div className={`p-4 border-l-2 ${accentBorder}`}>
@@ -44,7 +44,7 @@ export function AlertItem({
     return (
       <Link
         href={`/clients/${clientId}`}
-        className="block border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors"
+        className="block border-b border-[#E2E8F0] last:border-b-0 hover:bg-[#F8FAFC] transition-colors"
       >
         {content}
       </Link>
@@ -52,7 +52,7 @@ export function AlertItem({
   }
 
   return (
-    <div className="block border-b border-gray-100 last:border-b-0">
+    <div className="block border-b border-[#E2E8F0] last:border-b-0">
       {content}
     </div>
   )

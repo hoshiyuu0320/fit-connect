@@ -1,0 +1,1497 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>レポート画面 リデザイン ワイヤーフレーム</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root {
+    --primary: #0F172A;
+    --text-secondary: #475569;
+    --text-muted: #94A3B8;
+    --accent: #14B8A6;
+    --accent-hover: #0D9488;
+    --accent-light: #F0FDFA;
+    --accent-subtle: #CCFBF1;
+    --background: #F8FAFC;
+    --surface: #FFFFFF;
+    --border: #E2E8F0;
+    --radius: 6px;
+    --success: #16A34A;
+    --success-bg: #F0FDF4;
+    --warning: #F59E0B;
+    --warning-bg: #FFFBEB;
+    --danger: #DC2626;
+    --danger-bg: #FEF2F2;
+    --info: #2563EB;
+    --info-bg: #EFF6FF;
+    --purple: #7C3AED;
+    --purple-bg: #FAF5FF;
+    --orange: #EA580C;
+    --orange-bg: #FFF7ED;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif;
+    background: #E5E7EB;
+    color: var(--primary);
+    min-height: 100vh;
+    padding: 32px 16px;
+  }
+
+  .page-title-block { max-width: 1100px; margin: 0 auto 32px; }
+  .page-title-block h1 { font-size: 22px; font-weight: 800; color: #111827; letter-spacing: -0.01em; margin-bottom: 4px; }
+  .page-title-block p { font-size: 13px; color: #6B7280; }
+
+  .legend-block { max-width: 1100px; margin: 0 auto 40px; background: #FFF7F7; border: 1px solid #FECACA; border-radius: 6px; padding: 16px 20px; }
+  .legend-title { font-size: 12px; font-weight: 700; color: #DC2626; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .legend-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 16px; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #374151; }
+  .legend-badge { width: 22px; height: 22px; background: #DC2626; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+
+  .section-divider { display: flex; align-items: center; gap: 16px; max-width: 1100px; margin: 48px auto 24px; }
+  .section-divider-line { flex: 1; height: 1px; background: #9CA3AF; }
+  .section-divider-label { background: #374151; color: #F9FAFB; font-size: 13px; font-weight: 700; padding: 6px 20px; border-radius: 4px; letter-spacing: 0.05em; white-space: nowrap; }
+
+  .screen-frame { max-width: 1100px; margin: 0 auto; background: var(--background); border-radius: 8px; overflow: hidden; border: 1px solid #D1D5DB; box-shadow: 0 4px 24px rgba(0,0,0,0.10); }
+
+  .app-topbar { height: 48px; background: var(--primary); display: flex; align-items: center; padding: 0 20px; gap: 12px; border-bottom: 1px solid #1E293B; }
+  .app-topbar-logo { background: var(--accent); color: var(--primary); font-weight: 800; font-size: 12px; padding: 3px 8px; border-radius: 4px; letter-spacing: 0.05em; }
+  .app-topbar-title { color: #94A3B8; font-size: 13px; font-weight: 500; }
+  .app-topbar-spacer { flex: 1; }
+  .app-topbar-user { width: 28px; height: 28px; background: #334155; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #94A3B8; }
+
+  .anno-inline { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; background: #DC2626; color: white; border-radius: 50%; font-size: 9px; font-weight: 700; vertical-align: middle; margin-left: 4px; cursor: help; }
+
+  .design-note { max-width: 1100px; margin: 12px auto; padding: 12px 16px; background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 6px; font-size: 12px; color: #92400E; line-height: 1.6; }
+  .design-note strong { font-weight: 700; }
+
+  /* ===== Report Specific ===== */
+  .rpt-page-header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+  }
+  .rpt-breadcrumb {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+  .rpt-breadcrumb-current { color: var(--primary); font-weight: 600; }
+
+  .rpt-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .rpt-page-title {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--primary);
+    margin-right: auto;
+  }
+
+  .rpt-select {
+    padding: 7px 28px 7px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--primary);
+    font-family: inherit;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    cursor: pointer;
+  }
+  .rpt-select:focus { border-color: var(--accent); outline: none; }
+
+  .rpt-date-input {
+    padding: 7px 10px;
+    font-size: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--primary);
+    font-family: inherit;
+  }
+  .rpt-date-input:focus { border-color: var(--accent); outline: none; }
+
+  .rpt-btn-ghost {
+    padding: 7px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: inherit;
+  }
+  .rpt-btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  .rpt-btn-accent {
+    padding: 7px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    border: none;
+    border-radius: var(--radius);
+    background: var(--accent);
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: inherit;
+  }
+  .rpt-btn-accent:hover { background: var(--accent-hover); }
+
+  .rpt-content { padding: 20px 24px; }
+
+  /* Mode Toggle */
+  .rpt-mode-toggle {
+    display: flex;
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2px;
+    gap: 2px;
+  }
+  .rpt-mode-btn {
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: inherit;
+    background: transparent;
+    color: var(--text-muted);
+  }
+  .rpt-mode-btn.active {
+    background: var(--surface);
+    color: var(--accent);
+    border: 1px solid var(--border);
+  }
+
+  /* KPI Bar */
+  .rpt-kpi-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+  .rpt-kpi-item {
+    background: var(--surface);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .rpt-kpi-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .rpt-kpi-value-row {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .rpt-kpi-value {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--primary);
+    line-height: 1.1;
+  }
+  .rpt-kpi-unit {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+  }
+  .rpt-kpi-change {
+    font-size: 11px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+  .rpt-kpi-change.positive { color: var(--success); }
+  .rpt-kpi-change.negative { color: var(--danger); }
+  .rpt-kpi-change.neutral { color: var(--text-muted); }
+
+  /* Chart Card */
+  .rpt-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .rpt-card-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .rpt-card-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--primary);
+    flex: 1;
+  }
+  .rpt-card-body {
+    padding: 16px;
+  }
+
+  /* Period Toggle */
+  .rpt-period-toggle {
+    display: flex;
+    gap: 2px;
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2px;
+  }
+  .rpt-period-btn {
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: inherit;
+    background: transparent;
+    color: var(--text-muted);
+  }
+  .rpt-period-btn.active {
+    background: var(--accent);
+    color: white;
+  }
+
+  /* Chart Placeholder */
+  .rpt-chart-placeholder {
+    height: 200px;
+    background: var(--background);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-size: 12px;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  /* Stats Grid */
+  .rpt-stat-mini {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 14px;
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+  .rpt-stat-mini-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+  }
+  .rpt-stat-mini-value {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--primary);
+    line-height: 1.2;
+  }
+  .rpt-stat-mini-sub {
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  /* Heatmap Cell */
+  .heatmap-cell {
+    width: 14px;
+    height: 14px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .heatmap-0 { background: var(--background); border: 1px solid var(--border); }
+  .heatmap-1 { background: var(--accent-subtle); }
+  .heatmap-2 { background: #5EEAD4; }
+  .heatmap-3 { background: var(--accent); }
+  .heatmap-4 { background: var(--accent-hover); }
+
+  /* Progress Bar */
+  .rpt-progress-bar {
+    height: 6px;
+    background: var(--background);
+    border-radius: 3px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .rpt-progress-fill {
+    height: 100%;
+    border-radius: 3px;
+  }
+
+  /* Client Ranking Row */
+  .rpt-rank-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .rpt-rank-row:last-child { border-bottom: none; }
+  .rpt-rank-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .rpt-rank-num.top { background: var(--accent); color: white; }
+  .rpt-rank-num.normal { background: var(--background); color: var(--text-muted); border: 1px solid var(--border); }
+  .rpt-rank-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+  }
+  .rpt-rank-info { flex: 1; min-width: 0; }
+  .rpt-rank-name { font-size: 13px; font-weight: 600; color: var(--primary); }
+  .rpt-rank-meta { font-size: 10px; color: var(--text-muted); }
+
+  /* Tab Bar */
+  .rpt-tab-bar {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .rpt-tab-item {
+    padding: 10px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+  }
+  .rpt-tab-item.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  /* Donut Chart Placeholder */
+  .rpt-donut {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--primary);
+    flex-shrink: 0;
+    position: relative;
+  }
+  .rpt-donut::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 8px solid var(--border);
+  }
+
+  /* Comparison Table */
+  .rpt-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .rpt-table th {
+    text-align: left;
+    padding: 8px 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid var(--border);
+    background: var(--background);
+  }
+  .rpt-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--primary);
+  }
+  .rpt-table tr:last-child td { border-bottom: none; }
+  .rpt-table tr:hover td { background: var(--accent-light); }
+
+  /* Badge */
+  .rpt-badge {
+    display: inline-flex;
+    padding: 2px 8px;
+    font-size: 10px;
+    font-weight: 600;
+    border-radius: var(--radius);
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== TITLE ===== -->
+<div class="page-title-block">
+  <h1>レポート画面 リデザイン</h1>
+  <p>Proposal K — 全面刷新: 2モード構成（全体概況 / 個別クライアント）</p>
+</div>
+
+<!-- ===== LEGEND ===== -->
+<div class="legend-block">
+  <div class="legend-title">Design Annotations</div>
+  <div class="legend-grid">
+    <div class="legend-item"><span class="legend-badge">1</span> デザイントークン適用</div>
+    <div class="legend-item"><span class="legend-badge">2</span> 新規UIパターン / 構造変更</div>
+    <div class="legend-item"><span class="legend-badge">3</span> recharts グラフ仕様</div>
+    <div class="legend-item"><span class="legend-badge">4</span> 既存機能の改善</div>
+    <div class="legend-item"><span class="legend-badge">5</span> 新機能の追加</div>
+    <div class="legend-item"><span class="legend-badge">6</span> データソース参照</div>
+  </div>
+</div>
+
+<div class="design-note">
+  <strong>根本的な構造変更:</strong> 現在のレポート画面は「個別クライアント選択 → 統計表示」の1モード。
+  これを <strong>2モード構成</strong> に刷新します：<br>
+  <strong>A) 全体概況モード</strong> — トレーナーの全クライアントを俯瞰するダッシュボード（デフォルト表示）<br>
+  <strong>B) 個別分析モード</strong> — 特定クライアントの詳細レポート（クライアント選択時）
+</div>
+
+
+<!-- ========================================================== -->
+<!-- PROPOSAL 1: ページヘッダー & ツールバー -->
+<!-- ========================================================== -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">PROPOSAL 1 — ページヘッダー & ツールバー</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="design-note">
+  <strong>変更概要:</strong> ページヘッダーにモード切替トグル、期間プリセット、クライアント選択、エクスポートを1行に集約。
+  コンパクトかつ全機能にアクセス可能なツールバー。
+</div>
+
+<div class="screen-frame">
+  <div class="app-topbar">
+    <div class="app-topbar-logo">FC</div>
+    <div class="app-topbar-title">FIT-CONNECT</div>
+    <div class="app-topbar-spacer"></div>
+    <div class="app-topbar-user">T</div>
+  </div>
+
+  <div class="rpt-page-header">
+    <div class="rpt-breadcrumb">
+      ホーム <span style="color:#CBD5E1;margin:0 4px;">/</span>
+      <span class="rpt-breadcrumb-current">レポート</span>
+    </div>
+
+    <div class="rpt-toolbar">
+      <div class="rpt-page-title">レポート</div>
+
+      <!-- Mode Toggle -->
+      <div class="rpt-mode-toggle">
+        <button class="rpt-mode-btn active">全体概況</button>
+        <button class="rpt-mode-btn">個別分析</button>
+      </div>
+      <span class="anno-inline">2</span>
+
+      <!-- Period Presets -->
+      <div class="rpt-period-toggle">
+        <button class="rpt-period-btn">1W</button>
+        <button class="rpt-period-btn">1M</button>
+        <button class="rpt-period-btn active">3M</button>
+        <button class="rpt-period-btn">6M</button>
+        <button class="rpt-period-btn">1Y</button>
+      </div>
+      <span class="anno-inline">4</span>
+
+      <!-- Date Range (optional override) -->
+      <input type="text" class="rpt-date-input" value="2025/12/08" style="width:110px;" readonly>
+      <span style="font-size:12px;color:var(--text-muted);">〜</span>
+      <input type="text" class="rpt-date-input" value="2026/03/08" style="width:110px;" readonly>
+
+      <!-- Export -->
+      <button class="rpt-btn-ghost">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        CSV
+      </button>
+      <button class="rpt-btn-ghost">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+        PDF
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="design-note">
+  <span class="anno-inline">2</span> <strong>モード切替トグル:</strong> 「全体概況」（全クライアント俯瞰）/ 「個別分析」（1人選択）を瞬時に切替<br>
+  <span class="anno-inline">4</span> <strong>期間プリセット:</strong> 日付入力に加え、1W/1M/3M/6M/1Y のワンクリックプリセットを追加<br>
+  <span class="anno-inline">1</span> 全てのボタン・入力を hex カラー + rounded-md (6px) で統一
+</div>
+
+
+<!-- ========================================================== -->
+<!-- PROPOSAL 2: 全体概況モード — KPI サマリー -->
+<!-- ========================================================== -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">PROPOSAL 2 — 全体概況: KPI サマリー</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="design-note">
+  <strong>変更概要:</strong> トレーナー視点の主要KPIを4列バーで表示。データソース: getClientCount, getActiveClientCount, getClientListMetrics, getRecentMessageCount。
+</div>
+
+<div class="screen-frame">
+  <div class="app-topbar">
+    <div class="app-topbar-logo">FC</div>
+    <div class="app-topbar-title">全体概況 — KPIバー</div>
+    <div class="app-topbar-spacer"></div>
+  </div>
+
+  <div class="rpt-content">
+    <div class="rpt-kpi-bar">
+      <div class="rpt-kpi-item">
+        <div class="rpt-kpi-label">担当顧客</div>
+        <div class="rpt-kpi-value-row">
+          <span class="rpt-kpi-value">24</span>
+          <span class="rpt-kpi-unit">名</span>
+        </div>
+        <div class="rpt-kpi-change positive">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l-8 8h5v8h6v-8h5z"/></svg>
+          +2（先月比）
+        </div>
+      </div>
+      <div class="rpt-kpi-item">
+        <div class="rpt-kpi-label">アクティブ率 <span class="anno-inline">5</span></div>
+        <div class="rpt-kpi-value-row">
+          <span class="rpt-kpi-value">83</span>
+          <span class="rpt-kpi-unit">%</span>
+        </div>
+        <div class="rpt-kpi-change positive">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l-8 8h5v8h6v-8h5z"/></svg>
+          +5%（先月比）
+        </div>
+      </div>
+      <div class="rpt-kpi-item">
+        <div class="rpt-kpi-label">平均記録率 <span class="anno-inline">5</span></div>
+        <div class="rpt-kpi-value-row">
+          <span class="rpt-kpi-value">68</span>
+          <span class="rpt-kpi-unit">%</span>
+        </div>
+        <div class="rpt-kpi-change negative">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style="transform:rotate(180deg)"><path d="M12 4l-8 8h5v8h6v-8h5z"/></svg>
+          -3%（先月比）
+        </div>
+      </div>
+      <div class="rpt-kpi-item">
+        <div class="rpt-kpi-label">目標達成者</div>
+        <div class="rpt-kpi-value-row">
+          <span class="rpt-kpi-value">6</span>
+          <span class="rpt-kpi-unit">/24 名</span>
+        </div>
+        <div class="rpt-kpi-change neutral">→ 先月同数</div>
+      </div>
+    </div>
+    <span class="anno-inline">6</span>
+    <span style="font-size:11px;color:var(--text-muted);margin-left:4px;">データ: getClientCount + getActiveClientCount + getClientListMetrics</span>
+  </div>
+</div>
+
+
+<!-- ========================================================== -->
+<!-- PROPOSAL 3: 全体概況モード — クライアント比較テーブル -->
+<!-- ========================================================== -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">PROPOSAL 3 — 全体概況: クライアント比較テーブル</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="design-note">
+  <strong>変更概要:</strong> 全クライアントの主要指標を一覧テーブルで比較。ソート・フィルタ可能。
+  行クリックで個別分析モードに遷移。
+</div>
+
+<div class="screen-frame">
+  <div class="app-topbar">
+    <div class="app-topbar-logo">FC</div>
+    <div class="app-topbar-title">クライアント比較テーブル</div>
+    <div class="app-topbar-spacer"></div>
+  </div>
+
+  <div class="rpt-content">
+    <div class="rpt-card">
+      <div class="rpt-card-header">
+        <div class="rpt-card-title">クライアント進捗一覧</div>
+        <span class="anno-inline">2</span>
+        <div class="rpt-period-toggle" style="margin-left:auto;">
+          <button class="rpt-period-btn">体重順</button>
+          <button class="rpt-period-btn active">記録率順</button>
+          <button class="rpt-period-btn">目標達成順</button>
+        </div>
+      </div>
+      <table class="rpt-table">
+        <thead>
+          <tr>
+            <th style="width:28px;"></th>
+            <th>クライアント</th>
+            <th>目的</th>
+            <th>現在体重</th>
+            <th>体重変動</th>
+            <th>食事記録率</th>
+            <th>運動記録率</th>
+            <th>総合スコア</th>
+            <th>ステータス</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="cursor:pointer;">
+            <td><div class="rpt-rank-num top" style="width:20px;height:20px;font-size:10px;">1</div></td>
+            <td>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div class="rpt-rank-avatar" style="background:var(--accent);width:28px;height:28px;font-size:11px;">田</div>
+                <div>
+                  <div style="font-weight:600;">田中 美咲</div>
+                  <div style="font-size:10px;color:var(--text-muted);">28歳・女性</div>
+                </div>
+              </div>
+            </td>
+            <td><span class="rpt-badge" style="background:var(--accent-light);color:var(--accent);">ダイエット</span></td>
+            <td style="font-weight:700;">58.2 <span style="font-size:10px;color:var(--text-muted);">kg</span></td>
+            <td><span style="color:var(--success);font-weight:600;">▼ 2.8</span></td>
+            <td>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div class="rpt-progress-bar" style="width:60px;"><div class="rpt-progress-fill" style="width:85%;background:var(--accent);"></div></div>
+                <span style="font-size:11px;font-weight:600;">85%</span>
+              </div>
+            </td>
+            <td>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div class="rpt-progress-bar" style="width:60px;"><div class="rpt-progress-fill" style="width:72%;background:var(--accent);"></div></div>
+                <span style="font-size:11px;font-weight:600;">72%</span>
+              </div>
+            </td>
+            <td style="font-weight:800;color:var(--accent);">82</td>
+            <td><span class="rpt-badge" style="background:var(--success-bg);color:var(--success);">順調</span></td>
+          </tr>
+          <tr style="cursor:pointer;">
+            <td><div class="rpt-rank-num top" style="width:20px;height:20px;font-size:10px;">2</div></td>
+            <td>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div class="rpt-rank-avatar" style="background:#64748B;width:28px;height:28px;font-size:11px;">佐</div>
+                <div>
+                  <div style="font-weight:600;">佐藤 健太</div>
+                  <div style="font-size:10px;color:var(--text-muted);">34歳・男性</div>
+                </div>
+              </div>
+            </td>
+            <td><span class="rpt-badge" style="background:var(--purple-bg);color:var(--purple);">ボディメイク</span></td>
+            <td style="font-weight:700;">72.5 <span style="font-size:10px;color:var(--text-muted);">kg</span></td>
+            <td><span style="color:var(--success);font-weight:600;">▼ 1.2</span></td>
+            <td>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div class="rpt-progress-bar" style="width:60px;"><div class="rpt-progress-fill" style="width:70%;background:var(--accent);"></div></div>
+                <span style="font-size:11px;font-weight:600;">70%</span>
+              </div>
+            </td>
+            <td>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div class="rpt-progress-bar" style="width:60px;"><div class="rpt-progress-fill" style="width:90%;background:var(--accent);"></div></div>
+                <span style="font-size:11px;font-weight:600;">90%</span>
+              </div>
+            </td>
+            <td style="font-weight:800;color:var(--accent);">78</td>
+            <td><span class="rpt-badge" style="background:var(--success-bg);color:var(--success);">順調</span></td>
+          </tr>
+          <tr style="cursor:pointer;">
+            <td><div class="rpt-rank-num normal" style="width:20px;height:20px;font-size:10px;">3</div></td>
+            <td>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div class="rpt-rank-avatar" style="background:#64748B;width:28px;height:28px;font-size:11px;">鈴</div>
+                <div>
+                  <div style="font-weight:600;">鈴木 花子</div>
+                  <div style="font-size:10px;color:var(--text-muted);">42歳・女性</div>
+                </div>
+              </div>
+            </td>
+            <td><span class="rpt-badge" style="background:var(--info-bg);color:var(--info);">健康改善</span></td>
+            <td style="font-weight:700;">65.0 <span style="font-size:10px;color:var(--text-muted);">kg</span></td>
+            <td><span style="color:var(--text-muted);font-weight:600;">→ 0.0</span></td>
+            <td>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div class="rpt-progress-bar" style="width:60px;"><div class="rpt-progress-fill" style="width:45%;background:var(--warning);"></div></div>
+                <span style="font-size:11px;font-weight:600;color:var(--warning);">45%</span>
+              </div>
+            </td>
+            <td>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div class="rpt-progress-bar" style="width:60px;"><div class="rpt-progress-fill" style="width:30%;background:var(--danger);"></div></div>
+                <span style="font-size:11px;font-weight:600;color:var(--danger);">30%</span>
+              </div>
+            </td>
+            <td style="font-weight:800;color:var(--warning);">42</td>
+            <td><span class="rpt-badge" style="background:var(--warning-bg);color:var(--warning);">要注意</span></td>
+          </tr>
+          <tr style="cursor:pointer;">
+            <td><div class="rpt-rank-num normal" style="width:20px;height:20px;font-size:10px;">4</div></td>
+            <td>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div class="rpt-rank-avatar" style="background:#64748B;width:28px;height:28px;font-size:11px;">高</div>
+                <div>
+                  <div style="font-weight:600;">高橋 翔</div>
+                  <div style="font-size:10px;color:var(--text-muted);">25歳・男性</div>
+                </div>
+              </div>
+            </td>
+            <td><span class="rpt-badge" style="background:var(--orange-bg);color:var(--orange);">コンテスト</span></td>
+            <td style="font-weight:700;">68.3 <span style="font-size:10px;color:var(--text-muted);">kg</span></td>
+            <td><span style="color:var(--danger);font-weight:600;">▲ 0.8</span></td>
+            <td>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div class="rpt-progress-bar" style="width:60px;"><div class="rpt-progress-fill" style="width:20%;background:var(--danger);"></div></div>
+                <span style="font-size:11px;font-weight:600;color:var(--danger);">20%</span>
+              </div>
+            </td>
+            <td>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div class="rpt-progress-bar" style="width:60px;"><div class="rpt-progress-fill" style="width:15%;background:var(--danger);"></div></div>
+                <span style="font-size:11px;font-weight:600;color:var(--danger);">15%</span>
+              </div>
+            </td>
+            <td style="font-weight:800;color:var(--danger);">18</td>
+            <td><span class="rpt-badge" style="background:var(--danger-bg);color:var(--danger);">離脱リスク</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="design-note">
+  <span class="anno-inline">5</span> <strong>総合スコア:</strong> 体重進捗(0.4) + 食事記録率(0.3) + 運動記録率(0.3) の加重平均（既存GoalAchievementChart.tsxのロジックを流用）<br>
+  <span class="anno-inline">5</span> <strong>ステータス自動判定:</strong> スコア70+→「順調」(green), 40-69→「要注意」(warning), 40未満→「離脱リスク」(danger)<br>
+  <span class="anno-inline">3</span> <strong>プログレスバー色:</strong> 70%+→accent, 40-69%→warning, 40%未満→danger
+</div>
+
+
+<!-- ========================================================== -->
+<!-- PROPOSAL 4: 全体概況モード — アクティビティヒートマップ -->
+<!-- ========================================================== -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">PROPOSAL 4 — 全体概況: アクティビティヒートマップ</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="design-note">
+  <strong>変更概要:</strong> GitHub風のアクティビティヒートマップで全顧客の記録頻度を可視化。
+  1日の記録数（体重+食事+運動）に応じて色分け。
+</div>
+
+<div class="screen-frame">
+  <div class="app-topbar">
+    <div class="app-topbar-logo">FC</div>
+    <div class="app-topbar-title">アクティビティヒートマップ</div>
+    <div class="app-topbar-spacer"></div>
+  </div>
+
+  <div class="rpt-content">
+    <div class="rpt-card">
+      <div class="rpt-card-header">
+        <div class="rpt-card-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;vertical-align:-2px;"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          全顧客アクティビティ（過去3ヶ月）
+        </div>
+        <span class="anno-inline">5</span>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:8px;font-size:10px;color:var(--text-muted);">
+          少ない
+          <div class="heatmap-cell heatmap-0"></div>
+          <div class="heatmap-cell heatmap-1"></div>
+          <div class="heatmap-cell heatmap-2"></div>
+          <div class="heatmap-cell heatmap-3"></div>
+          <div class="heatmap-cell heatmap-4"></div>
+          多い
+        </div>
+      </div>
+      <div class="rpt-card-body">
+        <!-- Week Labels -->
+        <div style="display:flex;gap:3px;margin-bottom:8px;padding-left:60px;">
+          <div style="font-size:9px;color:var(--text-muted);width:14px;text-align:center;">月</div>
+          <div style="font-size:9px;color:var(--text-muted);width:14px;text-align:center;"></div>
+          <div style="font-size:9px;color:var(--text-muted);width:14px;text-align:center;">水</div>
+          <div style="font-size:9px;color:var(--text-muted);width:14px;text-align:center;"></div>
+          <div style="font-size:9px;color:var(--text-muted);width:14px;text-align:center;">金</div>
+          <div style="font-size:9px;color:var(--text-muted);width:14px;text-align:center;"></div>
+          <div style="font-size:9px;color:var(--text-muted);width:14px;text-align:center;">日</div>
+        </div>
+
+        <!-- Row: Client 1 -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <div style="width:52px;font-size:11px;font-weight:600;color:var(--primary);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">田中 美咲</div>
+          <div style="display:flex;gap:3px;flex-wrap:wrap;">
+            <div class="heatmap-cell heatmap-3"></div><div class="heatmap-cell heatmap-4"></div><div class="heatmap-cell heatmap-3"></div><div class="heatmap-cell heatmap-2"></div><div class="heatmap-cell heatmap-4"></div><div class="heatmap-cell heatmap-3"></div><div class="heatmap-cell heatmap-2"></div>
+            <div class="heatmap-cell heatmap-4"></div><div class="heatmap-cell heatmap-3"></div><div class="heatmap-cell heatmap-4"></div><div class="heatmap-cell heatmap-2"></div><div class="heatmap-cell heatmap-3"></div><div class="heatmap-cell heatmap-4"></div><div class="heatmap-cell heatmap-3"></div>
+            <div class="heatmap-cell heatmap-3"></div><div class="heatmap-cell heatmap-2"></div><div class="heatmap-cell heatmap-3"></div><div class="heatmap-cell heatmap-4"></div><div class="heatmap-cell heatmap-3"></div><div class="heatmap-cell heatmap-2"></div><div class="heatmap-cell heatmap-4"></div>
+          </div>
+        </div>
+
+        <!-- Row: Client 2 -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <div style="width:52px;font-size:11px;font-weight:600;color:var(--primary);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">佐藤 健太</div>
+          <div style="display:flex;gap:3px;flex-wrap:wrap;">
+            <div class="heatmap-cell heatmap-2"></div><div class="heatmap-cell heatmap-3"></div><div class="heatmap-cell heatmap-2"></div><div class="heatmap-cell heatmap-1"></div><div class="heatmap-cell heatmap-3"></div><div class="heatmap-cell heatmap-2"></div><div class="heatmap-cell heatmap-1"></div>
+            <div class="heatmap-cell heatmap-3"></div><div class="heatmap-cell heatmap-2"></div><div class="heatmap-cell heatmap-3"></div><div class="heatmap-cell heatmap-1"></div><div class="heatmap-cell heatmap-2"></div><div class="heatmap-cell heatmap-3"></div><div class="heatmap-cell heatmap-2"></div>
+            <div class="heatmap-cell heatmap-2"></div><div class="heatmap-cell heatmap-1"></div><div class="heatmap-cell heatmap-2"></div><div class="heatmap-cell heatmap-3"></div><div class="heatmap-cell heatmap-2"></div><div class="heatmap-cell heatmap-1"></div><div class="heatmap-cell heatmap-3"></div>
+          </div>
+        </div>
+
+        <!-- Row: Client 3 -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <div style="width:52px;font-size:11px;font-weight:600;color:var(--primary);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">鈴木 花子</div>
+          <div style="display:flex;gap:3px;flex-wrap:wrap;">
+            <div class="heatmap-cell heatmap-1"></div><div class="heatmap-cell heatmap-0"></div><div class="heatmap-cell heatmap-1"></div><div class="heatmap-cell heatmap-0"></div><div class="heatmap-cell heatmap-1"></div><div class="heatmap-cell heatmap-0"></div><div class="heatmap-cell heatmap-0"></div>
+            <div class="heatmap-cell heatmap-1"></div><div class="heatmap-cell heatmap-1"></div><div class="heatmap-cell heatmap-0"></div><div class="heatmap-cell heatmap-0"></div><div class="heatmap-cell heatmap-1"></div><div class="heatmap-cell heatmap-0"></div><div class="heatmap-cell heatmap-1"></div>
+            <div class="heatmap-cell heatmap-0"></div><div class="heatmap-cell heatmap-0"></div><div class="heatmap-cell heatmap-1"></div><div class="heatmap-cell heatmap-0"></div><div class="heatmap-cell heatmap-1"></div><div class="heatmap-cell heatmap-0"></div><div class="heatmap-cell heatmap-0"></div>
+          </div>
+        </div>
+
+        <!-- Row: Client 4 -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <div style="width:52px;font-size:11px;font-weight:600;color:var(--primary);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">高橋 翔</div>
+          <div style="display:flex;gap:3px;flex-wrap:wrap;">
+            <div class="heatmap-cell heatmap-0"></div><div class="heatmap-cell heatmap-0"></div><div class="heatmap-cell heatmap-1"></div><div class="heatmap-cell heatmap-0"></div><div class="heatmap-cell heatmap-0"></div><div class="heatmap-cell heatmap-0"></div><div class="heatmap-cell heatmap-0"></div>
+            <div class="heatmap-cell heatmap-0"></div><div class="heatmap-cell heatmap-0"></div><div class="heatmap-cell heatmap-0"></div><div class="heatmap-cell heatmap-1"></div><div class="heatmap-cell heatmap-0"></div><div class="heatmap-cell heatmap-0"></div><div class="heatmap-cell heatmap-0"></div>
+            <div class="heatmap-cell heatmap-0"></div><div class="heatmap-cell heatmap-0"></div><div class="heatmap-cell heatmap-0"></div><div class="heatmap-cell heatmap-0"></div><div class="heatmap-cell heatmap-0"></div><div class="heatmap-cell heatmap-0"></div><div class="heatmap-cell heatmap-0"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="design-note">
+  <span class="anno-inline">5</span> <strong>新機能:</strong> 各クライアントの日次アクティビティを一目で把握。離脱リスクの早期発見に有効。<br>
+  <span class="anno-inline">3</span> 色の5段階: 0件(空白) → 1件(薄teal) → 2件 → 3件 → 4件+(濃teal)<br>
+  <span class="anno-inline">6</span> データ: getWeightRecords + getMealRecords + getExerciseRecords の日別集計
+</div>
+
+
+<!-- ========================================================== -->
+<!-- PROPOSAL 5: 個別分析モード — ヘッダー & KPI -->
+<!-- ========================================================== -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">PROPOSAL 5 — 個別分析: クライアントヘッダー & KPI</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="design-note">
+  <strong>変更概要:</strong> クライアント選択後のヘッダー。プロフィール情報 + 4KPI + 目標までの進捗バー。
+  現状の統計カード3枚を再設計。
+</div>
+
+<div class="screen-frame">
+  <div class="app-topbar">
+    <div class="app-topbar-logo">FC</div>
+    <div class="app-topbar-title">個別分析 — クライアントヘッダー</div>
+    <div class="app-topbar-spacer"></div>
+  </div>
+
+  <div class="rpt-page-header" style="border-bottom:none;">
+    <div class="rpt-toolbar" style="margin-bottom:16px;">
+      <div class="rpt-page-title">レポート</div>
+      <div class="rpt-mode-toggle">
+        <button class="rpt-mode-btn">全体概況</button>
+        <button class="rpt-mode-btn active">個別分析</button>
+      </div>
+      <select class="rpt-select" style="min-width:160px;">
+        <option>田中 美咲</option>
+      </select>
+      <span class="anno-inline">4</span>
+      <div class="rpt-period-toggle">
+        <button class="rpt-period-btn">1W</button>
+        <button class="rpt-period-btn">1M</button>
+        <button class="rpt-period-btn active">3M</button>
+        <button class="rpt-period-btn">6M</button>
+        <button class="rpt-period-btn">1Y</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="rpt-content" style="padding-top:0;">
+    <!-- Client Info Bar -->
+    <div style="display:flex;align-items:center;gap:16px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:16px;">
+      <div style="width:48px;height:48px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:white;flex-shrink:0;">田</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:16px;font-weight:700;color:var(--primary);">田中 美咲</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">28歳・女性・ダイエット</div>
+      </div>
+      <!-- Goal Progress -->
+      <div style="width:240px;flex-shrink:0;">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
+          <span style="font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">目標体重まで</span>
+          <span style="font-size:13px;font-weight:800;color:var(--accent);">あと 1.2 kg</span>
+        </div>
+        <div class="rpt-progress-bar" style="height:8px;">
+          <div class="rpt-progress-fill" style="width:80%;background:var(--accent);"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:10px;color:var(--text-muted);">
+          <span>開始: 63.0 kg</span>
+          <span>現在: 58.2 kg</span>
+          <span>目標: 57.0 kg</span>
+        </div>
+      </div>
+      <span class="anno-inline">2</span>
+    </div>
+
+    <!-- KPI Bar -->
+    <div class="rpt-kpi-bar">
+      <div class="rpt-kpi-item">
+        <div class="rpt-kpi-label">現在体重</div>
+        <div class="rpt-kpi-value-row">
+          <span class="rpt-kpi-value">58.2</span>
+          <span class="rpt-kpi-unit">kg</span>
+        </div>
+        <div class="rpt-kpi-change positive">▼ 2.8 kg（期間内）</div>
+      </div>
+      <div class="rpt-kpi-item">
+        <div class="rpt-kpi-label">食事記録率</div>
+        <div class="rpt-kpi-value-row">
+          <span class="rpt-kpi-value">85</span>
+          <span class="rpt-kpi-unit">%</span>
+        </div>
+        <div class="rpt-kpi-change neutral">78/92 日</div>
+      </div>
+      <div class="rpt-kpi-item">
+        <div class="rpt-kpi-label">運動合計</div>
+        <div class="rpt-kpi-value-row">
+          <span class="rpt-kpi-value">1,840</span>
+          <span class="rpt-kpi-unit">分</span>
+        </div>
+        <div class="rpt-kpi-change neutral">56 回</div>
+      </div>
+      <div class="rpt-kpi-item">
+        <div class="rpt-kpi-label">総合スコア</div>
+        <div class="rpt-kpi-value-row">
+          <span class="rpt-kpi-value" style="color:var(--accent);">82</span>
+          <span class="rpt-kpi-unit">/ 100</span>
+        </div>
+        <div class="rpt-kpi-change positive">+8（先月比）</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ========================================================== -->
+<!-- PROPOSAL 6: 個別分析モード — グラフセクション -->
+<!-- ========================================================== -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">PROPOSAL 6 — 個別分析: グラフセクション</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="design-note">
+  <strong>変更概要:</strong> 2カラムレイアウトで体重推移チャート + 目標達成率チャートを並列表示。
+  rechartsのカスタムカラーをデザイントークンに統一。
+</div>
+
+<div class="screen-frame">
+  <div class="app-topbar">
+    <div class="app-topbar-logo">FC</div>
+    <div class="app-topbar-title">個別分析 — グラフセクション</div>
+    <div class="app-topbar-spacer"></div>
+  </div>
+
+  <div class="rpt-content">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+      <!-- Weight Chart -->
+      <div class="rpt-card">
+        <div class="rpt-card-header">
+          <div class="rpt-card-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" style="display:inline;vertical-align:-2px;"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            体重推移
+          </div>
+          <span class="anno-inline">3</span>
+        </div>
+        <div class="rpt-card-body">
+          <div class="rpt-chart-placeholder" style="height:220px;">
+            <svg width="280" height="120" viewBox="0 0 280 120">
+              <!-- Grid -->
+              <line x1="0" y1="30" x2="280" y2="30" stroke="#E2E8F0" stroke-dasharray="4"/>
+              <line x1="0" y1="60" x2="280" y2="60" stroke="#E2E8F0" stroke-dasharray="4"/>
+              <line x1="0" y1="90" x2="280" y2="90" stroke="#E2E8F0" stroke-dasharray="4"/>
+              <!-- Goal Line -->
+              <line x1="0" y1="95" x2="280" y2="95" stroke="#14B8A6" stroke-dasharray="6 3" stroke-width="1.5" opacity="0.6"/>
+              <text x="282" y="98" font-size="8" fill="#14B8A6" font-weight="600">目標 57.0</text>
+              <!-- Weight Line -->
+              <polyline points="0,10 30,15 60,25 90,35 120,40 150,50 180,55 210,65 240,75 270,85" fill="none" stroke="#14B8A6" stroke-width="2"/>
+              <!-- Dots -->
+              <circle cx="0" cy="10" r="3" fill="#14B8A6"/>
+              <circle cx="60" cy="25" r="3" fill="#14B8A6"/>
+              <circle cx="120" cy="40" r="3" fill="#14B8A6"/>
+              <circle cx="180" cy="55" r="3" fill="#14B8A6"/>
+              <circle cx="240" cy="75" r="3" fill="#14B8A6"/>
+              <circle cx="270" cy="85" r="3" fill="#14B8A6"/>
+              <!-- Y-axis labels -->
+              <text x="-4" y="14" font-size="8" fill="#94A3B8" text-anchor="end">63</text>
+              <text x="-4" y="98" font-size="8" fill="#94A3B8" text-anchor="end">57</text>
+              <!-- Area -->
+              <polygon points="0,10 30,15 60,25 90,35 120,40 150,50 180,55 210,65 240,75 270,85 270,120 0,120" fill="#14B8A6" opacity="0.08"/>
+            </svg>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">recharts LineChart + ReferenceLine（目標線）</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Goal Achievement Chart -->
+      <div class="rpt-card">
+        <div class="rpt-card-header">
+          <div class="rpt-card-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" style="display:inline;vertical-align:-2px;"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>
+            目標達成率推移
+          </div>
+          <div class="rpt-period-toggle" style="margin-left:auto;">
+            <button class="rpt-period-btn active">週次</button>
+            <button class="rpt-period-btn">月次</button>
+          </div>
+        </div>
+        <div class="rpt-card-body">
+          <div class="rpt-chart-placeholder" style="height:220px;">
+            <svg width="280" height="120" viewBox="0 0 280 120">
+              <!-- Grid -->
+              <line x1="0" y1="30" x2="280" y2="30" stroke="#E2E8F0" stroke-dasharray="4"/>
+              <line x1="0" y1="60" x2="280" y2="60" stroke="#E2E8F0" stroke-dasharray="4"/>
+              <line x1="0" y1="90" x2="280" y2="90" stroke="#E2E8F0" stroke-dasharray="4"/>
+              <!-- Total Score -->
+              <polyline points="0,70 40,60 80,55 120,45 160,40 200,35 240,30 280,25" fill="none" stroke="#14B8A6" stroke-width="2"/>
+              <!-- Weight -->
+              <polyline points="0,80 40,70 80,60 120,50 160,45 200,40 240,35 280,20" fill="none" stroke="#2563EB" stroke-width="1.5" stroke-dasharray="4"/>
+              <!-- Meal -->
+              <polyline points="0,60 40,55 80,50 120,48 160,45 200,42 240,40 280,35" fill="none" stroke="#EA580C" stroke-width="1.5" stroke-dasharray="4"/>
+              <!-- Exercise -->
+              <polyline points="0,50 40,55 80,45 120,40 160,35 200,30 240,25 280,20" fill="none" stroke="#16A34A" stroke-width="1.5" stroke-dasharray="4"/>
+            </svg>
+            <!-- Legend -->
+            <div style="display:flex;gap:16px;margin-top:8px;font-size:10px;">
+              <div style="display:flex;align-items:center;gap:4px;"><div style="width:12px;height:3px;background:#14B8A6;border-radius:1px;"></div><span style="color:var(--text-muted);">総合</span></div>
+              <div style="display:flex;align-items:center;gap:4px;"><div style="width:12px;height:3px;background:#2563EB;border-radius:1px;"></div><span style="color:var(--text-muted);">体重</span></div>
+              <div style="display:flex;align-items:center;gap:4px;"><div style="width:12px;height:3px;background:#EA580C;border-radius:1px;"></div><span style="color:var(--text-muted);">食事</span></div>
+              <div style="display:flex;align-items:center;gap:4px;"><div style="width:12px;height:3px;background:#16A34A;border-radius:1px;"></div><span style="color:var(--text-muted);">運動</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="design-note">
+  <span class="anno-inline">3</span> <strong>recharts カラー:</strong> 総合=#14B8A6, 体重=#2563EB, 食事=#EA580C, 運動=#16A34A<br>
+  <span class="anno-inline">2</span> <strong>体重チャート改善:</strong> 目標体重を ReferenceLine（破線）で常時表示。エリア塗り(opacity 0.08)で視認性向上。<br>
+  <span class="anno-inline">4</span> <strong>2カラムレイアウト:</strong> 横並びで情報密度UP。モバイルでは1カラムにフォールバック。
+</div>
+
+
+<!-- ========================================================== -->
+<!-- PROPOSAL 7: 個別分析モード — 食事 & 運動統計 -->
+<!-- ========================================================== -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">PROPOSAL 7 — 個別分析: 食事 & 運動統計</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="design-note">
+  <strong>変更概要:</strong> 食事・運動統計を2カラムで並列表示。各セクションに要約 + ビジュアル統計を配置。
+</div>
+
+<div class="screen-frame">
+  <div class="app-topbar">
+    <div class="app-topbar-logo">FC</div>
+    <div class="app-topbar-title">個別分析 — 食事 & 運動統計</div>
+    <div class="app-topbar-spacer"></div>
+  </div>
+
+  <div class="rpt-content">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+
+      <!-- Meal Statistics -->
+      <div class="rpt-card">
+        <div class="rpt-card-header">
+          <div class="rpt-card-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2" style="display:inline;vertical-align:-2px;"><path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>
+            食事記録
+          </div>
+        </div>
+        <div class="rpt-card-body">
+          <!-- Summary Stats -->
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;">
+            <div class="rpt-stat-mini">
+              <div class="rpt-stat-mini-label">記録率</div>
+              <div class="rpt-stat-mini-value" style="color:var(--accent);">85%</div>
+              <div class="rpt-stat-mini-sub">78/92 日</div>
+            </div>
+            <div class="rpt-stat-mini">
+              <div class="rpt-stat-mini-label">平均カロリー</div>
+              <div class="rpt-stat-mini-value">1,680</div>
+              <div class="rpt-stat-mini-sub">kcal/日</div>
+            </div>
+            <div class="rpt-stat-mini">
+              <div class="rpt-stat-mini-label">合計記録</div>
+              <div class="rpt-stat-mini-value">234</div>
+              <div class="rpt-stat-mini-sub">件</div>
+            </div>
+          </div>
+
+          <!-- Meal Type Breakdown -->
+          <div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;">食事区分別</div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="width:32px;font-size:11px;color:var(--text-muted);">朝食</span>
+              <div class="rpt-progress-bar" style="flex:1;"><div class="rpt-progress-fill" style="width:72%;background:#EA580C;"></div></div>
+              <span style="font-size:11px;font-weight:600;width:30px;text-align:right;">72%</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="width:32px;font-size:11px;color:var(--text-muted);">昼食</span>
+              <div class="rpt-progress-bar" style="flex:1;"><div class="rpt-progress-fill" style="width:88%;background:#EA580C;"></div></div>
+              <span style="font-size:11px;font-weight:600;width:30px;text-align:right;">88%</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="width:32px;font-size:11px;color:var(--text-muted);">夕食</span>
+              <div class="rpt-progress-bar" style="flex:1;"><div class="rpt-progress-fill" style="width:91%;background:#EA580C;"></div></div>
+              <span style="font-size:11px;font-weight:600;width:30px;text-align:right;">91%</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="width:32px;font-size:11px;color:var(--text-muted);">間食</span>
+              <div class="rpt-progress-bar" style="flex:1;"><div class="rpt-progress-fill" style="width:35%;background:#EA580C;"></div></div>
+              <span style="font-size:11px;font-weight:600;width:30px;text-align:right;">35%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Exercise Statistics -->
+      <div class="rpt-card">
+        <div class="rpt-card-header">
+          <div class="rpt-card-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" style="display:inline;vertical-align:-2px;"><path d="M18 4a2 2 0 1 1 0 4 2 2 0 0 1 0-4z"/><path d="M4 20l4-4 3 3 5-5 4 4"/></svg>
+            運動記録
+          </div>
+        </div>
+        <div class="rpt-card-body">
+          <!-- Summary Stats -->
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;">
+            <div class="rpt-stat-mini">
+              <div class="rpt-stat-mini-label">記録率</div>
+              <div class="rpt-stat-mini-value" style="color:var(--accent);">72%</div>
+              <div class="rpt-stat-mini-sub">56/78 日</div>
+            </div>
+            <div class="rpt-stat-mini">
+              <div class="rpt-stat-mini-label">合計時間</div>
+              <div class="rpt-stat-mini-value">1,840</div>
+              <div class="rpt-stat-mini-sub">分</div>
+            </div>
+            <div class="rpt-stat-mini">
+              <div class="rpt-stat-mini-label">消費カロリー</div>
+              <div class="rpt-stat-mini-value">18.2k</div>
+              <div class="rpt-stat-mini-sub">kcal</div>
+            </div>
+          </div>
+
+          <!-- Exercise Type Breakdown -->
+          <div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;">種目別（上位5）</div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="width:72px;font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">ランニング</span>
+              <div class="rpt-progress-bar" style="flex:1;"><div class="rpt-progress-fill" style="width:85%;background:var(--success);"></div></div>
+              <span style="font-size:11px;font-weight:600;width:30px;text-align:right;">24回</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="width:72px;font-size:11px;color:var(--text-muted);">筋トレ</span>
+              <div class="rpt-progress-bar" style="flex:1;"><div class="rpt-progress-fill" style="width:70%;background:var(--success);"></div></div>
+              <span style="font-size:11px;font-weight:600;width:30px;text-align:right;">18回</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="width:72px;font-size:11px;color:var(--text-muted);">ウォーキング</span>
+              <div class="rpt-progress-bar" style="flex:1;"><div class="rpt-progress-fill" style="width:40%;background:var(--success);"></div></div>
+              <span style="font-size:11px;font-weight:600;width:30px;text-align:right;">8回</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="width:72px;font-size:11px;color:var(--text-muted);">ヨガ</span>
+              <div class="rpt-progress-bar" style="flex:1;"><div class="rpt-progress-fill" style="width:20%;background:var(--success);"></div></div>
+              <span style="font-size:11px;font-weight:600;width:30px;text-align:right;">4回</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="width:72px;font-size:11px;color:var(--text-muted);">水泳</span>
+              <div class="rpt-progress-bar" style="flex:1;"><div class="rpt-progress-fill" style="width:10%;background:var(--success);"></div></div>
+              <span style="font-size:11px;font-weight:600;width:30px;text-align:right;">2回</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ========================================================== -->
+<!-- PROPOSAL 8: 個別分析 — アクティビティカレンダー -->
+<!-- ========================================================== -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">PROPOSAL 8 — 個別分析: アクティビティカレンダー</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="design-note">
+  <strong>変更概要:</strong> 個別クライアントの日次アクティビティをカレンダー形式で表示。
+  体重/食事/運動の記録有無をドット表示。Proposal4のヒートマップとは違い、記録種別を区別。
+</div>
+
+<div class="screen-frame">
+  <div class="app-topbar">
+    <div class="app-topbar-logo">FC</div>
+    <div class="app-topbar-title">個別分析 — アクティビティカレンダー</div>
+    <div class="app-topbar-spacer"></div>
+  </div>
+
+  <div class="rpt-content">
+    <div class="rpt-card">
+      <div class="rpt-card-header">
+        <div class="rpt-card-title">アクティビティカレンダー — 2026年3月</div>
+        <span class="anno-inline">5</span>
+        <div style="margin-left:auto;display:flex;gap:12px;font-size:10px;">
+          <div style="display:flex;align-items:center;gap:4px;"><div style="width:8px;height:8px;border-radius:50%;background:#2563EB;"></div>体重</div>
+          <div style="display:flex;align-items:center;gap:4px;"><div style="width:8px;height:8px;border-radius:50%;background:#EA580C;"></div>食事</div>
+          <div style="display:flex;align-items:center;gap:4px;"><div style="width:8px;height:8px;border-radius:50%;background:#16A34A;"></div>運動</div>
+        </div>
+      </div>
+      <div class="rpt-card-body">
+        <!-- Calendar Grid -->
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
+          <!-- Day Headers -->
+          <div style="padding:6px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);background:var(--background);">月</div>
+          <div style="padding:6px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);background:var(--background);">火</div>
+          <div style="padding:6px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);background:var(--background);">水</div>
+          <div style="padding:6px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);background:var(--background);">木</div>
+          <div style="padding:6px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);background:var(--background);">金</div>
+          <div style="padding:6px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);background:var(--background);">土</div>
+          <div style="padding:6px;text-align:center;font-size:10px;font-weight:600;color:var(--text-muted);background:var(--background);">日</div>
+
+          <!-- Empty cells before March 1 (Sunday) -->
+          <!-- March 2026: starts on Sunday -->
+          <div style="padding:8px;background:var(--surface);min-height:60px;"></div>
+          <div style="padding:8px;background:var(--surface);min-height:60px;"></div>
+          <div style="padding:8px;background:var(--surface);min-height:60px;"></div>
+          <div style="padding:8px;background:var(--surface);min-height:60px;"></div>
+          <div style="padding:8px;background:var(--surface);min-height:60px;"></div>
+          <div style="padding:8px;background:var(--surface);min-height:60px;"></div>
+
+          <!-- Day 1 (Sun) -->
+          <div style="padding:8px;background:var(--surface);min-height:60px;">
+            <div style="font-size:11px;font-weight:600;color:var(--primary);margin-bottom:4px;">1</div>
+            <div style="display:flex;gap:3px;flex-wrap:wrap;">
+              <div style="width:6px;height:6px;border-radius:50%;background:#2563EB;"></div>
+              <div style="width:6px;height:6px;border-radius:50%;background:#EA580C;"></div>
+              <div style="width:6px;height:6px;border-radius:50%;background:#16A34A;"></div>
+            </div>
+          </div>
+
+          <!-- Day 2 (Mon) -->
+          <div style="padding:8px;background:var(--surface);min-height:60px;">
+            <div style="font-size:11px;font-weight:600;color:var(--primary);margin-bottom:4px;">2</div>
+            <div style="display:flex;gap:3px;flex-wrap:wrap;">
+              <div style="width:6px;height:6px;border-radius:50%;background:#EA580C;"></div>
+              <div style="width:6px;height:6px;border-radius:50%;background:#16A34A;"></div>
+            </div>
+          </div>
+
+          <!-- Day 3 -->
+          <div style="padding:8px;background:var(--surface);min-height:60px;">
+            <div style="font-size:11px;font-weight:600;color:var(--primary);margin-bottom:4px;">3</div>
+            <div style="display:flex;gap:3px;flex-wrap:wrap;">
+              <div style="width:6px;height:6px;border-radius:50%;background:#2563EB;"></div>
+              <div style="width:6px;height:6px;border-radius:50%;background:#EA580C;"></div>
+            </div>
+          </div>
+
+          <!-- Day 4 -->
+          <div style="padding:8px;background:var(--surface);min-height:60px;">
+            <div style="font-size:11px;font-weight:600;color:var(--primary);margin-bottom:4px;">4</div>
+            <div style="display:flex;gap:3px;flex-wrap:wrap;">
+              <div style="width:6px;height:6px;border-radius:50%;background:#EA580C;"></div>
+            </div>
+          </div>
+
+          <!-- Day 5 -->
+          <div style="padding:8px;background:var(--surface);min-height:60px;">
+            <div style="font-size:11px;font-weight:600;color:var(--primary);margin-bottom:4px;">5</div>
+            <div style="display:flex;gap:3px;flex-wrap:wrap;">
+              <div style="width:6px;height:6px;border-radius:50%;background:#2563EB;"></div>
+              <div style="width:6px;height:6px;border-radius:50%;background:#EA580C;"></div>
+              <div style="width:6px;height:6px;border-radius:50%;background:#16A34A;"></div>
+            </div>
+          </div>
+
+          <!-- Day 6 -->
+          <div style="padding:8px;background:var(--surface);min-height:60px;">
+            <div style="font-size:11px;font-weight:600;color:var(--primary);margin-bottom:4px;">6</div>
+          </div>
+
+          <!-- Day 7 -->
+          <div style="padding:8px;background:var(--surface);min-height:60px;">
+            <div style="font-size:11px;font-weight:600;color:var(--primary);margin-bottom:4px;">7</div>
+            <div style="display:flex;gap:3px;flex-wrap:wrap;">
+              <div style="width:6px;height:6px;border-radius:50%;background:#EA580C;"></div>
+              <div style="width:6px;height:6px;border-radius:50%;background:#16A34A;"></div>
+            </div>
+          </div>
+
+          <!-- Day 8 (Today) -->
+          <div style="padding:8px;background:var(--accent-light);min-height:60px;border:1px solid var(--accent);">
+            <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:4px;">8</div>
+            <div style="font-size:9px;color:var(--accent);font-weight:600;">TODAY</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ========================================================== -->
+<!-- PROPOSAL 9: コンポーネント構成 -->
+<!-- ========================================================== -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">PROPOSAL 9 — コンポーネント構成 & 変更一覧</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="screen-frame">
+  <div class="app-topbar">
+    <div class="app-topbar-logo">FC</div>
+    <div class="app-topbar-title">コンポーネント構成 & 変更ファイル一覧</div>
+    <div class="app-topbar-spacer"></div>
+  </div>
+
+  <div style="background:var(--surface);padding:24px;font-size:13px;line-height:1.8;">
+
+    <!-- Architecture -->
+    <div style="font-weight:800;font-size:14px;color:var(--primary);margin-bottom:12px;">新アーキテクチャ</div>
+
+    <div style="background:var(--background);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:24px;font-size:12px;font-family:monospace;line-height:2;">
+      <div style="color:var(--text-muted);">src/app/(user_console)/report/</div>
+      <div>&nbsp;&nbsp;page.tsx <span style="color:var(--accent);font-family:sans-serif;">← 大幅刷新: 2モード切替ロジック</span></div>
+      <div style="color:var(--text-muted);margin-top:8px;">src/components/report/</div>
+      <div>&nbsp;&nbsp;ReportToolbar.tsx <span style="color:var(--success);font-family:sans-serif;">← 新規: モード切替 + 期間プリセット + エクスポート</span></div>
+      <div>&nbsp;&nbsp;OverviewKPI.tsx <span style="color:var(--success);font-family:sans-serif;">← 新規: 全体概況KPIバー</span></div>
+      <div>&nbsp;&nbsp;ClientComparisonTable.tsx <span style="color:var(--success);font-family:sans-serif;">← 新規: クライアント比較テーブル</span></div>
+      <div>&nbsp;&nbsp;ActivityHeatmap.tsx <span style="color:var(--success);font-family:sans-serif;">← 新規: 全顧客アクティビティヒートマップ</span></div>
+      <div>&nbsp;&nbsp;ClientReportHeader.tsx <span style="color:var(--success);font-family:sans-serif;">← 新規: 個別分析ヘッダー + 目標進捗バー</span></div>
+      <div>&nbsp;&nbsp;StatCards.tsx <span style="color:var(--accent);font-family:sans-serif;">← 改修: デザイントークン統一</span></div>
+      <div>&nbsp;&nbsp;GoalAchievementChart.tsx <span style="color:var(--accent);font-family:sans-serif;">← 改修: カラー統一 + 2カラムレイアウト対応</span></div>
+      <div>&nbsp;&nbsp;MealStatistics.tsx <span style="color:var(--accent);font-family:sans-serif;">← 改修: プログレスバー追加 + デザイン統一</span></div>
+      <div>&nbsp;&nbsp;ExerciseStatistics.tsx <span style="color:var(--accent);font-family:sans-serif;">← 改修: プログレスバー追加 + デザイン統一</span></div>
+      <div>&nbsp;&nbsp;ActivityCalendar.tsx <span style="color:var(--success);font-family:sans-serif;">← 新規: 個別アクティビティカレンダー</span></div>
+    </div>
+
+    <!-- Change Summary Table -->
+    <div style="font-weight:800;font-size:14px;color:var(--primary);margin-bottom:12px;">変更サマリー</div>
+
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr style="border-bottom:2px solid var(--border);">
+          <th style="text-align:left;padding:8px 12px;font-weight:700;color:var(--text-secondary);">変更種別</th>
+          <th style="text-align:center;padding:8px 12px;font-weight:700;color:var(--text-secondary);">ファイル数</th>
+          <th style="text-align:left;padding:8px 12px;font-weight:700;color:var(--text-secondary);">概要</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 12px;"><span style="background:var(--success-bg);color:var(--success);padding:2px 8px;border-radius:var(--radius);font-size:10px;font-weight:700;">NEW</span></td>
+          <td style="padding:8px 12px;text-align:center;font-weight:700;">6</td>
+          <td style="padding:8px 12px;">ツールバー, 全体概況KPI, 比較テーブル, ヒートマップ, クライアントヘッダー, カレンダー</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 12px;"><span style="background:var(--accent-light);color:var(--accent);padding:2px 8px;border-radius:var(--radius);font-size:10px;font-weight:700;">MODIFY</span></td>
+          <td style="padding:8px 12px;text-align:center;font-weight:700;">5</td>
+          <td style="padding:8px 12px;">page.tsx, StatCards, GoalAchievementChart, MealStatistics, ExerciseStatistics</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;"><span style="background:var(--danger-bg);color:var(--danger);padding:2px 8px;border-radius:var(--radius);font-size:10px;font-weight:700;">DELETE</span></td>
+          <td style="padding:8px 12px;text-align:center;font-weight:700;">0</td>
+          <td style="padding:8px 12px;">既存コンポーネントは全て改修して再利用</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Data Requirements -->
+    <div style="font-weight:800;font-size:14px;color:var(--primary);margin:24px 0 12px;">新規必要データ</div>
+    <div style="background:var(--background);border:1px solid var(--border);border-radius:var(--radius);padding:16px;font-size:12px;">
+      <div style="font-weight:600;color:var(--text-secondary);margin-bottom:8px;">全体概況モードに必要な新規Supabase関数:</div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <div>1. <code style="font-size:11px;background:var(--accent-light);padding:1px 6px;border-radius:3px;color:var(--accent);">getClientReportMetrics(trainerId, dateRange)</code> — 全クライアントの体重変動・記録率・スコアをバッチ取得</div>
+        <div>2. <code style="font-size:11px;background:var(--accent-light);padding:1px 6px;border-radius:3px;color:var(--accent);">getActivityHeatmapData(trainerId, dateRange)</code> — 日別アクティビティカウント（全クライアント分）</div>
+      </div>
+      <div style="font-weight:600;color:var(--text-secondary);margin:12px 0 8px;">既存関数で対応可能:</div>
+      <div>個別分析モードは既存の getWeightRecords / getMealRecords / getExerciseRecords / getTickets で全てカバー</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Footer ===== -->
+<div style="max-width:1100px;margin:48px auto 0;text-align:center;">
+  <div style="font-size:11px;color:#9CA3AF;letter-spacing:0.04em;">
+    FIT-CONNECT Wireframe — Proposal K: Report Screen Redesign<br>
+    Design System v2 — Teal Accent / Flat Border / Plus Jakarta Sans
+  </div>
+</div>
+
+</body>
+</html>

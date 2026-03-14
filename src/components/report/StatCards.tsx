@@ -1,5 +1,8 @@
+'use client'
+
 import React from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Scale, Utensils, Dumbbell } from 'lucide-react'
 
 interface StatCardsProps {
   weightChange: number | null  // 期間内の体重変動（kg）例: -2.5
@@ -19,24 +22,27 @@ export function StatCards({
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       {/* カード1: 体重変動 */}
-      <Card>
+      <Card className="border border-[#E2E8F0] rounded-md" style={{ boxShadow: 'none' }}>
         <CardHeader>
-          <CardTitle className="text-sm text-gray-600">体重変動</CardTitle>
+          <div className="flex items-center gap-2">
+            <Scale className="w-4 h-4 text-[#94A3B8]" />
+            <CardTitle className="text-sm text-[#64748B]">体重変動</CardTitle>
+          </div>
         </CardHeader>
         <CardContent>
           {latestWeight !== null ? (
             <>
-              <div className="text-3xl font-bold text-gray-900">
+              <div className="text-3xl font-bold text-[#0F172A]">
                 {latestWeight.toFixed(1)} kg
               </div>
               {weightChange !== null && (
                 <div
                   className={`text-lg font-semibold mt-2 ${
                     weightChange > 0
-                      ? 'text-red-500'
+                      ? 'text-[#DC2626]'
                       : weightChange < 0
-                      ? 'text-green-500'
-                      : 'text-gray-500'
+                      ? 'text-[#16A34A]'
+                      : 'text-[#94A3B8]'
                   }`}
                 >
                   {weightChange > 0 ? '+' : ''}
@@ -45,31 +51,37 @@ export function StatCards({
               )}
             </>
           ) : (
-            <div className="text-lg text-gray-500">データなし</div>
+            <div className="text-lg text-[#94A3B8]">データなし</div>
           )}
         </CardContent>
       </Card>
 
       {/* カード2: 食事記録 */}
-      <Card>
+      <Card className="border border-[#E2E8F0] rounded-md" style={{ boxShadow: 'none' }}>
         <CardHeader>
-          <CardTitle className="text-sm text-gray-600">食事記録</CardTitle>
+          <div className="flex items-center gap-2">
+            <Utensils className="w-4 h-4 text-[#94A3B8]" />
+            <CardTitle className="text-sm text-[#64748B]">食事記録</CardTitle>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-bold text-gray-900">{mealCount} 回</div>
+          <div className="text-3xl font-bold text-[#0F172A]">{mealCount} 回</div>
         </CardContent>
       </Card>
 
       {/* カード3: 運動記録 */}
-      <Card>
+      <Card className="border border-[#E2E8F0] rounded-md" style={{ boxShadow: 'none' }}>
         <CardHeader>
-          <CardTitle className="text-sm text-gray-600">運動記録</CardTitle>
+          <div className="flex items-center gap-2">
+            <Dumbbell className="w-4 h-4 text-[#94A3B8]" />
+            <CardTitle className="text-sm text-[#64748B]">運動記録</CardTitle>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-bold text-gray-900">
+          <div className="text-3xl font-bold text-[#0F172A]">
             {exerciseCount} 回
           </div>
-          <div className="text-sm text-gray-600 mt-2">
+          <div className="text-sm text-[#64748B] mt-2">
             合計 {totalExerciseMinutes} 分
           </div>
         </CardContent>

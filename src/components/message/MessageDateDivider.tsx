@@ -31,10 +31,12 @@ function formatDate(dateStr: string): string {
 
 export function MessageDateDivider({ date }: MessageDateDividerProps) {
   return (
-    <div className="flex items-center justify-center my-4">
-      <span className="bg-gray-100 text-gray-500 text-xs px-3 py-1 rounded-full">
+    <div className="flex items-center justify-center my-4 gap-3">
+      <div className="flex-1 h-px bg-[#E2E8F0]" />
+      <span className="bg-[#F8FAFC] text-[#94A3B8] text-xs px-3 py-1 rounded-md border border-[#E2E8F0]">
         {formatDate(date)}
       </span>
+      <div className="flex-1 h-px bg-[#E2E8F0]" />
     </div>
   )
 }

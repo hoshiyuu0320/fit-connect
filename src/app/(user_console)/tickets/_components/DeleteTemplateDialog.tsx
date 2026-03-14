@@ -64,7 +64,7 @@ export function DeleteTemplateDialog({
           <button
             onClick={handleDelete}
             disabled={deleting}
-            className="inline-flex items-center justify-center rounded-md text-sm font-medium px-4 py-2 bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center justify-center rounded-md text-sm font-medium px-4 py-2 bg-[#DC2626] text-white hover:bg-[#B91C1C] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {deleting ? '削除中...' : '削除'}
           </button>

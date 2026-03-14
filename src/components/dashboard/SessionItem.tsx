@@ -34,20 +34,20 @@ export function SessionItem({
     switch (status) {
       case 'completed':
         return {
-          bgColor: 'bg-green-50',
-          textColor: 'text-green-700',
-          borderColor: 'border-green-200',
-          badgeBg: 'bg-green-100',
-          badgeText: 'text-green-700',
+          bgColor: 'bg-emerald-50',
+          textColor: 'text-emerald-700',
+          borderColor: 'border-emerald-200',
+          badgeBg: 'bg-emerald-50',
+          badgeText: 'text-emerald-700',
           label: '完了',
         }
       case 'confirmed':
         return {
-          bgColor: 'bg-blue-50',
-          textColor: 'text-blue-700',
-          borderColor: 'border-blue-200',
-          badgeBg: 'bg-blue-100',
-          badgeText: 'text-blue-700',
+          bgColor: 'bg-[#F0FDFA]',
+          textColor: 'text-[#14B8A6]',
+          borderColor: 'border-[#CCFBF1]',
+          badgeBg: 'bg-[#F0FDFA]',
+          badgeText: 'text-[#14B8A6]',
           label: '確定',
         }
       case 'cancelled':
@@ -62,10 +62,10 @@ export function SessionItem({
       default: // scheduled
         return {
           bgColor: 'bg-white',
-          textColor: 'text-gray-700',
-          borderColor: 'border-gray-200',
-          badgeBg: 'bg-gray-100',
-          badgeText: 'text-gray-600',
+          textColor: 'text-[#475569]',
+          borderColor: 'border-[#E2E8F0]',
+          badgeBg: 'bg-[#F8FAFC]',
+          badgeText: 'text-[#475569]',
           label: '予定',
         }
     }
@@ -76,31 +76,31 @@ export function SessionItem({
   return (
     <Link
       href={`/clients/${client_id}`}
-      className={`block border ${statusStyle.borderColor} ${statusStyle.bgColor} rounded-xl p-4 hover:shadow-md transition-all`}
+      className={`block border ${statusStyle.borderColor} ${statusStyle.bgColor} rounded-md p-4 hover:shadow-sm transition-all`}
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <div className="text-center">
-            <p className="text-base font-bold text-gray-900 leading-none">
+            <p className="text-base font-bold text-[#0F172A] leading-none">
               {formatTime(session_date)}
             </p>
-            <p className="text-xs text-gray-500 mt-0.5">
+            <p className="text-xs text-[#94A3B8] mt-0.5">
               〜{calculateEndTime(session_date, duration_minutes)}
             </p>
           </div>
-          <div className="w-px h-10 bg-gray-200" />
+          <div className="w-px h-10 bg-[#E2E8F0]" />
           <div>
-            <p className="text-base font-semibold text-gray-900">
+            <p className="text-base font-semibold text-[#0F172A]">
               {client_name}さん
             </p>
             {session_type && (
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-[#475569]">
                 {session_type} &middot; {duration_minutes}分
               </p>
             )}
           </div>
         </div>
-        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusStyle.badgeBg} ${statusStyle.badgeText}`}>
+        <span className={`text-xs font-semibold px-2.5 py-1 rounded ${statusStyle.badgeBg} ${statusStyle.badgeText}`}>
           {statusStyle.label}
         </span>
       </div>

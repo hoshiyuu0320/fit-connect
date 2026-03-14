@@ -449,3 +449,23 @@ Send message from trainer to client.
 セッション継続の情報をもとに、チーム編成（最大3人）を行い並列作業せよ
 
 複数のエージェントで同一タスクを同時に実行する場合は、同時に同じファイルを触らないこと（上書きを発生させないこと）
+
+## Design Tokens & Core Concept
+- Concept: Modern, Sophisticated, Gender-neutral Fitness Management Tool
+- Primary Color: #0F172A (Slate 900) // 深く洗練されたネイビー/黒。プロの信頼感を演出
+- Accent Color: #14B8A6 (Teal 500) // 爽やかでモダンなティールグリーン。男女問わず好まれる健康的な色
+- Background: #F8FAFC // 真っ白ではなく、長時間見ても目が疲れないオフホワイト
+- Surface: #FFFFFF // カードや入力エリアの背景
+- Typography (EN): 'Plus Jakarta Sans', sans-serif // 海外のモダンなSaaSでよく使われる、洗練された欧文フォント
+- Typography (JP): 'Noto Sans JP', sans-serif
+- Spacing: 8px grid system (8, 16, 24, 32, 48px) // 余白をたっぷり取り、洗練された印象に
+- Border-radius: 6px // 丸すぎず（ポップになりすぎない）、尖りすぎないプロフェッショナルなカーブ
+- Borders: 1px solid #E2E8F0 // 非常に薄く控えめな境界線
+
+## UI/UX Anti-Patterns (厳禁ルール)
+- AI特有の安っぽいグラデーション（青→紫など）は絶対に使用しない。ベタ塗り（Solid color）を基本とする。
+- 意味のない、または濃すぎるドロップシャドウは禁止。フラットデザイン、もしくは極めて薄いシャドウのみを使用する。
+- ボタンやカードの角を丸めすぎない（Border-radiusは最大でも8pxまで。丸薬型/Pill-shapeは避ける）。
+- システムデフォルトのInterフォントは使用禁止。
+- 彩度が高すぎる原色（#FF0000など）はエラーや警告のステータス以外では絶対に使用しない。
+- 要素を詰め込みすぎない。常にSpactingトークンに基づいた「十分な余白（White space）」を確保する。

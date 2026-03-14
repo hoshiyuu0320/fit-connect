@@ -1,0 +1,1950 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>メッセージ画面 リデザイン ワイヤーフレーム</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root {
+    --primary: #0F172A;
+    --text-secondary: #475569;
+    --text-muted: #94A3B8;
+    --accent: #14B8A6;
+    --accent-hover: #0D9488;
+    --accent-light: #F0FDFA;
+    --accent-subtle: #CCFBF1;
+    --background: #F8FAFC;
+    --surface: #FFFFFF;
+    --border: #E2E8F0;
+    --radius: 6px;
+    --success: #16A34A;
+    --warning: #F59E0B;
+    --danger: #DC2626;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif;
+    background: #E5E7EB;
+    color: var(--primary);
+    min-height: 100vh;
+    padding: 32px 16px;
+  }
+
+  /* ===== Page Title ===== */
+  .page-title-block {
+    max-width: 1100px;
+    margin: 0 auto 32px;
+  }
+  .page-title-block h1 {
+    font-size: 22px;
+    font-weight: 800;
+    color: #111827;
+    letter-spacing: -0.01em;
+    margin-bottom: 4px;
+  }
+  .page-title-block p {
+    font-size: 13px;
+    color: #6B7280;
+  }
+
+  /* ===== Legend ===== */
+  .legend-block {
+    max-width: 1100px;
+    margin: 0 auto 40px;
+    background: #FFF7F7;
+    border: 1px solid #FECACA;
+    border-radius: 6px;
+    padding: 16px 20px;
+  }
+  .legend-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #DC2626;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .legend-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px 16px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: #374151;
+  }
+  .legend-badge {
+    width: 22px;
+    height: 22px;
+    background: #DC2626;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  /* ===== Section Divider ===== */
+  .section-divider {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    max-width: 1100px;
+    margin: 48px auto 24px;
+  }
+  .section-divider-line {
+    flex: 1;
+    height: 1px;
+    background: #9CA3AF;
+  }
+  .section-divider-label {
+    background: #374151;
+    color: #F9FAFB;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 6px 20px;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+
+  /* ===== Screen Frame ===== */
+  .screen-frame {
+    max-width: 1100px;
+    margin: 0 auto;
+    background: var(--background);
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #D1D5DB;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+  }
+
+  /* ===== App Top Bar ===== */
+  .app-topbar {
+    height: 48px;
+    background: var(--primary);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 12px;
+    border-bottom: 1px solid #1E293B;
+  }
+  .app-topbar-logo {
+    background: var(--accent);
+    color: var(--primary);
+    font-weight: 800;
+    font-size: 12px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+  }
+  .app-topbar-title {
+    color: #94A3B8;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .app-topbar-spacer { flex: 1; }
+  .app-topbar-user {
+    width: 28px;
+    height: 28px;
+    background: #334155;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: #94A3B8;
+  }
+
+  /* ===== Annotation Badge ===== */
+  .anno {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: #DC2626;
+    color: white;
+    border-radius: 50%;
+    font-size: 10px;
+    font-weight: 700;
+    flex-shrink: 0;
+    position: relative;
+    cursor: help;
+  }
+  .anno-inline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    background: #DC2626;
+    color: white;
+    border-radius: 50%;
+    font-size: 9px;
+    font-weight: 700;
+    vertical-align: middle;
+    margin-left: 4px;
+    cursor: help;
+  }
+
+  /* ===== Message Layout ===== */
+  .msg-layout {
+    display: flex;
+    height: 600px;
+  }
+
+  /* ===== Sidebar ===== */
+  .msg-sidebar {
+    width: 300px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+  .msg-sidebar-header {
+    padding: 16px 16px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .msg-sidebar-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 10px;
+  }
+  .msg-search {
+    width: 100%;
+    padding: 7px 10px 7px 32px;
+    font-size: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--background);
+    color: var(--primary);
+    outline: none;
+    font-family: inherit;
+  }
+  .msg-search:focus {
+    border-color: var(--accent);
+  }
+  .msg-search-wrap {
+    position: relative;
+  }
+  .msg-search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+  .msg-client-list {
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  /* ===== Client List Item ===== */
+  .msg-client-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+  .msg-client-item:hover {
+    background: var(--background);
+  }
+  .msg-client-item.selected {
+    background: var(--accent-light);
+    border-left: 2px solid var(--accent);
+    padding-left: 14px;
+  }
+  .msg-client-avatar {
+    width: 38px;
+    height: 38px;
+    background: var(--accent);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .msg-client-avatar.has-unread::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 10px;
+    height: 10px;
+    background: var(--danger);
+    border-radius: 50%;
+    border: 2px solid var(--surface);
+  }
+  .msg-client-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .msg-client-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .msg-client-last-msg {
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+  }
+  .msg-client-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .msg-client-time {
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+  .msg-unread-badge {
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    background: var(--accent);
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: white;
+  }
+
+  /* ===== Chat Area ===== */
+  .msg-chat {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--background);
+    min-width: 0;
+  }
+  .msg-chat-header {
+    height: 56px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+  .msg-chat-header-avatar {
+    width: 34px;
+    height: 34px;
+    background: var(--accent);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+  }
+  .msg-chat-header-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .msg-chat-header-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--primary);
+  }
+  .msg-chat-header-status {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .msg-chat-header-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .msg-chat-header-btn {
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 14px;
+  }
+  .msg-chat-header-btn:hover {
+    background: var(--background);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* ===== Messages Body ===== */
+  .msg-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  /* ===== Date Divider ===== */
+  .msg-date-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 12px 0;
+  }
+  .msg-date-divider-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  .msg-date-divider-text {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+    padding: 3px 10px;
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+
+  /* ===== Message Bubble ===== */
+  .msg-row {
+    display: flex;
+    gap: 8px;
+    max-width: 75%;
+  }
+  .msg-row.trainer {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+  }
+  .msg-row.client {
+    align-self: flex-start;
+  }
+  .msg-bubble {
+    padding: 10px 14px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    line-height: 1.55;
+    position: relative;
+  }
+  .msg-bubble.trainer {
+    background: var(--accent);
+    color: white;
+    border-bottom-right-radius: 2px;
+  }
+  .msg-bubble.client {
+    background: var(--surface);
+    color: var(--primary);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 2px;
+  }
+  .msg-bubble-time {
+    font-size: 10px;
+    margin-top: 4px;
+    text-align: right;
+  }
+  .msg-bubble.trainer .msg-bubble-time {
+    color: rgba(255,255,255,0.65);
+  }
+  .msg-bubble.client .msg-bubble-time {
+    color: var(--text-muted);
+  }
+  .msg-bubble-read {
+    font-size: 10px;
+    color: rgba(255,255,255,0.5);
+    margin-left: 4px;
+  }
+
+  /* ===== Reply Quote ===== */
+  .msg-reply-quote {
+    padding: 6px 10px;
+    border-radius: 4px;
+    margin-bottom: 6px;
+    font-size: 11px;
+    line-height: 1.4;
+    border-left: 3px solid;
+  }
+  .msg-reply-quote.in-trainer {
+    background: rgba(255,255,255,0.15);
+    border-left-color: rgba(255,255,255,0.5);
+    color: rgba(255,255,255,0.85);
+  }
+  .msg-reply-quote.in-client {
+    background: var(--background);
+    border-left-color: var(--accent);
+    color: var(--text-secondary);
+  }
+  .msg-reply-quote-sender {
+    font-weight: 600;
+    font-size: 10px;
+    margin-bottom: 2px;
+  }
+
+  /* ===== Image Message ===== */
+  .msg-images {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 4px;
+    flex-wrap: wrap;
+  }
+  .msg-image-thumb {
+    width: 100px;
+    height: 100px;
+    border-radius: 4px;
+    object-fit: cover;
+    background: #E2E8F0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: var(--text-muted);
+    border: 1px solid rgba(0,0,0,0.05);
+  }
+
+  /* ===== Input Area ===== */
+  .msg-input-area {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 12px 20px;
+    flex-shrink: 0;
+  }
+  .msg-reply-preview {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--accent-light);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius);
+    margin-bottom: 10px;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+  .msg-reply-preview-close {
+    margin-left: auto;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+  .msg-input-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+  }
+  .msg-textarea-wrap {
+    flex: 1;
+    position: relative;
+  }
+  .msg-textarea {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 13px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--background);
+    color: var(--primary);
+    font-family: inherit;
+    resize: none;
+    outline: none;
+    min-height: 40px;
+    line-height: 1.5;
+  }
+  .msg-textarea:focus {
+    border-color: var(--accent);
+  }
+  .msg-input-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .msg-attach-btn {
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 16px;
+    transition: all 0.15s;
+  }
+  .msg-attach-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-light);
+  }
+  .msg-send-btn {
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: var(--radius);
+    background: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: white;
+    font-size: 16px;
+    transition: background 0.15s;
+  }
+  .msg-send-btn:hover {
+    background: var(--accent-hover);
+  }
+  .msg-send-btn.disabled {
+    background: var(--border);
+    color: var(--text-muted);
+    cursor: not-allowed;
+  }
+
+  /* ===== Image Upload Preview ===== */
+  .msg-upload-preview {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .msg-upload-thumb {
+    width: 64px;
+    height: 64px;
+    border-radius: var(--radius);
+    background: #E2E8F0;
+    border: 1px solid var(--border);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+  .msg-upload-remove {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 18px;
+    height: 18px;
+    background: var(--danger);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    cursor: pointer;
+    border: 2px solid var(--surface);
+  }
+
+  /* ===== Empty State ===== */
+  .msg-empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: var(--text-muted);
+  }
+  .msg-empty-icon {
+    width: 64px;
+    height: 64px;
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: var(--text-muted);
+  }
+  .msg-empty-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-secondary);
+  }
+  .msg-empty-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: center;
+    max-width: 280px;
+    line-height: 1.5;
+  }
+
+  /* ===== Record Card ===== */
+  .msg-record-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-top: 4px;
+  }
+  .msg-record-card-header {
+    padding: 6px 10px;
+    font-size: 10px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    letter-spacing: 0.03em;
+  }
+  .msg-record-card-body {
+    padding: 8px 10px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    background: var(--surface);
+  }
+  .msg-record-card.weight .msg-record-card-header {
+    background: #EFF6FF;
+    color: #2563EB;
+  }
+  .msg-record-card.meal .msg-record-card-header {
+    background: #FFF7ED;
+    color: #EA580C;
+  }
+  .msg-record-card.exercise .msg-record-card-header {
+    background: #F0FDF4;
+    color: var(--success);
+  }
+  .msg-record-card.achievement .msg-record-card-header {
+    background: #FAF5FF;
+    color: #7C3AED;
+  }
+
+  /* ===== Context Menu ===== */
+  .msg-context-menu {
+    position: absolute;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 4px 0;
+    min-width: 140px;
+    z-index: 10;
+  }
+  .msg-context-item {
+    padding: 7px 14px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .msg-context-item:hover {
+    background: var(--accent-light);
+    color: var(--accent);
+  }
+  .msg-context-item.danger {
+    color: var(--danger);
+  }
+  .msg-context-item.danger:hover {
+    background: #FEF2F2;
+    color: var(--danger);
+  }
+
+  /* ===== Edit Mode ===== */
+  .msg-edit-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: var(--accent-light);
+    border-radius: var(--radius);
+    margin-bottom: 10px;
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .msg-edit-bar-icon {
+    font-size: 14px;
+  }
+  .msg-edit-bar-close {
+    margin-left: auto;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+
+  /* ===== Drag Overlay ===== */
+  .msg-drag-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(240, 253, 250, 0.92);
+    border: 2px dashed var(--accent);
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    z-index: 20;
+  }
+  .msg-drag-icon {
+    font-size: 32px;
+    color: var(--accent);
+  }
+  .msg-drag-text {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .msg-drag-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  /* ===== Typing Indicator ===== */
+  .msg-typing {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 0;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .msg-typing-dots {
+    display: flex;
+    gap: 3px;
+  }
+  .msg-typing-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    animation: typingBounce 1.4s infinite ease-in-out;
+  }
+  .msg-typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .msg-typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes typingBounce {
+    0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+    40% { opacity: 1; transform: scale(1); }
+  }
+
+  /* ===== Online Status ===== */
+  .online-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .online-dot.online { background: var(--success); }
+  .online-dot.offline { background: var(--text-muted); }
+
+  /* ===== Notes ===== */
+  .design-note {
+    max-width: 1100px;
+    margin: 12px auto;
+    padding: 12px 16px;
+    background: #FFFBEB;
+    border: 1px solid #FDE68A;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #92400E;
+    line-height: 1.6;
+  }
+  .design-note strong {
+    font-weight: 700;
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== TITLE ===== -->
+<div class="page-title-block">
+  <h1>メッセージ画面 リデザイン</h1>
+  <p>Proposal J — FIT-CONNECT デザインシステム統一</p>
+</div>
+
+<!-- ===== LEGEND ===== -->
+<div class="legend-block">
+  <div class="legend-title">Design Annotations</div>
+  <div class="legend-grid">
+    <div class="legend-item"><span class="legend-badge">1</span> デザイントークン適用（カラー/フォント/radius統一）</div>
+    <div class="legend-item"><span class="legend-badge">2</span> 新規UIパターン／レイアウト変更</div>
+    <div class="legend-item"><span class="legend-badge">3</span> インタラクション／アニメーション仕様</div>
+    <div class="legend-item"><span class="legend-badge">4</span> 既存機能の改善</div>
+    <div class="legend-item"><span class="legend-badge">5</span> コンポーネント構造の変更</div>
+    <div class="legend-item"><span class="legend-badge">6</span> レスポンシブ対応の注記</div>
+  </div>
+</div>
+
+
+<!-- ========================================================== -->
+<!-- PROPOSAL 1: 全体レイアウト（メイン画面） -->
+<!-- ========================================================== -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">PROPOSAL 1 — 全体レイアウト</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="design-note">
+  <strong>変更概要:</strong> サイドバー幅 w-72(288px) → 300px。背景・ボーダー・フォントを全てデザイントークンに統一。
+  emerald/blue系のTailwindデフォルトカラーを全廃し、hex値のみ使用。
+</div>
+
+<div class="screen-frame">
+  <div class="app-topbar">
+    <div class="app-topbar-logo">FC</div>
+    <div class="app-topbar-title">FIT-CONNECT</div>
+    <div class="app-topbar-spacer"></div>
+    <div class="app-topbar-user">T</div>
+  </div>
+
+  <div class="msg-layout">
+    <!-- Sidebar -->
+    <div class="msg-sidebar">
+      <div class="msg-sidebar-header">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div class="msg-sidebar-title">メッセージ <span class="anno-inline">1</span></div>
+        </div>
+        <div class="msg-search-wrap">
+          <span class="msg-search-icon">🔍</span>
+          <input class="msg-search" type="text" placeholder="クライアントを検索..." readonly>
+        </div>
+      </div>
+      <div class="msg-client-list">
+        <!-- Selected Client -->
+        <div class="msg-client-item selected">
+          <div class="msg-client-avatar">田</div>
+          <div class="msg-client-info">
+            <div class="msg-client-name">田中 美咲</div>
+            <div class="msg-client-last-msg">了解です！次回もよろしくお願いします</div>
+          </div>
+          <div class="msg-client-meta">
+            <div class="msg-client-time">14:32</div>
+          </div>
+        </div>
+        <!-- Unread Client -->
+        <div class="msg-client-item">
+          <div class="msg-client-avatar has-unread">佐</div>
+          <div class="msg-client-info">
+            <div class="msg-client-name" style="font-weight:700;">佐藤 健太</div>
+            <div class="msg-client-last-msg" style="color:var(--primary);font-weight:500;">今日の体重を報告します！</div>
+          </div>
+          <div class="msg-client-meta">
+            <div class="msg-client-time" style="color:var(--accent);font-weight:600;">12:05</div>
+            <div class="msg-unread-badge">3</div>
+          </div>
+        </div>
+        <!-- Normal Clients -->
+        <div class="msg-client-item">
+          <div class="msg-client-avatar" style="background:#64748B;">山</div>
+          <div class="msg-client-info">
+            <div class="msg-client-name">山田 太郎</div>
+            <div class="msg-client-last-msg">承知しました</div>
+          </div>
+          <div class="msg-client-meta">
+            <div class="msg-client-time">昨日</div>
+          </div>
+        </div>
+        <div class="msg-client-item">
+          <div class="msg-client-avatar" style="background:#64748B;">鈴</div>
+          <div class="msg-client-info">
+            <div class="msg-client-name">鈴木 花子</div>
+            <div class="msg-client-last-msg">ありがとうございます</div>
+          </div>
+          <div class="msg-client-meta">
+            <div class="msg-client-time">3/5</div>
+          </div>
+        </div>
+        <div class="msg-client-item">
+          <div class="msg-client-avatar" style="background:#64748B;">高</div>
+          <div class="msg-client-info">
+            <div class="msg-client-name">高橋 翔</div>
+            <div class="msg-client-last-msg">写真を送りました</div>
+          </div>
+          <div class="msg-client-meta">
+            <div class="msg-client-time">3/3</div>
+          </div>
+        </div>
+        <div class="msg-client-item">
+          <div class="msg-client-avatar" style="background:#64748B;">伊</div>
+          <div class="msg-client-info">
+            <div class="msg-client-name">伊藤 結衣</div>
+            <div class="msg-client-last-msg">食事記録です</div>
+          </div>
+          <div class="msg-client-meta">
+            <div class="msg-client-time">3/1</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat Area -->
+    <div class="msg-chat">
+      <!-- Chat Header -->
+      <div class="msg-chat-header">
+        <div class="msg-chat-header-avatar">田</div>
+        <div class="msg-chat-header-info">
+          <div class="msg-chat-header-name">田中 美咲</div>
+          <div class="msg-chat-header-status">ダイエット・女性・28歳</div>
+        </div>
+        <div class="msg-chat-header-actions">
+          <div class="msg-chat-header-btn" title="顧客詳細">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/></svg>
+          </div>
+          <div class="msg-chat-header-btn" title="スケジュール">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          </div>
+        </div>
+        <span class="anno-inline">2</span>
+      </div>
+
+      <!-- Messages Body -->
+      <div class="msg-body">
+        <!-- Date Divider -->
+        <div class="msg-date-divider">
+          <div class="msg-date-divider-line"></div>
+          <div class="msg-date-divider-text">2026年3月7日（土）</div>
+          <div class="msg-date-divider-line"></div>
+        </div>
+
+        <!-- Client Message -->
+        <div class="msg-row client">
+          <div class="msg-bubble client">
+            おはようございます！今日のトレーニングについて質問があります。
+            <div class="msg-bubble-time">09:15</div>
+          </div>
+        </div>
+
+        <!-- Trainer Message -->
+        <div class="msg-row trainer">
+          <div class="msg-bubble trainer">
+            おはようございます！何でも聞いてくださいね 😊
+            <div class="msg-bubble-time">
+              09:18 <span class="msg-bubble-read">既読</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Client Message with Record Card -->
+        <div class="msg-row client" style="max-width:60%;">
+          <div class="msg-bubble client">
+            今朝の体重を報告します。
+            <div class="msg-record-card weight">
+              <div class="msg-record-card-header">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M3 12h18"/></svg>
+                体重記録
+              </div>
+              <div class="msg-record-card-body">
+                <div style="font-size:20px;font-weight:800;color:var(--primary);">58.2 <span style="font-size:12px;font-weight:500;color:var(--text-muted);">kg</span></div>
+                <div style="font-size:11px;color:var(--success);margin-top:2px;">▼ 0.3kg（前回比）</div>
+              </div>
+            </div>
+            <div class="msg-bubble-time">10:30</div>
+          </div>
+        </div>
+
+        <!-- Trainer Reply Message with Quote -->
+        <div class="msg-row trainer">
+          <div class="msg-bubble trainer">
+            <div class="msg-reply-quote in-trainer">
+              <div class="msg-reply-quote-sender">田中 美咲</div>
+              今朝の体重を報告します。
+            </div>
+            いい調子ですね！目標まであと1.2kgです。この調子で頑張りましょう！
+            <div class="msg-bubble-time">
+              10:35 <span class="msg-bubble-read">既読</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Client Image Message -->
+        <div class="msg-row client" style="max-width:55%;">
+          <div class="msg-bubble client">
+            お昼ご飯です🍱
+            <div class="msg-images">
+              <div class="msg-image-thumb" style="background:linear-gradient(135deg,#d4c5a9,#e8dcc8);">📷</div>
+              <div class="msg-image-thumb" style="background:linear-gradient(135deg,#c5d4a9,#d8e8c8);">📷</div>
+            </div>
+            <div class="msg-record-card meal">
+              <div class="msg-record-card-header">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>
+                昼食
+              </div>
+              <div class="msg-record-card-body">
+                鶏むね肉のサラダ、玄米おにぎり<br>
+                <span style="font-weight:600;">520 kcal</span>
+              </div>
+            </div>
+            <div class="msg-bubble-time">12:45</div>
+          </div>
+        </div>
+
+        <!-- Trainer Message -->
+        <div class="msg-row trainer">
+          <div class="msg-bubble trainer">
+            完璧なバランスですね！タンパク質もしっかり取れています。
+            <div class="msg-bubble-time">
+              14:30 <span class="msg-bubble-read">既読</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Client Reply -->
+        <div class="msg-row client">
+          <div class="msg-bubble client">
+            了解です！次回もよろしくお願いします 💪
+            <div class="msg-bubble-time">14:32</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Input Area -->
+      <div class="msg-input-area">
+        <div class="msg-input-row">
+          <div class="msg-attach-btn" title="画像を添付">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+          </div>
+          <div class="msg-textarea-wrap">
+            <textarea class="msg-textarea" rows="1" placeholder="メッセージを入力..." readonly></textarea>
+          </div>
+          <div class="msg-send-btn disabled">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="design-note">
+  <strong>デザイン変更点:</strong><br>
+  <span class="anno-inline">1</span> ヘッダー「メッセージ」— Plus Jakarta Sans / Noto Sans JP、font-weight:700、color: #0F172A<br>
+  <span class="anno-inline">1</span> サイドバー背景: bg-white → #FFFFFF (surface)、ボーダー: border-gray-200 → #E2E8F0<br>
+  <span class="anno-inline">1</span> 選択クライアント: bg-blue-50 border-blue-500 → bg: #F0FDFA, border-left: 2px solid #14B8A6<br>
+  <span class="anno-inline">1</span> 未読バッジ: bg-emerald-500 → bg: #14B8A6 (teal accent)<br>
+  <span class="anno-inline">1</span> メッセージバブル（トレーナー）: bg-emerald-500 → bg: #14B8A6<br>
+  <span class="anno-inline">1</span> メッセージバブル（クライアント）: bg-white border-gray-200 → bg: #FFFFFF border: #E2E8F0<br>
+  <span class="anno-inline">1</span> 送信ボタン: bg-emerald-500 → bg: #14B8A6<br>
+  <span class="anno-inline">1</span> 全てのfocus ring: emerald-300 → border-color: #14B8A6<br>
+  <span class="anno-inline">2</span> チャットヘッダーに「顧客詳細」「スケジュール」クイックアクションボタン追加<br>
+  <span class="anno-inline">2</span> クライアント属性（目的・性別・年齢）をヘッダーサブテキストに表示
+</div>
+
+
+<!-- ========================================================== -->
+<!-- PROPOSAL 2: クライアントリストアイテム詳細 -->
+<!-- ========================================================== -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">PROPOSAL 2 — クライアントリストアイテム</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="design-note">
+  <strong>変更概要:</strong> 未読状態の視覚的差別化を強化。アバターへの赤ドット、未読時のテキスト太字化、タイムスタンプのaccent色化。
+</div>
+
+<div class="screen-frame">
+  <div class="app-topbar">
+    <div class="app-topbar-logo">FC</div>
+    <div class="app-topbar-title">クライアントリストアイテム バリエーション</div>
+    <div class="app-topbar-spacer"></div>
+  </div>
+
+  <div style="background:var(--surface);padding:20px 24px;display:flex;flex-direction:column;gap:0;max-width:300px;border-right:1px solid var(--border);">
+    <!-- State 1: Selected -->
+    <div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:0.08em;padding:8px 0 4px;text-transform:uppercase;">SELECTED STATE</div>
+    <div class="msg-client-item selected">
+      <div class="msg-client-avatar">田</div>
+      <div class="msg-client-info">
+        <div class="msg-client-name">田中 美咲</div>
+        <div class="msg-client-last-msg">了解です！次回もよろしく...</div>
+      </div>
+      <div class="msg-client-meta">
+        <div class="msg-client-time">14:32</div>
+      </div>
+    </div>
+
+    <!-- State 2: Unread -->
+    <div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:0.08em;padding:16px 0 4px;text-transform:uppercase;">UNREAD STATE <span class="anno-inline">4</span></div>
+    <div class="msg-client-item">
+      <div class="msg-client-avatar has-unread">佐</div>
+      <div class="msg-client-info">
+        <div class="msg-client-name" style="font-weight:700;">佐藤 健太</div>
+        <div class="msg-client-last-msg" style="color:var(--primary);font-weight:500;">今日の体重を報告します！</div>
+      </div>
+      <div class="msg-client-meta">
+        <div class="msg-client-time" style="color:var(--accent);font-weight:600;">12:05</div>
+        <div class="msg-unread-badge">3</div>
+      </div>
+    </div>
+
+    <!-- State 3: Normal / Read -->
+    <div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:0.08em;padding:16px 0 4px;text-transform:uppercase;">DEFAULT STATE</div>
+    <div class="msg-client-item">
+      <div class="msg-client-avatar" style="background:#64748B;">山</div>
+      <div class="msg-client-info">
+        <div class="msg-client-name">山田 太郎</div>
+        <div class="msg-client-last-msg">承知しました</div>
+      </div>
+      <div class="msg-client-meta">
+        <div class="msg-client-time">昨日</div>
+      </div>
+    </div>
+
+    <!-- State 4: No messages yet -->
+    <div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:0.08em;padding:16px 0 4px;text-transform:uppercase;">NO MESSAGES STATE</div>
+    <div class="msg-client-item">
+      <div class="msg-client-avatar" style="background:#CBD5E1;">中</div>
+      <div class="msg-client-info">
+        <div class="msg-client-name">中村 翔太</div>
+        <div class="msg-client-last-msg" style="font-style:italic;">メッセージなし</div>
+      </div>
+      <div class="msg-client-meta">
+        <div class="msg-client-time" style="color:#CBD5E1;">—</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="design-note">
+  <strong>状態の視覚ルール:</strong><br>
+  ・<strong>Selected:</strong> 左ボーダー 2px #14B8A6 + 背景 #F0FDFA<br>
+  ・<strong>Unread:</strong> アバター右上に赤ドット(8px) + 名前 font-weight:700 + ラストメッセージ color:#0F172A,weight:500 + 時刻 color:#14B8A6 + tealバッジ<br>
+  ・<strong>Default:</strong> 名前 weight:600 + ラストメッセージ #94A3B8 + 時刻 #94A3B8<br>
+  ・<strong>No Messages:</strong> アバター #CBD5E1 + ラストメッセージ italic「メッセージなし」
+</div>
+
+
+<!-- ========================================================== -->
+<!-- PROPOSAL 3: メッセージバブル バリエーション -->
+<!-- ========================================================== -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">PROPOSAL 3 — メッセージバブル</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="design-note">
+  <strong>変更概要:</strong> トレーナーバブル: #14B8A6 (teal)ベタ塗り白文字。クライアントバブル: #FFFFFF + #E2E8F0ボーダー。
+  border-radius: 6px（角丸統一）、送信側は右下のみ2px。既読マーク・編集済みラベルのスタイル統一。
+</div>
+
+<div class="screen-frame">
+  <div class="app-topbar">
+    <div class="app-topbar-logo">FC</div>
+    <div class="app-topbar-title">メッセージバブル バリエーション</div>
+    <div class="app-topbar-spacer"></div>
+  </div>
+
+  <div style="background:var(--background);padding:24px 20px;display:flex;flex-direction:column;gap:8px;">
+
+    <!-- Text Only - Client -->
+    <div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:4px;text-transform:uppercase;">テキストのみ</div>
+    <div class="msg-row client">
+      <div class="msg-bubble client">
+        おはようございます！今日のトレーニングメニューを教えてください。
+        <div class="msg-bubble-time">09:15</div>
+      </div>
+    </div>
+
+    <div class="msg-row trainer">
+      <div class="msg-bubble trainer">
+        おはようございます！今日はスクワット3セットとベンチプレス3セットを予定しています。
+        <div class="msg-bubble-time">
+          09:18 <span class="msg-bubble-read">既読</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- With Reply Quote -->
+    <div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:0.08em;margin:12px 0 4px;text-transform:uppercase;">返信引用付き <span class="anno-inline">5</span></div>
+    <div class="msg-row client">
+      <div class="msg-bubble client">
+        <div class="msg-reply-quote in-client">
+          <div class="msg-reply-quote-sender">トレーナー</div>
+          スクワット3セットとベンチプレス...
+        </div>
+        了解です！重量はいつも通りで大丈夫ですか？
+        <div class="msg-bubble-time">09:20</div>
+      </div>
+    </div>
+
+    <div class="msg-row trainer">
+      <div class="msg-bubble trainer">
+        <div class="msg-reply-quote in-trainer">
+          <div class="msg-reply-quote-sender">田中 美咲</div>
+          重量はいつも通りで大丈夫ですか？
+        </div>
+        前回から2.5kg上げましょう！いけると思います 💪
+        <div class="msg-bubble-time">
+          09:22 <span class="msg-bubble-read">既読</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edited Message -->
+    <div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:0.08em;margin:12px 0 4px;text-transform:uppercase;">編集済みメッセージ <span class="anno-inline">1</span></div>
+    <div class="msg-row trainer">
+      <div class="msg-bubble trainer">
+        前回から2.5kg上げましょう！（訂正：ベンチプレスは1.25kgアップで）
+        <div class="msg-bubble-time" style="display:flex;align-items:center;gap:4px;justify-content:flex-end;">
+          <span style="font-size:10px;opacity:0.5;font-style:italic;">編集済</span>
+          09:25 <span class="msg-bubble-read">既読</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Record Cards -->
+    <div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:0.08em;margin:12px 0 4px;text-transform:uppercase;">レコードカード付き <span class="anno-inline">5</span></div>
+
+    <!-- Weight Record -->
+    <div class="msg-row client" style="max-width:55%;">
+      <div class="msg-bubble client">
+        今朝の体重です
+        <div class="msg-record-card weight">
+          <div class="msg-record-card-header">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="3"/><path d="M6.7 21h10.6a1 1 0 0 0 .9-1.4L12 5l-6.2 14.6a1 1 0 0 0 .9 1.4z"/></svg>
+            体重記録
+          </div>
+          <div class="msg-record-card-body">
+            <div style="display:flex;align-items:baseline;gap:6px;">
+              <span style="font-size:22px;font-weight:800;color:var(--primary);">58.2</span>
+              <span style="font-size:12px;color:var(--text-muted);">kg</span>
+              <span style="font-size:11px;color:var(--success);font-weight:600;">▼ 0.3</span>
+            </div>
+          </div>
+        </div>
+        <div class="msg-bubble-time">10:30</div>
+      </div>
+    </div>
+
+    <!-- Exercise Record -->
+    <div class="msg-row client" style="max-width:55%;">
+      <div class="msg-bubble client">
+        朝ランニングしました！
+        <div class="msg-record-card exercise">
+          <div class="msg-record-card-header">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 4a2 2 0 1 1 0 4 2 2 0 0 1 0-4zM4 20l4-4 3 3 5-5 4 4"/></svg>
+            運動記録 — ランニング
+          </div>
+          <div class="msg-record-card-body">
+            <div style="display:flex;gap:16px;">
+              <div><span style="font-weight:700;">30</span> <span style="font-size:11px;color:var(--text-muted);">分</span></div>
+              <div><span style="font-weight:700;">4.2</span> <span style="font-size:11px;color:var(--text-muted);">km</span></div>
+              <div><span style="font-weight:700;">280</span> <span style="font-size:11px;color:var(--text-muted);">kcal</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="msg-bubble-time">07:45</div>
+      </div>
+    </div>
+
+    <!-- Achievement -->
+    <div class="msg-row client" style="max-width:55%;">
+      <div class="msg-bubble client">
+        <div class="msg-record-card achievement">
+          <div class="msg-record-card-header">
+            🎉 目標達成
+          </div>
+          <div class="msg-record-card-body">
+            <div style="font-weight:600;color:var(--primary);">7日連続トレーニング達成！</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">2026/3/1 〜 2026/3/7</div>
+          </div>
+        </div>
+        <div class="msg-bubble-time">08:00</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ========================================================== -->
+<!-- PROPOSAL 4: 画像メッセージ -->
+<!-- ========================================================== -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">PROPOSAL 4 — 画像メッセージ</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="design-note">
+  <strong>変更概要:</strong> 画像メッセージのサムネイルレイアウト。1枚: 幅いっぱい、2枚: 横並び、3枚: 1大+2小のグリッド。
+  クリックで拡大モーダル（既存ImageModalコンポーネント活用）。
+</div>
+
+<div class="screen-frame">
+  <div class="app-topbar">
+    <div class="app-topbar-logo">FC</div>
+    <div class="app-topbar-title">画像メッセージ レイアウト</div>
+    <div class="app-topbar-spacer"></div>
+  </div>
+
+  <div style="background:var(--background);padding:24px 20px;display:flex;flex-direction:column;gap:12px;">
+
+    <!-- 1 Image -->
+    <div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:4px;text-transform:uppercase;">画像1枚 <span class="anno-inline">2</span></div>
+    <div class="msg-row client" style="max-width:50%;">
+      <div class="msg-bubble client" style="padding:6px;">
+        <div style="width:100%;height:160px;border-radius:4px;background:linear-gradient(135deg,#d4c5a9,#e8dcc8);display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:12px;">
+          📷 食事写真
+        </div>
+        <div style="padding:6px 8px 2px;">
+          <div style="font-size:13px;">サラダチキン定食です</div>
+          <div class="msg-bubble-time">12:30</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2 Images -->
+    <div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:0.08em;margin:8px 0 4px;text-transform:uppercase;">画像2枚</div>
+    <div class="msg-row client" style="max-width:55%;">
+      <div class="msg-bubble client" style="padding:6px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;">
+          <div style="height:120px;border-radius:4px;background:linear-gradient(135deg,#d4c5a9,#e8dcc8);display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:11px;">📷</div>
+          <div style="height:120px;border-radius:4px;background:linear-gradient(135deg,#c5d4a9,#d8e8c8);display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:11px;">📷</div>
+        </div>
+        <div style="padding:6px 8px 2px;">
+          <div style="font-size:13px;">ランチとデザート🍰</div>
+          <div class="msg-bubble-time">12:45</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3 Images -->
+    <div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:0.08em;margin:8px 0 4px;text-transform:uppercase;">画像3枚</div>
+    <div class="msg-row client" style="max-width:55%;">
+      <div class="msg-bubble client" style="padding:6px;">
+        <div style="display:grid;grid-template-columns:2fr 1fr;grid-template-rows:80px 80px;gap:3px;">
+          <div style="grid-row:1/3;border-radius:4px;background:linear-gradient(135deg,#d4c5a9,#e8dcc8);display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:11px;">📷</div>
+          <div style="border-radius:4px;background:linear-gradient(135deg,#c5d4a9,#d8e8c8);display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:11px;">📷</div>
+          <div style="border-radius:4px;background:linear-gradient(135deg,#a9c5d4,#c8d8e8);display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:11px;">📷</div>
+        </div>
+        <div style="padding:6px 8px 2px;">
+          <div style="font-size:13px;">朝昼晩の食事記録📝</div>
+          <div class="msg-bubble-time">19:00</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Trainer Image Message -->
+    <div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:0.08em;margin:8px 0 4px;text-transform:uppercase;">トレーナー画像送信</div>
+    <div class="msg-row trainer" style="max-width:50%;">
+      <div class="msg-bubble trainer" style="padding:6px;">
+        <div style="width:100%;height:140px;border-radius:4px;background:linear-gradient(135deg,rgba(255,255,255,0.2),rgba(255,255,255,0.1));display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.7);font-size:12px;border:1px solid rgba(255,255,255,0.15);">
+          📷 トレーニングフォーム
+        </div>
+        <div style="padding:6px 8px 2px;">
+          <div style="font-size:13px;">このフォームを意識してみてください</div>
+          <div class="msg-bubble-time">
+            14:20 <span class="msg-bubble-read">既読</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ========================================================== -->
+<!-- PROPOSAL 5: 入力エリア -->
+<!-- ========================================================== -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">PROPOSAL 5 — 入力エリア</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="design-note">
+  <strong>変更概要:</strong> 入力エリアの各状態（通常/返信中/編集中/画像添付/ドラッグ&ドロップ）を定義。
+  全てデザイントークンに統一。
+</div>
+
+<div class="screen-frame">
+  <div class="app-topbar">
+    <div class="app-topbar-logo">FC</div>
+    <div class="app-topbar-title">入力エリア バリエーション</div>
+    <div class="app-topbar-spacer"></div>
+  </div>
+
+  <div style="background:var(--background);padding:24px 20px;display:flex;flex-direction:column;gap:24px;">
+
+    <!-- Default State -->
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:8px;text-transform:uppercase;">DEFAULT — 通常入力</div>
+      <div class="msg-input-area" style="border:1px solid var(--border);border-radius:var(--radius);">
+        <div class="msg-input-row">
+          <div class="msg-attach-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+          </div>
+          <div class="msg-textarea-wrap">
+            <textarea class="msg-textarea" rows="1" placeholder="メッセージを入力..." readonly></textarea>
+          </div>
+          <div class="msg-send-btn disabled">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Typing State -->
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:8px;text-transform:uppercase;">TYPING — 入力中 <span class="anno-inline">3</span></div>
+      <div class="msg-input-area" style="border:1px solid var(--border);border-radius:var(--radius);">
+        <div class="msg-input-row">
+          <div class="msg-attach-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+          </div>
+          <div class="msg-textarea-wrap">
+            <textarea class="msg-textarea" rows="1" style="border-color:var(--accent);" readonly>お疲れ様です！今日の</textarea>
+          </div>
+          <div class="msg-send-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reply State -->
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:8px;text-transform:uppercase;">REPLY — 返信モード <span class="anno-inline">1</span></div>
+      <div class="msg-input-area" style="border:1px solid var(--border);border-radius:var(--radius);">
+        <div class="msg-reply-preview">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:600;font-size:11px;color:var(--accent);">田中 美咲</div>
+            <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;">今朝の体重を報告します。58.2kg...</div>
+          </div>
+          <div class="msg-reply-preview-close">✕</div>
+        </div>
+        <div class="msg-input-row">
+          <div class="msg-attach-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+          </div>
+          <div class="msg-textarea-wrap">
+            <textarea class="msg-textarea" rows="1" placeholder="返信を入力..." readonly></textarea>
+          </div>
+          <div class="msg-send-btn disabled">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit State -->
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:8px;text-transform:uppercase;">EDIT — 編集モード <span class="anno-inline">1</span></div>
+      <div class="msg-input-area" style="border:1px solid var(--border);border-radius:var(--radius);">
+        <div class="msg-edit-bar">
+          <span class="msg-edit-bar-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </span>
+          メッセージを編集中
+          <span class="msg-edit-bar-close">✕</span>
+        </div>
+        <div class="msg-input-row">
+          <div class="msg-textarea-wrap">
+            <textarea class="msg-textarea" rows="1" style="border-color:var(--accent);" readonly>前回から2.5kg上げましょう！（訂正：ベンチプレスは1.25kgアップで）</textarea>
+          </div>
+          <div style="display:flex;gap:4px;flex-shrink:0;">
+            <div class="msg-attach-btn" style="color:var(--text-muted);">
+              取消
+            </div>
+            <div class="msg-send-btn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Image Attached State -->
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:8px;text-transform:uppercase;">IMAGE ATTACHED — 画像添付済み <span class="anno-inline">1</span></div>
+      <div class="msg-input-area" style="border:1px solid var(--border);border-radius:var(--radius);">
+        <div class="msg-upload-preview">
+          <div class="msg-upload-thumb">
+            📷
+            <div class="msg-upload-remove">✕</div>
+          </div>
+          <div class="msg-upload-thumb">
+            📷
+            <div class="msg-upload-remove">✕</div>
+          </div>
+          <div style="width:64px;height:64px;border-radius:var(--radius);border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-muted);font-size:18px;">+</div>
+        </div>
+        <div class="msg-input-row">
+          <div class="msg-attach-btn" style="border-color:var(--accent);color:var(--accent);background:var(--accent-light);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+          </div>
+          <div class="msg-textarea-wrap">
+            <textarea class="msg-textarea" rows="1" style="border-color:var(--accent);" readonly>フォーム確認用の写真です</textarea>
+          </div>
+          <div class="msg-send-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ========================================================== -->
+<!-- PROPOSAL 6: エンプティステート -->
+<!-- ========================================================== -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">PROPOSAL 6 — エンプティステート</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="design-note">
+  <strong>変更概要:</strong> クライアント未選択時のエンプティステート。現状は空白→アイコン+テキストで明確なガイダンスを提供。
+</div>
+
+<div class="screen-frame">
+  <div class="app-topbar">
+    <div class="app-topbar-logo">FC</div>
+    <div class="app-topbar-title">FIT-CONNECT</div>
+    <div class="app-topbar-spacer"></div>
+    <div class="app-topbar-user">T</div>
+  </div>
+
+  <div class="msg-layout">
+    <!-- Sidebar (shortened) -->
+    <div class="msg-sidebar">
+      <div class="msg-sidebar-header">
+        <div class="msg-sidebar-title">メッセージ</div>
+        <div class="msg-search-wrap">
+          <span class="msg-search-icon">🔍</span>
+          <input class="msg-search" type="text" placeholder="クライアントを検索..." readonly>
+        </div>
+      </div>
+      <div class="msg-client-list">
+        <div class="msg-client-item">
+          <div class="msg-client-avatar has-unread">佐</div>
+          <div class="msg-client-info">
+            <div class="msg-client-name" style="font-weight:700;">佐藤 健太</div>
+            <div class="msg-client-last-msg" style="color:var(--primary);font-weight:500;">今日の体重を報告します！</div>
+          </div>
+          <div class="msg-client-meta">
+            <div class="msg-client-time" style="color:var(--accent);font-weight:600;">12:05</div>
+            <div class="msg-unread-badge">3</div>
+          </div>
+        </div>
+        <div class="msg-client-item">
+          <div class="msg-client-avatar" style="background:#64748B;">田</div>
+          <div class="msg-client-info">
+            <div class="msg-client-name">田中 美咲</div>
+            <div class="msg-client-last-msg">了解です！</div>
+          </div>
+          <div class="msg-client-meta">
+            <div class="msg-client-time">14:32</div>
+          </div>
+        </div>
+        <div class="msg-client-item">
+          <div class="msg-client-avatar" style="background:#64748B;">山</div>
+          <div class="msg-client-info">
+            <div class="msg-client-name">山田 太郎</div>
+            <div class="msg-client-last-msg">承知しました</div>
+          </div>
+          <div class="msg-client-meta">
+            <div class="msg-client-time">昨日</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div class="msg-chat">
+      <div class="msg-empty-state">
+        <div class="msg-empty-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-muted);">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+        </div>
+        <div class="msg-empty-title">クライアントを選択してください</div>
+        <div class="msg-empty-desc">左のリストからクライアントを選択すると、メッセージのやり取りを開始できます。</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ========================================================== -->
+<!-- PROPOSAL 7: コンテキストメニュー（メッセージアクション） -->
+<!-- ========================================================== -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">PROPOSAL 7 — メッセージアクション</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="design-note">
+  <strong>変更概要:</strong> メッセージホバー時のアクションメニュー。現状のコンテキストメニューをデザイントークンに統一。
+  トレーナーメッセージのみ「編集」表示（5分以内制限）。
+</div>
+
+<div class="screen-frame">
+  <div class="app-topbar">
+    <div class="app-topbar-logo">FC</div>
+    <div class="app-topbar-title">メッセージアクション</div>
+    <div class="app-topbar-spacer"></div>
+  </div>
+
+  <div style="background:var(--background);padding:24px 20px;display:flex;flex-direction:column;gap:16px;">
+
+    <!-- Hover Actions on Trainer Bubble -->
+    <div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:4px;text-transform:uppercase;">トレーナーメッセージ — ホバー時 <span class="anno-inline">3</span></div>
+    <div style="position:relative;display:flex;flex-direction:column;align-items:flex-end;">
+      <!-- Hover Action Bar -->
+      <div style="display:flex;gap:2px;margin-bottom:4px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:2px;position:relative;z-index:5;">
+        <div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:4px;cursor:pointer;color:var(--text-muted);font-size:13px;" title="返信">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+        </div>
+        <div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:4px;cursor:pointer;color:var(--text-muted);font-size:13px;" title="編集">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </div>
+        <div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:4px;cursor:pointer;color:var(--text-muted);font-size:13px;" title="その他">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+        </div>
+      </div>
+      <div class="msg-bubble trainer" style="max-width:320px;">
+        いい調子ですね！目標まであと1.2kgです。
+        <div class="msg-bubble-time">
+          10:35 <span class="msg-bubble-read">既読</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hover Actions on Client Bubble -->
+    <div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:0.08em;margin:8px 0 4px;text-transform:uppercase;">クライアントメッセージ — ホバー時</div>
+    <div style="position:relative;display:flex;flex-direction:column;align-items:flex-start;">
+      <div style="display:flex;gap:2px;margin-bottom:4px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:2px;">
+        <div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:4px;cursor:pointer;color:var(--text-muted);font-size:13px;" title="返信">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+        </div>
+        <!-- No Edit for client messages -->
+      </div>
+      <div class="msg-bubble client" style="max-width:320px;">
+        今朝の体重を報告します。58.2kg です！
+        <div class="msg-bubble-time">10:30</div>
+      </div>
+    </div>
+
+    <!-- Context Menu Expanded -->
+    <div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:0.08em;margin:8px 0 4px;text-transform:uppercase;">「その他」展開時 <span class="anno-inline">2</span></div>
+    <div style="position:relative;display:inline-block;">
+      <div class="msg-context-menu" style="position:relative;">
+        <div class="msg-context-item">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          コピー
+        </div>
+        <div class="msg-context-item">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+          返信
+        </div>
+        <div style="height:1px;background:var(--border);margin:4px 0;"></div>
+        <div class="msg-context-item danger">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+          削除
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ========================================================== -->
+<!-- PROPOSAL 8: ドラッグ&ドロップオーバーレイ -->
+<!-- ========================================================== -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">PROPOSAL 8 — ドラッグ&ドロップ</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="design-note">
+  <strong>変更概要:</strong> ファイルドラッグ時のオーバーレイ。blue-400/blue-50 → accent teal系に統一。
+  「最大3枚まで」の制限テキストも表示。
+</div>
+
+<div class="screen-frame">
+  <div class="app-topbar">
+    <div class="app-topbar-logo">FC</div>
+    <div class="app-topbar-title">ドラッグ&ドロップ オーバーレイ</div>
+    <div class="app-topbar-spacer"></div>
+  </div>
+
+  <div style="background:var(--background);height:280px;position:relative;display:flex;align-items:center;justify-content:center;">
+    <!-- Drag Overlay -->
+    <div class="msg-drag-overlay">
+      <div class="msg-drag-icon">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <circle cx="8.5" cy="8.5" r="1.5"/>
+          <path d="M21 15l-5-5L5 21"/>
+        </svg>
+      </div>
+      <div class="msg-drag-text">ここに画像をドロップ</div>
+      <div class="msg-drag-sub">JPEG, PNG形式 / 最大3枚まで</div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ========================================================== -->
+<!-- PROPOSAL 9: コンポーネント構成図 -->
+<!-- ========================================================== -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-label">PROPOSAL 9 — コンポーネント構成</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="screen-frame">
+  <div class="app-topbar">
+    <div class="app-topbar-logo">FC</div>
+    <div class="app-topbar-title">コンポーネント構成 & 変更ファイル一覧</div>
+    <div class="app-topbar-spacer"></div>
+  </div>
+
+  <div style="background:var(--surface);padding:24px;font-size:13px;line-height:1.8;">
+    <div style="font-weight:800;font-size:14px;color:var(--primary);margin-bottom:16px;">変更対象ファイル一覧</div>
+
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr style="border-bottom:2px solid var(--border);">
+          <th style="text-align:left;padding:8px 12px;font-weight:700;color:var(--text-secondary);">ファイル</th>
+          <th style="text-align:left;padding:8px 12px;font-weight:700;color:var(--text-secondary);">変更内容</th>
+          <th style="text-align:center;padding:8px 12px;font-weight:700;color:var(--text-secondary);">優先度</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 12px;font-family:monospace;font-size:11px;color:var(--accent);">message/page.tsx</td>
+          <td style="padding:8px 12px;">デザイントークン適用（カラー/フォント/radius/ボーダー全統一）、チャットヘッダー改善</td>
+          <td style="padding:8px 12px;text-align:center;"><span style="background:var(--danger);color:white;padding:2px 8px;border-radius:var(--radius);font-size:10px;font-weight:700;">HIGH</span></td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 12px;font-family:monospace;font-size:11px;color:var(--accent);">MessageBubble.tsx</td>
+          <td style="padding:8px 12px;">バブルカラー統一（emerald→teal hex）、画像グリッドレイアウト改善</td>
+          <td style="padding:8px 12px;text-align:center;"><span style="background:var(--danger);color:white;padding:2px 8px;border-radius:var(--radius);font-size:10px;font-weight:700;">HIGH</span></td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 12px;font-family:monospace;font-size:11px;color:var(--accent);">ClientListItem.tsx</td>
+          <td style="padding:8px 12px;">選択状態・未読状態のスタイル統一（blue→teal）、アバター赤ドット</td>
+          <td style="padding:8px 12px;text-align:center;"><span style="background:var(--danger);color:white;padding:2px 8px;border-radius:var(--radius);font-size:10px;font-weight:700;">HIGH</span></td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 12px;font-family:monospace;font-size:11px;color:var(--accent);">ChatHeader.tsx</td>
+          <td style="padding:8px 12px;">クライアント属性サブテキスト追加、クイックアクションボタン</td>
+          <td style="padding:8px 12px;text-align:center;"><span style="background:var(--warning);color:white;padding:2px 8px;border-radius:var(--radius);font-size:10px;font-weight:700;">MID</span></td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 12px;font-family:monospace;font-size:11px;color:var(--accent);">ImageUploader.tsx</td>
+          <td style="padding:8px 12px;">ドラッグ&ドロップオーバーレイ色統一（blue→teal）</td>
+          <td style="padding:8px 12px;text-align:center;"><span style="background:var(--warning);color:white;padding:2px 8px;border-radius:var(--radius);font-size:10px;font-weight:700;">MID</span></td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 12px;font-family:monospace;font-size:11px;color:var(--accent);">ReplyPreview.tsx</td>
+          <td style="padding:8px 12px;">ボーダー色統一（blue-500→#14B8A6）、背景: accent-light</td>
+          <td style="padding:8px 12px;text-align:center;"><span style="background:var(--success);color:white;padding:2px 8px;border-radius:var(--radius);font-size:10px;font-weight:700;">LOW</span></td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 12px;font-family:monospace;font-size:11px;color:var(--accent);">ReplyQuote.tsx</td>
+          <td style="padding:8px 12px;">引用スタイル統一（blue→teal/accent hex）</td>
+          <td style="padding:8px 12px;text-align:center;"><span style="background:var(--success);color:white;padding:2px 8px;border-radius:var(--radius);font-size:10px;font-weight:700;">LOW</span></td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 12px;font-family:monospace;font-size:11px;color:var(--accent);">MessageDateDivider.tsx</td>
+          <td style="padding:8px 12px;">日付区切りスタイル統一（rounded-full→radius 6px, border追加）</td>
+          <td style="padding:8px 12px;text-align:center;"><span style="background:var(--success);color:white;padding:2px 8px;border-radius:var(--radius);font-size:10px;font-weight:700;">LOW</span></td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 12px;font-family:monospace;font-size:11px;color:var(--accent);">RecordCard.tsx</td>
+          <td style="padding:8px 12px;">カードスタイル統一（border-radius/padding/border）</td>
+          <td style="padding:8px 12px;text-align:center;"><span style="background:var(--success);color:white;padding:2px 8px;border-radius:var(--radius);font-size:10px;font-weight:700;">LOW</span></td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;font-family:monospace;font-size:11px;color:var(--accent);">ImageModal.tsx</td>
+          <td style="padding:8px 12px;">モーダルスタイル統一（ボーダー/radius）</td>
+          <td style="padding:8px 12px;text-align:center;"><span style="background:var(--success);color:white;padding:2px 8px;border-radius:var(--radius);font-size:10px;font-weight:700;">LOW</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div style="margin-top:24px;padding:16px;background:var(--background);border:1px solid var(--border);border-radius:var(--radius);">
+      <div style="font-weight:700;font-size:13px;color:var(--primary);margin-bottom:8px;">デザイントークン変更サマリー</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;font-size:11px;">
+        <div>
+          <div style="font-weight:600;color:var(--text-muted);margin-bottom:4px;">COLOR (全廃)</div>
+          <div style="color:var(--danger);text-decoration:line-through;">bg-emerald-500</div>
+          <div style="color:var(--danger);text-decoration:line-through;">bg-blue-50</div>
+          <div style="color:var(--danger);text-decoration:line-through;">border-blue-500</div>
+          <div style="color:var(--danger);text-decoration:line-through;">bg-gray-50/100</div>
+          <div style="color:var(--danger);text-decoration:line-through;">text-gray-500</div>
+          <div style="color:var(--danger);text-decoration:line-through;">focus:ring-emerald-*</div>
+        </div>
+        <div>
+          <div style="font-weight:600;color:var(--text-muted);margin-bottom:4px;">COLOR (置換)</div>
+          <div style="color:var(--success);">→ #14B8A6</div>
+          <div style="color:var(--success);">→ #F0FDFA</div>
+          <div style="color:var(--success);">→ #14B8A6</div>
+          <div style="color:var(--success);">→ #F8FAFC</div>
+          <div style="color:var(--success);">→ #94A3B8</div>
+          <div style="color:var(--success);">→ border-color: #14B8A6</div>
+        </div>
+        <div>
+          <div style="font-weight:600;color:var(--text-muted);margin-bottom:4px;">SHAPE</div>
+          <div>rounded-full → rounded-md (6px)</div>
+          <div>shadow-* → border のみ</div>
+          <div>ring-* → border-color 変更のみ</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===== Footer ===== -->
+<div style="max-width:1100px;margin:48px auto 0;text-align:center;">
+  <div style="font-size:11px;color:#9CA3AF;letter-spacing:0.04em;">
+    FIT-CONNECT Wireframe — Proposal J: Message Screen Redesign<br>
+    Design System v2 — Teal Accent / Flat Border / Plus Jakarta Sans
+  </div>
+</div>
+
+</body>
+</html>

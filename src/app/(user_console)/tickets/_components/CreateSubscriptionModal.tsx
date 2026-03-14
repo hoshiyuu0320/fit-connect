@@ -109,7 +109,7 @@ export function CreateSubscriptionModal({
                     </SelectItem>
                   ))
                 ) : (
-                  <div className="px-2 py-1.5 text-sm text-gray-500">
+                  <div className="px-2 py-1.5 text-sm text-[#94A3B8]">
                     月契約テンプレートがありません
                   </div>
                 )}
@@ -132,7 +132,7 @@ export function CreateSubscriptionModal({
                     </SelectItem>
                   ))
                 ) : (
-                  <div className="px-2 py-1.5 text-sm text-gray-500">
+                  <div className="px-2 py-1.5 text-sm text-[#94A3B8]">
                     顧客がいません
                   </div>
                 )}
@@ -164,6 +164,7 @@ export function CreateSubscriptionModal({
             <Button
               type="submit"
               disabled={loading || recurringTemplates.length === 0 || clients.length === 0}
+              className="bg-[#14B8A6] hover:bg-[#0D9488] text-white"
             >
               {loading ? '作成中...' : '作成'}
             </Button>

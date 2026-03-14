@@ -59,11 +59,11 @@ export function SessionTimerBar({
   // 未開始
   if (startedAt === null) {
     return (
-      <div className="flex items-center justify-between bg-white rounded-lg border px-4 py-3">
-        <span className="text-sm text-gray-500">セッションを開始してください</span>
+      <div className="flex items-center justify-between bg-white border border-[#E2E8F0] rounded-md px-4 py-3">
+        <span className="text-sm text-[#94A3B8]">セッションを開始してください</span>
         <button
           onClick={onStart}
-          className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+          className="px-6 py-2 bg-[#14B8A6] hover:bg-[#0D9488] text-white rounded-md font-medium transition-colors"
         >
           セッション開始
         </button>
@@ -74,15 +74,15 @@ export function SessionTimerBar({
   // 完了
   if (finishedAt !== null) {
     return (
-      <div className="flex items-center justify-between bg-green-50 rounded-lg border border-green-200 px-4 py-3">
+      <div className="flex items-center justify-between bg-[#F0FDF4] rounded-md border border-[#16A34A] px-4 py-3">
         <div className="flex items-center gap-3">
-          <span className="text-green-700 text-sm font-medium">セッション完了</span>
-          <span className="text-gray-400 text-sm">所要時間:</span>
-          <span className="text-2xl font-mono font-bold text-green-700">
+          <span className="text-[#16A34A] text-sm font-medium">セッション完了</span>
+          <span className="text-[#94A3B8] text-sm">所要時間:</span>
+          <span className="text-2xl font-mono font-bold text-[#0F172A]">
             {formatElapsed(duration)}
           </span>
         </div>
-        <span className="text-xs text-gray-400 px-2 py-1 bg-green-100 rounded">
+        <span className="text-xs text-[#94A3B8] px-2 py-1 bg-[#DCFCE7] rounded-md">
           終了済み
         </span>
       </div>
@@ -91,20 +91,20 @@ export function SessionTimerBar({
 
   // 実行中
   return (
-    <div className="flex items-center justify-between bg-blue-50 rounded-lg border border-blue-200 px-4 py-3">
+    <div className="flex items-center justify-between bg-[#F0FDFA] rounded-md border border-[#14B8A6] px-4 py-3">
       <div className="flex items-center gap-3">
         <span className="relative flex h-2.5 w-2.5">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500"></span>
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#14B8A6] opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#14B8A6]"></span>
         </span>
-        <span className="text-blue-700 text-sm font-medium">セッション中</span>
-        <span className="text-2xl font-mono font-bold text-blue-800">
+        <span className="text-[#14B8A6] text-sm font-medium">セッション中</span>
+        <span className="text-2xl font-mono font-bold text-[#0F172A]">
           {formatElapsed(elapsed)}
         </span>
       </div>
       <button
         onClick={onFinish}
-        className="px-6 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg font-medium transition-colors"
+        className="px-6 py-2 bg-[#DC2626] hover:bg-[#B91C1C] text-white rounded-md font-medium transition-colors"
       >
         セッション終了
       </button>

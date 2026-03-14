@@ -163,7 +163,10 @@ export function TemplatePanel({ trainerId, templates, onRefetch }: TemplatePanel
           />
           <button
             onClick={handleCreateNew}
-            className="w-full py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            className="w-full py-1.5 text-sm rounded-md transition-colors font-medium"
+            style={{ backgroundColor: '#fff', color: '#0F172A', border: '1px solid #0F172A' }}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#0F172A'; e.currentTarget.style.color = '#fff'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#fff'; e.currentTarget.style.color = '#0F172A'; }}
           >
             + テンプレート追加
           </button>

@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { ScheduleSkeleton } from './ScheduleSkeleton';
 import { format, startOfMonth, endOfMonth, startOfWeek, isSameMonth, isSameDay, addMonths, addDays, getDay } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Plus, Search, ClipboardList } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Search, ClipboardList, Calendar, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { DndContext, DragOverlay, closestCenter, DragEndEvent, DragStartEvent, useDroppable, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
-import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/lib/supabase';
 import { getSessions, Session } from '@/lib/supabase/getSessions';
@@ -43,13 +44,21 @@ function MonthDayCell({ date, isCurrentMonth, isToday, children, onClick }: {
     return (
         <div
             ref={setNodeRef}
-            className={`border-b border-r border-gray-100 p-1 min-h-[100px] flex flex-col transition-colors cursor-pointer ${
-                !isCurrentMonth ? 'bg-gray-50/30 text-gray-400' : ''
-            } ${isOver ? 'bg-blue-50 border-blue-400' : 'hover:bg-gray-50/30'}`}
+            className="p-1 min-h-[100px] flex flex-col transition-colors cursor-pointer"
+            style={{
+                borderBottom: '1px solid #F1F5F9',
+                borderRight: '1px solid #F1F5F9',
+                backgroundColor: isOver ? '#F0FDFA' : !isCurrentMonth ? '#FAFBFC' : 'transparent',
+                color: !isCurrentMonth ? '#CBD5E1' : undefined,
+                outline: isOver ? '2px solid #14B8A6' : undefined,
+            }}
             onClick={onClick}
         >
             <div className="flex justify-end mb-1">
-                <span className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full ${isToday ? 'bg-blue-600 text-white' : ''}`}>
+                <span
+                    className="text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full"
+                    style={isToday ? { backgroundColor: '#14B8A6', color: '#fff' } : undefined}
+                >
                     {format(date, 'd')}
                 </span>
             </div>
@@ -61,6 +70,9 @@ function MonthDayCell({ date, isCurrentMonth, isToday, children, onClick }: {
 }
 
 export default function CalendarView() {
+    const searchParams = useSearchParams();
+    const initialClientId = searchParams.get('clientId');
+
     const [currentDate, setCurrentDate] = useState<Date | null>(null);
     const [viewMode, setViewMode] = useState<ViewMode>('week');
     const [sessions, setSessions] = useState<Session[]>([]);
@@ -72,7 +84,7 @@ export default function CalendarView() {
 
     // 追加 state
     const [trainerId, setTrainerId] = useState('');
-    const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+    const [selectedClientId, setSelectedClientId] = useState<string | null>(initialClientId);
     const [isWorkoutPanelOpen, setIsWorkoutPanelOpen] = useState(false);
     const [templates, setTemplates] = useState<WorkoutPlan[]>([]);
     const [assignments, setAssignments] = useState<WorkoutAssignment[]>([]);
@@ -390,6 +402,44 @@ export default function CalendarView() {
         }
     };
 
+    // KPI計算
+    const kpi = useMemo(() => {
+        if (!currentDate) return { weekSessions: 0, todaySessions: 0, completedSessions: 0, cancelledSessions: 0, nextSessionTime: null as string | null, completionRate: 0 };
+
+        const now = new Date();
+        const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
+        const weekEnd = addDays(weekStart, 6);
+
+        const weekSessions = sessions.filter(s => {
+            const d = new Date(s.session_date);
+            return d >= weekStart && d <= addDays(weekEnd, 1);
+        });
+
+        const todaySessions = sessions.filter(s => isSameDay(new Date(s.session_date), now));
+
+        const completedSessions = weekSessions.filter(s => s.status === 'completed');
+        const cancelledSessions = weekSessions.filter(s => s.status === 'cancelled');
+
+        const upcomingSessions = todaySessions
+            .filter(s => new Date(s.session_date) > now && s.status !== 'cancelled')
+            .sort((a, b) => new Date(a.session_date).getTime() - new Date(b.session_date).getTime());
+        const nextSessionTime = upcomingSessions.length > 0
+            ? format(new Date(upcomingSessions[0].session_date), 'HH:mm')
+            : null;
+
+        const totalWeek = weekSessions.length;
+        const completionRate = totalWeek > 0 ? Math.round((completedSessions.length / totalWeek) * 100) : 0;
+
+        return {
+            weekSessions: weekSessions.length,
+            todaySessions: todaySessions.length,
+            completedSessions: completedSessions.length,
+            cancelledSessions: cancelledSessions.length,
+            nextSessionTime,
+            completionRate,
+        };
+    }, [sessions, currentDate]);
+
     const handleClientSelectForDrop = async (clientId: string) => {
         setSelectedClientId(clientId);
         setIsClientSelectModalOpen(false);
@@ -415,7 +465,17 @@ export default function CalendarView() {
                     }),
                 });
                 if (res.ok) {
-                    await fetchAssignments();
+                    // fetchAssignmentsはselectedClientIdの古いクロージャを参照するため
+                    // 引数のclientIdを直接使って取得する
+                    const start = startOfWeek(startOfMonth(currentDate!), { weekStartsOn: 1 });
+                    const end = addDays(start, 41);
+                    const assignRes = await fetch(
+                        `/api/workout-assignments?trainerId=${trainerId}&clientId=${clientId}&weekStart=${format(start, 'yyyy-MM-dd')}&weekEnd=${format(end, 'yyyy-MM-dd')}`
+                    );
+                    if (assignRes.ok) {
+                        const json = await assignRes.json();
+                        setAssignments(json.data || []);
+                    }
                 }
             } catch (error) {
                 console.error('アサインメント作成エラー:', error);
@@ -427,19 +487,19 @@ export default function CalendarView() {
     const renderTimeGridView = () => {
         const days = visibleDays();
         return (
-            <div className="flex flex-col h-full overflow-hidden bg-white rounded-tl-2xl shadow-sm border border-gray-200">
+            <div className="flex flex-col h-full overflow-hidden" style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: '6px' }}>
                 {/* Header */}
-                <div className="flex border-b border-gray-100">
-                    <div className="w-16 flex-shrink-0 border-r border-gray-100 bg-gray-50/50"></div>
+                <div className="flex" style={{ borderBottom: '1px solid #E2E8F0' }}>
+                    <div className="w-16 flex-shrink-0" style={{ borderRight: '1px solid #E2E8F0', backgroundColor: '#F8FAFC' }}></div>
                     <div className={`flex-1 grid ${viewMode === 'day' ? 'grid-cols-1' : 'grid-cols-7'}`}>
                         {days.map((day, i) => {
                             const isToday = isSameDay(day, new Date());
                             return (
-                                <div key={i} className={`py-3 text-center border-r border-gray-100 last:border-0 ${isToday ? 'bg-blue-50/30' : ''}`}>
-                                    <div className={`text-xs font-semibold tracking-wider ${isToday ? 'text-blue-600' : 'text-gray-400'}`}>
+                                <div key={i} className="py-3 text-center" style={{ borderRight: '1px solid #F1F5F9', backgroundColor: isToday ? 'rgba(20,184,166,0.04)' : undefined }}>
+                                    <div className="text-xs font-semibold tracking-wider" style={{ color: isToday ? '#14B8A6' : '#94A3B8' }}>
                                         {format(day, 'E', { locale: ja })}
                                     </div>
-                                    <div className={`mt-1 text-xl font-medium ${isToday ? 'text-blue-600' : 'text-gray-900'}`}>
+                                    <div className="mt-1 text-xl font-medium" style={{ color: isToday ? '#14B8A6' : '#0F172A' }}>
                                         {format(day, 'd')}
                                     </div>
                                 </div>
@@ -450,16 +510,16 @@ export default function CalendarView() {
 
                 {/* All-day エリア (アサインメント) */}
                 {selectedClientId && days.some(day => assignments.some(a => a.assigned_date === format(day, 'yyyy-MM-dd') && a.plan?.plan_type !== 'session')) && (
-                    <div className="flex border-b border-gray-200 bg-gray-50/30">
-                        <div className="w-16 flex-shrink-0 border-r border-gray-100 flex items-center justify-center">
-                            <span className="text-[10px] text-gray-400">終日</span>
+                    <div className="flex" style={{ borderBottom: '1px solid #E2E8F0', backgroundColor: '#FAFBFC' }}>
+                        <div className="w-16 flex-shrink-0 flex items-center justify-center" style={{ borderRight: '1px solid #E2E8F0' }}>
+                            <span className="text-[10px]" style={{ color: '#94A3B8' }}>終日</span>
                         </div>
                         <div className={`flex-1 grid ${viewMode === 'day' ? 'grid-cols-1' : 'grid-cols-7'}`}>
                             {days.map((day, i) => {
                                 const dayStr = format(day, 'yyyy-MM-dd');
                                 const dayAssignments = assignments.filter(a => a.assigned_date === dayStr && a.plan?.plan_type !== 'session');
                                 return (
-                                    <div key={i} className="px-1 py-1 border-r border-gray-100 last:border-0 min-h-[32px] space-y-0.5">
+                                    <div key={i} className="px-1 py-1 last:border-r-0 min-h-[32px] space-y-0.5" style={{ borderRight: '1px solid #F1F5F9' }}>
                                         {dayAssignments.map(a => (
                                             <AssignmentMiniCard key={a.id} assignment={a} viewMode={viewMode} onDelete={handleDeleteAssignment} />
                                         ))}
@@ -474,9 +534,9 @@ export default function CalendarView() {
                 <div className="flex-1 overflow-y-auto relative">
                     <div className="flex min-h-[1360px]">
                         {/* Time Column */}
-                        <div className="w-16 flex-shrink-0 border-r border-gray-100 bg-gray-50/30 text-xs text-gray-400 font-medium sticky left-0 z-20 bg-white pb-[50px]">
+                        <div className="w-16 flex-shrink-0 text-xs font-medium sticky left-0 z-20 pb-[50px]" style={{ borderRight: '1px solid #E2E8F0', backgroundColor: '#fff', color: '#94A3B8' }}>
                             {HOURS.map(hour => (
-                                <div key={hour} className="h-20 border-b border-gray-100 relative">
+                                <div key={hour} className="h-20 relative" style={{ borderBottom: '1px solid #F1F5F9' }}>
                                     <span className="absolute top-1 right-2 bg-white px-1">
                                         {hour}:00
                                     </span>
@@ -489,14 +549,14 @@ export default function CalendarView() {
                             {/* Grid Lines Background */}
                             <div className={`absolute inset-0 grid ${viewMode === 'day' ? 'grid-cols-1' : 'grid-cols-7'} pointer-events-none`}>
                                 {days.map((_, i) => (
-                                    <div key={i} className="border-r border-gray-100 h-full"></div>
+                                    <div key={i} className="h-full" style={{ borderRight: '1px solid #F1F5F9' }}></div>
                                 ))}
                             </div>
 
                             {/* Horizontal Hour Lines Background */}
                             <div className="absolute inset-0 flex flex-col pointer-events-none pb-[50px]">
                                 {HOURS.map((_, i) => (
-                                    <div key={i} className="h-20 border-b border-gray-100 w-full"></div>
+                                    <div key={i} className="h-20 w-full" style={{ borderBottom: '1px solid #F1F5F9' }}></div>
                                 ))}
                             </div>
 
@@ -563,11 +623,11 @@ export default function CalendarView() {
         const displayDays = calendarDays.slice(0, 42);
 
         return (
-            <div className="flex flex-col h-full bg-white rounded-tl-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="flex flex-col h-full overflow-hidden" style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: '6px' }}>
                 {/* Headers */}
-                <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50/50">
+                <div className="grid grid-cols-7" style={{ borderBottom: '1px solid #E2E8F0', backgroundColor: '#F8FAFC' }}>
                     {WEEK_DAYS.map(d => (
-                        <div key={d} className="py-2 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        <div key={d} className="py-2 text-center text-xs font-semibold uppercase tracking-wider" style={{ color: '#94A3B8' }}>
                             {d}
                         </div>
                     ))}
@@ -605,7 +665,7 @@ export default function CalendarView() {
     };
 
     if (!currentDate) {
-        return null;
+        return <ScheduleSkeleton />;
     }
 
     return (
@@ -615,62 +675,107 @@ export default function CalendarView() {
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
         >
-            <div className="flex flex-col h-full bg-gray-50/50 selection:bg-blue-100">
-                {/* Top Header */}
-                <header className="flex flex-col border-b border-gray-100 bg-white flex-shrink-0 z-30">
-                    {/* 上段: 日付 + セッション追加 + ワークアウト */}
-                    <div className="flex items-center justify-between px-6 py-2.5">
-                        <h1 className="text-lg font-semibold tracking-tight">
-                            {format(currentDate, 'yyyy年M月', { locale: ja })}
-                        </h1>
-                        <div className="flex items-center gap-3">
-                            <Button size="sm" className="w-40 h-10 justify-center" onClick={() => { setSelectedDate(new Date()); setSelectedSession(null); setIsModalOpen(true); }}>
-                                <Plus className="h-4 w-4 mr-2" />
-                                セッション追加
-                            </Button>
-                            <button
-                                onClick={() => setIsWorkoutPanelOpen(prev => !prev)}
-                                className={`w-40 h-10 flex items-center justify-center gap-1.5 px-3 rounded-lg text-sm font-medium transition-all ${
-                                    isWorkoutPanelOpen
-                                        ? 'bg-blue-100 text-blue-700'
-                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                }`}
-                            >
-                                <ClipboardList size={16} />
-                                <span className="hidden md:inline">ワークアウト</span>
-                            </button>
+            <div className="flex flex-col h-full" style={{ backgroundColor: '#F8FAFC' }}>
+                {/* ページヘッダー */}
+                <div className="px-6 pt-5 pb-0 flex-shrink-0" style={{ backgroundColor: '#fff' }}>
+                    <h1 className="text-[22px] font-bold" style={{ color: '#0F172A' }}>スケジュール管理</h1>
+                    <p className="text-[13px] mt-1" style={{ color: '#94A3B8' }}>セッション予約・ワークアウト割当の管理</p>
+                </div>
+
+                {/* KPIサマリーバー */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 px-6 py-4 flex-shrink-0" style={{ backgroundColor: '#fff' }}>
+                    {/* 今週のセッション */}
+                    <div style={{ border: '1px solid #E2E8F0', borderRadius: '6px', padding: '16px', backgroundColor: '#fff' }}>
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="w-9 h-9 rounded-md flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#F0FDFA' }}>
+                                <Calendar size={18} style={{ color: '#14B8A6' }} />
+                            </div>
+                            <span className="text-[13px] font-medium" style={{ color: '#475569' }}>今週のセッション</span>
                         </div>
+                        <p className="text-2xl font-bold" style={{ color: '#0F172A' }}>{kpi.weekSessions}</p>
                     </div>
 
-                    {/* 下段: ビュー切替 + ナビ | 検索 + クライアント選択 */}
-                    <div className="flex items-center justify-between px-6 py-2">
+                    {/* 本日の予定 */}
+                    <div style={{ border: '1px solid #E2E8F0', borderRadius: '6px', padding: '16px', backgroundColor: '#fff' }}>
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="w-9 h-9 rounded-md flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#EFF6FF' }}>
+                                <Clock size={18} style={{ color: '#3B82F6' }} />
+                            </div>
+                            <span className="text-[13px] font-medium" style={{ color: '#475569' }}>本日の予定</span>
+                        </div>
+                        <p className="text-2xl font-bold" style={{ color: '#0F172A' }}>{kpi.todaySessions}</p>
+                        <p className="text-[11px] mt-1" style={{ color: '#94A3B8' }}>
+                            {kpi.nextSessionTime ? `次の予定: ${kpi.nextSessionTime}` : '予定なし'}
+                        </p>
+                    </div>
+
+                    {/* 完了セッション */}
+                    <div style={{ border: '1px solid #E2E8F0', borderRadius: '6px', padding: '16px', backgroundColor: '#fff' }}>
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="w-9 h-9 rounded-md flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#F0FDF4' }}>
+                                <CheckCircle2 size={18} style={{ color: '#16A34A' }} />
+                            </div>
+                            <span className="text-[13px] font-medium" style={{ color: '#475569' }}>完了セッション</span>
+                        </div>
+                        <p className="text-2xl font-bold" style={{ color: '#0F172A' }}>{kpi.completedSessions}</p>
+                        <p className="text-[11px] mt-1" style={{ color: '#94A3B8' }}>
+                            今週の完了率 {kpi.completionRate}%
+                        </p>
+                    </div>
+
+                    {/* キャンセル */}
+                    <div style={{ border: '1px solid #E2E8F0', borderRadius: '6px', padding: '16px', backgroundColor: '#fff' }}>
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="w-9 h-9 rounded-md flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#FFFBEB' }}>
+                                <AlertTriangle size={18} style={{ color: '#F59E0B' }} />
+                            </div>
+                            <span className="text-[13px] font-medium" style={{ color: '#475569' }}>キャンセル</span>
+                        </div>
+                        <p className="text-2xl font-bold" style={{ color: '#0F172A' }}>{kpi.cancelledSessions}</p>
+                        <p className="text-[11px] mt-1" style={{ color: '#94A3B8' }}>今週のキャンセル</p>
+                    </div>
+                </div>
+
+                {/* ツールバー（1段） */}
+                <header className="flex-shrink-0 z-30" style={{ borderBottom: '1px solid #E2E8F0', backgroundColor: '#fff' }}>
+                    <div className="flex items-center justify-between px-6 py-3">
+                        {/* 左: ビュー切替 + ナビ + 年月ラベル */}
                         <div className="flex items-center gap-3">
-                            <div className="bg-gray-100 p-1 rounded-lg flex text-sm font-medium">
+                            <div className="p-1 rounded-md flex text-sm font-medium" style={{ backgroundColor: '#F1F5F9' }}>
                                 {(['day', 'week', 'month'] as ViewMode[]).map((mode) => (
                                     <button
                                         key={mode}
                                         onClick={() => setViewMode(mode)}
-                                        className={`px-3 py-1.5 rounded-md transition-all ${viewMode === mode ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                        className="px-3 py-1.5 rounded-[4px] transition-all"
+                                        style={viewMode === mode ? { backgroundColor: '#fff', color: '#0F172A', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' } : { color: '#94A3B8' }}
                                     >
                                         {VIEW_MODE_LABELS[mode]}
                                     </button>
                                 ))}
                             </div>
-                            <div className="flex items-center bg-gray-100 rounded-lg p-1 gap-1 text-sm font-medium">
-                                <button onClick={() => navigateDate('prev')} className="px-1.5 py-1.5 hover:bg-white hover:shadow-sm rounded-md transition-all text-gray-600"><ChevronLeft size={16} /></button>
-                                <button onClick={() => navigateDate('today')} className="px-3 py-1.5 text-gray-700 hover:bg-white hover:shadow-sm rounded-md transition-all">{TODAY_LABELS[viewMode]}</button>
-                                <button onClick={() => navigateDate('next')} className="px-1.5 py-1.5 hover:bg-white hover:shadow-sm rounded-md transition-all text-gray-600"><ChevronRight size={16} /></button>
+                            <div className="flex items-center p-1 gap-1 rounded-md text-sm font-medium" style={{ backgroundColor: '#F1F5F9' }}>
+                                <button onClick={() => navigateDate('prev')} className="px-1.5 py-1.5 hover:bg-[#fff] rounded-[4px] transition-all" style={{ color: '#475569' }}><ChevronLeft size={16} /></button>
+                                <button onClick={() => navigateDate('today')} className="px-3 py-1.5 hover:bg-[#fff] rounded-[4px] transition-all" style={{ color: '#475569' }}>{TODAY_LABELS[viewMode]}</button>
+                                <button onClick={() => navigateDate('next')} className="px-1.5 py-1.5 hover:bg-[#fff] rounded-[4px] transition-all" style={{ color: '#475569' }}><ChevronRight size={16} /></button>
                             </div>
+                            <span className="text-[15px] font-semibold" style={{ color: '#0F172A' }}>
+                                {format(currentDate, 'yyyy年M月', { locale: ja })}
+                            </span>
                         </div>
+
+                        {/* 右: 検索 + クライアント + ワークアウト + セッション追加 */}
                         <div className="flex items-center gap-3">
                             <div className="hidden md:flex items-center relative group">
-                                <Search size={16} className="absolute left-3 text-gray-400 group-focus-within:text-gray-600" />
+                                <Search size={16} className="absolute left-3" style={{ color: '#94A3B8' }} />
                                 <input
                                     type="text"
                                     placeholder="スケジュールを検索..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-9 pr-4 h-10 bg-gray-50 border border-transparent focus:bg-white focus:border-gray-200 focus:ring-2 focus:ring-gray-100 rounded-lg text-xs font-medium transition-all w-40 outline-none"
+                                    className="pl-9 pr-4 h-9 rounded-md text-xs font-medium transition-all w-44 outline-none focus-visible:ring-0"
+                                    style={{ backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', color: '#0F172A' }}
+                                    onFocus={(e) => { e.currentTarget.style.borderColor = '#14B8A6'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(20,184,166,0.1)'; e.currentTarget.style.backgroundColor = '#fff'; }}
+                                    onBlur={(e) => { e.currentTarget.style.borderColor = '#E2E8F0'; e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.backgroundColor = '#F8FAFC'; }}
                                 />
                             </div>
                             {trainerId && (
@@ -679,9 +784,27 @@ export default function CalendarView() {
                                     selectedClientId={selectedClientId ?? '__all__'}
                                     onSelect={(id) => setSelectedClientId(id === '__all__' ? null : id)}
                                     showAllOption
-                                    className="w-40 h-10"
+                                    className="w-40 h-9"
                                 />
                             )}
+                            <button
+                                onClick={() => setIsWorkoutPanelOpen(prev => !prev)}
+                                className="h-9 flex items-center justify-center gap-1.5 px-4 rounded-md text-[13px] font-semibold transition-all"
+                                style={isWorkoutPanelOpen ? { backgroundColor: '#14B8A6', color: '#fff' } : { backgroundColor: '#F0FDFA', color: '#14B8A6', border: '1px solid #CCFBF1' }}
+                            >
+                                <ClipboardList size={15} />
+                                ワークアウト
+                            </button>
+                            <button
+                                className="h-9 flex items-center justify-center px-4 rounded-md text-[13px] font-semibold transition-colors"
+                                style={{ backgroundColor: '#0F172A', color: '#fff' }}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1E293B'}
+                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#0F172A'}
+                                onClick={() => { setSelectedDate(new Date()); setSelectedSession(null); setIsModalOpen(true); }}
+                            >
+                                <Plus className="h-4 w-4 mr-1.5" />
+                                セッション追加
+                            </button>
                         </div>
                     </div>
                 </header>
@@ -689,14 +812,15 @@ export default function CalendarView() {
                 {/* Content Area - サイドパネル付き */}
                 <div className="flex-1 overflow-hidden flex">
                     {/* カレンダー本体 */}
-                    <div className="flex-1 overflow-hidden bg-gray-50/50 min-w-0">
+                    <div className="flex-1 overflow-hidden min-w-0" style={{ backgroundColor: '#F8FAFC' }}>
                         {viewMode === 'month' ? renderMonthView() : renderTimeGridView()}
                     </div>
 
                     {/* ワークアウトサイドパネル */}
-                    <div className={`transition-all duration-300 ease-in-out flex-shrink-0 overflow-hidden border-l border-gray-200 bg-white ${
-                        isWorkoutPanelOpen ? 'w-80' : 'w-0'
-                    }`}>
+                    <div
+                        className={`transition-all duration-300 ease-in-out flex-shrink-0 overflow-hidden ${isWorkoutPanelOpen ? 'w-80' : 'w-0'}`}
+                        style={{ borderLeft: '1px solid #E2E8F0', backgroundColor: '#fff' }}
+                    >
                         {isWorkoutPanelOpen && (
                             <TemplatePanel
                                 trainerId={trainerId}
@@ -731,7 +855,7 @@ export default function CalendarView() {
 
                 {/* クライアント選択モーダル */}
                 <Dialog open={isClientSelectModalOpen} onOpenChange={(open) => { if (!open) { setIsClientSelectModalOpen(false); setPendingTemplateDrop(null); } }}>
-                    <DialogContent className="sm:max-w-[400px] bg-white">
+                    <DialogContent className="sm:max-w-[400px]" style={{ backgroundColor: '#fff' }}>
                         <DialogHeader>
                             <DialogTitle>クライアントを選択してください</DialogTitle>
                         </DialogHeader>
@@ -752,7 +876,7 @@ export default function CalendarView() {
             {/* Drag Overlay */}
             <DragOverlay>
                 {draggedSession && (
-                    <div className="w-48 opacity-90 shadow-xl">
+                    <div className="w-48 opacity-90">
                         <CalendarEvent
                             event={draggedSession}
                             onClick={() => {}}
@@ -762,9 +886,9 @@ export default function CalendarView() {
                     </div>
                 )}
                 {draggedTemplate && (
-                    <div className="p-3 bg-white border-2 border-blue-400 rounded-lg shadow-lg opacity-90">
-                        <div className="font-bold text-gray-800 text-sm">{draggedTemplate.title}</div>
-                        <div className="text-xs text-gray-500 mt-1">
+                    <div className="p-3 rounded-md opacity-90" style={{ backgroundColor: '#fff', border: '2px solid #14B8A6' }}>
+                        <div className="font-bold text-sm" style={{ color: '#0F172A' }}>{draggedTemplate.title}</div>
+                        <div className="text-xs mt-1" style={{ color: '#94A3B8' }}>
                             {draggedTemplate.exercise_count ?? 0} 種目
                         </div>
                     </div>

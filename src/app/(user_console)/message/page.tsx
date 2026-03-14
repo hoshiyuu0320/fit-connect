@@ -431,12 +431,12 @@ function MessageContent() {
     const reversedMessages = [...messages].reverse();
 
     return (
-        <div className="flex h-[calc(100vh-48px)] bg-gray-50 text-gray-900 overflow-hidden">
+        <div className="flex h-[calc(100vh-48px)] bg-[#F8FAFC] text-[#0F172A] overflow-hidden">
 
             {/* Sidebar */}
-            <aside className="w-72 bg-white border-r flex flex-col">
-                <div className="px-4 py-4 border-b border-gray-200">
-                    <h2 className="text-base font-semibold text-gray-900">メッセージ</h2>
+            <aside className="w-72 bg-white border-r border-[#E2E8F0] flex flex-col">
+                <div className="px-4 py-4 border-b border-[#E2E8F0]">
+                    <h2 className="text-base font-semibold text-[#0F172A]">メッセージ</h2>
                 </div>
                 <div className="flex-1 overflow-y-auto">
                     {clientList.map((client) => {
@@ -459,7 +459,16 @@ function MessageContent() {
             {/* Chat Area */}
             <div className="flex flex-col flex-1 overflow-hidden">
                 {/* Header */}
-                <ChatHeader client={selectedClient} />
+                <ChatHeader
+                    client={selectedClient ? {
+                        client_id: selectedClient.client_id,
+                        name: selectedClient.name,
+                        profile_image_url: selectedClient.profile_image_url,
+                        purpose: selectedClient.purpose,
+                        gender: selectedClient.gender,
+                        age: selectedClient.age,
+                    } : null}
+                />
 
                 {/* Messages */}
                 <main className="flex-1 overflow-y-auto p-4 flex flex-col-reverse gap-1">
@@ -498,7 +507,7 @@ function MessageContent() {
                 </main>
 
                 {/* Input */}
-                <footer className="border-t p-4 bg-white">
+                <footer className="border-t border-[#E2E8F0] p-4 bg-white">
                     <ImageUploader
                         images={selectedImages}
                         onImagesChange={setSelectedImages}
@@ -532,13 +541,13 @@ function MessageContent() {
                             }}
                             placeholder="メッセージを入力..."
                             rows={1}
-                            className="flex-1 border rounded px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-300 resize-none overflow-y-auto"
+                            className="flex-1 border border-[#E2E8F0] rounded-md px-3 py-2 outline-none focus:border-[#14B8A6] resize-none overflow-y-auto text-[#0F172A] placeholder:text-[#94A3B8] bg-white"
                             style={{ maxHeight: '120px' }}
                         />
                         <button
                             onClick={handleSend}
                             disabled={loading}
-                            className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            className="bg-[#14B8A6] hover:bg-[#0D9488] text-white px-4 py-2 rounded-md disabled:bg-[#E2E8F0] disabled:text-[#94A3B8] disabled:cursor-not-allowed transition-colors"
                         >
                             {uploading ? 'アップロード中...' : loading ? '送信中...' : '送信'}
                         </button>
@@ -557,7 +566,7 @@ function MessageContent() {
 
 export default function MessagePage() {
     return (
-        <Suspense fallback={<div className="flex items-center justify-center h-screen">Loading...</div>}>
+        <Suspense fallback={<div className="flex items-center justify-center h-screen text-[#94A3B8]">Loading...</div>}>
             <MessageContent />
         </Suspense>
     );

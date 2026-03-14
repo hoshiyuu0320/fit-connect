@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dumbbell } from 'lucide-react'
 import { ExerciseRecord, EXERCISE_TYPE_OPTIONS } from '@/types/client'
 
 interface ExerciseStatisticsProps {
@@ -16,6 +17,10 @@ export function ExerciseStatistics({ exerciseRecords, totalDays }: ExerciseStati
       exerciseRecords.map(r => r.recorded_at.split('T')[0])
     )
     const recordedDays = recordedDates.size
+
+    // 記録率
+    const recordedDaysPercentage =
+      totalDays > 0 ? Math.round((recordedDays / totalDays) * 100) : 0
 
     // 種目別カウント
     const exerciseTypeCounts = exerciseRecords.reduce((acc, record) => {
@@ -33,67 +38,89 @@ export function ExerciseStatistics({ exerciseRecords, totalDays }: ExerciseStati
       .filter(r => r.duration !== null)
       .reduce((sum, r) => sum + (r.duration || 0), 0)
 
-    // 平均カロリー消費
-    const calorieRecords = exerciseRecords.filter(r => r.calories !== null)
-    const averageCalories = calorieRecords.length > 0
-      ? Math.round(calorieRecords.reduce((sum, r) => sum + (r.calories || 0), 0) / calorieRecords.length)
-      : null
+    // 消費カロリー合計
+    const totalCalories = exerciseRecords
+      .filter(r => r.calories !== null)
+      .reduce((sum, r) => sum + (r.calories || 0), 0)
 
     return {
       recordedDays,
+      recordedDaysPercentage,
       topExerciseTypes,
       totalDuration,
-      averageCalories,
+      totalCalories,
     }
-  }, [exerciseRecords])
+  }, [exerciseRecords, totalDays])
+
+  // 最大回数（バー比率計算用）
+  const maxCount = statistics.topExerciseTypes.length > 0
+    ? statistics.topExerciseTypes[0][1]
+    : 1
 
   return (
-    <Card>
+    <Card className="border border-[#E2E8F0] rounded-md" style={{ boxShadow: 'none' }}>
       <CardHeader>
-        <CardTitle>運動記録統計</CardTitle>
+        <div className="flex items-center gap-2">
+          <Dumbbell className="w-4 h-4 text-[#94A3B8]" />
+          <CardTitle className="text-[#0F172A]">運動記録統計</CardTitle>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* 記録頻度 */}
-        <div>
-          <h4 className="text-sm font-semibold text-gray-700 mb-2">記録頻度</h4>
-          <p className="text-lg">
-            {statistics.recordedDays} / {totalDays} 日
-          </p>
-        </div>
-
-        {/* 種目別カウント */}
-        <div>
-          <h4 className="text-sm font-semibold text-gray-700 mb-2">種目別カウント（上位5件）</h4>
-          <div className="space-y-2">
-            {statistics.topExerciseTypes.length > 0 ? (
-              statistics.topExerciseTypes.map(([exerciseType, count]) => (
-                <div key={exerciseType} className="flex justify-between">
-                  <span className="text-gray-700">
-                    {EXERCISE_TYPE_OPTIONS[exerciseType as keyof typeof EXERCISE_TYPE_OPTIONS]}
-                  </span>
-                  <span className="font-semibold">{count} 回</span>
-                </div>
-              ))
-            ) : (
-              <p className="text-gray-500">記録なし</p>
-            )}
+        {/* 3ミニstat表示 */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-md p-3">
+            <p className="text-[11px] text-[#94A3B8] mb-1">記録率</p>
+            <p className="text-lg font-semibold text-[#0F172A]">
+              {statistics.recordedDaysPercentage}
+              <span className="text-xs text-[#64748B] ml-0.5">%</span>
+            </p>
+          </div>
+          <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-md p-3">
+            <p className="text-[11px] text-[#94A3B8] mb-1">合計時間</p>
+            <p className="text-lg font-semibold text-[#0F172A]">
+              {statistics.totalDuration}
+              <span className="text-xs text-[#64748B] ml-0.5">分</span>
+            </p>
+          </div>
+          <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-md p-3">
+            <p className="text-[11px] text-[#94A3B8] mb-1">消費カロリー合計</p>
+            <p className="text-lg font-semibold text-[#0F172A]">
+              {statistics.totalCalories}
+              <span className="text-xs text-[#64748B] ml-0.5">kcal</span>
+            </p>
           </div>
         </div>
 
-        {/* 合計時間 */}
+        {/* 種目別プログレスバー（上位5件） */}
         <div>
-          <h4 className="text-sm font-semibold text-gray-700 mb-2">合計時間</h4>
-          <p className="text-lg">{statistics.totalDuration} 分</p>
-        </div>
-
-        {/* 平均カロリー消費 */}
-        <div>
-          <h4 className="text-sm font-semibold text-gray-700 mb-2">平均カロリー消費</h4>
-          <p className="text-lg">
-            {statistics.averageCalories !== null
-              ? `${statistics.averageCalories} kcal / 回`
-              : 'カロリーデータなし'}
-          </p>
+          <h3 className="text-[11px] text-[#94A3B8] mb-3">種目別カウント（上位5件）</h3>
+          <div className="space-y-3">
+            {statistics.topExerciseTypes.length > 0 ? (
+              statistics.topExerciseTypes.map(([exerciseType, count]) => (
+                <div key={exerciseType}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[11px] text-[#475569]">
+                      {EXERCISE_TYPE_OPTIONS[exerciseType as keyof typeof EXERCISE_TYPE_OPTIONS] ?? exerciseType}
+                    </span>
+                    <span className="text-[11px] font-semibold text-[#0F172A]">
+                      {count}回
+                    </span>
+                  </div>
+                  <div className="w-full h-[6px] bg-[#F8FAFC] border border-[#E2E8F0] rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{
+                        width: `${maxCount > 0 ? (count / maxCount) * 100 : 0}%`,
+                        backgroundColor: '#16A34A',
+                      }}
+                    />
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-[#94A3B8]">記録なし</p>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>

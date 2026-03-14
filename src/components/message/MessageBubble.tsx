@@ -56,7 +56,7 @@ export function MessageBubble({
           className="w-8 h-8 rounded-full object-cover"
         />
       ) : (
-        <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600">
+        <div className="w-8 h-8 rounded-full bg-[#E2E8F0] flex items-center justify-center text-xs font-bold text-[#64748B]">
           {avatarInitial}
         </div>
       )}
@@ -66,12 +66,12 @@ export function MessageBubble({
   const timestamp = (
     <span className={`text-xs mt-1 flex items-center gap-1 ${isTrainer ? 'justify-end' : 'justify-start'}`}>
       {isTrainer && message.read_at && (
-        <span className="text-emerald-400 text-[10px]">既読</span>
+        <span className="text-[#14B8A6] text-[10px]">既読</span>
       )}
-      <span className="text-gray-400">{message.timestamp}</span>
+      <span className="text-[#94A3B8]">{message.timestamp}</span>
       {message.is_edited && (
         <span
-          className={`${isTrainer ? 'text-emerald-200' : 'text-gray-400'}`}
+          className={`${isTrainer ? 'text-white/50' : 'text-[#94A3B8]'} italic`}
           title={message.edited_at ? `編集: ${new Date(message.edited_at).toLocaleString()}` : '編集済み'}
         >
           編集済み
@@ -98,7 +98,7 @@ export function MessageBubble({
                 onEditCancel()
               }
             }}
-            className="w-full border-2 border-blue-400 rounded p-3 outline-none focus:ring-2 focus:ring-blue-300 resize-none bg-white text-gray-900"
+            className="w-full border-2 border-[#14B8A6] rounded-md p-3 outline-none focus:ring-2 focus:ring-[#14B8A6]/30 resize-none bg-white text-[#0F172A]"
             rows={2}
             autoFocus
           />
@@ -106,7 +106,7 @@ export function MessageBubble({
             <button
               type="button"
               onClick={onEditCancel}
-              className="px-3 py-1 text-sm text-gray-600 rounded hover:bg-gray-100"
+              className="px-3 py-1 text-sm text-[#64748B] rounded-md hover:bg-[#F8FAFC]"
             >
               キャンセル
             </button>
@@ -114,11 +114,11 @@ export function MessageBubble({
               type="button"
               onClick={onEditSave}
               disabled={editSaving || !editInput.trim()}
-              className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-1 text-sm bg-[#14B8A6] text-white rounded-md hover:bg-[#0D9488] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {editSaving ? '保存中...' : '保存'}
             </button>
-            <span className="text-xs text-gray-400">Enter で保存 / Esc でキャンセル</span>
+            <span className="text-xs text-[#94A3B8]">Enter で保存 / Esc でキャンセル</span>
           </div>
         </div>
       </div>
@@ -137,10 +137,10 @@ export function MessageBubble({
               <button
                 type="button"
                 onClick={() => onReplyStart(message)}
-                className="p-1.5 rounded-full hover:bg-gray-200 transition-colors"
+                className="p-1.5 rounded-md bg-white border border-[#E2E8F0] hover:bg-[#F0FDFA] transition-colors"
                 title="返信"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#94A3B8] hover:text-[#14B8A6]">
                   <polyline points="9 14 4 9 9 4"></polyline>
                   <path d="M20 20v-7a4 4 0 0 0-4-4H4"></path>
                 </svg>
@@ -149,10 +149,10 @@ export function MessageBubble({
                 <button
                   type="button"
                   onClick={() => onEditStart(message)}
-                  className="p-1.5 rounded-full hover:bg-gray-200 transition-colors"
+                  className="p-1.5 rounded-md bg-white border border-[#E2E8F0] hover:bg-[#F0FDFA] transition-colors"
                   title="メッセージを編集"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#94A3B8] hover:text-[#14B8A6]">
                     <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
                     <path d="m15 5 4 4" />
                   </svg>
@@ -171,10 +171,10 @@ export function MessageBubble({
             />
           ) : (
             <div
-              className={`px-4 py-2.5 rounded-2xl ${
+              className={`px-4 py-2.5 rounded-md ${
                 isTrainer
-                  ? 'bg-emerald-500 text-white rounded-tr-sm'
-                  : 'bg-white border border-gray-200 text-gray-900 rounded-tl-sm'
+                  ? 'bg-[#14B8A6] text-white rounded-br-sm'
+                  : 'bg-white border border-[#E2E8F0] text-[#0F172A] rounded-bl-sm'
               }`}
             >
               {/* Reply quote */}
@@ -205,7 +205,7 @@ export function MessageBubble({
                       <img
                         src={url}
                         alt={`添付画像 ${imgIndex + 1}`}
-                        className="w-24 h-24 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                        className="w-24 h-24 object-cover rounded-sm border border-black/5 cursor-pointer hover:opacity-80 transition-opacity"
                       />
                     </button>
                   ))}
@@ -220,10 +220,10 @@ export function MessageBubble({
               <button
                 type="button"
                 onClick={() => onReplyStart(message)}
-                className="p-1.5 rounded-full hover:bg-gray-200 transition-colors"
+                className="p-1.5 rounded-md bg-white border border-[#E2E8F0] hover:bg-[#F0FDFA] transition-colors"
                 title="返信"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#94A3B8] hover:text-[#14B8A6]">
                   <polyline points="9 14 4 9 9 4"></polyline>
                   <path d="M20 20v-7a4 4 0 0 0-4-4H4"></path>
                 </svg>

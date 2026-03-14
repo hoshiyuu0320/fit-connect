@@ -65,17 +65,17 @@ export function SessionSummaryModal({
 
         <div className="max-h-[70vh] overflow-y-auto px-1 space-y-5">
           {/* 所要時間 */}
-          <div className="flex items-center gap-2 text-sm text-gray-700">
+          <div className="flex items-center gap-2 text-sm text-[#64748B]">
             <span className="font-medium">所要時間:</span>
-            <span className="text-gray-900 font-semibold">{duration}</span>
+            <span className="text-[#0F172A] font-semibold">{duration}</span>
           </div>
 
           {/* 種目実績 */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-800 mb-2">種目実績</h3>
-            <div className="border border-gray-200 rounded-lg divide-y divide-gray-100">
+            <h3 className="text-sm font-semibold text-[#0F172A] mb-2">種目実績</h3>
+            <div className="border border-[#E2E8F0] rounded-md divide-y divide-[#E2E8F0]">
               {exercises.length === 0 ? (
-                <p className="text-sm text-gray-500 p-3">種目がありません</p>
+                <p className="text-sm text-[#94A3B8] p-3">種目がありません</p>
               ) : (
                 exercises
                   .slice()
@@ -89,17 +89,17 @@ export function SessionSummaryModal({
                         <div className="flex items-center gap-2 mb-1">
                           <span className="flex-shrink-0">
                             {exercise.is_completed ? (
-                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-green-500" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-[#16A34A]" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                                 <polyline points="22 4 12 14.01 9 11.01" />
                               </svg>
                             ) : (
-                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-gray-300" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-[#CBD5E1]" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <rect x="3" y="3" width="18" height="18" rx="4" />
                               </svg>
                             )}
                           </span>
-                          <span className="text-sm font-medium text-gray-900">
+                          <span className="text-sm font-medium text-[#0F172A]">
                             {exercise.exercise_name}
                           </span>
                         </div>
@@ -109,7 +109,7 @@ export function SessionSummaryModal({
                           {sets.map((set) => (
                             <p
                               key={set.set_number}
-                              className={`text-xs ${set.done ? 'text-gray-700' : 'text-gray-400'}`}
+                              className={`text-xs ${set.done ? 'text-[#64748B]' : 'text-[#94A3B8]'}`}
                             >
                               Set{set.set_number}:{' '}
                               {set.weight != null ? `${set.weight}kg` : '-'}{' '}
@@ -127,7 +127,7 @@ export function SessionSummaryModal({
 
           {/* トレーナーノート */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-[#64748B] mb-1">
               トレーナーノート
             </label>
             <textarea
@@ -135,14 +135,14 @@ export function SessionSummaryModal({
               onChange={(e) => onTrainerNoteChange(e.target.value)}
               placeholder="セッションの所見やアドバイスを記録..."
               rows={3}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              className="w-full rounded-md border border-[#E2E8F0] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#14B8A6] focus:border-[#14B8A6] resize-none"
               disabled={saving}
             />
           </div>
 
           {/* クライアントフィードバック */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-[#64748B] mb-1">
               クライアントフィードバック
             </label>
             <textarea
@@ -150,7 +150,7 @@ export function SessionSummaryModal({
               onChange={(e) => onClientFeedbackChange(e.target.value)}
               placeholder="クライアントからのフィードバック..."
               rows={3}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              className="w-full rounded-md border border-[#E2E8F0] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#14B8A6] focus:border-[#14B8A6] resize-none"
               disabled={saving}
             />
           </div>
@@ -161,7 +161,7 @@ export function SessionSummaryModal({
               type="button"
               onClick={onSave}
               disabled={saving}
-              className="px-6 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-6 py-2.5 text-sm font-medium text-white bg-[#14B8A6] rounded-md hover:bg-[#0D9488] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {saving ? '保存中...' : '完了として保存'}
             </button>

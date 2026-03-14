@@ -55,6 +55,8 @@ export function ImageUploader({
     [disabled, images.length, maxImages, addFiles],
   )
 
+  const hasImages = images.length > 0
+
   return (
     <div
       onDragOver={handleDragOver}
@@ -79,33 +81,37 @@ export function ImageUploader({
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={disabled || images.length >= maxImages}
-          className="p-2 text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed rounded hover:bg-gray-100"
+          className={`p-2 border rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+            hasImages
+              ? 'border-[#14B8A6] text-[#14B8A6] bg-[#F0FDFA]'
+              : 'border-[#E2E8F0] text-[#94A3B8] bg-white hover:border-[#14B8A6] hover:text-[#14B8A6] hover:bg-[#F0FDFA]'
+          }`}
           title={`画像を添付（最大${maxImages}枚）`}
         >
           <Paperclip className="h-5 w-5" />
         </button>
 
-        {images.length > 0 && (
-          <span className="text-xs text-gray-500">
+        {hasImages && (
+          <span className="text-xs text-[#94A3B8]">
             {images.length}/{maxImages}
           </span>
         )}
       </div>
 
       {/* プレビュー */}
-      {images.length > 0 && (
+      {hasImages && (
         <div className="flex gap-2 mt-2">
           {images.map((file, index) => (
             <div key={index} className="relative group">
               <img
                 src={URL.createObjectURL(file)}
                 alt={`プレビュー ${index + 1}`}
-                className="w-20 h-20 object-cover rounded border"
+                className="w-20 h-20 object-cover rounded-md border border-[#E2E8F0]"
               />
               <button
                 type="button"
                 onClick={() => removeImage(index)}
-                className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute -top-1.5 -right-1.5 bg-[#DC2626] text-white rounded-full p-0.5 border-2 border-white opacity-0 group-hover:opacity-100 transition-opacity"
                 disabled={disabled}
               >
                 <X className="h-3 w-3" />
@@ -117,8 +123,9 @@ export function ImageUploader({
 
       {/* ドラッグ中のオーバーレイ */}
       {isDragging && (
-        <div className="mt-2 border-2 border-dashed border-blue-400 bg-blue-50 rounded p-3 text-center text-sm text-blue-600">
+        <div className="mt-2 border-2 border-dashed border-[#14B8A6] bg-[rgba(240,253,250,0.92)] rounded-md p-3 text-center text-sm text-[#14B8A6]">
           ここにドロップして画像を添付
+          <p className="text-xs text-[#94A3B8] mt-1">JPEG / PNG / WebP / HEIC</p>
         </div>
       )}
     </div>

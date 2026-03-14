@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>案D: Mono Professional Dashboard - FitConnect</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; background: #FAFAFA; color: #171717; }
+
+  /* ── Header ── */
+  .header {
+    position: fixed; top: 0; left: 0; right: 0; height: 56px; z-index: 50;
+    background: #FFFFFF; border-bottom: 1px solid #E5E5E5;
+    display: flex; align-items: center; justify-content: space-between; padding: 0 24px;
+  }
+  .header-left { display: flex; align-items: center; gap: 10px; }
+  .logo-icon {
+    width: 30px; height: 30px; background: #171717; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    color: #FFF; font-weight: 700; font-size: 11px; letter-spacing: -0.02em;
+  }
+  .logo-text { font-weight: 600; font-size: 16px; color: #171717; letter-spacing: -0.03em; }
+  .header-right { display: flex; align-items: center; gap: 8px; }
+  .header-btn {
+    width: 36px; height: 36px; border-radius: 8px; border: 1px solid #E5E5E5;
+    background: #FFF; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: #737373; transition: all 0.15s; position: relative;
+  }
+  .header-btn:hover { background: #F5F5F5; color: #171717; }
+  .notif-dot { position: absolute; top: 7px; right: 7px; width: 6px; height: 6px; background: #171717; border-radius: 50%; }
+  .avatar {
+    width: 32px; height: 32px; border-radius: 50%; background: #171717;
+    color: #FFF; display: flex; align-items: center; justify-content: center;
+    font-weight: 600; font-size: 12px; cursor: pointer; margin-left: 4px;
+  }
+  .trainer-name { font-size: 13px; font-weight: 500; color: #525252; margin-left: 6px; }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    position: fixed; top: 56px; left: 0; bottom: 0; width: 220px; z-index: 40;
+    background: #FFFFFF; border-right: 1px solid #E5E5E5;
+    display: flex; flex-direction: column; padding: 16px 12px; gap: 2px;
+  }
+  .nav-section-label { font-size: 10px; font-weight: 600; color: #A3A3A3; text-transform: uppercase; letter-spacing: 0.08em; padding: 16px 12px 6px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+    cursor: pointer; color: #737373; border-radius: 8px;
+    transition: all 0.12s; font-size: 13px; font-weight: 500;
+  }
+  .nav-item:hover { background: #F5F5F5; color: #171717; }
+  .nav-item.active { background: #171717; color: #FFFFFF; }
+  .nav-icon svg { width: 18px; height: 18px; }
+  .nav-badge { margin-left: auto; font-size: 11px; font-weight: 600; background: #F5F5F5; color: #525252; padding: 1px 7px; border-radius: 10px; }
+  .nav-item.active .nav-badge { background: rgba(255,255,255,0.15); color: #FFF; }
+
+  .sidebar-footer { margin-top: auto; padding: 12px; border-top: 1px solid #F5F5F5; }
+  .sidebar-footer-btn {
+    display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+    font-size: 13px; color: #A3A3A3; cursor: pointer; border-radius: 8px; transition: all 0.12s;
+  }
+  .sidebar-footer-btn:hover { background: #F5F5F5; color: #525252; }
+
+  /* ── Main ── */
+  .main { margin-left: 220px; margin-top: 56px; padding: 32px 40px; min-height: calc(100vh - 56px); }
+  .container { max-width: 1120px; }
+
+  /* ── Page Header ── */
+  .page-header { margin-bottom: 32px; display: flex; justify-content: space-between; align-items: flex-start; }
+  .page-header-left h1 { font-size: 24px; font-weight: 700; color: #171717; letter-spacing: -0.03em; }
+  .page-header-left p { font-size: 13px; color: #A3A3A3; margin-top: 4px; }
+  .header-actions { display: flex; gap: 8px; }
+  .btn-primary {
+    padding: 8px 16px; background: #171717; color: #FFF; border: none;
+    border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer;
+    transition: background 0.15s; display: flex; align-items: center; gap: 6px;
+  }
+  .btn-primary:hover { background: #404040; }
+  .btn-secondary {
+    padding: 8px 16px; background: #FFF; color: #525252; border: 1px solid #E5E5E5;
+    border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-secondary:hover { background: #F5F5F5; border-color: #D4D4D4; }
+
+  /* ── KPI ── */
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+  .kpi-card {
+    background: #FFFFFF; border-radius: 12px; padding: 20px;
+    border: 1px solid #E5E5E5; transition: all 0.15s; cursor: pointer;
+  }
+  .kpi-card:hover { border-color: #D4D4D4; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+  .kpi-label { font-size: 12px; font-weight: 500; color: #A3A3A3; margin-bottom: 10px; }
+  .kpi-row { display: flex; align-items: baseline; gap: 10px; }
+  .kpi-value { font-size: 30px; font-weight: 700; color: #171717; letter-spacing: -0.03em; line-height: 1; }
+  .kpi-change { font-size: 11px; font-weight: 600; color: #525252; padding: 2px 6px; border-radius: 4px; background: #F5F5F5; }
+  .kpi-change.up { color: #171717; }
+  .kpi-change.warn { background: #171717; color: #FFF; }
+  .kpi-sub { font-size: 11px; color: #A3A3A3; margin-top: 6px; }
+
+  /* ── Content Grid ── */
+  .content-grid { display: grid; grid-template-columns: 3fr 2fr; gap: 16px; margin-bottom: 32px; }
+
+  .card {
+    background: #FFFFFF; border-radius: 12px;
+    border: 1px solid #E5E5E5; overflow: hidden;
+  }
+  .card-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 20px; border-bottom: 1px solid #F5F5F5;
+  }
+  .card-title { font-size: 13px; font-weight: 600; color: #171717; }
+  .card-link { font-size: 12px; color: #A3A3A3; cursor: pointer; transition: color 0.15s; }
+  .card-link:hover { color: #171717; }
+  .card-body { padding: 4px 0; }
+
+  /* ── Schedule ── */
+  .schedule-row {
+    display: flex; align-items: center; gap: 14px; padding: 12px 20px;
+    border-bottom: 1px solid #FAFAFA; transition: background 0.1s;
+  }
+  .schedule-row:last-child { border-bottom: none; }
+  .schedule-row:hover { background: #FAFAFA; }
+  .schedule-time {
+    font-size: 12px; font-weight: 600; color: #171717; min-width: 44px;
+    font-variant-numeric: tabular-nums;
+  }
+  .schedule-avatar {
+    width: 32px; height: 32px; border-radius: 50%; background: #F5F5F5;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 600; color: #737373; flex-shrink: 0;
+  }
+  .schedule-info { flex: 1; }
+  .schedule-name { font-size: 13px; font-weight: 500; color: #171717; }
+  .schedule-type { font-size: 11px; color: #A3A3A3; margin-top: 1px; }
+  .schedule-badge {
+    font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 6px;
+  }
+  .badge-confirmed { background: #F5F5F5; color: #525252; }
+  .badge-pending { background: #171717; color: #FFF; }
+
+  /* ── Messages ── */
+  .msg-row {
+    display: flex; align-items: flex-start; gap: 12px; padding: 12px 20px;
+    border-bottom: 1px solid #FAFAFA; transition: background 0.1s;
+  }
+  .msg-row:last-child { border-bottom: none; }
+  .msg-row:hover { background: #FAFAFA; }
+  .msg-avatar {
+    width: 32px; height: 32px; border-radius: 50%; background: #F5F5F5;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 600; color: #737373; flex-shrink: 0;
+  }
+  .msg-content { flex: 1; min-width: 0; }
+  .msg-header { display: flex; justify-content: space-between; align-items: center; }
+  .msg-name { font-size: 13px; font-weight: 500; color: #171717; }
+  .msg-time { font-size: 11px; color: #D4D4D4; }
+  .msg-text { font-size: 12px; color: #A3A3A3; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .msg-unread { width: 6px; height: 6px; background: #171717; border-radius: 50%; flex-shrink: 0; margin-top: 8px; }
+
+  /* ── Quick Actions ── */
+  .actions-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .action-card {
+    background: #FFFFFF; border: 1px solid #E5E5E5; border-radius: 12px;
+    padding: 20px; display: flex; align-items: center; gap: 14px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .action-card:hover { border-color: #171717; }
+  .action-icon {
+    width: 40px; height: 40px; border-radius: 10px; background: #F5F5F5;
+    display: flex; align-items: center; justify-content: center; color: #525252;
+    flex-shrink: 0; transition: all 0.15s;
+  }
+  .action-card:hover .action-icon { background: #171717; color: #FFF; }
+  .action-text .action-label { font-size: 13px; font-weight: 500; color: #171717; }
+  .action-text .action-desc { font-size: 11px; color: #A3A3A3; margin-top: 2px; }
+
+  /* ── Responsive ── */
+  @media (max-width: 1024px) {
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .content-grid { grid-template-columns: 1fr; }
+    .actions-row { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 24px 16px; }
+    .kpi-grid { grid-template-columns: 1fr 1fr; }
+    .actions-row { grid-template-columns: 1fr; }
+    .page-header { flex-direction: column; gap: 12px; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-left">
+      <div class="logo-icon">FC</div>
+      <span class="logo-text">FitConnect</span>
+    </div>
+    <div class="header-right">
+      <button class="header-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      </button>
+      <button class="header-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+        <span class="notif-dot"></span>
+      </button>
+      <div class="avatar">T</div>
+      <span class="trainer-name">田中トレーナー</span>
+    </div>
+  </header>
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="nav-section-label">メイン</div>
+    <div class="nav-item active">
+      <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg></span>
+      ダッシュボード
+    </div>
+    <div class="nav-item">
+      <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+      顧客管理
+      <span class="nav-badge">24</span>
+    </div>
+    <div class="nav-item">
+      <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg></span>
+      メッセージ
+      <span class="nav-badge">5</span>
+    </div>
+    <div class="nav-item">
+      <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg></span>
+      スケジュール
+    </div>
+
+    <div class="nav-section-label">管理</div>
+    <div class="nav-item">
+      <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span>
+      チケット
+      <span class="nav-badge">3</span>
+    </div>
+    <div class="nav-item">
+      <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg></span>
+      レポート
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-footer-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+        設定
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="container">
+
+      <!-- Page Header -->
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>ダッシュボード</h1>
+          <p>2026年3月1日（日）</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn-secondary">エクスポート</button>
+          <button class="btn-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
+            新規セッション
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">担当顧客数</div>
+          <div class="kpi-row">
+            <div class="kpi-value">24</div>
+            <span class="kpi-change up">+3</span>
+          </div>
+          <div class="kpi-sub">先月比</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">今週のセッション</div>
+          <div class="kpi-row">
+            <div class="kpi-value">18</div>
+            <span class="kpi-change up">+2</span>
+          </div>
+          <div class="kpi-sub">先週比</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">未読メッセージ</div>
+          <div class="kpi-row">
+            <div class="kpi-value">5</div>
+            <span class="kpi-change warn">要対応</span>
+          </div>
+          <div class="kpi-sub">2件が24時間以上</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">要対応チケット</div>
+          <div class="kpi-row">
+            <div class="kpi-value">3</div>
+            <span class="kpi-change warn">期限間近</span>
+          </div>
+          <div class="kpi-sub">今週中に要確認</div>
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div class="content-grid">
+        <!-- Schedule -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">今日のスケジュール</span>
+            <span class="card-link">すべて表示 →</span>
+          </div>
+          <div class="card-body">
+            <div class="schedule-row">
+              <span class="schedule-time">09:00</span>
+              <div class="schedule-avatar">佐</div>
+              <div class="schedule-info">
+                <div class="schedule-name">佐藤 花子</div>
+                <div class="schedule-type">パーソナルトレーニング</div>
+              </div>
+              <span class="schedule-badge badge-confirmed">確定</span>
+            </div>
+            <div class="schedule-row">
+              <span class="schedule-time">11:00</span>
+              <div class="schedule-avatar">鈴</div>
+              <div class="schedule-info">
+                <div class="schedule-name">鈴木 太郎</div>
+                <div class="schedule-type">ダイエットカウンセリング</div>
+              </div>
+              <span class="schedule-badge badge-confirmed">確定</span>
+            </div>
+            <div class="schedule-row">
+              <span class="schedule-time">14:30</span>
+              <div class="schedule-avatar">山</div>
+              <div class="schedule-info">
+                <div class="schedule-name">山田 健一</div>
+                <div class="schedule-type">ボディメイク</div>
+              </div>
+              <span class="schedule-badge badge-pending">仮予約</span>
+            </div>
+            <div class="schedule-row">
+              <span class="schedule-time">16:00</span>
+              <div class="schedule-avatar">高</div>
+              <div class="schedule-info">
+                <div class="schedule-name">高橋 美咲</div>
+                <div class="schedule-type">初回カウンセリング</div>
+              </div>
+              <span class="schedule-badge badge-confirmed">確定</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Messages -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">最近のメッセージ</span>
+            <span class="card-link">すべて表示 →</span>
+          </div>
+          <div class="card-body">
+            <div class="msg-row">
+              <div class="msg-avatar">佐</div>
+              <div class="msg-content">
+                <div class="msg-header">
+                  <span class="msg-name">佐藤 花子</span>
+                  <span class="msg-time">10分前</span>
+                </div>
+                <div class="msg-text">明日のセッションの時間変更は可能ですか？</div>
+              </div>
+              <div class="msg-unread"></div>
+            </div>
+            <div class="msg-row">
+              <div class="msg-avatar">鈴</div>
+              <div class="msg-content">
+                <div class="msg-header">
+                  <span class="msg-name">鈴木 太郎</span>
+                  <span class="msg-time">1時間前</span>
+                </div>
+                <div class="msg-text">今週の食事記録を送ります</div>
+              </div>
+              <div class="msg-unread"></div>
+            </div>
+            <div class="msg-row">
+              <div class="msg-avatar">山</div>
+              <div class="msg-content">
+                <div class="msg-header">
+                  <span class="msg-name">山田 健一</span>
+                  <span class="msg-time">3時間前</span>
+                </div>
+                <div class="msg-text">ありがとうございます！次回もよろしくお願いします。</div>
+              </div>
+            </div>
+            <div class="msg-row">
+              <div class="msg-avatar">高</div>
+              <div class="msg-content">
+                <div class="msg-header">
+                  <span class="msg-name">高橋 美咲</span>
+                  <span class="msg-time">昨日</span>
+                </div>
+                <div class="msg-text">初回カウンセリングの件、よろしくお願いします</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="actions-row">
+        <div class="action-card">
+          <div class="action-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg>
+          </div>
+          <div class="action-text">
+            <div class="action-label">新規顧客追加</div>
+            <div class="action-desc">顧客情報を登録する</div>
+          </div>
+        </div>
+        <div class="action-card">
+          <div class="action-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+          </div>
+          <div class="action-text">
+            <div class="action-label">セッション予約</div>
+            <div class="action-desc">新しい予約を作成</div>
+          </div>
+        </div>
+        <div class="action-card">
+          <div class="action-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
+          </div>
+          <div class="action-text">
+            <div class="action-label">メッセージ送信</div>
+            <div class="action-desc">顧客にメッセージ</div>
+          </div>
+        </div>
+        <div class="action-card">
+          <div class="action-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div class="action-text">
+            <div class="action-label">カルテ作成</div>
+            <div class="action-desc">トレーニング記録</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</body>
+</html>
