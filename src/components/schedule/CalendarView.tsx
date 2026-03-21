@@ -359,6 +359,11 @@ export default function CalendarView() {
         if (!pendingDrop || !selectedClientId) return;
         setIsTicketModalOpen(false);
         try {
+            // クライアント（ブラウザ・JST）でDateを構築して正しいタイムゾーンを保持
+            const sessionDateTime = sessionTime
+                ? new Date(`${pendingDrop.date}T${sessionTime}`).toISOString()
+                : new Date(`${pendingDrop.date}T10:00`).toISOString();
+
             const res = await fetch('/api/workout-assignments', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -369,6 +374,7 @@ export default function CalendarView() {
                     assignedDate: pendingDrop.date,
                     ticketId,
                     sessionTime,
+                    sessionDateTime,
                     createSession: true,
                 }),
             });
