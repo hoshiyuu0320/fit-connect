@@ -46,7 +46,7 @@ export async function GET(request: Request) {
         const email = user.email || ''
         const profileImageUrl = user.user_metadata?.avatar_url || null
 
-        const { data: upsertData } = await supabaseAdmin
+        const { data: upsertData, error: upsertError } = await supabaseAdmin
           .from('trainers')
           .upsert(
             {
@@ -59,6 +59,10 @@ export async function GET(request: Request) {
           )
           .select('created_at')
           .maybeSingle()
+
+        if (upsertError) {
+          console.error('トレーナーレコード作成エラー:', upsertError)
+        }
 
         // ignoreDuplicates: true の場合、既存レコードは返らない（null）
         // データが返れば新規作成されたことを意味する
