@@ -45,6 +45,19 @@ export function WeightTab({ weightRecords, targetWeight }: WeightTabProps) {
     return weightRecords.filter((r) => new Date(r.recorded_at) >= startDate)
   }, [weightRecords, weightPeriod])
 
+  const weightStats = useMemo(() => {
+    if (filteredRecords.length === 0) {
+      return { avg: null, max: null, min: null, range: null }
+    }
+    const weights = filteredRecords.map((r) => r.weight)
+    const sum = weights.reduce((a, b) => a + b, 0)
+    const avg = sum / weights.length
+    const max = Math.max(...weights)
+    const min = Math.min(...weights)
+    const range = max - min
+    return { avg, max, min, range }
+  }, [filteredRecords])
+
   if (weightRecords.length === 0) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -83,6 +96,37 @@ export function WeightTab({ weightRecords, targetWeight }: WeightTabProps) {
         </div>
 
         <WeightChart weightRecords={filteredRecords} targetWeight={targetWeight} showPeriodFilter={false} />
+      </div>
+
+      {/* 期間統計 */}
+      <div className="bg-white border border-[#E2E8F0] rounded-md p-4">
+        <h3 className="text-sm font-semibold text-[#0F172A] mb-3">期間統計</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div>
+            <p className="text-sm text-[#94A3B8]">平均</p>
+            <p className="text-lg font-bold text-[#0F172A]">
+              {weightStats.avg !== null ? `${weightStats.avg.toFixed(1)}kg` : '--'}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-[#94A3B8]">最高</p>
+            <p className="text-lg font-bold text-[#0F172A]">
+              {weightStats.max !== null ? `${weightStats.max.toFixed(1)}kg` : '--'}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-[#94A3B8]">最低</p>
+            <p className="text-lg font-bold text-[#0F172A]">
+              {weightStats.min !== null ? `${weightStats.min.toFixed(1)}kg` : '--'}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-[#94A3B8]">変動幅</p>
+            <p className="text-lg font-bold text-[#0F172A]">
+              {weightStats.range !== null ? `${weightStats.range.toFixed(1)}kg` : '--'}
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* 最近の記録リスト（最新5件） */}
