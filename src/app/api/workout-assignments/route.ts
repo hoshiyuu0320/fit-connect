@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { trainerId, clientId, planId, assignedDate, ticketId, sessionTime, createSession, sessionId } = body
+    const { trainerId, clientId, planId, assignedDate, ticketId, sessionTime, sessionDateTime, createSession, sessionId } = body
 
     if (!trainerId || !clientId || !planId || !assignedDate) {
       return NextResponse.json(
@@ -140,17 +140,23 @@ export async function POST(request: NextRequest) {
         .eq('id', planId)
         .single()
 
-      // セッション日時を決定（sessionTime が指定されていない場合は 10:00 をデフォルトとする）
-      const sessionDate = sessionTime
-        ? new Date(`${assignedDate}T${sessionTime}`)
-        : new Date(`${assignedDate}T10:00`)
+      // sessionDateTime（クライアントで構築済みのISO文字列）を優先使用
+      // フォールバック: sessionTimeから構築（サーバーUTC問題を回避するため+09:00を付加）
+      let sessionDateISO: string
+      if (sessionDateTime) {
+        sessionDateISO = sessionDateTime
+      } else if (sessionTime) {
+        sessionDateISO = new Date(`${assignedDate}T${sessionTime}:00+09:00`).toISOString()
+      } else {
+        sessionDateISO = new Date(`${assignedDate}T10:00:00+09:00`).toISOString()
+      }
 
       const { data: newSession, error: sessionError } = await supabaseAdmin
         .from('sessions')
         .insert({
           trainer_id: trainerId,
           client_id: clientId,
-          session_date: sessionDate.toISOString(),
+          session_date: sessionDateISO,
           duration_minutes: plan?.estimated_minutes || 60,
           status: 'scheduled',
           ticket_id: ticketId || null,

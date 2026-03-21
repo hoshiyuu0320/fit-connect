@@ -162,7 +162,10 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
             if (session) {
                 const date = new Date(session.session_date);
                 setValue('client_id', session.client_id);
-                setValue('session_date', date.toISOString().split('T')[0]);
+                const localYear = date.getFullYear();
+                const localMonth = String(date.getMonth() + 1).padStart(2, '0');
+                const localDay = String(date.getDate()).padStart(2, '0');
+                setValue('session_date', `${localYear}-${localMonth}-${localDay}`);
                 setValue('session_time', date.toTimeString().slice(0, 5));
                 setValue('duration_minutes', session.duration_minutes);
 
