@@ -1,6 +1,8 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
+import { useSearchParams, useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { getTrainer } from '@/lib/supabase/getTrainer'
 import { getClientCount } from '@/lib/supabase/getClientCount'
@@ -90,7 +92,7 @@ function TicketIcon() {
   )
 }
 
-export default function DashboardPage() {
+function DashboardContent() {
   const [loading, setLoading] = useState(true)
   const userName = useUserStore((state) => state.userName)
   const setUserName = useUserStore((state) => state.setUserName)
@@ -142,6 +144,19 @@ export default function DashboardPage() {
     if (hour < 18) return 'こんにちは'
     return 'こんばんは'
   }
+
+  const searchParams = useSearchParams()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (searchParams.get('welcome') === 'true') {
+      toast.success('Googleアカウントの名前で登録しました。設定画面から変更できます', {
+        duration: 6000,
+      })
+      // URL からパラメータを除去
+      router.replace('/dashboard')
+    }
+  }, [searchParams, router])
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -331,5 +346,13 @@ export default function DashboardPage() {
         <QuickActions />
       </div>
     </main>
+  )
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<DashboardSkeleton />}>
+      <DashboardContent />
+    </Suspense>
   )
 }

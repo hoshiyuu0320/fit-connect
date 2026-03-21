@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { getUnreadCounts } from '@/lib/supabase/getUnreadCounts';
+import { Toaster } from 'sonner';
 
 const mainMenuItems = [
     {
@@ -177,6 +178,14 @@ export default function Sidebar({ children }: { children: React.ReactNode }) {
                     {children}
                 </section>
             </div>
+            <Toaster
+                position="top-right"
+                toastOptions={{
+                    style: {
+                        fontFamily: "'Noto Sans JP', 'Plus Jakarta Sans', sans-serif",
+                    },
+                }}
+            />
         </main>
     );
 }
