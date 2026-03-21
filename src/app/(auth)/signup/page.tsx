@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import { createTrainer } from '@/lib/supabase/createTrainer'
 
 
 export default function SignUpPage() {
@@ -42,7 +41,15 @@ export default function SignUpPage() {
             const userId = signUpData.user?.id;
             if (!userId) return;
 
-            await createTrainer(userId, fullName, email)
+            const res = await fetch('/api/trainers/create', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId, name: fullName, email }),
+            })
+            if (!res.ok) {
+              const errorData = await res.json()
+              throw new Error(errorData.error || 'トレーナー登録に失敗しました')
+            }
         } catch (error: unknown) {
             console.error('Signup error:', error);
             const message = error instanceof Error ? error.message : 'エラーが発生しました';
