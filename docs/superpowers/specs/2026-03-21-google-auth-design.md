@@ -1,7 +1,7 @@
 # Google認証機能 設計書
 
 **作成日**: 2026-03-21
-**ステータス**: 承認済み
+**ステータス**: 承認済み（レビュー反映済み）
 
 ---
 
@@ -23,9 +23,10 @@ FIT-CONNECTにGoogle OAuth認証を追加し、Googleアカウントのみで新
 ```
 Googleボタン → Google OAuth画面 → /auth/callback
   → supabase.auth.exchangeCodeForSession(code)
-  → supabaseAdmin で trainers テーブルを確認（user.id で検索）
-  → レコードなし → INSERT { id: user.id, name: user_metadata.full_name, email: user.email }
-  → /dashboard?welcome=true へリダイレクト
+  → supabaseAdmin で trainers テーブルに upsert（ON CONFLICT DO NOTHING）
+    { id: user.id, name: user_metadata.full_name, email: user.email, profile_image_url: user_metadata.avatar_url }
+  → upsert の結果で新規作成かどうか判定
+  → 新規: /dashboard?welcome=true へリダイレクト（nextパラメータがあればそちらを優先）
   → ダッシュボードでトースト表示:
     「Googleアカウントの名前で登録しました。設定画面から変更できます」
 ```
@@ -35,8 +36,8 @@ Googleボタン → Google OAuth画面 → /auth/callback
 ```
 Googleボタン → Google OAuth画面 → /auth/callback
   → セッション交換
-  → trainers テーブルにレコードあり → スキップ
-  → /dashboard へリダイレクト
+  → upsert → ON CONFLICT DO NOTHING（既存レコード維持）
+  → next パラメータ or /dashboard へリダイレクト
 ```
 
 ### 既存フロー（メール/パスワード）
@@ -47,20 +48,29 @@ Googleボタン → Google OAuth画面 → /auth/callback
 
 ### 1. `/src/app/auth/callback/route.ts`（主要変更）
 
-コード交換後にトレーナーレコードの存在確認・自動作成ロジックを追加。
+コード交換後にトレーナーレコードの upsert ロジックを追加。
 
 - `supabaseAdmin` を使用（RLSバイパス、既存パターン踏襲）
+- **upsert** を使用（`ON CONFLICT (id) DO NOTHING`）。select→insertのレースコンディションを防止
 - `user_metadata.full_name` が空の場合、メールアドレスの `@` 前をフォールバック名に使用
-- 新規作成時は `/dashboard?welcome=true` にリダイレクト
-- 既存ユーザーは `/dashboard` にリダイレクト
+- `user_metadata.avatar_url` を `profile_image_url` に設定
+- 新規作成時は `?welcome=true` を付与してリダイレクト
+- **既存の `next` クエリパラメータを維持**（デフォルト: `/dashboard`）
+- **エラーハンドリング**: upsert失敗時は `console.error` でログ出力し、リダイレクトは続行する（セッションは有効なため、ダッシュボードの既存の空状態表示で対応）
 
-### 2. `/src/app/(user_console)/dashboard/page.tsx`（トースト追加）
+### 2. トースト基盤の追加
+
+- **ライブラリ**: `sonner` を採用（軽量、Radix UIと相性良好、設定が最小限）
+- **Toaster配置**: `/src/app/(user_console)/layout.tsx` に `<Toaster />` を追加（user_console配下全体で利用可能に）
+- 今後の通知機能でも再利用可能
+
+### 3. `/src/app/(user_console)/dashboard/page.tsx`（トースト表示）
 
 - URLパラメータ `welcome=true` を検知
-- トースト通知で「Googleアカウントの名前で登録しました。設定画面から変更できます」を表示
+- `sonner` の `toast()` で通知表示
 - 表示後にURLからパラメータを除去（`router.replace`）
 
-### 3. UIボタン（変更なし）
+### 4. UIボタン（変更なし）
 
 ログイン・サインアップページのGoogleボタンは既に配置済み。変更不要。
 
@@ -74,6 +84,7 @@ Googleボタン → Google OAuth画面 → /auth/callback
    - アプリ名、サポートメール等を入力
 3. 「認証情報」→「認証情報を作成」→「OAuth 2.0 クライアントID」
    - アプリケーションの種類: ウェブアプリケーション
+   - 承認済みJavaScriptオリジン: `http://localhost:3000`（開発用）、本番ドメイン
    - 承認済みリダイレクトURI: `https://<supabase-project-ref>.supabase.co/auth/v1/callback`
 4. Client ID と Client Secret を控える
 
@@ -88,3 +99,4 @@ Googleボタン → Google OAuth画面 → /auth/callback
 - `supabaseAdmin`（サービスロールキー）はサーバーサイドのみで使用
 - トレーナーレコード作成はコールバック（サーバーサイド）で行うため、RLSの影響を受けない
 - 既存のメール/パスワードサインアップフローの`/api/trainers/create`ルートはそのまま維持
+- **アカウントリンク**: 同一メールで異なるプロバイダ（Google / email+password）を使用した場合の動作はSupabaseの「User Identity Linking」設定に依存する。Supabase Dashboardで自動リンクの設定を確認すること
