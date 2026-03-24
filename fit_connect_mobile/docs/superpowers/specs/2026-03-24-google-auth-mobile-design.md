@@ -51,10 +51,10 @@ clients テーブルにレコードあり? → MainScreen
 | iOS `Info.plist` | Google Sign-In用のURL Scheme設定 + `GIDClientID`キー追加 |
 | Android `build.gradle.kts` | Google Sign-In用の設定（SHA-1等） |
 | `auth_repository.dart` | `signInWithGoogle()` メソッド追加 |
-| `auth_provider.dart` | `signInWithGoogle()` アクション追加 |
-| `login_screen.dart` | 「Googleでログイン」ボタン追加 + `_isGoogleLoading`状態追加。現在`AuthRepository`を直接使用しているパターンを維持し、`signInWithGoogle()`も同様に`AuthRepository`経由で呼ぶ |
-| `profile_setup_screen.dart` | `initState`でSupabase `user.userMetadata`から`full_name`を`_nameController`にプリフィル。`avatar_url`はURLなので`NetworkImage`で表示（`File?`との共存: URLがある場合はネットワーク画像表示、ユーザーが画像を選択したら`File`で上書き） |
-| `registration_provider.dart` | 変更なし（プリフィルは`profile_setup_screen`のinitStateで直接Supabase userMetadataを読むため） |
+| `auth_provider.dart` | 変更なし。`login_screen.dart`は既存パターン通り`AuthRepository`を直接使用するため |
+| `login_screen.dart` | 「Googleでログイン」ボタン追加 + `_isGoogleLoading`状態追加 + 認証中の相互排他ローディング。`AuthRepository`経由でGoogle認証を呼ぶ |
+| `profile_setup_screen.dart` | `initState`でSupabase `user.userMetadata`から`full_name`を`_nameController`にプリフィル。`avatar_url`はURLなので`CachedNetworkImageProvider`で表示（`File?`との共存: URLがある場合はネットワーク画像表示、ユーザーが画像を選択したら`File`で上書き） |
+| `registration_provider.dart` | `googleAvatarUrl`フィールド追加。Google アバターURLの DB 保存ロジック（ローカル画像未選択時のフォールバック） |
 
 ### app.dart について
 
