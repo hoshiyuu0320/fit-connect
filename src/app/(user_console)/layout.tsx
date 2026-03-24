@@ -11,6 +11,7 @@ import {
     FileText,
     BookOpen,
     Calendar,
+    Newspaper,
     Settings,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -47,6 +48,11 @@ const mainMenuItems = [
         label: 'スケジュール',
         href: '/schedule',
         icon: Calendar,
+    },
+    {
+        label: 'AIニュース',
+        href: '/ai-news',
+        icon: Newspaper,
     },
 ];
 
