@@ -5,14 +5,27 @@ import Image from 'next/image'
 import { format } from 'date-fns'
 import { WeightChart } from '@/components/clients/WeightChart'
 import { ImageModal } from '@/components/message/ImageModal'
-import type { WeightRecord } from '@/types/client'
+import type { WeightRecord, MealRecord, ExerciseRecord } from '@/types/client'
+import {
+  type BmrFormula,
+  type WeightPeriod,
+  calculateBmr,
+  calculateCalorieBalance,
+  predictWeight,
+  getPeriodDays,
+} from '@/utils/weightPrediction'
 
 interface WeightTabProps {
   weightRecords: WeightRecord[]
   targetWeight: number
+  mealRecords: MealRecord[]
+  exerciseRecords: ExerciseRecord[]
+  clientHeight: number
+  clientAge: number
+  clientGender: 'male' | 'female' | 'other'
+  bmrFormula: BmrFormula
+  onBmrFormulaChange: (formula: BmrFormula) => void
 }
-
-type WeightPeriod = '1W' | '1M' | '3M' | 'ALL'
 
 const WEIGHT_PERIOD_BUTTONS: { value: WeightPeriod; label: string }[] = [
   { value: '1W', label: '1W' },
@@ -21,7 +34,17 @@ const WEIGHT_PERIOD_BUTTONS: { value: WeightPeriod; label: string }[] = [
   { value: 'ALL', label: 'ALL' },
 ]
 
-export function WeightTab({ weightRecords, targetWeight }: WeightTabProps) {
+export function WeightTab({
+  weightRecords,
+  targetWeight,
+  mealRecords,
+  exerciseRecords,
+  clientHeight,
+  clientAge,
+  clientGender,
+  bmrFormula,
+  onBmrFormulaChange,
+}: WeightTabProps) {
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null)
   const [weightPeriod, setWeightPeriod] = useState<WeightPeriod>('1M')
 
@@ -58,6 +81,62 @@ export function WeightTab({ weightRecords, targetWeight }: WeightTabProps) {
     return { avg, max, min, range }
   }, [filteredRecords])
 
+  // --- Prediction computations ---
+
+  const filteredMealRecords = useMemo(() => {
+    const days = getPeriodDays(weightPeriod)
+    const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+    return mealRecords.filter((m) => new Date(m.recorded_at) >= startDate)
+  }, [mealRecords, weightPeriod])
+
+  const filteredExerciseRecords = useMemo(() => {
+    const days = getPeriodDays(weightPeriod)
+    const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+    return exerciseRecords.filter((e) => new Date(e.recorded_at) >= startDate)
+  }, [exerciseRecords, weightPeriod])
+
+  const currentWeight = weightRecords[0]?.weight ?? null
+
+  const bmr = useMemo(() => {
+    if (!currentWeight || !clientHeight || !clientAge || !clientGender) return null
+    return calculateBmr({
+      weight: currentWeight,
+      height: clientHeight,
+      age: clientAge,
+      gender: clientGender,
+      formula: bmrFormula,
+    })
+  }, [currentWeight, clientHeight, clientAge, clientGender, bmrFormula])
+
+  const calorieBalance = useMemo(() => {
+    if (bmr === null) return null
+    const periodDays = getPeriodDays(weightPeriod)
+    return calculateCalorieBalance({
+      mealRecords: filteredMealRecords,
+      exerciseRecords: filteredExerciseRecords,
+      bmr,
+      periodDays,
+    })
+  }, [bmr, filteredMealRecords, filteredExerciseRecords, weightPeriod])
+
+  const prediction = useMemo(() => {
+    if (currentWeight === null || calorieBalance === null || calorieBalance.dailyBalance === null) return null
+    return predictWeight({
+      currentWeight,
+      targetWeight,
+      dailyBalance: calorieBalance.dailyBalance,
+    })
+  }, [currentWeight, targetWeight, calorieBalance])
+
+  const predictionChartData = useMemo(() => {
+    if (!prediction) return undefined
+    return {
+      monthlyChange: prediction.monthlyChange,
+      predictedWeight: prediction.predictedWeight,
+      periodDays: getPeriodDays(weightPeriod),
+    }
+  }, [prediction, weightPeriod])
+
   if (weightRecords.length === 0) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -89,13 +168,26 @@ export function WeightTab({ weightRecords, targetWeight }: WeightTabProps) {
           </div>
         </div>
 
-        {/* 目標体重インジケーター */}
-        <div className="flex items-center gap-2 mb-2 text-xs text-[#94A3B8]">
-          <span className="inline-block w-4 border-t-2 border-dashed border-[#DC2626]" />
-          <span>目標: {targetWeight}kg</span>
+        {/* 凡例 */}
+        <div className="flex items-center gap-4 mb-2 text-xs text-[#94A3B8]">
+          <div className="flex items-center gap-2">
+            <span className="inline-block w-4 border-t-2 border-dashed border-[#DC2626]" />
+            <span>目標: {targetWeight}kg</span>
+          </div>
+          {prediction && (
+            <div className="flex items-center gap-2">
+              <span className="inline-block w-4 border-t-2 border-dashed border-[#14B8A6]" />
+              <span>予測トレンド</span>
+            </div>
+          )}
         </div>
 
-        <WeightChart weightRecords={filteredRecords} targetWeight={targetWeight} showPeriodFilter={false} />
+        <WeightChart
+          weightRecords={filteredRecords}
+          targetWeight={targetWeight}
+          showPeriodFilter={false}
+          prediction={predictionChartData}
+        />
       </div>
 
       {/* 期間統計 */}
@@ -127,6 +219,103 @@ export function WeightTab({ weightRecords, targetWeight }: WeightTabProps) {
             </p>
           </div>
         </div>
+      </div>
+
+      {/* 体重予測カード */}
+      <div className="bg-white border border-[#E2E8F0] rounded-md p-4">
+        <h3 className="text-sm font-semibold text-[#0F172A] mb-3">体重予測</h3>
+
+        {/* BMR セクション */}
+        {bmr !== null ? (
+          <div className="space-y-4">
+            <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-md p-3">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs text-[#94A3B8]">基礎代謝量 (BMR)</p>
+                <select
+                  value={bmrFormula}
+                  onChange={(e) => onBmrFormulaChange(e.target.value as BmrFormula)}
+                  className="text-xs text-[#64748B] bg-white border border-[#E2E8F0] rounded-md px-2 py-1"
+                >
+                  <option value="mifflin">ミフリン・セントジョール式</option>
+                  <option value="harris">ハリス・ベネディクト式</option>
+                </select>
+              </div>
+              <p className="text-xl font-bold text-[#0F172A]">
+                {Math.round(bmr)}
+                <span className="text-xs text-[#94A3B8] ml-1">kcal/日</span>
+              </p>
+            </div>
+
+            {/* カロリー収支 */}
+            {calorieBalance && calorieBalance.dailyBalance !== null && (
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-[#FFF7ED] border border-[#E2E8F0] rounded-md p-3">
+                  <p className="text-xs text-[#EA580C] mb-1">平均摂取</p>
+                  <p className="text-lg font-bold text-[#EA580C]">
+                    {calorieBalance.avgIntake !== null ? calorieBalance.avgIntake.toLocaleString() : '--'}
+                    <span className="text-[10px] ml-0.5">kcal</span>
+                  </p>
+                </div>
+                <div className="bg-[#F0FDF4] border border-[#E2E8F0] rounded-md p-3">
+                  <p className="text-xs text-[#16A34A] mb-1">平均消費</p>
+                  <p className="text-lg font-bold text-[#16A34A]">
+                    {calorieBalance.avgExerciseBurn !== null
+                      ? (calorieBalance.avgExerciseBurn + Math.round(bmr)).toLocaleString()
+                      : Math.round(bmr).toLocaleString()}
+                    <span className="text-[10px] ml-0.5">kcal</span>
+                  </p>
+                </div>
+                <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-md p-3">
+                  <p className="text-xs text-[#94A3B8] mb-1">1日の収支</p>
+                  <p className={`text-lg font-bold ${calorieBalance.dailyBalance > 0 ? 'text-[#DC2626]' : 'text-[#16A34A]'}`}>
+                    {calorieBalance.dailyBalance > 0 ? '+' : ''}
+                    {calorieBalance.dailyBalance.toLocaleString()}
+                    <span className="text-[10px] ml-0.5">kcal</span>
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* 予測結果 */}
+            {prediction && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-white border border-[#E2E8F0] rounded-md p-3">
+                  <p className="text-xs text-[#94A3B8] mb-1">1ヶ月後予測</p>
+                  <p className={`text-xl font-bold ${prediction.monthlyChange > 0 ? 'text-[#DC2626]' : 'text-[#16A34A]'}`}>
+                    {prediction.predictedWeight}
+                    <span className="text-xs ml-1">kg</span>
+                  </p>
+                  <p className={`text-xs mt-0.5 ${prediction.monthlyChange > 0 ? 'text-[#DC2626]' : 'text-[#16A34A]'}`}>
+                    {prediction.monthlyChange > 0 ? '+' : ''}
+                    {prediction.monthlyChange}kg/月
+                  </p>
+                </div>
+                <div className="bg-white border border-[#E2E8F0] rounded-md p-3">
+                  <p className="text-xs text-[#94A3B8] mb-1">目標到達</p>
+                  {prediction.monthsToGoal !== null ? (
+                    <p className="text-xl font-bold text-[#14B8A6]">
+                      {prediction.monthsToGoal}
+                      <span className="text-xs ml-1">ヶ月</span>
+                    </p>
+                  ) : (
+                    <p className="text-sm text-[#94A3B8]">
+                      現在のペースでは<br />目標に近づいていません
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* データ不足時メッセージ */}
+            {calorieBalance === null || calorieBalance.dailyBalance === null ? (
+              <p className="text-xs text-[#94A3B8]">
+                食事・運動記録が不足しています。記録を追加すると予測が表示されます。
+              </p>
+            ) : null}
+          </div>
+        ) : (
+          <p className="text-sm text-[#94A3B8]">クライアント情報が不足しています</p>
+        )}
       </div>
 
       {/* 最近の記録リスト（最新5件） */}

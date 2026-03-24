@@ -5,6 +5,12 @@ import { format } from 'date-fns'
 import { WeightChart } from '@/components/clients/WeightChart'
 import type { WeightRecord, MealRecord, ExerciseRecord, Ticket } from '@/types/client'
 import { MEAL_TYPE_OPTIONS, EXERCISE_TYPE_OPTIONS, PURPOSE_OPTIONS } from '@/types/client'
+import {
+  type BmrFormula,
+  calculateBmr,
+  calculateCalorieBalance,
+  predictWeight,
+} from '@/utils/weightPrediction'
 
 interface SummaryTabProps {
   weightRecords: WeightRecord[]
@@ -16,6 +22,9 @@ interface SummaryTabProps {
   purpose?: string
   goalDescription?: string | null
   goalDeadline?: string | null
+  clientAge?: number
+  clientGender?: 'male' | 'female' | 'other'
+  bmrFormula?: BmrFormula
 }
 
 const MEAL_EMOJI: Record<string, string> = {
@@ -35,6 +44,9 @@ export function SummaryTab({
   purpose,
   goalDescription,
   goalDeadline,
+  clientAge,
+  clientGender,
+  bmrFormula = 'mifflin',
 }: SummaryTabProps) {
   // 有効チケット
   const activeTickets = useMemo(() => {
@@ -71,6 +83,42 @@ export function SummaryTab({
       .sort((a, b) => b.date.getTime() - a.date.getTime())
       .slice(0, 6)
   }, [mealRecords, exerciseRecords])
+
+  // 予測データ（30日固定）
+  const predictionData = useMemo(() => {
+    const currentWeight = weightRecords[0]?.weight ?? null
+    if (!currentWeight || !height || !clientAge || !clientGender) return null
+
+    const bmr = calculateBmr({
+      weight: currentWeight,
+      height,
+      age: clientAge,
+      gender: clientGender,
+      formula: bmrFormula,
+    })
+
+    // 直近30日の食事・運動記録をフィルタ
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    const recentMeals = mealRecords.filter((m) => new Date(m.recorded_at) >= thirtyDaysAgo)
+    const recentExercises = exerciseRecords.filter((e) => new Date(e.recorded_at) >= thirtyDaysAgo)
+
+    const balance = calculateCalorieBalance({
+      mealRecords: recentMeals,
+      exerciseRecords: recentExercises,
+      bmr,
+      periodDays: 30,
+    })
+
+    if (balance.dailyBalance === null) return { bmr, prediction: null, currentWeight }
+
+    const prediction = predictWeight({
+      currentWeight,
+      targetWeight,
+      dailyBalance: balance.dailyBalance,
+    })
+
+    return { bmr, prediction, currentWeight }
+  }, [weightRecords, height, clientAge, clientGender, bmrFormula, mealRecords, exerciseRecords, targetWeight])
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -154,6 +202,45 @@ export function SummaryTab({
               </div>
             )}
           </div>
+        </div>
+
+        {/* 体重予測カード（コンパクト） */}
+        <div className="bg-white border border-[#E2E8F0] rounded-md p-4">
+          <h3 className="text-sm font-semibold text-[#0F172A] mb-3">体重予測</h3>
+          {predictionData ? (
+            <div className="space-y-2.5">
+              <div className="flex justify-between py-1">
+                <span className="text-xs text-[#94A3B8]">基礎代謝 (BMR)</span>
+                <span className="text-sm font-medium text-[#0F172A]">
+                  {Math.round(predictionData.bmr).toLocaleString()}kcal/日
+                </span>
+              </div>
+              {predictionData.prediction && (
+                <>
+                  <div className="flex justify-between border-t border-[#F1F5F9] py-1 pt-2.5">
+                    <span className="text-xs text-[#94A3B8]">1ヶ月後予測</span>
+                    <span className={`text-sm font-bold ${predictionData.prediction.monthlyChange > 0 ? 'text-[#DC2626]' : 'text-[#16A34A]'}`}>
+                      {predictionData.prediction.predictedWeight}kg
+                      <span className="text-[10px] ml-1">
+                        ({predictionData.prediction.monthlyChange > 0 ? '+' : ''}
+                        {predictionData.prediction.monthlyChange}kg)
+                      </span>
+                    </span>
+                  </div>
+                  {predictionData.prediction.monthsToGoal !== null && (
+                    <div className="flex justify-between border-t border-[#F1F5F9] py-1 pt-2.5">
+                      <span className="text-xs text-[#94A3B8]">目標到達</span>
+                      <span className="text-sm font-bold text-[#14B8A6]">
+                        {predictionData.prediction.monthsToGoal}ヶ月
+                      </span>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-[#94A3B8]">クライアント情報が不足しています</p>
+          )}
         </div>
 
         {/* チケットステータス */}

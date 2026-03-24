@@ -4,8 +4,9 @@ import { useMemo, useState } from 'react'
 import { format, subMonths, startOfWeek, startOfMonth } from 'date-fns'
 import {
   ResponsiveContainer,
-  LineChart,
+  ComposedChart,
   Line,
+  Area,
   CartesianGrid,
   XAxis,
   YAxis,
@@ -18,11 +19,16 @@ interface WeightChartProps {
   weightRecords: WeightRecord[]
   targetWeight: number
   showPeriodFilter?: boolean
+  prediction?: {
+    monthlyChange: number
+    predictedWeight: number
+    periodDays: number
+  }
 }
 
 type PeriodFilter = 'week' | 'month' | '3months' | 'all'
 
-export function WeightChart({ weightRecords, targetWeight, showPeriodFilter = true }: WeightChartProps) {
+export function WeightChart({ weightRecords, targetWeight, showPeriodFilter = true, prediction }: WeightChartProps) {
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all')
 
   // フィルター後のデータを計算
@@ -67,6 +73,60 @@ export function WeightChart({ weightRecords, targetWeight, showPeriodFilter = tr
       }))
   }, [weightRecords, periodFilter, showPeriodFilter])
 
+  // 予測データを生成
+  const predictionData = useMemo(() => {
+    if (!prediction || filteredData.length === 0) return []
+
+    const lastPoint = filteredData[filteredData.length - 1]
+    const lastWeight = lastPoint.weight
+    const lastDate = lastPoint.date.getTime()
+    const dailyChange = prediction.monthlyChange / 30
+
+    // 7つの未来データポイントを生成
+    const points = []
+    const totalFutureDays = Math.min(prediction.periodDays, 90)
+    const interval = Math.max(Math.floor(totalFutureDays / 6), 1)
+
+    for (let i = 0; i <= 6; i++) {
+      const daysAhead = i === 0 ? 0 : Math.min(i * interval, totalFutureDays)
+      const futureDate = new Date(lastDate + daysAhead * 24 * 60 * 60 * 1000)
+      const futureWeight = Math.round((lastWeight + dailyChange * daysAhead) * 10) / 10
+
+      points.push({
+        date: futureDate,
+        predictionWeight: futureWeight,
+      })
+    }
+
+    return points
+  }, [prediction, filteredData])
+
+  // 実データと予測データをマージ
+  const chartData = useMemo(() => {
+    if (predictionData.length === 0) return filteredData
+
+    // 実データ
+    const actual = filteredData.map((d) => ({
+      date: d.date,
+      weight: d.weight,
+      predictionWeight: undefined as number | undefined,
+    }))
+
+    // 最後の実データポイントに予測の開始点を追加
+    if (actual.length > 0) {
+      actual[actual.length - 1].predictionWeight = actual[actual.length - 1].weight
+    }
+
+    // 予測データ（最初のポイントは実データと重複するのでスキップ）
+    const future = predictionData.slice(1).map((d) => ({
+      date: d.date,
+      weight: undefined as number | undefined,
+      predictionWeight: d.predictionWeight,
+    }))
+
+    return [...actual, ...future]
+  }, [filteredData, predictionData])
+
   // Y軸のドメインを計算
   const yAxisDomain = useMemo(() => {
     if (filteredData.length === 0) return [0, 100]
@@ -78,6 +138,20 @@ export function WeightChart({ weightRecords, targetWeight, showPeriodFilter = tr
     return [Math.floor(dataMin - 2), Math.ceil(dataMax + 2)]
   }, [filteredData])
 
+  // 予測を含むY軸ドメイン
+  const adjustedYDomain = useMemo(() => {
+    if (predictionData.length === 0) return yAxisDomain
+
+    const allWeights = [
+      ...filteredData.map((d) => d.weight),
+      ...predictionData.map((d) => d.predictionWeight),
+    ]
+    const dataMin = Math.min(...allWeights)
+    const dataMax = Math.max(...allWeights)
+
+    return [Math.floor(dataMin - 2), Math.ceil(dataMax + 2)]
+  }, [filteredData, predictionData, yAxisDomain])
+
   // 期間フィルターボタン
   const periodButtons: { label: string; value: PeriodFilter }[] = [
     { label: '今週', value: 'week' },
@@ -85,6 +159,8 @@ export function WeightChart({ weightRecords, targetWeight, showPeriodFilter = tr
     { label: '3ヶ月', value: '3months' },
     { label: '全期間', value: 'all' },
   ]
+
+  const activeDomain = prediction ? adjustedYDomain : yAxisDomain
 
   return (
     <div className="space-y-4">
@@ -116,7 +192,7 @@ export function WeightChart({ weightRecords, targetWeight, showPeriodFilter = tr
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={filteredData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+          <ComposedChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis
               dataKey="date"
@@ -125,14 +201,21 @@ export function WeightChart({ weightRecords, targetWeight, showPeriodFilter = tr
               style={{ fontSize: '12px' }}
             />
             <YAxis
-              domain={yAxisDomain}
+              domain={activeDomain}
               stroke="#9ca3af"
               style={{ fontSize: '12px' }}
               label={{ value: '体重 (kg)', angle: -90, position: 'insideLeft', style: { fontSize: '12px' } }}
             />
             <Tooltip
-              labelFormatter={(label) => format(label as Date, 'yyyy年M月d日')}
-              formatter={(value) => [`${value} kg`, '体重']}
+              labelFormatter={(label) => {
+                if (label instanceof Date) return format(label, 'yyyy年M月d日')
+                return String(label)
+              }}
+              formatter={(value, name) => {
+                if (value === undefined || value === null) return ['-', '']
+                if (name === 'predictionWeight') return [`${value} kg`, '予測']
+                return [`${value} kg`, '体重']
+              }}
               contentStyle={{
                 backgroundColor: 'white',
                 border: '1px solid #e5e7eb',
@@ -148,6 +231,30 @@ export function WeightChart({ weightRecords, targetWeight, showPeriodFilter = tr
                 label={{ value: '目標', position: 'insideTopRight', fill: '#ef4444', fontSize: 12 }}
               />
             )}
+            {/* 予測エリア（塗り） */}
+            {prediction && (
+              <Area
+                type="monotone"
+                dataKey="predictionWeight"
+                fill="#14B8A6"
+                fillOpacity={0.1}
+                stroke="none"
+                connectNulls={false}
+              />
+            )}
+            {/* 予測ライン（破線） */}
+            {prediction && (
+              <Line
+                type="monotone"
+                dataKey="predictionWeight"
+                stroke="#14B8A6"
+                strokeWidth={2}
+                strokeDasharray="6 4"
+                dot={false}
+                connectNulls={false}
+              />
+            )}
+            {/* 実データライン */}
             <Line
               type="monotone"
               dataKey="weight"
@@ -155,8 +262,9 @@ export function WeightChart({ weightRecords, targetWeight, showPeriodFilter = tr
               strokeWidth={2}
               dot={{ fill: '#3b82f6', r: 4 }}
               activeDot={{ r: 6 }}
+              connectNulls={false}
             />
-          </LineChart>
+          </ComposedChart>
         </ResponsiveContainer>
       )}
     </div>

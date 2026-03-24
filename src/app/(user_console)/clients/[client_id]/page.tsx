@@ -13,6 +13,7 @@ import { getClientAssignments } from '@/lib/supabase/getClientAssignments'
 import { supabase } from '@/lib/supabase'
 import type { ClientDetail, WeightRecord, MealRecord, ExerciseRecord, Ticket, ClientNote } from '@/types/client'
 import type { WorkoutAssignment } from '@/types/workout'
+import type { BmrFormula } from '@/utils/weightPrediction'
 import { ClientHeader } from './_components/ClientHeader'
 import { SummaryTab } from './_components/SummaryTab'
 import { MealTab } from './_components/MealTab'
@@ -52,6 +53,7 @@ export default function ClientDetailPage() {
   const [trainerId, setTrainerId] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [mode, setMode] = useState<'info' | 'session'>('info')
+  const [bmrFormula, setBmrFormula] = useState<BmrFormula>('mifflin')
   const [prevMode, setPrevMode] = useState<'info' | 'session'>('info')
 
   useEffect(() => {
@@ -275,6 +277,9 @@ export default function ClientDetailPage() {
                 purpose={client.purpose}
                 goalDescription={client.goal_description}
                 goalDeadline={client.goal_deadline}
+                clientAge={client.age}
+                clientGender={client.gender}
+                bmrFormula={bmrFormula}
               />
             </TabsContent>
 
@@ -286,6 +291,13 @@ export default function ClientDetailPage() {
               <WeightTab
                 weightRecords={weightRecords}
                 targetWeight={client.target_weight || 0}
+                mealRecords={mealRecords}
+                exerciseRecords={exerciseRecords}
+                clientHeight={client.height}
+                clientAge={client.age}
+                clientGender={client.gender}
+                bmrFormula={bmrFormula}
+                onBmrFormulaChange={setBmrFormula}
               />
             </TabsContent>
 
