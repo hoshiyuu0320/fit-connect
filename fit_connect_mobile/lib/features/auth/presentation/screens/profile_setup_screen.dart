@@ -7,6 +7,8 @@ import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
 import 'package:fit_connect_mobile/features/auth/providers/registration_provider.dart';
 import 'package:fit_connect_mobile/services/storage_service.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:fit_connect_mobile/services/supabase_service.dart';
 
 /// プロフィール設定画面
 ///
@@ -25,7 +27,35 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   final _ageController = TextEditingController();
   String _selectedGender = 'other'; // デフォルト: その他
   File? _selectedImage;
+  String? _googleAvatarUrl; // Google認証時のアバターURL
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _prefillFromGoogleMetadata();
+  }
+
+  /// Google認証時のuserMetadataから名前・画像URLをプリフィル
+  void _prefillFromGoogleMetadata() {
+    final user = SupabaseService.client.auth.currentUser;
+    if (user == null) return;
+
+    final metadata = user.userMetadata;
+    if (metadata == null) return;
+
+    // 名前のプリフィル
+    final fullName = metadata['full_name'] as String?;
+    if (fullName != null && fullName.isNotEmpty) {
+      _nameController.text = fullName;
+    }
+
+    // Google アバターURLの取得
+    final avatarUrl = metadata['avatar_url'] as String?;
+    if (avatarUrl != null && avatarUrl.isNotEmpty) {
+      _googleAvatarUrl = avatarUrl;
+    }
+  }
 
   @override
   void dispose() {
@@ -58,6 +88,11 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       // プロフィール画像をセット（選択されている場合）
       if (_selectedImage != null) {
         registrationNotifier.setProfileImage(_selectedImage);
+      }
+
+      // Google アバターURLを保存（ユーザーが画像を選択していない場合のみ）
+      if (_selectedImage == null && _googleAvatarUrl != null) {
+        registrationNotifier.setGoogleAvatarUrl(_googleAvatarUrl);
       }
 
       // クライアント名を状態にセット
@@ -187,9 +222,17 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                                               image: FileImage(_selectedImage!),
                                               fit: BoxFit.cover,
                                             )
-                                          : null,
+                                          : _googleAvatarUrl != null
+                                              ? DecorationImage(
+                                                  image:
+                                                      CachedNetworkImageProvider(
+                                                          _googleAvatarUrl!),
+                                                  fit: BoxFit.cover,
+                                                )
+                                              : null,
                                     ),
-                                    child: _selectedImage == null
+                                    child: _selectedImage == null &&
+                                            _googleAvatarUrl == null
                                         ? const Icon(
                                             LucideIcons.user,
                                             size: 40,
