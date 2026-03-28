@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/features/auth/data/auth_repository.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -21,6 +22,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
   bool _isEmailSent = false;
   final _authRepository = AuthRepository();
 
@@ -81,6 +83,36 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         setState(() {
           _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _handleGoogleLogin() async {
+    setState(() {
+      _isGoogleLoading = true;
+    });
+
+    try {
+      final response = await _authRepository.signInWithGoogle();
+      if (response == null) {
+        // ユーザーがキャンセル — 何もしない
+        return;
+      }
+      // 認証成功 → _authSubscription が検知してナビゲーション
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Google認証エラー: ${e.toString()}'),
+            backgroundColor: AppColors.rose800,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isGoogleLoading = false;
         });
       }
     }
@@ -242,7 +274,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                           // Login Button
                           ElevatedButton(
-                            onPressed: _isLoading ? null : _handleLogin,
+                            onPressed: (_isLoading || _isGoogleLoading) ? null : _handleLogin,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary600,
                               foregroundColor: Colors.white,
@@ -269,6 +301,75 @@ class _LoginScreenState extends State<LoginScreen> {
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
                                     ),
+                                  ),
+                          ),
+                          const SizedBox(height: 24),
+
+                          // 区切り線「または」
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Divider(color: colors.border),
+                              ),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 16),
+                                child: Text(
+                                  'または',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: colors.textHint,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Divider(color: colors.border),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
+
+                          // Googleでログインボタン
+                          OutlinedButton(
+                            onPressed:
+                                (_isGoogleLoading || _isLoading) ? null : _handleGoogleLogin,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: colors.textPrimary,
+                              side: BorderSide(color: colors.border),
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: _isGoogleLoading
+                                ? SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      color: colors.textSecondary,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      SvgPicture.asset(
+                                        'assets/images/google_logo.svg',
+                                        width: 20,
+                                        height: 20,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Text(
+                                        'Googleでログイン',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w500,
+                                          color: colors.textPrimary,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                           ),
                         ],
