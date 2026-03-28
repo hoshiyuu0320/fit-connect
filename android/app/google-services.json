@@ -20,7 +20,15 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "59445891214-82pfrrjbq0vbc285navh87nabmn7l1hk.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.fitconnect.fitConnectMobile"
+              }
+            }
+          ]
         }
       }
     }

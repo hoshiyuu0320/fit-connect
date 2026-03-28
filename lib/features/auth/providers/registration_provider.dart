@@ -14,6 +14,7 @@ class RegistrationState {
   final int? clientAge;
   final String? clientGender; // 'male' / 'female' / 'other'
   final File? profileImageFile;
+  final String? googleAvatarUrl;
   final bool isRegistrationComplete;
 
   const RegistrationState({
@@ -24,6 +25,7 @@ class RegistrationState {
     this.clientAge,
     this.clientGender,
     this.profileImageFile,
+    this.googleAvatarUrl,
     this.isRegistrationComplete = false,
   });
 
@@ -35,6 +37,7 @@ class RegistrationState {
     int? clientAge,
     String? clientGender,
     File? Function()? profileImageFile,
+    String? Function()? googleAvatarUrl,
     bool? isRegistrationComplete,
   }) {
     return RegistrationState(
@@ -46,6 +49,8 @@ class RegistrationState {
       clientGender: clientGender ?? this.clientGender,
       profileImageFile:
           profileImageFile != null ? profileImageFile() : this.profileImageFile,
+      googleAvatarUrl:
+          googleAvatarUrl != null ? googleAvatarUrl() : this.googleAvatarUrl,
       isRegistrationComplete:
           isRegistrationComplete ?? this.isRegistrationComplete,
     );
@@ -97,6 +102,11 @@ class RegistrationNotifier extends _$RegistrationNotifier {
     state = state.copyWith(profileImageFile: () => file);
   }
 
+  /// Google アバターURLをセット
+  void setGoogleAvatarUrl(String? url) {
+    state = state.copyWith(googleAvatarUrl: () => url);
+  }
+
   /// 登録完了フラグをセット
   void setRegistrationComplete(bool value) {
     state = state.copyWith(isRegistrationComplete: value);
@@ -129,6 +139,7 @@ class RegistrationNotifier extends _$RegistrationNotifier {
         clientAge: state.clientAge,
         clientGender: state.clientGender,
         profileImageFile: state.profileImageFile,
+        googleAvatarUrl: state.googleAvatarUrl,
       );
       return true;
     } catch (e) {
@@ -172,6 +183,13 @@ class RegistrationNotifier extends _$RegistrationNotifier {
             .from('clients')
             .update({'profile_image_url': imageUrl}).eq('client_id', userId);
       }
+    }
+
+    // Google アバターURLの保存（ローカル画像が未選択の場合のみ）
+    if (state.profileImageFile == null && state.googleAvatarUrl != null) {
+      await SupabaseService.client
+          .from('clients')
+          .update({'profile_image_url': state.googleAvatarUrl}).eq('client_id', userId);
     }
 
     // 注意: ここでcurrentClientProviderをinvalidateしない
