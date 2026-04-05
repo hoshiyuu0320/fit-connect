@@ -13,7 +13,7 @@ class WeightRecord {
   @DateTimeConverter()
   @JsonKey(name: 'recorded_at')
   final DateTime recordedAt;
-  final String source; // 'message' | 'manual'
+  final String source; // 'message' | 'healthkit'
   @JsonKey(name: 'message_id')
   final String? messageId;
   @DateTimeConverter()

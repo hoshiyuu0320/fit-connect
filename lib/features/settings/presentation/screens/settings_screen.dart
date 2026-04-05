@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
+import 'package:fit_connect_mobile/features/health/presentation/screens/health_settings_screen.dart';
+import 'package:fit_connect_mobile/features/health/providers/health_provider.dart';
 import 'package:fit_connect_mobile/core/providers/theme_provider.dart';
 import 'package:fit_connect_mobile/features/auth/data/client_repository.dart';
 import 'package:fit_connect_mobile/features/auth/providers/auth_provider.dart';
@@ -38,6 +40,11 @@ class SettingsScreen extends ConsumerWidget {
 
               // 外観セクション
               _buildAppearanceSection(context, ref),
+
+              const SizedBox(height: 16),
+
+              // ヘルスケア連携セクション
+              _buildHealthSection(context, ref),
 
               const SizedBox(height: 16),
 
@@ -369,6 +376,80 @@ class SettingsScreen extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildHealthSection(BuildContext context, WidgetRef ref) {
+    final colors = AppColors.of(context);
+    final healthAvailable = ref.watch(healthAvailableProvider);
+
+    return healthAvailable.when(
+      data: (available) {
+        if (!available) return const SizedBox.shrink();
+
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: colors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: colors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Text(
+                  'ヘルスケア',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: colors.textSecondary,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    LucideIcons.heartPulse,
+                    size: 20,
+                    color: AppColors.primary500,
+                  ),
+                ),
+                title: Text(
+                  'ヘルスケア連携',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: colors.textPrimary,
+                  ),
+                ),
+                trailing: Icon(
+                  LucideIcons.chevronRight,
+                  size: 20,
+                  color: colors.textHint,
+                ),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const HealthSettingsScreen(),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
     );
   }
 

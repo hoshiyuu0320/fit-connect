@@ -435,6 +435,16 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
     );
   }
 
+  IconData _getSourceIcon(String source) {
+    switch (source) {
+      case 'healthkit':
+        return LucideIcons.heartPulse;
+      case 'message':
+      default:
+        return LucideIcons.messageCircle;
+    }
+  }
+
   Widget _buildRecordsList(AsyncValue<List<WeightRecord>> recordsAsync) {
     final colors = AppColors.of(context);
     return recordsAsync.when(
@@ -469,10 +479,10 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
                           color: AppColors.primary50,
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Icon(
-                          LucideIcons.scale,
+                        child: Icon(
+                          _getSourceIcon(record.source),
                           size: 20,
-                          color: AppColors.primary600,
+                          color: AppColors.primary600.withValues(alpha: 0.5),
                         ),
                       ),
                       const SizedBox(width: 12),

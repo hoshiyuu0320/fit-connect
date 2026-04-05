@@ -61,6 +61,29 @@ class WeightRepository {
     return WeightRecord.fromJson(response);
   }
 
+  /// 体重記録を作成（source指定あり、HealthKit連携用）
+  Future<WeightRecord> createWeightRecordWithSource({
+    required String clientId,
+    required double weight,
+    required DateTime recordedAt,
+    required String source,
+    String? notes,
+  }) async {
+    final response = await _supabase
+        .from('weight_records')
+        .insert({
+          'client_id': clientId,
+          'weight': weight,
+          'notes': notes,
+          'recorded_at': recordedAt.toIso8601String(),
+          'source': source,
+        })
+        .select()
+        .single();
+
+    return WeightRecord.fromJson(response);
+  }
+
   /// 体重記録を更新
   Future<WeightRecord> updateWeightRecord({
     required String id,

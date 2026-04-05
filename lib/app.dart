@@ -12,6 +12,7 @@ import 'package:fit_connect_mobile/features/auth/presentation/screens/registrati
 import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
 import 'package:fit_connect_mobile/features/auth/providers/registration_provider.dart';
 import 'package:fit_connect_mobile/services/notification_service.dart';
+import 'package:fit_connect_mobile/features/health/providers/health_sync_provider.dart';
 
 class MyApp extends ConsumerWidget {
   const MyApp({super.key});
@@ -70,6 +71,7 @@ class _AuthLoadingScreen extends ConsumerStatefulWidget {
 
 class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen> {
   bool _tokenSaved = false;
+  bool _healthSynced = false;
 
   void _saveTokenIfNeeded(String clientId) {
     if (_tokenSaved) return;
@@ -96,6 +98,18 @@ class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen> {
     }
   }
 
+  void _syncHealthDataIfNeeded() {
+    if (_healthSynced) return;
+    _healthSynced = true;
+
+    // 非同期で実行、UIをブロックしない（ConsumerState の ref を使用）
+    ref.read(healthSyncProvider.notifier).syncOnLaunch().then((_) {
+      debugPrint('[App] HealthKit同期完了');
+    }).catchError((e) {
+      debugPrint('[App] HealthKit同期エラー: $e');
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final clientAsync = ref.watch(currentClientProvider);
@@ -106,6 +120,7 @@ class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen> {
         if (client != null) {
           // FCMトークン保存（MainScreen表示前）
           _saveTokenIfNeeded(client.clientId);
+          _syncHealthDataIfNeeded();
           // クライアントデータあり → MainScreenへ
           return const MainScreen();
         } else if (registrationState.isRegistrationComplete) {

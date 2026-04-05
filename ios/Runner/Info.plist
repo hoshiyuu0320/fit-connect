@@ -52,6 +52,8 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSHealthShareUsageDescription</key>
+	<string>体重データをアプリに取り込むためにヘルスケアへのアクセスが必要です</string>
 	<key>NSCameraUsageDescription</key>
 	<string>食事や運動の記録に写真を撮影するためにカメラを使用します</string>
 	<key>NSPhotoLibraryUsageDescription</key>
