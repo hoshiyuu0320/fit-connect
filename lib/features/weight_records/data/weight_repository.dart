@@ -52,8 +52,31 @@ class WeightRepository {
           'client_id': clientId,
           'weight': weight,
           'notes': notes,
-          'recorded_at': (recordedAt ?? DateTime.now()).toIso8601String(),
+          'recorded_at': (recordedAt ?? DateTime.now()).toUtc().toIso8601String(),
           'source': 'manual',
+        })
+        .select()
+        .single();
+
+    return WeightRecord.fromJson(response);
+  }
+
+  /// 体重記録を作成（source指定あり、HealthKit連携用）
+  Future<WeightRecord> createWeightRecordWithSource({
+    required String clientId,
+    required double weight,
+    required DateTime recordedAt,
+    required String source,
+    String? notes,
+  }) async {
+    final response = await _supabase
+        .from('weight_records')
+        .insert({
+          'client_id': clientId,
+          'weight': weight,
+          'notes': notes,
+          'recorded_at': recordedAt.toUtc().toIso8601String(),
+          'source': source,
         })
         .select()
         .single();
@@ -72,7 +95,7 @@ class WeightRepository {
     if (weight != null) updateData['weight'] = weight;
     if (notes != null) updateData['notes'] = notes;
     if (recordedAt != null) {
-      updateData['recorded_at'] = recordedAt.toIso8601String();
+      updateData['recorded_at'] = recordedAt.toUtc().toIso8601String();
     }
 
     final response = await _supabase

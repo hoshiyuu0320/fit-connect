@@ -45,6 +45,9 @@ dependencies:
   # 環境変数
   flutter_dotenv: ^5.2.1
 
+  # ヘルスケア連携
+  health: ^11.0.0
+
   # その他
   intl: ^0.19.0
   url_launcher: ^6.3.1
@@ -61,6 +64,9 @@ dev_dependencies:
 
   # Linter
   flutter_lints: ^5.0.0
+
+  # Mocking
+  mockito: ^5.4.4
 
   # Code Generation
   build_runner: ^2.4.13
