@@ -52,7 +52,7 @@ class WeightRepository {
           'client_id': clientId,
           'weight': weight,
           'notes': notes,
-          'recorded_at': (recordedAt ?? DateTime.now()).toIso8601String(),
+          'recorded_at': (recordedAt ?? DateTime.now()).toUtc().toIso8601String(),
           'source': 'manual',
         })
         .select()
@@ -75,7 +75,7 @@ class WeightRepository {
           'client_id': clientId,
           'weight': weight,
           'notes': notes,
-          'recorded_at': recordedAt.toIso8601String(),
+          'recorded_at': recordedAt.toUtc().toIso8601String(),
           'source': source,
         })
         .select()
@@ -95,7 +95,7 @@ class WeightRepository {
     if (weight != null) updateData['weight'] = weight;
     if (notes != null) updateData['notes'] = notes;
     if (recordedAt != null) {
-      updateData['recorded_at'] = recordedAt.toIso8601String();
+      updateData['recorded_at'] = recordedAt.toUtc().toIso8601String();
     }
 
     final response = await _supabase

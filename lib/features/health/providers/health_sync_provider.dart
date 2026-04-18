@@ -2,10 +2,10 @@ import 'package:flutter/foundation.dart';
 import 'package:health/health.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:fit_connect_mobile/features/health/providers/health_provider.dart';
-import 'package:fit_connect_mobile/features/health/data/health_repository.dart';
 import 'package:fit_connect_mobile/features/weight_records/data/weight_repository.dart';
 import 'package:fit_connect_mobile/features/weight_records/models/weight_record_model.dart';
 import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
+import 'package:fit_connect_mobile/features/weight_records/providers/weight_records_provider.dart';
 
 part 'health_sync_provider.g.dart';
 
@@ -81,30 +81,40 @@ class HealthSync extends _$HealthSync {
 
   Future<void> _sync() async {
     try {
-      // 設定確認
       final settingsAsync = ref.read(healthSettingsProvider);
       final settings = settingsAsync.valueOrNull;
       if (settings == null ||
           !settings.isEnabled ||
           !settings.isWeightEnabled) {
+        debugPrint(
+          '[HealthSync] Skipped: settings not enabled '
+          '(settings=${settings != null}, isEnabled=${settings?.isEnabled}, isWeightEnabled=${settings?.isWeightEnabled})',
+        );
         return;
       }
 
-      // 権限確認
       final repo = ref.read(healthRepositoryProvider);
       final hasPermission = await repo.hasPermission();
-      if (!hasPermission) return;
+      if (!hasPermission) {
+        debugPrint('[HealthSync] Skipped: no HealthKit permission');
+        return;
+      }
 
-      // クライアントID取得
       final clientId = ref.read(currentClientIdProvider);
-      if (clientId == null) return;
+      if (clientId == null) {
+        debugPrint('[HealthSync] Skipped: no clientId');
+        return;
+      }
 
-      // 同期開始日を決定
-      final startDate =
-          settings.lastSyncAt ?? DateTime.now().subtract(const Duration(days: 30));
+      final startDate = settings.lastSyncAt ??
+          DateTime.now().subtract(const Duration(days: 30));
+      debugPrint('[HealthSync] Fetching HealthKit data from $startDate');
 
-      // HealthKitからデータ取得
       final healthData = await repo.getWeightData(startDate: startDate);
+      debugPrint(
+        '[HealthSync] Fetched ${healthData.length} data points from HealthKit',
+      );
+
       if (healthData.isEmpty) {
         await ref
             .read(healthSettingsProvider.notifier)
@@ -112,39 +122,53 @@ class HealthSync extends _$HealthSync {
         return;
       }
 
-      // 既存の体重記録を取得
       final weightRepo = WeightRepository();
       final existingRecords =
           await weightRepo.getWeightRecords(clientId: clientId);
 
-      // 重複排除フィルタ
       final filterResult = filterHealthData(
         healthDataDates: healthData.map((dp) => dp.dateFrom).toList(),
         existingRecords: existingRecords,
       );
+      debugPrint(
+        '[HealthSync] ${filterResult.importIndices.length} points to import after filtering',
+      );
 
-      // フィルタ結果に基づいてインポート
+      int inserted = 0;
       for (final index in filterResult.importIndices) {
         final dataPoint = healthData[index];
         final weightValue =
             (dataPoint.value as NumericHealthValue).numericValue.toDouble();
 
-        await weightRepo.createWeightRecordWithSource(
-          clientId: clientId,
-          weight: weightValue,
-          recordedAt: dataPoint.dateFrom,
-          source: 'healthkit',
-        );
+        try {
+          await weightRepo.createWeightRecordWithSource(
+            clientId: clientId,
+            weight: weightValue,
+            recordedAt: dataPoint.dateFrom,
+            source: 'healthkit',
+          );
+          inserted++;
+        } catch (e) {
+          debugPrint('[HealthSync] Insert failed at index $index: $e');
+        }
       }
+      debugPrint('[HealthSync] Inserted $inserted rows');
 
-      // 同期日時を更新
       await ref
           .read(healthSettingsProvider.notifier)
           .updateLastSyncAt(DateTime.now());
 
-      debugPrint('[HealthSync] Sync completed. Imported from HealthKit.');
-    } catch (e) {
-      debugPrint('[HealthSync] Sync failed: $e');
+      if (inserted > 0) {
+        ref.invalidate(weightRecordsProvider);
+        ref.invalidate(latestWeightRecordProvider);
+        ref.invalidate(weightStatsProvider);
+      }
+
+      debugPrint(
+        '[HealthSync] Sync completed. Imported $inserted records from HealthKit.',
+      );
+    } catch (e, st) {
+      debugPrint('[HealthSync] Sync failed: $e\n$st');
     }
   }
 }

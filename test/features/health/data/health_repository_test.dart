@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
@@ -88,7 +89,25 @@ void main() {
         expect(result, true);
       });
 
-      test('returns false when hasPermissions returns null', () async {
+      test('returns true on iOS when hasPermissions returns null (Apple privacy policy)',
+          () async {
+        debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+        addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
+        when(mockHealth.hasPermissions(
+          any,
+          permissions: anyNamed('permissions'),
+        )).thenAnswer((_) async => null);
+
+        final result = await repository.hasPermission();
+
+        expect(result, true);
+      });
+
+      test('returns false on Android when hasPermissions returns null', () async {
+        debugDefaultTargetPlatformOverride = TargetPlatform.android;
+        addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
         when(mockHealth.hasPermissions(
           any,
           permissions: anyNamed('permissions'),

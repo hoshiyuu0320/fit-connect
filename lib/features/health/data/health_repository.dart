@@ -43,6 +43,9 @@ class HealthRepository {
         types,
         permissions: permissions,
       );
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        return granted ?? true;
+      }
       return granted ?? false;
     } catch (e) {
       return false;
@@ -54,7 +57,9 @@ class HealthRepository {
     required DateTime startDate,
     DateTime? endDate,
   }) async {
-    final end = endDate ?? DateTime.now();
+    // Apple Health等は当日分レコードに end-of-day の timestamp を付けることがあるため、
+    // 明日の 00:00 まで範囲を広げて取りこぼしを防ぐ（日付でdedupされるので二重インポートの心配はない）
+    final end = endDate ?? DateTime.now().add(const Duration(days: 1));
 
     try {
       final dataPoints = await _health.getHealthDataFromTypes(
