@@ -51,6 +51,12 @@ class AppColors {
   static const Color orange500 = Color(0xFFF97316);
   static const Color orange600 = Color(0xFFEA580C);
   static const Color orange800 = Color(0xFF9A3412);
+  static const Color warning = orange500;
+
+  // Error / Red
+  static const Color red500 = Color(0xFFEF4444);
+  static const Color red100 = Color(0xFFFEE2E2);
+  static const Color error = red500;
 
   // Purple
   static const Color purple50 = Color(0xFFFAF5FF);
@@ -92,6 +98,10 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     required this.accentPurple,
     required this.accentOrange,
     required this.calendarEmpty,
+    required this.sleepStageDeep,
+    required this.sleepStageLight,
+    required this.sleepStageRem,
+    required this.sleepStageAwake,
   });
 
   final Color background;
@@ -110,6 +120,12 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
   final Color accentOrange;
   final Color calendarEmpty;
 
+  // Sleep stage colors
+  final Color sleepStageDeep;
+  final Color sleepStageLight;
+  final Color sleepStageRem;
+  final Color sleepStageAwake;
+
   static const light = AppColorsExtension(
     background: Color(0xFFFAFAFA),
     surface: Colors.white,
@@ -124,6 +140,10 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     accentPurple: Color(0xFFFAF5FF), // purple50
     accentOrange: Color(0xFFFFF7ED), // orange50
     calendarEmpty: Color(0xFFE2E8F0), // slate200
+    sleepStageDeep: Color(0xFF4338CA), // indigo-700
+    sleepStageLight: Color(0xFF818CF8), // indigo-400
+    sleepStageRem: Color(0xFF60A5FA), // primary-400
+    sleepStageAwake: Color(0xFFE2E8F0), // slate-200
   );
 
   static const dark = AppColorsExtension(
@@ -140,6 +160,10 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     accentPurple: Color(0xFF3B0764), // purple950
     accentOrange: Color(0xFF431407), // orange950
     calendarEmpty: Color(0xFF334155), // slate700
+    sleepStageDeep: Color(0xFF6366F1),
+    sleepStageLight: Color(0xFF818CF8),
+    sleepStageRem: Color(0xFF60A5FA),
+    sleepStageAwake: Color(0xFF475569),
   );
 
   static AppColorsExtension of(BuildContext context) =>
@@ -160,6 +184,10 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     Color? accentPurple,
     Color? accentOrange,
     Color? calendarEmpty,
+    Color? sleepStageDeep,
+    Color? sleepStageLight,
+    Color? sleepStageRem,
+    Color? sleepStageAwake,
   }) {
     return AppColorsExtension(
       background: background ?? this.background,
@@ -175,6 +203,10 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
       accentPurple: accentPurple ?? this.accentPurple,
       accentOrange: accentOrange ?? this.accentOrange,
       calendarEmpty: calendarEmpty ?? this.calendarEmpty,
+      sleepStageDeep: sleepStageDeep ?? this.sleepStageDeep,
+      sleepStageLight: sleepStageLight ?? this.sleepStageLight,
+      sleepStageRem: sleepStageRem ?? this.sleepStageRem,
+      sleepStageAwake: sleepStageAwake ?? this.sleepStageAwake,
     );
   }
 
@@ -196,6 +228,13 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
       accentPurple: Color.lerp(accentPurple, other.accentPurple, t)!,
       accentOrange: Color.lerp(accentOrange, other.accentOrange, t)!,
       calendarEmpty: Color.lerp(calendarEmpty, other.calendarEmpty, t)!,
+      sleepStageDeep:
+          Color.lerp(sleepStageDeep, other.sleepStageDeep, t)!,
+      sleepStageLight:
+          Color.lerp(sleepStageLight, other.sleepStageLight, t)!,
+      sleepStageRem: Color.lerp(sleepStageRem, other.sleepStageRem, t)!,
+      sleepStageAwake:
+          Color.lerp(sleepStageAwake, other.sleepStageAwake, t)!,
     );
   }
 }

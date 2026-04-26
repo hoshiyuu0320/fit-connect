@@ -6,7 +6,7 @@ part of 'health_sync_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$healthSyncHash() => r'320f6a220fda1669fffe095906528fdd5069a4b6';
+String _$healthSyncHash() => r'38f0a8ab3d19374fdf6f28eb92bc5466fe25af0c';
 
 /// See also [HealthSync].
 @ProviderFor(HealthSync)

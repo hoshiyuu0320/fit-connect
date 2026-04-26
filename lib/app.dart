@@ -13,6 +13,8 @@ import 'package:fit_connect_mobile/features/auth/providers/current_user_provider
 import 'package:fit_connect_mobile/features/auth/providers/registration_provider.dart';
 import 'package:fit_connect_mobile/services/notification_service.dart';
 import 'package:fit_connect_mobile/features/health/providers/health_sync_provider.dart';
+import 'package:fit_connect_mobile/features/sleep_records/providers/morning_dialog_provider.dart';
+import 'package:fit_connect_mobile/features/sleep_records/presentation/widgets/morning_wakeup_dialog.dart';
 
 class MyApp extends ConsumerWidget {
   const MyApp({super.key});
@@ -69,9 +71,46 @@ class _AuthLoadingScreen extends ConsumerStatefulWidget {
   ConsumerState<_AuthLoadingScreen> createState() => _AuthLoadingScreenState();
 }
 
-class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen> {
+class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen>
+    with WidgetsBindingObserver {
   bool _tokenSaved = false;
   bool _healthSynced = false;
+  bool _isMorningDialogOpen = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // resumed 時はSleep同期完了を待たずに即時再判定（同期は別途バックグラウンド継続）
+      ref.invalidate(morningDialogProvider);
+      _maybeShowMorningDialog();
+    }
+  }
+
+  Future<void> _maybeShowMorningDialog() async {
+    if (_isMorningDialogOpen) return;
+    if (!mounted) return;
+    final shouldShow = await ref.read(morningDialogProvider.future);
+    if (!shouldShow || !mounted || _isMorningDialogOpen) return;
+
+    _isMorningDialogOpen = true;
+    try {
+      await showMorningWakeupDialog(context);
+    } finally {
+      _isMorningDialogOpen = false;
+    }
+  }
 
   void _saveTokenIfNeeded(String clientId) {
     if (_tokenSaved) return;
@@ -102,11 +141,15 @@ class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen> {
     if (_healthSynced) return;
     _healthSynced = true;
 
-    // 非同期で実行、UIをブロックしない（ConsumerState の ref を使用）
+    // 同期完了後に朝ダイアログ判定をトリガ（spec §5-C レースコンディション対策）
     ref.read(healthSyncProvider.notifier).syncOnLaunch().then((_) {
       debugPrint('[App] HealthKit同期完了');
+      ref.invalidate(morningDialogProvider);
+      _maybeShowMorningDialog();
     }).catchError((e) {
       debugPrint('[App] HealthKit同期エラー: $e');
+      // 同期失敗でも DB上の手動評価のみで判定可能なのでダイアログトライ
+      _maybeShowMorningDialog();
     });
   }
 

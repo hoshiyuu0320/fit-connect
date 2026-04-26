@@ -41,6 +41,11 @@ class HealthSettingsScreen extends ConsumerWidget {
 
                 const SizedBox(height: 16),
 
+                // Notification Section
+                _buildNotificationSection(context, ref, settings, colors),
+
+                const SizedBox(height: 16),
+
                 // Sync Section
                 _buildSyncSection(
                   context,
@@ -116,7 +121,7 @@ class HealthSettingsScreen extends ConsumerWidget {
           ),
         ),
         subtitle: Text(
-          'Apple Health からデータを取得',
+          'お使いの端末のヘルスケア（iOS: ヘルスケア / Android: Health Connect）からデータを取得',
           style: TextStyle(
             fontSize: 13,
             color: colors.textSecondary,
@@ -211,59 +216,162 @@ class HealthSettingsScreen extends ConsumerWidget {
                 : null,
           ),
 
-          // Sleep row (Coming Soon)
-          Opacity(
-            opacity: 0.5,
-            child: ListTile(
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.indigo50,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  LucideIcons.moon,
-                  size: 20,
-                  color: AppColors.indigo600,
-                ),
+          // Sleep row (active)
+          SwitchListTile(
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            secondary: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.indigo50,
+                borderRadius: BorderRadius.circular(8),
               ),
-              title: Text(
-                '睡眠',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: colors.textPrimary,
-                ),
+              child: const Icon(
+                LucideIcons.moon,
+                size: 20,
+                color: AppColors.indigo600,
               ),
-              subtitle: Text(
-                '準備中',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: colors.textSecondary,
-                ),
-              ),
-              trailing: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: colors.surfaceDim,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: colors.border),
-                ),
-                child: Text(
-                  'Coming Soon',
+            ),
+            title: Row(
+              children: [
+                Text(
+                  '睡眠',
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 16,
                     fontWeight: FontWeight.w500,
-                    color: colors.textHint,
+                    color: colors.textPrimary,
                   ),
                 ),
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.indigo50,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'NEW',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.indigo600,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            subtitle: Text(
+              'HealthKit/Health Connect から睡眠データを取得',
+              style: TextStyle(fontSize: 13, color: colors.textSecondary),
+            ),
+            value: settings.isSleepEnabled,
+            onChanged: settings.isEnabled
+                ? (value) async {
+                    final granted = await ref
+                        .read(healthSettingsProvider.notifier)
+                        .toggleSleepEnabled(value);
+                    if (!granted && value && context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('設定アプリから睡眠データの権限を許可してください'),
+                          backgroundColor: AppColors.orange600,
+                        ),
+                      );
+                    }
+                  }
+                : null,
+          ),
+
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNotificationSection(
+    BuildContext context,
+    WidgetRef ref,
+    HealthSettingsState settings,
+    AppColorsExtension colors,
+  ) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Text(
+              '通知',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: colors.textSecondary,
+                letterSpacing: 0.5,
               ),
             ),
           ),
-
+          SwitchListTile(
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            secondary: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.orange100,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                LucideIcons.sun,
+                size: 20,
+                color: AppColors.warning,
+              ),
+            ),
+            title: Row(
+              children: [
+                Text(
+                  '朝の目覚めダイアログ',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: colors.textPrimary,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.indigo50,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'NEW',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.indigo600,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            subtitle: Text(
+              '起床後（4:00-12:00）にアプリを開いた時、目覚めの記録を促します',
+              style: TextStyle(fontSize: 13, color: colors.textSecondary),
+            ),
+            value: settings.isMorningDialogEnabled,
+            onChanged: (value) async {
+              await ref
+                  .read(healthSettingsProvider.notifier)
+                  .toggleMorningDialogEnabled(value);
+            },
+          ),
           const SizedBox(height: 8),
         ],
       ),
@@ -431,7 +539,7 @@ class _PreviewHealthSettings extends StatelessWidget {
                 ),
               ),
               subtitle: Text(
-                'Apple Health からデータを取得',
+                'お使いの端末のヘルスケア（iOS: ヘルスケア / Android: Health Connect）からデータを取得',
                 style: TextStyle(
                   fontSize: 13,
                   color: colors.textSecondary,
