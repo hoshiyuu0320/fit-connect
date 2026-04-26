@@ -22,6 +22,8 @@ Future<bool> healthAvailable(HealthAvailableRef ref) async {
 class HealthSettings extends _$HealthSettings {
   static const _keyEnabled = 'health_enabled';
   static const _keyWeightEnabled = 'health_weight_enabled';
+  static const _keySleepEnabled = 'health_sleep_enabled';
+  static const _keyMorningDialogEnabled = 'health_morning_dialog_enabled';
   static const _keyLastSync = 'health_last_sync';
 
   @override
@@ -30,6 +32,8 @@ class HealthSettings extends _$HealthSettings {
     return HealthSettingsState(
       isEnabled: prefs.getBool(_keyEnabled) ?? false,
       isWeightEnabled: prefs.getBool(_keyWeightEnabled) ?? false,
+      isSleepEnabled: prefs.getBool(_keySleepEnabled) ?? false,
+      isMorningDialogEnabled: prefs.getBool(_keyMorningDialogEnabled) ?? true,
       lastSyncAt: _parseDateTime(prefs.getString(_keyLastSync)),
     );
   }
@@ -37,7 +41,6 @@ class HealthSettings extends _$HealthSettings {
   /// マスター連携のON/OFF切替
   Future<bool> toggleEnabled(bool value) async {
     if (value) {
-      // ON時: 権限リクエスト
       final repo = ref.read(healthRepositoryProvider);
       final granted = await repo.requestPermission();
       if (!granted) return false;
@@ -47,6 +50,7 @@ class HealthSettings extends _$HealthSettings {
     await prefs.setBool(_keyEnabled, value);
     if (!value) {
       await prefs.setBool(_keyWeightEnabled, false);
+      await prefs.setBool(_keySleepEnabled, false);
     }
     ref.invalidateSelf();
     return true;
@@ -56,6 +60,26 @@ class HealthSettings extends _$HealthSettings {
   Future<void> toggleWeightEnabled(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyWeightEnabled, value);
+    ref.invalidateSelf();
+  }
+
+  /// 睡眠データ連携のON/OFF切替（ON時にSLEEP権限をリクエスト）
+  Future<bool> toggleSleepEnabled(bool value) async {
+    if (value) {
+      final repo = ref.read(healthRepositoryProvider);
+      final granted = await repo.requestPermission(includeSleep: true);
+      if (!granted) return false;
+    }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keySleepEnabled, value);
+    ref.invalidateSelf();
+    return true;
+  }
+
+  /// 朝の目覚めダイアログのON/OFF切替
+  Future<void> toggleMorningDialogEnabled(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyMorningDialogEnabled, value);
     ref.invalidateSelf();
   }
 
@@ -76,11 +100,31 @@ class HealthSettings extends _$HealthSettings {
 class HealthSettingsState {
   final bool isEnabled;
   final bool isWeightEnabled;
+  final bool isSleepEnabled;
+  final bool isMorningDialogEnabled;
   final DateTime? lastSyncAt;
 
   const HealthSettingsState({
     required this.isEnabled,
     required this.isWeightEnabled,
+    required this.isSleepEnabled,
+    required this.isMorningDialogEnabled,
     this.lastSyncAt,
   });
+
+  HealthSettingsState copyWith({
+    bool? isEnabled,
+    bool? isWeightEnabled,
+    bool? isSleepEnabled,
+    bool? isMorningDialogEnabled,
+    DateTime? lastSyncAt,
+  }) =>
+      HealthSettingsState(
+        isEnabled: isEnabled ?? this.isEnabled,
+        isWeightEnabled: isWeightEnabled ?? this.isWeightEnabled,
+        isSleepEnabled: isSleepEnabled ?? this.isSleepEnabled,
+        isMorningDialogEnabled:
+            isMorningDialogEnabled ?? this.isMorningDialogEnabled,
+        lastSyncAt: lastSyncAt ?? this.lastSyncAt,
+      );
 }

@@ -44,7 +44,7 @@ final healthAvailableProvider = AutoDisposeFutureProvider<bool>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef HealthAvailableRef = AutoDisposeFutureProviderRef<bool>;
-String _$healthSettingsHash() => r'1677342922d0f608d2f66815d93b538105927a13';
+String _$healthSettingsHash() => r'37fcc0efa51db9e7131bcfd6f78d19250cdeb5d5';
 
 /// ヘルスケア連携設定の状態管理
 ///

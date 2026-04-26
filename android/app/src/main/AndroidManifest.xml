@@ -1,5 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.health.READ_BODY_MEASUREMENTS"/>
+    <uses-permission android:name="android.permission.health.READ_SLEEP"/>
     <application
         android:label="fit_connect_mobile"
         android:name="${applicationName}"

@@ -17,10 +17,20 @@ class HealthRepository {
     }
   }
 
-  /// 体重データの読み取り権限をリクエスト
-  Future<bool> requestPermission() async {
-    final types = [HealthDataType.WEIGHT];
-    final permissions = [HealthDataAccess.READ];
+  /// 体重（+任意で睡眠）データの読み取り権限をリクエスト
+  Future<bool> requestPermission({bool includeSleep = false}) async {
+    final types = <HealthDataType>[HealthDataType.WEIGHT];
+    if (includeSleep) {
+      types.addAll([
+        HealthDataType.SLEEP_ASLEEP,
+        HealthDataType.SLEEP_DEEP,
+        HealthDataType.SLEEP_LIGHT,
+        HealthDataType.SLEEP_REM,
+        HealthDataType.SLEEP_AWAKE,
+        HealthDataType.SLEEP_IN_BED,
+      ]);
+    }
+    final permissions = List.filled(types.length, HealthDataAccess.READ);
 
     try {
       final granted = await _health.requestAuthorization(
@@ -35,10 +45,19 @@ class HealthRepository {
   }
 
   /// 権限があるかチェック
-  Future<bool> hasPermission() async {
+  Future<bool> hasPermission({bool forSleep = false}) async {
     try {
-      final types = [HealthDataType.WEIGHT];
-      final permissions = [HealthDataAccess.READ];
+      final types = forSleep
+          ? <HealthDataType>[
+              HealthDataType.SLEEP_ASLEEP,
+              HealthDataType.SLEEP_DEEP,
+              HealthDataType.SLEEP_LIGHT,
+              HealthDataType.SLEEP_REM,
+              HealthDataType.SLEEP_AWAKE,
+              HealthDataType.SLEEP_IN_BED,
+            ]
+          : <HealthDataType>[HealthDataType.WEIGHT];
+      final permissions = List.filled(types.length, HealthDataAccess.READ);
       final granted = await _health.hasPermissions(
         types,
         permissions: permissions,
@@ -86,4 +105,125 @@ class HealthRepository {
       return [];
     }
   }
+
+  /// 起床日ごとにメインセッション1件の集計を返す。
+  /// 返却: `Map<recordedDate(YYYY-MM-DD JST), SleepSessionData>`
+  Future<Map<String, SleepSessionData>> getSleepData({
+    required DateTime startDate,
+    DateTime? endDate,
+  }) async {
+    final end = endDate ?? DateTime.now().add(const Duration(days: 1));
+
+    const sleepTypes = [
+      HealthDataType.SLEEP_ASLEEP,
+      HealthDataType.SLEEP_DEEP,
+      HealthDataType.SLEEP_LIGHT,
+      HealthDataType.SLEEP_REM,
+      HealthDataType.SLEEP_AWAKE,
+      HealthDataType.SLEEP_IN_BED,
+    ];
+
+    try {
+      final data = await _health.getHealthDataFromTypes(
+        types: sleepTypes,
+        startTime: startDate,
+        endTime: end,
+      );
+
+      // 起床日キー（wake側=dateTo の JST 日付）でグループ化
+      final byDate = <String, List<HealthDataPoint>>{};
+      for (final p in data) {
+        final jst = p.dateTo.toUtc().add(const Duration(hours: 9));
+        final key = '${jst.year.toString().padLeft(4, '0')}-'
+            '${jst.month.toString().padLeft(2, '0')}-'
+            '${jst.day.toString().padLeft(2, '0')}';
+        byDate.putIfAbsent(key, () => []).add(p);
+      }
+
+      final result = <String, SleepSessionData>{};
+      byDate.forEach((date, points) {
+        final session = _aggregateMainSession(points);
+        if (session != null) result[date] = session;
+      });
+      return result;
+    } catch (e) {
+      debugPrint('[HealthRepository] Failed to get sleep data: $e');
+      return {};
+    }
+  }
+
+  /// メインセッション集計。
+  /// その日の全 sleep セグメントを dateFrom 順にソートし、
+  /// 最早開始〜最遅終了 を主セッションとみなし、ステージ別合計分を算出
+  SleepSessionData? _aggregateMainSession(List<HealthDataPoint> points) {
+    if (points.isEmpty) return null;
+
+    points.sort((a, b) => a.dateFrom.compareTo(b.dateFrom));
+    final bed = points.first.dateFrom;
+    final wake = points.map((p) => p.dateTo).reduce((a, b) => a.isAfter(b) ? a : b);
+
+    var deep = 0, light = 0, rem = 0, awake = 0, asleep = 0;
+    for (final p in points) {
+      final mins = p.dateTo.difference(p.dateFrom).inMinutes;
+      switch (p.type) {
+        case HealthDataType.SLEEP_DEEP:
+          deep += mins;
+          break;
+        case HealthDataType.SLEEP_LIGHT:
+          light += mins;
+          break;
+        case HealthDataType.SLEEP_REM:
+          rem += mins;
+          break;
+        case HealthDataType.SLEEP_AWAKE:
+          awake += mins;
+          break;
+        case HealthDataType.SLEEP_ASLEEP:
+          asleep += mins;
+          break;
+        case HealthDataType.SLEEP_IN_BED:
+          // 時間計算には含めない（在床時間は総睡眠時間とは別概念）
+          break;
+        default:
+          break;
+      }
+    }
+
+    // ステージ明細あり → 合算、無ければ ASLEEP に寄せる
+    final total = (deep + light + rem) > 0
+        ? deep + light + rem + awake
+        : asleep + awake;
+    if (total <= 0) return null;
+
+    return SleepSessionData(
+      bedTime: bed,
+      wakeTime: wake,
+      totalSleepMinutes: total,
+      deepMinutes: deep,
+      lightMinutes: light,
+      remMinutes: rem,
+      awakeMinutes: awake,
+    );
+  }
+}
+
+/// HealthKit/Health Connect から集計された1日分の睡眠セッション
+class SleepSessionData {
+  final DateTime bedTime;
+  final DateTime wakeTime;
+  final int totalSleepMinutes;
+  final int deepMinutes;
+  final int lightMinutes;
+  final int remMinutes;
+  final int awakeMinutes;
+
+  const SleepSessionData({
+    required this.bedTime,
+    required this.wakeTime,
+    required this.totalSleepMinutes,
+    required this.deepMinutes,
+    required this.lightMinutes,
+    required this.remMinutes,
+    required this.awakeMinutes,
+  });
 }
