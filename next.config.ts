@@ -8,6 +8,10 @@ const nextConfig: NextConfig = {
         hostname: "viribpvnpgtgtmeulcmx.supabase.co",
         pathname: "/storage/**",
       },
+      {
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com",
+      },
     ],
   },
 };
