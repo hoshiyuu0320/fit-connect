@@ -1,0 +1,180 @@
+<h2>ヘルスケア連携設定画面</h2>
+<p class="subtitle">設定画面から遷移する専用画面のモックアップです。2つのレイアウト案を比較してください。</p>
+
+<div class="split">
+  <div class="mockup" data-choice="a" onclick="toggleSelect(this)" style="cursor:pointer">
+    <div class="mockup-header">A) カード型レイアウト</div>
+    <div class="mockup-body" style="background:#1a1a2e;color:#e0e0e0;padding:0;font-family:system-ui">
+      <!-- Status Bar -->
+      <div style="display:flex;justify-content:space-between;padding:8px 16px;font-size:11px;color:#888">
+        <span>9:41</span>
+        <span>📶 🔋</span>
+      </div>
+      <!-- App Bar -->
+      <div style="display:flex;align-items:center;padding:8px 16px 16px">
+        <span style="font-size:20px;margin-right:12px;color:#7c8aff">←</span>
+        <span style="font-size:18px;font-weight:600">ヘルスケア連携</span>
+      </div>
+
+      <!-- Connection Status Card -->
+      <div style="margin:0 16px 16px;background:#242444;border-radius:12px;padding:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:40px;height:40px;background:linear-gradient(135deg,#ff6b6b,#ff8e8e);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px">❤️</div>
+            <div>
+              <div style="font-weight:600;font-size:15px">Apple Health</div>
+              <div style="font-size:12px;color:#4ade80">● 連携中</div>
+            </div>
+          </div>
+          <!-- Toggle -->
+          <div style="width:48px;height:28px;background:#4ade80;border-radius:14px;position:relative">
+            <div style="width:24px;height:24px;background:white;border-radius:12px;position:absolute;right:2px;top:2px"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Data Sources Section -->
+      <div style="padding:0 16px;margin-bottom:12px">
+        <div style="font-size:13px;color:#888;font-weight:500;margin-bottom:8px">データソース</div>
+      </div>
+
+      <div style="margin:0 16px 12px;background:#242444;border-radius:12px;padding:14px 16px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:18px">⚖️</span>
+            <div>
+              <div style="font-size:14px;font-weight:500">体重</div>
+              <div style="font-size:11px;color:#888">HealthKitから読み取り</div>
+            </div>
+          </div>
+          <div style="width:48px;height:28px;background:#4ade80;border-radius:14px;position:relative">
+            <div style="width:24px;height:24px;background:white;border-radius:12px;position:absolute;right:2px;top:2px"></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin:0 16px 12px;background:#242444;border-radius:12px;padding:14px 16px;opacity:0.5">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:18px">😴</span>
+            <div>
+              <div style="font-size:14px;font-weight:500">睡眠</div>
+              <div style="font-size:11px;color:#888">今後追加予定</div>
+            </div>
+          </div>
+          <span style="font-size:12px;color:#666;background:#333;padding:2px 8px;border-radius:4px">Coming Soon</span>
+        </div>
+      </div>
+
+      <!-- Sync Section -->
+      <div style="padding:0 16px;margin-top:8px;margin-bottom:8px">
+        <div style="font-size:13px;color:#888;font-weight:500;margin-bottom:8px">同期</div>
+      </div>
+
+      <div style="margin:0 16px 12px;background:#242444;border-radius:12px;padding:14px 16px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:14px;font-weight:500">最終同期</div>
+            <div style="font-size:12px;color:#888">2026年4月5日 09:30</div>
+          </div>
+          <button style="background:#7c8aff;color:white;border:none;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:500">今すぐ同期</button>
+        </div>
+      </div>
+
+      <!-- Note -->
+      <div style="margin:16px;padding:12px;background:#242444;border-radius:8px;border-left:3px solid #7c8aff">
+        <div style="font-size:12px;color:#aaa;line-height:1.5">💡 手動で入力した体重記録がある日は、HealthKitからの取り込みをスキップします。</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup" data-choice="b" onclick="toggleSelect(this)" style="cursor:pointer">
+    <div class="mockup-header">B) リスト型レイアウト</div>
+    <div class="mockup-body" style="background:#1a1a2e;color:#e0e0e0;padding:0;font-family:system-ui">
+      <!-- Status Bar -->
+      <div style="display:flex;justify-content:space-between;padding:8px 16px;font-size:11px;color:#888">
+        <span>9:41</span>
+        <span>📶 🔋</span>
+      </div>
+      <!-- App Bar -->
+      <div style="display:flex;align-items:center;padding:8px 16px 16px">
+        <span style="font-size:20px;margin-right:12px;color:#7c8aff">←</span>
+        <span style="font-size:18px;font-weight:600">ヘルスケア連携</span>
+      </div>
+
+      <!-- Master Toggle -->
+      <div style="margin:0 16px 20px;background:#242444;border-radius:12px;padding:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-weight:600;font-size:16px">ヘルスケア連携</div>
+            <div style="font-size:12px;color:#888;margin-top:2px">Apple Health からデータを取得</div>
+          </div>
+          <div style="width:48px;height:28px;background:#4ade80;border-radius:14px;position:relative">
+            <div style="width:24px;height:24px;background:white;border-radius:12px;position:absolute;right:2px;top:2px"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Simple List -->
+      <div style="margin:0 16px 16px;background:#242444;border-radius:12px;overflow:hidden">
+        <div style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #333">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:16px">⚖️</span>
+            <span style="font-size:14px">体重データ</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:12px;color:#4ade80">有効</span>
+            <span style="color:#555">›</span>
+          </div>
+        </div>
+        <div style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;opacity:0.5">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:16px">😴</span>
+            <span style="font-size:14px">睡眠データ</span>
+          </div>
+          <span style="font-size:11px;color:#666;background:#333;padding:2px 8px;border-radius:4px">準備中</span>
+        </div>
+      </div>
+
+      <!-- Sync Info -->
+      <div style="margin:0 16px 12px;background:#242444;border-radius:12px;overflow:hidden">
+        <div style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #333">
+          <span style="font-size:14px">最終同期</span>
+          <span style="font-size:13px;color:#888">4月5日 09:30</span>
+        </div>
+        <div style="padding:14px 16px;display:flex;align-items:center;justify-content:center">
+          <button style="background:transparent;color:#7c8aff;border:1px solid #7c8aff;padding:10px 32px;border-radius:8px;font-size:14px;font-weight:500;width:100%">今すぐ同期</button>
+        </div>
+      </div>
+
+      <!-- Footer Note -->
+      <div style="margin:20px 16px;text-align:center">
+        <div style="font-size:12px;color:#666;line-height:1.6">
+          手動入力の体重記録がある日は<br>HealthKitからの取り込みをスキップします
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:24px">
+  <h3>比較ポイント</h3>
+  <div class="pros-cons">
+    <div class="pros">
+      <h4>A) カード型</h4>
+      <ul>
+        <li>接続ステータスが視覚的に目立つ</li>
+        <li>各データソースが独立したカードで分かりやすい</li>
+        <li>情報密度が高い</li>
+      </ul>
+    </div>
+    <div class="cons">
+      <h4>B) リスト型</h4>
+      <ul>
+        <li>iOSの設定画面に近い見慣れたUI</li>
+        <li>データソース追加時にリスト行を増やすだけで拡張簡単</li>
+        <li>すっきりしたレイアウト</li>
+      </ul>
+    </div>
+  </div>
+</div>

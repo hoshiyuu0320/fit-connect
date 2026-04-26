@@ -1,0 +1,114 @@
+<h2>体重記録リストのソース表示（修正版）</h2>
+<p class="subtitle">ソースは2種類のみ：メッセージ（手動入力）と HealthKit</p>
+
+<div class="split">
+  <div class="mockup" data-choice="a" onclick="toggleSelect(this)" style="cursor:pointer">
+    <div class="mockup-header">A) 右側にソースバッジ</div>
+    <div class="mockup-body" style="background:#1a1a2e;color:#e0e0e0;padding:0;font-family:system-ui">
+      <div style="padding:12px 16px;font-size:14px;color:#888;font-weight:500">最近の記録</div>
+
+      <!-- Record 1: message (manual) -->
+      <div style="margin:0 16px 8px;background:#242444;border-radius:10px;padding:14px 16px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:18px;font-weight:700">65.2 <span style="font-size:13px;font-weight:400;color:#888">kg</span></div>
+            <div style="font-size:12px;color:#888;margin-top:2px">4月5日（土）09:00</div>
+          </div>
+          <span style="font-size:11px;color:#7c8aff;background:#7c8aff20;padding:3px 8px;border-radius:4px">💬 メッセージ</span>
+        </div>
+      </div>
+
+      <!-- Record 2: healthkit -->
+      <div style="margin:0 16px 8px;background:#242444;border-radius:10px;padding:14px 16px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:18px;font-weight:700">65.4 <span style="font-size:13px;font-weight:400;color:#888">kg</span></div>
+            <div style="font-size:12px;color:#888;margin-top:2px">4月4日（金）07:30</div>
+          </div>
+          <span style="font-size:11px;color:#ff6b6b;background:#ff6b6b20;padding:3px 8px;border-radius:4px">❤️ Health</span>
+        </div>
+      </div>
+
+      <!-- Record 3: healthkit -->
+      <div style="margin:0 16px 8px;background:#242444;border-radius:10px;padding:14px 16px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:18px;font-weight:700">65.8 <span style="font-size:13px;font-weight:400;color:#888">kg</span></div>
+            <div style="font-size:12px;color:#888;margin-top:2px">4月3日（木）08:15</div>
+          </div>
+          <span style="font-size:11px;color:#ff6b6b;background:#ff6b6b20;padding:3px 8px;border-radius:4px">❤️ Health</span>
+        </div>
+      </div>
+
+      <!-- Record 4: message -->
+      <div style="margin:0 16px 8px;background:#242444;border-radius:10px;padding:14px 16px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:18px;font-weight:700">66.0 <span style="font-size:13px;font-weight:400;color:#888">kg</span></div>
+            <div style="font-size:12px;color:#888;margin-top:2px">4月2日（水）10:00</div>
+          </div>
+          <span style="font-size:11px;color:#7c8aff;background:#7c8aff20;padding:3px 8px;border-radius:4px">💬 メッセージ</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup" data-choice="b" onclick="toggleSelect(this)" style="cursor:pointer">
+    <div class="mockup-header">B) 小さなアイコンのみ（控えめ）</div>
+    <div class="mockup-body" style="background:#1a1a2e;color:#e0e0e0;padding:0;font-family:system-ui">
+      <div style="padding:12px 16px;font-size:14px;color:#888;font-weight:500">最近の記録</div>
+
+      <!-- Record 1: message -->
+      <div style="margin:0 16px 8px;background:#242444;border-radius:10px;padding:14px 16px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:14px;opacity:0.5">💬</span>
+          <div>
+            <div style="font-size:18px;font-weight:700">65.2 <span style="font-size:13px;font-weight:400;color:#888">kg</span></div>
+            <div style="font-size:12px;color:#888;margin-top:2px">4月5日（土）09:00</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Record 2: healthkit -->
+      <div style="margin:0 16px 8px;background:#242444;border-radius:10px;padding:14px 16px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:14px;opacity:0.5">❤️</span>
+          <div>
+            <div style="font-size:18px;font-weight:700">65.4 <span style="font-size:13px;font-weight:400;color:#888">kg</span></div>
+            <div style="font-size:12px;color:#888;margin-top:2px">4月4日（金）07:30</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Record 3: healthkit -->
+      <div style="margin:0 16px 8px;background:#242444;border-radius:10px;padding:14px 16px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:14px;opacity:0.5">❤️</span>
+          <div>
+            <div style="font-size:18px;font-weight:700">65.8 <span style="font-size:13px;font-weight:400;color:#888">kg</span></div>
+            <div style="font-size:12px;color:#888;margin-top:2px">4月3日（木）08:15</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Record 4: message -->
+      <div style="margin:0 16px 8px;background:#242444;border-radius:10px;padding:14px 16px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:14px;opacity:0.5">💬</span>
+          <div>
+            <div style="font-size:18px;font-weight:700">66.0 <span style="font-size:13px;font-weight:400;color:#888">kg</span></div>
+            <div style="font-size:12px;color:#888;margin-top:2px">4月2日（水）10:00</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:20px">
+  <h3>ソース種別（修正後）</h3>
+  <div style="display:flex;gap:24px;padding:12px 0">
+    <div><span style="background:#7c8aff20;color:#7c8aff;padding:3px 8px;border-radius:4px;font-size:13px">💬 メッセージ</span> — ユーザーがチャットで報告した体重（= 手動入力）</div>
+    <div><span style="background:#ff6b6b20;color:#ff6b6b;padding:3px 8px;border-radius:4px;font-size:13px">❤️ Health</span> — HealthKit / Health Connect から自動取得</div>
+  </div>
+</div>

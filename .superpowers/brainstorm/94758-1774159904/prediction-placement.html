@@ -1,0 +1,119 @@
+<h2>体重予測機能の配置場所</h2>
+<p class="subtitle">WeightTab内のどこに予測セクションを置くか</p>
+
+<p style="margin-bottom: 24px; color: #666; font-size: 14px;">
+  現在のWeightTab構成: グラフ → 期間統計（平均/最高/最低/変動幅）→ 最近の記録リスト
+</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>期間統計カードを拡張</h3>
+      <p>既存の期間統計カード（平均・最高・最低・変動幅）に予測セクションを追加。1つのカード内で統計と予測をまとめる。</p>
+      <div class="mockup" style="margin-top: 12px;">
+        <div class="mockup-header">WeightTab レイアウト</div>
+        <div class="mockup-body" style="padding: 16px; font-size: 13px;">
+          <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 12px; margin-bottom: 8px;">
+            📊 体重推移グラフ [1W][1M][3M][ALL]
+          </div>
+          <div style="background: #fefce8; border: 2px solid #fbbf24; border-radius: 6px; padding: 12px; margin-bottom: 8px;">
+            <div style="margin-bottom: 8px;"><strong>期間統計</strong></div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+              <div style="text-align:center;"><span style="color:#999;font-size:11px;">平均</span><br><strong>62.3kg</strong></div>
+              <div style="text-align:center;"><span style="color:#999;font-size:11px;">最高</span><br><strong>63.5kg</strong></div>
+              <div style="text-align:center;"><span style="color:#999;font-size:11px;">最低</span><br><strong>61.0kg</strong></div>
+              <div style="text-align:center;"><span style="color:#999;font-size:11px;">変動幅</span><br><strong>2.5kg</strong></div>
+            </div>
+            <div style="border-top: 1px dashed #e5e7eb; padding-top: 12px;">
+              <div style="margin-bottom: 4px;"><strong>📈 体重予測</strong></div>
+              <div style="color: #666; font-size: 12px;">基礎代謝: 1,450kcal/日</div>
+              <div style="color: #666; font-size: 12px;">平均摂取: 1,800kcal/日 | 平均消費: 300kcal/日</div>
+              <div style="color: #14b8a6; font-weight: bold; margin-top: 4px;">このペースだと1ヶ月で約 -1.2kg</div>
+            </div>
+          </div>
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px;">
+            📋 最近の記録リスト
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>独立した予測カード</h3>
+      <p>期間統計と記録リストの間に、独立した予測専用カードを追加。BMR・カロリー収支・予測を明確に分離。</p>
+      <div class="mockup" style="margin-top: 12px;">
+        <div class="mockup-header">WeightTab レイアウト</div>
+        <div class="mockup-body" style="padding: 16px; font-size: 13px;">
+          <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 12px; margin-bottom: 8px;">
+            📊 体重推移グラフ [1W][1M][3M][ALL]
+          </div>
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px; margin-bottom: 8px;">
+            <strong>期間統計</strong>（平均 / 最高 / 最低 / 変動幅）
+          </div>
+          <div style="background: #fefce8; border: 2px solid #fbbf24; border-radius: 6px; padding: 12px; margin-bottom: 8px;">
+            <div style="margin-bottom: 8px;"><strong>🔮 体重予測</strong></div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+              <div>
+                <span style="color:#999;font-size:11px;">基礎代謝 (BMR)</span><br>
+                <strong>1,450 kcal/日</strong>
+              </div>
+              <div>
+                <span style="color:#999;font-size:11px;">1日の平均カロリー収支</span><br>
+                <strong style="color:#16a34a;">-150 kcal</strong>
+              </div>
+              <div>
+                <span style="color:#999;font-size:11px;">平均摂取カロリー</span><br>
+                <strong>1,800 kcal/日</strong>
+              </div>
+              <div>
+                <span style="color:#999;font-size:11px;">平均消費カロリー（運動）</span><br>
+                <strong>300 kcal/日</strong>
+              </div>
+            </div>
+            <div style="background: #f0fdf4; border-radius: 4px; padding: 8px; text-align:center;">
+              <span style="color: #14b8a6; font-weight: bold; font-size: 15px;">このペースだと1ヶ月で約 -1.2kg</span><br>
+              <span style="color: #999; font-size: 11px;">目標体重 58.0kg まで残り 4.3kg（約3.6ヶ月）</span>
+            </div>
+          </div>
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px;">
+            📋 最近の記録リスト
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>グラフ内に予測線を追加 + 独立カード</h3>
+      <p>体重推移グラフに予測トレンドラインを重ねて表示 + 詳細数値は独立カード。視覚的にも数値的にもわかりやすい。</p>
+      <div class="mockup" style="margin-top: 12px;">
+        <div class="mockup-header">WeightTab レイアウト</div>
+        <div class="mockup-body" style="padding: 16px; font-size: 13px;">
+          <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 12px; margin-bottom: 8px;">
+            <div>📊 体重推移グラフ [1W][1M][3M][ALL]</div>
+            <div style="margin-top: 8px; padding: 8px; background: white; border-radius: 4px; font-size: 11px; color: #666;">
+              <span style="color: #0f172a;">━━ 実測値</span> &nbsp;
+              <span style="color: #14b8a6;">- - - 予測トレンド</span> &nbsp;
+              <span style="color: #dc2626;">┈┈ 目標体重</span>
+            </div>
+          </div>
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px; margin-bottom: 8px;">
+            <strong>期間統計</strong>（平均 / 最高 / 最低 / 変動幅）
+          </div>
+          <div style="background: #fefce8; border: 2px solid #fbbf24; border-radius: 6px; padding: 12px; margin-bottom: 8px;">
+            <strong>🔮 体重予測</strong>（BMR / カロリー収支 / 予測値 + 目標到達予測）
+          </div>
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px;">
+            📋 最近の記録リスト
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,92 @@
+<h2>サマリータブ — コンパクト版 体重予測</h2>
+<p class="subtitle">既存レイアウト（2カラム）内への配置案</p>
+
+<p style="margin-bottom: 16px; color: #666; font-size: 13px;">
+  現在のサマリータブ: 左カラム（体重グラフ + 最近の活動）/ 右カラム（クライアント情報 + チケット）
+</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>右カラム — クライアント情報カードの下に配置</h3>
+      <p>クライアント基本情報（身長・目標体重等）の直下にBMR+予測ハイライトを置く。関連情報がまとまる。</p>
+      <div class="mockup" style="margin-top: 12px;">
+        <div class="mockup-header">SummaryTab レイアウト</div>
+        <div class="mockup-body" style="padding: 16px; font-size: 12px; display: grid; grid-template-columns: 2fr 1fr; gap: 12px;">
+          <!-- 左カラム -->
+          <div>
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 12px; margin-bottom: 8px;">
+              📊 体重推移グラフ
+            </div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px;">
+              📋 最近の活動（食事・運動）
+            </div>
+          </div>
+          <!-- 右カラム -->
+          <div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px; margin-bottom: 8px;">
+              👤 クライアント情報<br>
+              <span style="color:#94A3B8; font-size:10px;">身長165cm / 目標58kg / ダイエット</span>
+            </div>
+            <div style="background: #F0FDFA; border: 1px solid #99F6E4; border-radius: 6px; padding: 12px; margin-bottom: 8px;">
+              <div style="font-size:12px; font-weight:600; color:#0F172A; margin-bottom:8px;">体重予測</div>
+              <div style="font-size:10px; color:#94A3B8;">基礎代謝 (BMR)</div>
+              <div style="font-size:16px; font-weight:700; color:#0F172A;">1,450 <span style="font-size:11px; color:#64748B;">kcal/日</span></div>
+              <div style="border-top:1px solid #E2E8F0; margin: 8px 0; padding-top:8px;">
+                <div style="font-size:14px; font-weight:600; color:#14B8A6;">1ヶ月後: 61.1kg <span style="font-size:11px; color:#16A34A;">(-1.2kg)</span></div>
+                <div style="font-size:10px; color:#64748B; margin-top:2px;">目標まで残り3.1kg — 約2.6ヶ月</div>
+              </div>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px;">
+              🎫 有効チケット
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>左カラム — グラフと活動の間に配置</h3>
+      <p>体重グラフの直下に予測ハイライトを置く。グラフとの関連性が視覚的に強い。</p>
+      <div class="mockup" style="margin-top: 12px;">
+        <div class="mockup-header">SummaryTab レイアウト</div>
+        <div class="mockup-body" style="padding: 16px; font-size: 12px; display: grid; grid-template-columns: 2fr 1fr; gap: 12px;">
+          <!-- 左カラム -->
+          <div>
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 12px; margin-bottom: 8px;">
+              📊 体重推移グラフ
+            </div>
+            <div style="background: #F0FDFA; border: 1px solid #99F6E4; border-radius: 6px; padding: 12px; margin-bottom: 8px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <div style="font-size:10px; color:#94A3B8;">基礎代謝</div>
+                  <strong style="font-size:14px;">1,450 kcal/日</strong>
+                </div>
+                <div style="text-align:right;">
+                  <div style="font-size:14px; font-weight:600; color:#14B8A6;">1ヶ月後: 61.1kg <span style="font-size:11px; color:#16A34A;">(-1.2)</span></div>
+                  <div style="font-size:10px; color:#64748B;">目標まで残り3.1kg — 約2.6ヶ月</div>
+                </div>
+              </div>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px;">
+              📋 最近の活動（食事・運動）
+            </div>
+          </div>
+          <!-- 右カラム -->
+          <div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px; margin-bottom: 8px;">
+              👤 クライアント情報
+            </div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px;">
+              🎫 有効チケット
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

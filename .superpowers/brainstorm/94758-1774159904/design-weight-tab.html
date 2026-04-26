@@ -1,0 +1,122 @@
+<h2>ウェイトタブ — フルバージョン設計</h2>
+<p class="subtitle">BMR + カロリー収支詳細 + 予測 + グラフ内トレンドライン</p>
+
+<div class="mockup">
+  <div class="mockup-header">WeightTab — フルバージョン</div>
+  <div class="mockup-body" style="padding: 20px; font-size: 13px; background: #F8FAFC;">
+
+    <!-- グラフカード -->
+    <div style="background: white; border: 1px solid #E2E8F0; border-radius: 6px; padding: 16px; margin-bottom: 12px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <span style="font-size: 14px; font-weight: 600; color: #0F172A;">体重推移</span>
+        <div style="display: flex; gap: 4px;">
+          <span style="padding: 4px 10px; font-size: 11px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; color: #64748B;">1W</span>
+          <span style="padding: 4px 10px; font-size: 11px; background: #14B8A6; border-radius: 6px; color: white;">1M</span>
+          <span style="padding: 4px 10px; font-size: 11px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; color: #64748B;">3M</span>
+          <span style="padding: 4px 10px; font-size: 11px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; color: #64748B;">ALL</span>
+        </div>
+      </div>
+      <!-- 凡例 -->
+      <div style="display: flex; gap: 16px; margin-bottom: 8px; font-size: 11px; color: #94A3B8;">
+        <span><span style="color: #DC2626;">┈┈</span> 目標: 58.0kg</span>
+        <span><span style="color: #14B8A6;">- - -</span> 予測トレンド</span>
+      </div>
+      <!-- グラフエリア -->
+      <div style="background: #FAFAFA; border-radius: 4px; padding: 20px; text-align: center; position: relative; height: 160px;">
+        <svg width="100%" height="100%" viewBox="0 0 400 120" preserveAspectRatio="none">
+          <!-- 目標線 -->
+          <line x1="0" y1="95" x2="400" y2="95" stroke="#DC2626" stroke-width="1" stroke-dasharray="4,4"/>
+          <!-- 実測値 -->
+          <polyline points="20,40 60,45 100,38 140,50 180,42 220,48 260,35 300,40" fill="none" stroke="#0F172A" stroke-width="2"/>
+          <!-- 予測トレンドライン -->
+          <polyline points="300,40 340,50 380,58 400,65" fill="none" stroke="#14B8A6" stroke-width="2" stroke-dasharray="6,4"/>
+          <!-- 予測エリア（薄い塗り） -->
+          <polygon points="300,40 340,45 380,53 400,60 400,70 380,63 340,55 300,40" fill="#14B8A6" fill-opacity="0.1"/>
+        </svg>
+        <div style="position:absolute; right: 12px; top: 8px; font-size: 10px; color: #14B8A6; background: white; padding: 2px 6px; border-radius: 4px; border: 1px solid #14B8A6;">
+          予測: 61.1kg
+        </div>
+      </div>
+    </div>
+
+    <!-- 期間統計（既存） -->
+    <div style="background: white; border: 1px solid #E2E8F0; border-radius: 6px; padding: 16px; margin-bottom: 12px;">
+      <div style="font-size: 14px; font-weight: 600; color: #0F172A; margin-bottom: 12px;">期間統計</div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px;">
+        <div><span style="color:#94A3B8; font-size:12px;">平均</span><br><strong style="font-size:16px;">62.3kg</strong></div>
+        <div><span style="color:#94A3B8; font-size:12px;">最高</span><br><strong style="font-size:16px;">63.5kg</strong></div>
+        <div><span style="color:#94A3B8; font-size:12px;">最低</span><br><strong style="font-size:16px;">61.0kg</strong></div>
+        <div><span style="color:#94A3B8; font-size:12px;">変動幅</span><br><strong style="font-size:16px;">2.5kg</strong></div>
+      </div>
+    </div>
+
+    <!-- 体重予測カード（新規） -->
+    <div style="background: white; border: 1px solid #E2E8F0; border-radius: 6px; padding: 16px; margin-bottom: 12px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+        <span style="font-size: 14px; font-weight: 600; color: #0F172A;">体重予測</span>
+        <select style="font-size: 11px; padding: 3px 8px; border: 1px solid #E2E8F0; border-radius: 6px; color: #64748B; background: #F8FAFC;">
+          <option>ミフリン・セントジョール式</option>
+          <option>ハリス・ベネディクト式</option>
+        </select>
+      </div>
+
+      <!-- BMR（常に表示） -->
+      <div style="background: #F8FAFC; border-radius: 6px; padding: 12px; margin-bottom: 12px;">
+        <div style="font-size: 11px; color: #94A3B8; margin-bottom: 4px;">基礎代謝 (BMR)</div>
+        <div style="display: flex; align-items: baseline; gap: 8px;">
+          <strong style="font-size: 20px; color: #0F172A;">1,450</strong>
+          <span style="font-size: 12px; color: #64748B;">kcal/日</span>
+        </div>
+        <div style="font-size: 10px; color: #94A3B8; margin-top: 4px;">身長165cm / 体重62.3kg / 28歳 / 女性</div>
+      </div>
+
+      <!-- カロリー収支（データがある時のみ表示） -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+        <div style="background: #FFF7ED; border-radius: 6px; padding: 10px; text-align: center;">
+          <div style="font-size: 10px; color: #94A3B8; margin-bottom: 2px;">平均摂取</div>
+          <strong style="font-size: 15px; color: #EA580C;">1,800</strong>
+          <span style="font-size: 10px; color: #64748B;"> kcal/日</span>
+        </div>
+        <div style="background: #F0FDF4; border-radius: 6px; padding: 10px; text-align: center;">
+          <div style="font-size: 10px; color: #94A3B8; margin-bottom: 2px;">平均消費(運動)</div>
+          <strong style="font-size: 15px; color: #16A34A;">300</strong>
+          <span style="font-size: 10px; color: #64748B;"> kcal/日</span>
+        </div>
+        <div style="background: #F8FAFC; border-radius: 6px; padding: 10px; text-align: center;">
+          <div style="font-size: 10px; color: #94A3B8; margin-bottom: 2px;">1日の収支</div>
+          <strong style="font-size: 15px; color: #14B8A6;">+50</strong>
+          <span style="font-size: 10px; color: #64748B;"> kcal/日</span>
+        </div>
+      </div>
+
+      <!-- 予測結果 -->
+      <div style="background: linear-gradient(135deg, #F0FDFA, #F8FAFC); border: 1px solid #99F6E4; border-radius: 6px; padding: 14px; text-align: center;">
+        <div style="font-size: 11px; color: #94A3B8; margin-bottom: 4px;">このペースでの予測</div>
+        <div style="font-size: 18px; font-weight: 700; color: #0F172A;">
+          1ヶ月後: <span style="color: #14B8A6;">61.1 kg</span>
+          <span style="font-size: 13px; color: #16A34A; font-weight: 500;">(-1.2kg)</span>
+        </div>
+        <div style="font-size: 11px; color: #64748B; margin-top: 6px;">
+          目標 58.0kg まで残り 3.1kg — 約2.6ヶ月
+        </div>
+      </div>
+    </div>
+
+    <!-- 最近の記録（既存） -->
+    <div style="background: white; border: 1px solid #E2E8F0; border-radius: 6px; padding: 16px;">
+      <div style="font-size: 14px; font-weight: 600; color: #0F172A; margin-bottom: 12px;">最近の記録</div>
+      <div style="color: #94A3B8; font-size: 12px;">3/21 — 62.3kg (+0.2)  ·  3/20 — 62.1kg (-0.3)  ·  3/19 — 62.4kg ...</div>
+    </div>
+
+  </div>
+</div>
+
+<div style="margin-top: 24px; padding: 16px; background: #F8FAFC; border-radius: 6px; font-size: 13px; color: #64748B;">
+  <strong style="color: #0F172A;">データ不足時の段階表示:</strong>
+  <ul style="margin: 8px 0 0 16px; line-height: 1.8;">
+    <li><strong>BMRセクション</strong> — 常に表示（クライアント基本情報から算出）</li>
+    <li><strong>カロリー収支セクション</strong> — 食事 or 運動のカロリーデータがある時のみ</li>
+    <li><strong>予測結果</strong> — 食事カロリーデータがある時のみ</li>
+    <li><strong>グラフ内トレンドライン</strong> — 予測結果が算出できた時のみ</li>
+  </ul>
+</div>

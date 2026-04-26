@@ -1,0 +1,37 @@
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Dependencies (web)
+node_modules/
+
+# Build outputs (web)
+fit-connect/.next/
+fit-connect/out/
+fit-connect/build/
+
+# Build outputs (mobile/flutter)
+fit-connect-mobile/build/
+fit-connect-mobile/.dart_tool/
+fit-connect-mobile/.flutter-plugins
+fit-connect-mobile/.flutter-plugins-dependencies
+fit-connect-mobile/ios/Pods/
+fit-connect-mobile/ios/build/
+fit-connect-mobile/android/.gradle/
+fit-connect-mobile/android/build/
+fit-connect-mobile/android/app/build/
+
+# Supabase
+supabase/.branches/
+supabase/.temp/
