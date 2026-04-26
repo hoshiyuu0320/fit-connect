@@ -7,6 +7,7 @@ import 'package:fit_connect_mobile/features/weight_records/models/weight_record_
 import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
 import 'package:fit_connect_mobile/features/weight_records/providers/weight_records_provider.dart';
 import 'package:fit_connect_mobile/features/sleep_records/providers/sleep_records_provider.dart';
+import 'package:fit_connect_mobile/services/notification_service.dart';
 
 part 'health_sync_provider.g.dart';
 
@@ -94,42 +95,101 @@ class HealthSync extends _$HealthSync {
       return;
     }
 
+    final settingsNotifier = ref.read(healthSettingsProvider.notifier);
+
+    // 同期開始: status を syncing に
+    await settingsNotifier.updateSyncResult(
+      status: HealthSyncStatus.syncing,
+    );
+
     final startDate = settings.lastSyncAt ??
         DateTime.now().subtract(const Duration(days: 30));
 
-    bool weightOk = false;
-    bool sleepOk = false;
+    String? weightError;
+    String? sleepError;
 
-    // 体重同期（独立try/catch）
+    // 体重同期（リトライ付き）
     if (settings.isWeightEnabled) {
       try {
-        await _syncWeight(clientId, startDate);
-        weightOk = true;
-      } catch (e, st) {
-        debugPrint('[HealthSync] Weight sync failed: $e\n$st');
+        await _runWithRetry(
+          () => _syncWeight(clientId, startDate),
+          label: 'Weight',
+        );
+      } catch (e) {
+        weightError = '体重: $e';
+        debugPrint('[HealthSync] Weight sync failed after retries: $e');
       }
-    } else {
-      weightOk = true; // 無効化されてるので成功扱い
     }
 
-    // 睡眠同期（独立try/catch）
+    // 睡眠同期（リトライ付き）
     if (settings.isSleepEnabled) {
       try {
-        await _syncSleep(clientId, startDate);
-        sleepOk = true;
-      } catch (e, st) {
-        debugPrint('[HealthSync] Sleep sync failed: $e\n$st');
+        await _runWithRetry(
+          () => _syncSleep(clientId, startDate),
+          label: 'Sleep',
+        );
+      } catch (e) {
+        sleepError = '睡眠: $e';
+        debugPrint('[HealthSync] Sleep sync failed after retries: $e');
       }
-    } else {
-      sleepOk = true;
     }
 
-    // 両方成功時のみ lastSyncAt 更新（失敗した片方は次回再試行）
-    if (weightOk && sleepOk) {
-      await ref
-          .read(healthSettingsProvider.notifier)
-          .updateLastSyncAt(DateTime.now());
+    final hasError = weightError != null || sleepError != null;
+
+    if (!hasError) {
+      // 全成功 → lastSyncAt 更新 + status=success
+      await settingsNotifier.updateSyncResult(
+        status: HealthSyncStatus.success,
+        error: null,
+        syncedAt: DateTime.now(),
+      );
+    } else {
+      // 一部または全失敗 → status=error, lastSyncAt は更新しない
+      final combinedMessage =
+          [weightError, sleepError].whereType<String>().join(' / ');
+      await settingsNotifier.updateSyncResult(
+        status: HealthSyncStatus.error,
+        error: combinedMessage,
+      );
+
+      // ローカル通知（iOS/Android のみ）
+      if (!kIsWeb &&
+          (defaultTargetPlatform == TargetPlatform.iOS ||
+              defaultTargetPlatform == TargetPlatform.android)) {
+        await NotificationService.showSyncErrorNotification(combinedMessage);
+      }
     }
+  }
+
+  /// 指数バックオフでリトライ。最大3回（初回 + 2リトライ）、1s/2s 待機。
+  Future<void> _runWithRetry(
+    Future<void> Function() task, {
+    required String label,
+  }) async {
+    const maxAttempts = 3;
+    Duration delay = const Duration(seconds: 1);
+    Object? lastError;
+    StackTrace? lastStack;
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        await task();
+        if (attempt > 1) {
+          debugPrint('[HealthSync] $label: succeeded on attempt $attempt');
+        }
+        return;
+      } catch (e, st) {
+        lastError = e;
+        lastStack = st;
+        debugPrint(
+          '[HealthSync] $label attempt $attempt/$maxAttempts failed: $e',
+        );
+        if (attempt < maxAttempts) {
+          await Future.delayed(delay);
+          delay *= 2;
+        }
+      }
+    }
+    Error.throwWithStackTrace(lastError!, lastStack ?? StackTrace.current);
   }
 
   /// 体重同期ロジック（元の _sync から切り出し、振る舞いは同一）

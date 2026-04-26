@@ -386,6 +386,9 @@ class HealthSettingsScreen extends ConsumerWidget {
     AppColorsExtension colors,
   ) {
     final isSyncing = syncAsync.isLoading;
+    final hasError = settings.lastSyncStatus == HealthSyncStatus.error;
+    final isStatusSyncing =
+        settings.lastSyncStatus == HealthSyncStatus.syncing;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -399,7 +402,7 @@ class HealthSettingsScreen extends ConsumerWidget {
         children: [
           // Section Header
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
             child: Text(
               '同期',
               style: TextStyle(
@@ -408,6 +411,15 @@ class HealthSettingsScreen extends ConsumerWidget {
                 color: colors.textSecondary,
                 letterSpacing: 0.5,
               ),
+            ),
+          ),
+
+          // Periodic sync description
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Text(
+              'アプリ起動時と1時間ごとに自動同期します',
+              style: TextStyle(fontSize: 12, color: colors.textHint),
             ),
           ),
 
@@ -422,14 +434,17 @@ class HealthSettingsScreen extends ConsumerWidget {
                 color: colors.textPrimary,
               ),
             ),
-            trailing: Text(
-              _formatLastSync(settings.lastSyncAt),
-              style: TextStyle(
-                fontSize: 14,
-                color: colors.textSecondary,
-              ),
+            trailing: _buildSyncStatusTrailing(
+              settings: settings,
+              colors: colors,
+              hasError: hasError,
+              isStatusSyncing: isStatusSyncing,
             ),
           ),
+
+          // Error detail row (only on error)
+          if (hasError && settings.lastSyncError != null)
+            _buildSyncErrorRow(settings.lastSyncError!, colors),
 
           // Manual sync button
           Padding(
@@ -442,14 +457,23 @@ class HealthSettingsScreen extends ConsumerWidget {
                         await ref
                             .read(healthSyncProvider.notifier)
                             .syncManual();
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('同期が完了しました'),
-                              backgroundColor: AppColors.emerald600,
+                        if (!context.mounted) return;
+                        final result =
+                            ref.read(healthSettingsProvider).valueOrNull;
+                        final isError = result?.lastSyncStatus ==
+                            HealthSyncStatus.error;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              isError
+                                  ? '同期に失敗しました: ${result?.lastSyncError ?? "原因不明"}'
+                                  : '同期が完了しました',
                             ),
-                          );
-                        }
+                            backgroundColor: isError
+                                ? AppColors.error
+                                : AppColors.emerald600,
+                          ),
+                        );
                       }
                     : null,
                 icon: isSyncing
@@ -479,13 +503,101 @@ class HealthSettingsScreen extends ConsumerWidget {
     );
   }
 
+  Widget _buildSyncStatusTrailing({
+    required HealthSettingsState settings,
+    required AppColorsExtension colors,
+    required bool hasError,
+    required bool isStatusSyncing,
+  }) {
+    final timeText = Text(
+      _formatLastSync(settings.lastSyncAt),
+      style: TextStyle(
+        fontSize: 14,
+        color: hasError ? AppColors.error : colors.textSecondary,
+      ),
+    );
+
+    if (isStatusSyncing) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          timeText,
+          const SizedBox(width: 8),
+          const SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ],
+      );
+    }
+
+    if (hasError) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          timeText,
+          const SizedBox(width: 6),
+          const Icon(
+            LucideIcons.alertCircle,
+            size: 16,
+            color: AppColors.error,
+          ),
+        ],
+      );
+    }
+
+    return timeText;
+  }
+
+  Widget _buildSyncErrorRow(String message, AppColorsExtension colors) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Container(
+        padding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppColors.rose100,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(
+              LucideIcons.alertTriangle,
+              size: 16,
+              color: AppColors.warning,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '同期エラー: $message',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: colors.textSecondary,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   String _formatLastSync(DateTime? lastSync) {
     if (lastSync == null) return '未同期';
-    final month = lastSync.month;
-    final day = lastSync.day;
-    final hour = lastSync.hour.toString().padLeft(2, '0');
-    final minute = lastSync.minute.toString().padLeft(2, '0');
-    return '$month月$day日 $hour:$minute';
+    final diff = DateTime.now().difference(lastSync);
+    if (diff.inMinutes < 1) return 'たった今';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}分前';
+    if (diff.inHours < 24) return '${diff.inHours}時間前';
+    if (diff.inDays < 7) return '${diff.inDays}日前';
+    // 1週間以上は日付表記
+    final m = lastSync.month;
+    final d = lastSync.day;
+    final hh = lastSync.hour.toString().padLeft(2, '0');
+    final mm = lastSync.minute.toString().padLeft(2, '0');
+    return '$m月$d日 $hh:$mm';
   }
 }
 
@@ -495,7 +607,13 @@ class HealthSettingsScreen extends ConsumerWidget {
 
 class _PreviewHealthSettings extends StatelessWidget {
   final bool isConnected;
-  const _PreviewHealthSettings({this.isConnected = true});
+  final HealthSyncStatus syncStatus;
+  final String? errorMessage;
+  const _PreviewHealthSettings({
+    this.isConnected = true,
+    this.syncStatus = HealthSyncStatus.idle,
+    this.errorMessage,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -667,72 +785,7 @@ class _PreviewHealthSettings extends StatelessWidget {
           const SizedBox(height: 16),
 
           // Sync Section
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: colors.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: colors.border),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: Text(
-                    '同期',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: colors.textSecondary,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-                ListTile(
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16),
-                  title: Text(
-                    '最終同期',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: colors.textPrimary,
-                    ),
-                  ),
-                  trailing: Text(
-                    isConnected ? '4月5日 09:30' : '未同期',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: colors.textSecondary,
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: isConnected ? () {} : null,
-                      icon: const Icon(LucideIcons.refreshCw, size: 18),
-                      label: const Text('今すぐ同期'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        side: BorderSide(
-                          color: isConnected
-                              ? AppColors.primary
-                              : colors.border,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          _buildPreviewSyncSection(colors),
 
           const SizedBox(height: 24),
 
@@ -749,6 +802,151 @@ class _PreviewHealthSettings extends StatelessWidget {
           ),
 
           const SizedBox(height: 100),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPreviewSyncSection(AppColorsExtension colors) {
+    final hasError = syncStatus == HealthSyncStatus.error;
+    final isStatusSyncing = syncStatus == HealthSyncStatus.syncing;
+
+    Widget timeText = Text(
+      isConnected ? '5分前' : '未同期',
+      style: TextStyle(
+        fontSize: 14,
+        color: hasError ? AppColors.error : colors.textSecondary,
+      ),
+    );
+
+    Widget trailing;
+    if (isStatusSyncing) {
+      trailing = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          timeText,
+          const SizedBox(width: 8),
+          const SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ],
+      );
+    } else if (hasError) {
+      trailing = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          timeText,
+          const SizedBox(width: 6),
+          const Icon(
+            LucideIcons.alertCircle,
+            size: 16,
+            color: AppColors.error,
+          ),
+        ],
+      );
+    } else {
+      trailing = timeText;
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+            child: Text(
+              '同期',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: colors.textSecondary,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Text(
+              'アプリ起動時と1時間ごとに自動同期します',
+              style: TextStyle(fontSize: 12, color: colors.textHint),
+            ),
+          ),
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+            title: Text(
+              '最終同期',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: colors.textPrimary,
+              ),
+            ),
+            trailing: trailing,
+          ),
+          if (hasError && errorMessage != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.rose100,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: AppColors.error.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      LucideIcons.alertTriangle,
+                      size: 16,
+                      color: AppColors.warning,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '同期エラー: $errorMessage',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: isConnected ? () {} : null,
+                icon: const Icon(LucideIcons.refreshCw, size: 18),
+                label: const Text('今すぐ同期'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  side: BorderSide(
+                    color:
+                        isConnected ? AppColors.primary : colors.border,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -771,6 +969,22 @@ Widget previewHealthSettingsDisconnected() {
     theme: AppTheme.lightTheme,
     home: const Scaffold(
       body: SafeArea(child: _PreviewHealthSettings(isConnected: false)),
+    ),
+  );
+}
+
+@Preview(name: 'HealthSettingsScreen - Sync Error')
+Widget previewHealthSettingsSyncError() {
+  return MaterialApp(
+    theme: AppTheme.lightTheme,
+    home: const Scaffold(
+      body: SafeArea(
+        child: _PreviewHealthSettings(
+          isConnected: true,
+          syncStatus: HealthSyncStatus.error,
+          errorMessage: 'HealthKitへのアクセスが拒否されました',
+        ),
+      ),
     ),
   );
 }

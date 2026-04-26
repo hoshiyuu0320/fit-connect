@@ -38,3 +38,15 @@
 - **意図せず混入したもの** (.gitignore 追加候補): `.superpowers/brainstorm/*/.server.pid` 系、`.claude/skills/*/scripts/__pycache__/*.pyc`
 - **移行詳細手順書**: `docs/tasks/2026-04-26-monorepo-migration.md`
 - **未完のフォローアップ**: `docs/tasks/2026-04-26-monorepo-migration-followups.md`
+
+## バックグラウンド同期の戦略選定（タスク 1.4）
+
+- **`workmanager` を見送った理由**:
+  - iOS の `BGAppRefreshTask` / `BGProcessingTask` は OS が裁量で実行するため、最短でも数時間に1回・最悪は数日に1回しか起動しない（ヘルスケアの即時性とミスマッチ）
+  - 両プラットフォーム共通の native 設定（`AppDelegate.swift` 修正、`MainActivity.kt` 修正、トップレベル callback の dispatch 制約）が必要で、リグレッション影響範囲が大きい
+  - 体重・睡眠は1日1回〜数回程度しか変動しないため、フォアグラウンド復帰時の同期で十分鮮度を保てる
+- **採用した戦略**: `Timer.periodic(60min)` + アプリ resume 時 `lastSyncAt > 1h` で再同期。両者とも `_AuthLoadingScreenState` に集約 (`lib/app.dart`)
+- **冪等性の確保**: `_isResumeSyncing` フラグで resume 経路の二重起動を防止。`_sync()` 自体は SharedPreferences の status (idle/syncing/success/error) で進行中を可視化するが、Riverpod レベルの mutex は省略（同期内部処理は body の異常系 try/catch で完結する設計）
+- **リトライポリシー**: `_runWithRetry()` で `_syncWeight` / `_syncSleep` 各々独立に最大3回（初回 + 2リトライ、1s/2s 指数バックオフ）。体重と睡眠の片方失敗でも他方は完了させ、`lastSyncAt` は両方成功時のみ更新
+- **エラー通知**: `flutter_local_notifications` で固定 ID=9001（連続失敗時に通知トレイが膨張しない）、メッセージは120字で省略
+- **iOS/Android 以外（macOS/Web）のガード**: `health_sync_provider` 側で `kIsWeb || (!iOS && !android)` を判定し `showSyncErrorNotification` をスキップ。サービス内部の二重ガードは省略

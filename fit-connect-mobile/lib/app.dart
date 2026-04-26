@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,6 +14,7 @@ import 'package:fit_connect_mobile/features/auth/providers/current_user_provider
 import 'package:fit_connect_mobile/features/auth/providers/registration_provider.dart';
 import 'package:fit_connect_mobile/services/notification_service.dart';
 import 'package:fit_connect_mobile/features/health/providers/health_sync_provider.dart';
+import 'package:fit_connect_mobile/features/health/providers/health_provider.dart';
 import 'package:fit_connect_mobile/features/sleep_records/providers/morning_dialog_provider.dart';
 import 'package:fit_connect_mobile/features/sleep_records/presentation/widgets/morning_wakeup_dialog.dart';
 
@@ -76,15 +78,23 @@ class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen>
   bool _tokenSaved = false;
   bool _healthSynced = false;
   bool _isMorningDialogOpen = false;
+  Timer? _periodicSyncTimer;
+  bool _isResumeSyncing = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // 1時間ごとの定期同期（フォアグラウンド時のみ動作）
+    _periodicSyncTimer = Timer.periodic(
+      const Duration(minutes: 60),
+      (_) => _runPeriodicSync(),
+    );
   }
 
   @override
   void dispose() {
+    _periodicSyncTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -95,6 +105,39 @@ class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen>
       // resumed 時はSleep同期完了を待たずに即時再判定（同期は別途バックグラウンド継続）
       ref.invalidate(morningDialogProvider);
       _maybeShowMorningDialog();
+      _maybeRunResumeSync();
+    }
+  }
+
+  Future<void> _maybeRunResumeSync() async {
+    if (_isResumeSyncing || !mounted) return;
+    final settings = ref.read(healthSettingsProvider).valueOrNull;
+    if (settings == null || !settings.isEnabled) return;
+    final last = settings.lastSyncAt;
+    if (last != null &&
+        DateTime.now().difference(last) < const Duration(hours: 1)) {
+      return; // まだ十分新しい
+    }
+    _isResumeSyncing = true;
+    try {
+      await ref.read(healthSyncProvider.notifier).syncOnLaunch();
+      debugPrint('[App] Resume後の同期完了');
+    } catch (e) {
+      debugPrint('[App] Resume後の同期エラー: $e');
+    } finally {
+      _isResumeSyncing = false;
+    }
+  }
+
+  Future<void> _runPeriodicSync() async {
+    if (!mounted) return;
+    final settings = ref.read(healthSettingsProvider).valueOrNull;
+    if (settings == null || !settings.isEnabled) return;
+    try {
+      await ref.read(healthSyncProvider.notifier).syncOnLaunch();
+      debugPrint('[App] 定期同期完了');
+    } catch (e) {
+      debugPrint('[App] 定期同期エラー: $e');
     }
   }
 

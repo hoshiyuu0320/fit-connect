@@ -1,9 +1,9 @@
 # FIT-CONNECT - 新機能タスク一覧
 
 **作成日**: 2026年3月29日
-**バージョン**: 1.2
-**進捗状況**: 全体 18%（1.3 睡眠データ連携 完了）
-**最終更新**: 2026年4月26日 - モノレポ移行完了
+**バージョン**: 1.3
+**進捗状況**: 全体 22%（1.3 睡眠データ連携・1.4 バックグラウンド同期 完了）
+**最終更新**: 2026年4月26日 - 1.4 バックグラウンド同期 完了
 
 > **2026-04-26 モノレポ化完了**: 旧 `fit-connect-mobile` リポジトリを `git subtree` で取り込み、単一 git リポジトリで Web/Mobile 両方を管理する構成に移行。詳細は `docs/tasks/2026-04-26-monorepo-migration.md`。
 
@@ -22,7 +22,7 @@
 
 | フェーズ | 機能 | 対象 | 進捗 | 状態 |
 |---------|------|------|------|------|
-| 1 | ヘルスケア連携（体重・睡眠） | Mobile | 75% | 🟡 体重・睡眠連携完了、バックグラウンド同期未着手 |
+| 1 | ヘルスケア連携（体重・睡眠） | Mobile | 90% | 🟡 体重・睡眠・バックグラウンド同期完了、トレーナー可視化のみ未着手 |
 | 2 | オンボーディングフロー | Mobile | 0% | 🔴 未着手 |
 | 3 | ランディングページ | Web | 0% | 🔴 未着手 |
 | 4 | LLM カロリー計算 | Mobile + Supabase | 0% | 🔴 未着手 |
@@ -58,10 +58,12 @@
   - [x] 設定画面に睡眠トグル + 朝ダイアログトグル追加
   - 注: ローカル/リモートの Supabase に migration `20260422000000_create_sleep_records.sql` の適用が必要
 
-- [ ] **1.4 バックグラウンド同期**
-  - [ ] バックグラウンドでの定期同期設定
-  - [ ] 同期状態の表示（最終同期日時）
-  - [ ] エラー時のリトライ・通知
+- [x] **1.4 バックグラウンド同期** （2026-04-26 完了）
+  - [x] バックグラウンドでの定期同期設定（フォアグラウンド時 `Timer.periodic` 1時間 + アプリ resume 時に lastSync が1時間超で再同期、`lib/app.dart`）
+  - [x] 同期状態の表示（相対時間 + status アイコン + エラー詳細行、`HealthSettingsState` に `lastSyncStatus` `lastSyncError` 追加、SharedPreferences 永続化）
+  - [x] エラー時のリトライ・通知（`_runWithRetry` 指数バックオフ最大3回 1s/2s、永続失敗時に `NotificationService.showSyncErrorNotification` 通知 ID=9001）
+  - 注: `workmanager` は採用せず（iOS 制約と native 設定の複雑さを考慮）。フォアグラウンド/resume ベースで日常利用に十分な頻度を確保
+  - 注: build_runner / flutter analyze はサンドボックスで未実行のため、ローカル環境で `dart run build_runner build --delete-conflicting-outputs` の実行を推奨
 
 - [ ] **1.5 睡眠データのトレーナー可視化（Web）**
   - [ ] Web側の型定義追加（`fit-connect/src/types/`）
