@@ -1,42 +1,49 @@
 # CLAUDE.md — FIT-CONNECT Monorepo
 
-このディレクトリは FIT-CONNECT プロジェクトのモノレポルートです。
-2つの独立したGitリポジトリを含みます。
+このディレクトリは FIT-CONNECT プロジェクトの **モノレポ** ルートです。
+Web (Next.js) と Mobile (Flutter) を **単一の Git リポジトリ** で管理しています（`hoshiyuu0320/fit-connect`）。
+
+> 2026-04-26: 旧 `hoshiyuu0320/fit-connect-mobile` リポジトリを `git subtree` で取り込み、モノレポへ移行完了。
+> 旧 mobile リポジトリは archive 化されています。
 
 ## プロジェクト構成
 
 ```
-FIT-CONNECT/
-├── fit-connect/              # Trainer Web App (Next.js 15)
-│   ├── .git/                 # Git: hoshiyuu0320/fit-connect
-│   ├── CLAUDE.md             # Web固有の設定・ルール
-│   └── .claude/              # Web固有のagents・settings
-│
-├── fit-connect-mobile/       # Client Mobile App (Flutter)
-│   ├── .git/                 # Git: hoshiyuu0320/fit-connect-mobile
-│   ├── CLAUDE.md             # Mobile固有の設定・ルール
-│   ├── .claude/              # Mobile固有のagents・settings
-│   └── docs/
-│
+FIT-CONNECT/                  # ← Git ルート (hoshiyuu0320/fit-connect)
+├── .git/                     # 単一の .git
+├── .claude/                  # 統括用agents・skills
 ├── CLAUDE.md                 # ← このファイル（共通ルール）
-└── .claude/                  # 統括用agents・settings
+├── supabase/                 # 共有Supabase設定（migrations / functions / config.toml）
+├── docs/
+│   └── tasks/                # 横断タスク・lessons・移行記録
+├── fit-connect/              # Trainer Web App (Next.js 15)
+│   ├── CLAUDE.md             # Web固有の設定・ルール
+│   ├── .claude/              # Web固有のagents
+│   └── docs/                 # Web固有のドキュメント
+└── fit-connect-mobile/       # Client Mobile App (Flutter)
+    ├── CLAUDE.md             # Mobile固有の設定・ルール
+    ├── .claude/              # Mobile固有のagents
+    └── docs/                 # Mobile固有のドキュメント
 ```
 
 ## 共通ルール
 
 ### Git
 
-- **各プロジェクトは独立したGitリポジトリ**。コミット・プッシュは各ディレクトリ内で行う
+- **モノレポの単一 Git リポジトリ**で Web/Mobile を一括管理。コミット・プッシュは常にルートから実行
+- 運用ブランチは **`main` 一本**（旧 `develop` は廃止）
 - git push前にコミットを1つにまとめる（squash）。`git rebase -i` ではなく `git reset --soft` + 再コミットで実施
 - `.env` ファイルは参照しないこと
 - **新規機能追加・バグ修正時は必ず作業ブランチを作成**してから実装を開始すること
   - ブランチ命名規則: `feature/<機能名>` または `fix/<バグ内容>`
-  - develop/mainブランチで直接作業しないこと
+  - main ブランチで直接作業しないこと
 
-### Supabase（共通バックエンド）
+### Supabase（共有バックエンド）
 
-両プロジェクトは**同じSupabaseプロジェクト**を共有している。
+Web/Mobile は **同じ Supabase プロジェクト**を共有しています。
 
+- 設定一元化: ルート直下の `supabase/`（`migrations/`、`functions/`、`config.toml`）が真の所在
+- ローカル CLI 操作（`supabase start`、`supabase db push` 等）は **ルート FIT-CONNECT/ から** 実行
 - DBスキーマの変更は**両プロジェクトへの影響を必ず確認**すること
 - Web側の型定義: `fit-connect/src/types/`
 - Mobile側のモデル: `fit-connect-mobile/lib/shared/models/`
@@ -81,6 +88,13 @@ FIT-CONNECT/
 | ------------ | ------------------ |
 | flutter-ui   | Widget/Screen作成  |
 | riverpod     | Provider作成・管理 |
+
+### 共通スキル（親 .claude/skills/）
+| スキル          | 用途                                        |
+| --------------- | ------------------------------------------- |
+| chrome-web-qa   | Web側コード変更後の Chrome ブラウザ動作確認 |
+| ios-simulator-qa| Mobile側コード変更後の iOS Simulator 動作確認 |
+| ui-ux-pro-max   | UI実装前のデザインシステム生成              |
 
 ## Design Tokens — Web (fit-connect) 用
 
