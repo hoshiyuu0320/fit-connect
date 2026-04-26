@@ -31,12 +31,14 @@ FIT-CONNECT/                  # ← Git ルート (hoshiyuu0320/fit-connect)
 ### Git
 
 - **モノレポの単一 Git リポジトリ**で Web/Mobile を一括管理。コミット・プッシュは常にルートから実行
-- 運用ブランチは **`main` 一本**（旧 `develop` は廃止）
+- 運用ブランチは `main`（本番）と `develop/<version>`（開発）の2系統。現在の開発ブランチは **`develop/1.0.0`**
 - git push前にコミットを1つにまとめる（squash）。`git rebase -i` ではなく `git reset --soft` + 再コミットで実施
 - `.env` ファイルは参照しないこと
 - **新規機能追加・バグ修正時は必ず作業ブランチを作成**してから実装を開始すること
   - ブランチ命名規則: `feature/<機能名>` または `fix/<バグ内容>`
-  - main ブランチで直接作業しないこと
+  - 作業ブランチは `develop/<version>` から切り、PR は `develop/<version>` に向けてマージする
+  - リリース時に `develop/<version>` を `main` へマージ
+  - `main` / `develop/<version>` ブランチで直接作業しないこと
 
 ### Supabase（共有バックエンド）
 
