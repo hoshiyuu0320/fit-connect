@@ -1,0 +1,37 @@
+{
+  "project_info": {
+    "project_number": "59445891214",
+    "project_id": "fit-connect-540f4",
+    "storage_bucket": "fit-connect-540f4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:59445891214:android:fec867bd49c933ba0079df",
+        "android_client_info": {
+          "package_name": "com.fitconnect.fit_connect_mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyARPnTA0MjUG3kshUGP1GBShLafMpT2us8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "59445891214-82pfrrjbq0vbc285navh87nabmn7l1hk.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.fitconnect.fitConnectMobile"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

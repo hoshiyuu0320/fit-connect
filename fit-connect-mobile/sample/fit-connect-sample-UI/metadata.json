@@ -1,0 +1,7 @@
+{
+  "name": "FIT-CONNECT",
+  "description": "A next-generation fitness companion app connecting clients with trainers through a chat-centric interface.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

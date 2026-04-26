@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FIT-CONNECT 食事記録画面（期間フィルタ）- ワイヤーフレーム</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .wireframe-title {
+            text-align: center;
+            font-size: 24px;
+            font-weight: 700;
+            color: #1F2937;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+            border-radius: 12px;
+        }
+
+        .screens-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+            gap: 30px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .screen {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .screen-label {
+            background: #2563EB;
+            color: white;
+            padding: 12px 20px;
+            font-weight: 600;
+            font-size: 16px;
+            text-align: center;
+        }
+
+        /* ヘッダー */
+        .header {
+            padding: 50px 20px 20px;
+            background: white;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #6B7280;
+            margin-bottom: 20px;
+        }
+
+        .header-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1F2937;
+            margin-bottom: 20px;
+        }
+
+        /* 期間フィルタボタン */
+        .period-filters {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            padding: 0 20px;
+        }
+
+        .filter-btn {
+            flex: 1;
+            padding: 10px 16px;
+            border-radius: 20px;
+            border: 2px solid #E5E7EB;
+            background: white;
+            color: #6B7280;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-btn.active {
+            background: #10B981;
+            color: white;
+            border-color: #10B981;
+        }
+
+        /* コンテンツエリア */
+        .content {
+            padding: 0 20px 100px;
+        }
+
+        /* サマリーカード */
+        .summary-card {
+            background: linear-gradient(135deg, #EBF5FF 0%, #DBEAFE 100%);
+            padding: 20px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+        }
+
+        .summary-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1F2937;
+            margin-bottom: 16px;
+        }
+
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .summary-item:last-child {
+            border-bottom: none;
+        }
+
+        .summary-label {
+            font-size: 14px;
+            color: #6B7280;
+        }
+
+        .summary-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1F2937;
+        }
+
+        /* 週カレンダー（横一列） */
+        .week-calendar {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .week-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .week-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1F2937;
+        }
+
+        .week-days {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+        }
+
+        .week-day {
+            text-align: center;
+        }
+
+        .week-day-label {
+            font-size: 11px;
+            color: #9CA3AF;
+            margin-bottom: 6px;
+        }
+
+        .week-day-cell {
+            aspect-ratio: 1;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+            position: relative;
+        }
+
+        .week-day-cell.level-0 {
+            background: #F3F4F6;
+            color: #9CA3AF;
+        }
+
+        .week-day-cell.level-1 {
+            background: #9BE9A8;
+            color: #064E3B;
+        }
+
+        .week-day-cell.level-2 {
+            background: #39D353;
+            color: white;
+        }
+
+        .week-day-cell.level-3 {
+            background: #10B981;
+            color: white;
+        }
+
+        .week-day-cell.today {
+            border: 3px solid #2563EB;
+        }
+
+        .meal-count {
+            font-size: 10px;
+            margin-top: 2px;
+        }
+
+        /* 月カレンダー */
+        .month-calendar {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .calendar-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1F2937;
+        }
+
+        .calendar-total {
+            font-size: 14px;
+            color: #6B7280;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+        }
+
+        .calendar-day-header {
+            text-align: center;
+            font-size: 11px;
+            color: #9CA3AF;
+            font-weight: 600;
+            padding: 8px 0;
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .calendar-day.empty {
+            background: transparent;
+        }
+
+        .calendar-day.level-0 {
+            background: #F3F4F6;
+            color: #6B7280;
+        }
+
+        .calendar-day.level-1 {
+            background: #9BE9A8;
+            color: #064E3B;
+        }
+
+        .calendar-day.level-2 {
+            background: #39D353;
+            color: white;
+        }
+
+        .calendar-day.level-3 {
+            background: #10B981;
+            color: white;
+        }
+
+        .calendar-day.today {
+            border: 3px solid #2563EB;
+        }
+
+        .calendar-day:hover:not(.empty) {
+            transform: scale(1.1);
+        }
+
+        .calendar-legend {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 12px;
+            font-size: 12px;
+            color: #6B7280;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .legend-box {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+        }
+
+        /* 食事記録リスト */
+        .meal-list {
+            margin-top: 20px;
+        }
+
+        .date-section {
+            margin-bottom: 24px;
+        }
+
+        .date-header {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1F2937;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #E5E7EB;
+        }
+
+        .meal-card {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .meal-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+        }
+
+        .meal-image {
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%);
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+        }
+
+        .meal-info {
+            flex: 1;
+        }
+
+        .meal-type {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .meal-type.breakfast {
+            background: #FEF3C7;
+            color: #92400E;
+        }
+
+        .meal-type.lunch {
+            background: #DBEAFE;
+            color: #1E40AF;
+        }
+
+        .meal-type.dinner {
+            background: #FCE7F3;
+            color: #9F1239;
+        }
+
+        .meal-type.snack {
+            background: #E0E7FF;
+            color: #3730A3;
+        }
+
+        .meal-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1F2937;
+            margin-bottom: 4px;
+        }
+
+        .meal-meta {
+            display: flex;
+            gap: 12px;
+            font-size: 13px;
+            color: #6B7280;
+        }
+
+        /* 統計グラフ（全期間用） */
+        .stats-chart {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .chart-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1F2937;
+            margin-bottom: 16px;
+        }
+
+        .chart-placeholder {
+            height: 200px;
+            background: linear-gradient(180deg, #EBF5FF 0%, #DBEAFE 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #2563EB;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        /* 月別アコーディオン */
+        .month-accordion {
+            margin-bottom: 12px;
+        }
+
+        .month-header {
+            background: white;
+            padding: 16px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+        }
+
+        .month-header:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        .month-name {
+            font-weight: 600;
+            color: #1F2937;
+        }
+
+        .month-count {
+            font-size: 14px;
+            color: #6B7280;
+        }
+
+        /* 開始日表示 */
+        .start-date-card {
+            background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+            padding: 16px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .start-date-icon {
+            font-size: 24px;
+        }
+
+        .start-date-text {
+            flex: 1;
+        }
+
+        .start-date-label {
+            font-size: 12px;
+            color: #92400E;
+            margin-bottom: 2px;
+        }
+
+        .start-date-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #78350F;
+        }
+
+        /* ボトムナビゲーション */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 1px solid #E5E7EB;
+            padding: 12px 20px 28px;
+            display: flex;
+            justify-content: space-around;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: #9CA3AF;
+            font-size: 11px;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .nav-item.active {
+            color: #10B981;
+        }
+
+        .nav-icon {
+            font-size: 24px;
+        }
+
+        .note {
+            background: #DBEAFE;
+            padding: 16px;
+            border-radius: 12px;
+            margin-top: 30px;
+            border-left: 4px solid #2563EB;
+            max-width: 1600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .note-title {
+            font-weight: 600;
+            color: #1E40AF;
+            margin-bottom: 8px;
+        }
+
+        .note ul {
+            margin-left: 20px;
+            color: #1E40AF;
+            line-height: 1.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="wireframe-title">
+        📱 FIT-CONNECT 食事記録画面（期間フィルタ）
+    </div>
+
+    <div class="screens-grid">
+        <!-- 今日 -->
+        <div class="screen">
+            <div class="screen-label">① 今日</div>
+            
+            <div class="header">
+                <div class="status-bar">
+                    <span>9:41</span>
+                    <span>📶 🔋</span>
+                </div>
+                <div class="header-title">食事記録</div>
+            </div>
+
+            <div class="period-filters">
+                <button class="filter-btn active">今日</button>
+                <button class="filter-btn">今週</button>
+                <button class="filter-btn">今月</button>
+                <button class="filter-btn">全期間</button>
+            </div>
+
+            <div class="content">
+                <!-- サマリーカード -->
+                <div class="summary-card">
+                    <div class="summary-title">📊 本日のサマリー</div>
+                    <div class="summary-item">
+                        <span class="summary-label">🍽️ 食事</span>
+                        <span class="summary-value">2/3食</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">📸 写真</span>
+                        <span class="summary-value">4枚</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">🔥 推定カロリー</span>
+                        <span class="summary-value">800 kcal</span>
+                    </div>
+                </div>
+
+                <!-- 今日の食事リスト -->
+                <div class="meal-list">
+                    <div class="date-section">
+                        <div class="date-header">12月27日（金）</div>
+                        
+                        <div class="meal-card">
+                            <div class="meal-image">🍳</div>
+                            <div class="meal-info">
+                                <span class="meal-type breakfast">朝食</span>
+                                <div class="meal-name">Oatmeal & Berries</div>
+                                <div class="meal-meta">
+                                    <span>⏰ 07:30</span>
+                                    <span>🔥 350 kcal</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="meal-card">
+                            <div class="meal-image">🥗</div>
+                            <div class="meal-info">
+                                <span class="meal-type lunch">昼食</span>
+                                <div class="meal-name">Grilled Chicken Salad</div>
+                                <div class="meal-meta">
+                                    <span>⏰ 12:30</span>
+                                    <span>🔥 450 kcal</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 今週 -->
+        <div class="screen">
+            <div class="screen-label">② 今週</div>
+            
+            <div class="header">
+                <div class="status-bar">
+                    <span>9:41</span>
+                    <span>📶 🔋</span>
+                </div>
+                <div class="header-title">食事記録</div>
+            </div>
+
+            <div class="period-filters">
+                <button class="filter-btn">今日</button>
+                <button class="filter-btn active">今週</button>
+                <button class="filter-btn">今月</button>
+                <button class="filter-btn">全期間</button>
+            </div>
+
+            <div class="content">
+                <!-- 週カレンダー -->
+                <div class="week-calendar">
+                    <div class="week-header">
+                        <div class="week-title">12月23日〜12月29日</div>
+                    </div>
+                    <div class="week-days">
+                        <div class="week-day">
+                            <div class="week-day-label">M</div>
+                            <div class="week-day-cell level-0">23</div>
+                        </div>
+                        <div class="week-day">
+                            <div class="week-day-label">T</div>
+                            <div class="week-day-cell level-0">24</div>
+                        </div>
+                        <div class="week-day">
+                            <div class="week-day-label">W</div>
+                            <div class="week-day-cell level-3">
+                                25
+                                <div class="meal-count">3食</div>
+                            </div>
+                        </div>
+                        <div class="week-day">
+                            <div class="week-day-label">T</div>
+                            <div class="week-day-cell level-3">
+                                26
+                                <div class="meal-count">3食</div>
+                            </div>
+                        </div>
+                        <div class="week-day">
+                            <div class="week-day-label">F</div>
+                            <div class="week-day-cell level-2 today">
+                                27
+                                <div class="meal-count">2食</div>
+                            </div>
+                        </div>
+                        <div class="week-day">
+                            <div class="week-day-label">S</div>
+                            <div class="week-day-cell level-0">28</div>
+                        </div>
+                        <div class="week-day">
+                            <div class="week-day-label">S</div>
+                            <div class="week-day-cell level-0">29</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- サマリーカード -->
+                <div class="summary-card">
+                    <div class="summary-title">📊 今週のサマリー</div>
+                    <div class="summary-item">
+                        <span class="summary-label">🍽️ 食事</span>
+                        <span class="summary-value">8/21食</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">📸 写真</span>
+                        <span class="summary-value">12枚</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">🔥 平均カロリー</span>
+                        <span class="summary-value">1,850 kcal/日</span>
+                    </div>
+                </div>
+
+                <!-- 日別食事リスト -->
+                <div class="meal-list">
+                    <div class="date-section">
+                        <div class="date-header">12月27日（金）</div>
+                        <div class="meal-card">
+                            <div class="meal-image">🍳</div>
+                            <div class="meal-info">
+                                <span class="meal-type breakfast">朝食</span>
+                                <div class="meal-name">Oatmeal & Berries</div>
+                                <div class="meal-meta">
+                                    <span>⏰ 07:30</span>
+                                    <span>🔥 350 kcal</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="date-section">
+                        <div class="date-header">12月26日（木）</div>
+                        <div class="meal-card">
+                            <div class="meal-image">🥗</div>
+                            <div class="meal-info">
+                                <span class="meal-type lunch">昼食</span>
+                                <div class="meal-name">Chicken Salad</div>
+                                <div class="meal-meta">
+                                    <span>⏰ 12:30</span>
+                                    <span>🔥 450 kcal</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 今月 -->
+        <div class="screen">
+            <div class="screen-label">③ 今月</div>
+            
+            <div class="header">
+                <div class="status-bar">
+                    <span>9:41</span>
+                    <span>📶 🔋</span>
+                </div>
+                <div class="header-title">食事記録</div>
+            </div>
+
+            <div class="period-filters">
+                <button class="filter-btn">今日</button>
+                <button class="filter-btn">今週</button>
+                <button class="filter-btn active">今月</button>
+                <button class="filter-btn">全期間</button>
+            </div>
+
+            <div class="content">
+                <!-- 月カレンダー -->
+                <div class="month-calendar">
+                    <div class="calendar-header">
+                        <div class="calendar-title">December 2025</div>
+                        <div class="calendar-total">Total: 42 meals</div>
+                    </div>
+
+                    <div class="calendar-grid">
+                        <div class="calendar-day-header">M</div>
+                        <div class="calendar-day-header">T</div>
+                        <div class="calendar-day-header">W</div>
+                        <div class="calendar-day-header">T</div>
+                        <div class="calendar-day-header">F</div>
+                        <div class="calendar-day-header">S</div>
+                        <div class="calendar-day-header">S</div>
+
+                        <div class="calendar-day level-2">1</div>
+                        <div class="calendar-day level-2">2</div>
+                        <div class="calendar-day level-3">3</div>
+                        <div class="calendar-day level-3">4</div>
+                        <div class="calendar-day level-1">5</div>
+                        <div class="calendar-day level-3">6</div>
+                        <div class="calendar-day level-0">7</div>
+
+                        <div class="calendar-day level-2">8</div>
+                        <div class="calendar-day level-3">9</div>
+                        <div class="calendar-day level-3">10</div>
+                        <div class="calendar-day today">11</div>
+                        <div class="calendar-day level-0">12</div>
+                        <div class="calendar-day level-0">13</div>
+                        <div class="calendar-day level-0">14</div>
+
+                        <div class="calendar-day level-0">15</div>
+                        <div class="calendar-day level-0">16</div>
+                        <div class="calendar-day level-0">17</div>
+                        <div class="calendar-day level-0">18</div>
+                        <div class="calendar-day level-0">19</div>
+                        <div class="calendar-day level-0">20</div>
+                        <div class="calendar-day level-0">21</div>
+
+                        <div class="calendar-day level-0">22</div>
+                        <div class="calendar-day level-0">23</div>
+                        <div class="calendar-day level-0">24</div>
+                        <div class="calendar-day level-0">25</div>
+                        <div class="calendar-day level-0">26</div>
+                        <div class="calendar-day level-0">27</div>
+                        <div class="calendar-day level-0">28</div>
+
+                        <div class="calendar-day level-0">29</div>
+                        <div class="calendar-day level-0">30</div>
+                        <div class="calendar-day level-0">31</div>
+                        <div class="calendar-day empty"></div>
+                        <div class="calendar-day empty"></div>
+                        <div class="calendar-day empty"></div>
+                        <div class="calendar-day empty"></div>
+                    </div>
+
+                    <div class="calendar-legend">
+                        <div class="legend-item">
+                            <div class="legend-box" style="background: #10B981;"></div>
+                            <span>3</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-box" style="background: #39D353;"></div>
+                            <span>2</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-box" style="background: #9BE9A8;"></div>
+                            <span>1</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-box" style="background: #F3F4F6;"></div>
+                            <span>0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- サマリーカード -->
+                <div class="summary-card">
+                    <div class="summary-title">📊 今月のサマリー</div>
+                    <div class="summary-item">
+                        <span class="summary-label">🍽️ 食事</span>
+                        <span class="summary-value">42回</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">📸 写真</span>
+                        <span class="summary-value">58枚</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">🔥 平均カロリー</span>
+                        <span class="summary-value">1,920 kcal/日</span>
+                    </div>
+                </div>
+
+                <!-- 日別リスト（省略） -->
+                <div class="meal-list">
+                    <div class="date-section">
+                        <div class="date-header">12月11日（水）</div>
+                        <div class="meal-card">
+                            <div class="meal-image">🍳</div>
+                            <div class="meal-info">
+                                <span class="meal-type breakfast">朝食</span>
+                                <div class="meal-name">Oatmeal & Berries</div>
+                                <div class="meal-meta">
+                                    <span>⏰ 07:30</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 全期間 -->
+        <div class="screen">
+            <div class="screen-label">④ 全期間</div>
+            
+            <div class="header">
+                <div class="status-bar">
+                    <span>9:41</span>
+                    <span>📶 🔋</span>
+                </div>
+                <div class="header-title">食事記録</div>
+            </div>
+
+            <div class="period-filters">
+                <button class="filter-btn">今日</button>
+                <button class="filter-btn">今週</button>
+                <button class="filter-btn">今月</button>
+                <button class="filter-btn active">全期間</button>
+            </div>
+
+            <div class="content">
+                <!-- 開始日 -->
+                <div class="start-date-card">
+                    <div class="start-date-icon">📅</div>
+                    <div class="start-date-text">
+                        <div class="start-date-label">開始日</div>
+                        <div class="start-date-value">2024年11月1日</div>
+                    </div>
+                </div>
+
+                <!-- 累計サマリー -->
+                <div class="summary-card">
+                    <div class="summary-title">📊 累計記録</div>
+                    <div class="summary-item">
+                        <span class="summary-label">🍽️ 食事</span>
+                        <span class="summary-value">156回</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">📸 写真</span>
+                        <span class="summary-value">218枚</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">📅 記録日数</span>
+                        <span class="summary-value">58日</span>
+                    </div>
+                </div>
+
+                <!-- 月別推移グラフ -->
+                <div class="stats-chart">
+                    <div class="chart-title">📈 月別推移</div>
+                    <div class="chart-placeholder">
+                        グラフ表示エリア<br>
+                        （食事回数の月別推移）
+                    </div>
+                </div>
+
+                <!-- 月別アコーディオン -->
+                <div class="meal-list">
+                    <div class="month-accordion">
+                        <div class="month-header">
+                            <div class="month-name">▼ 2025年12月</div>
+                            <div class="month-count">42回</div>
+                        </div>
+                    </div>
+
+                    <div class="month-accordion">
+                        <div class="month-header">
+                            <div class="month-name">▼ 2025年11月</div>
+                            <div class="month-count">38回</div>
+                        </div>
+                    </div>
+
+                    <div class="month-accordion">
+                        <div class="month-header">
+                            <div class="month-name">▼ 2024年12月</div>
+                            <div class="month-count">40回</div>
+                        </div>
+                    </div>
+
+                    <div class="month-accordion">
+                        <div class="month-header">
+                            <div class="month-name">▼ 2024年11月</div>
+                            <div class="month-count">36回</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="note">
+        <div class="note-title">📋 期間フィルタ仕様</div>
+        <ul>
+            <li><strong>今日</strong>: カレンダー非表示 / 本日のサマリー / 時系列リスト</li>
+            <li><strong>今週</strong>: 週カレンダー（横1列）/ 今週のサマリー / 日別リスト</li>
+            <li><strong>今月</strong>: 月カレンダー（GitHub草スタイル）/ 今月のサマリー / 日別リスト</li>
+            <li><strong>全期間</strong>: カレンダー非表示 / 累計統計 / 月別グラフ / 月別アコーディオン</li>
+        </ul>
+    </div>
+
+    <div class="note" style="margin-top: 20px; background: #FEF3C7; border-left-color: #F59E0B;">
+        <div class="note-title" style="color: #92400E;">💡 実装のポイント</div>
+        <ul style="color: #92400E;">
+            <li><strong>状態管理</strong>: Riverpodで期間フィルタの状態を管理</li>
+            <li><strong>動的表示</strong>: switch文で期間に応じてウィジェット切り替え</li>
+            <li><strong>GitHub草カレンダー</strong>: 記録回数に応じて色の濃さを4段階で表現</li>
+            <li><strong>週カレンダー</strong>: 1週間を横一列で表示（モバイルに最適化）</li>
+            <li><strong>パフォーマンス</strong>: リスト表示は遅延ロード（Infinite Scroll）</li>
+        </ul>
+    </div>
+
+    <script>
+        // 期間フィルタボタンのクリックイベント
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                // 同じスクリーン内のボタンのみ切り替え
+                const parent = this.closest('.screen');
+                parent.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // カレンダー日付クリック
+        document.querySelectorAll('.calendar-day:not(.empty)').forEach(day => {
+            day.addEventListener('click', function() {
+                console.log('Selected date:', this.textContent);
+                // 実際の実装では、その日の詳細画面に遷移
+            });
+        });
+
+        // 月別アコーディオンクリック
+        document.querySelectorAll('.month-header').forEach(header => {
+            header.addEventListener('click', function() {
+                const icon = this.querySelector('.month-name');
+                if (icon.textContent.startsWith('▼')) {
+                    icon.textContent = icon.textContent.replace('▼', '▶');
+                } else {
+                    icon.textContent = icon.textContent.replace('▶', '▼');
+                }
+                // 実際の実装では、その月の詳細を表示/非表示
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,89 @@
+name: fit_connect_mobile
+description: "FIT-CONNECT クライアント向けモバイルアプリ"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.5.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  lucide_icons: ^0.257.0
+
+  # 状態管理
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.5.0
+
+  # JSON Serialization
+  json_annotation: ^4.9.0
+
+  # Supabase連携
+  supabase_flutter: ^2.9.1
+
+  # UI・アニメーション
+  confetti: ^0.7.0
+  fl_chart: ^0.70.1
+
+  # 画像処理
+  image_picker: ^1.1.2
+  image_cropper: ^8.0.2
+  cached_network_image: ^3.4.1
+
+  # Google認証
+  google_sign_in: ^6.2.2
+
+  # QRコード
+  mobile_scanner: ^7.1.4
+  qr_flutter: ^4.1.0
+
+  # Firebase
+  firebase_core: ^3.8.1
+  firebase_messaging: ^15.1.5
+  flutter_local_notifications: ^18.0.1
+
+  # 環境変数
+  flutter_dotenv: ^5.2.1
+
+  # ヘルスケア連携
+  health: ^11.0.0
+
+  # その他
+  intl: ^0.19.0
+  url_launcher: ^6.3.1
+  share_plus: ^10.1.1
+  path_provider: ^2.1.5
+  logger: ^2.5.0
+  uuid: ^4.5.1
+  shared_preferences: ^2.5.4
+  flutter_svg: ^2.2.4
+  app_settings: ^5.1.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # Linter
+  flutter_lints: ^5.0.0
+
+  # Mocking
+  mockito: ^5.4.4
+
+  # Code Generation
+  build_runner: ^2.4.13
+  riverpod_generator: ^2.5.0
+  json_serializable: ^6.9.2
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/.env
+    - assets/images/
+
+  # fonts:
+  #   - family: NotoSansJP
+  #     fonts:
+  #       - asset: assets/fonts/NotoSansJP-Regular.ttf
+  #       - asset: assets/fonts/NotoSansJP-Bold.ttf
+  #         weight: 700
