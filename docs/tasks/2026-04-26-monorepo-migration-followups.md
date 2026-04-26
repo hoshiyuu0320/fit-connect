@@ -7,13 +7,25 @@
 
 ## 後で対応が必要なもの
 
-### 1. Supabase `config.toml` の `project_id` 統一
+### 0. ⚠️ 移行直後に発覚した問題（対応済み）
 
-- 現状: 採用した mobile 側 `config.toml` の `project_id = "fit-connect-mobile"` のまま
-- 旧 Web 側は `project_id = "fit-connect"` だった
-- 推奨: モノレポ化を反映して `fit-connect` または `fit-connect-monorepo` 等に統一
-- ファイル: `supabase/config.toml`
-- 影響: ローカル `supabase start` で立ち上がる Docker コンテナの命名のみ。リモート Supabase プロジェクトには影響なし
+**症状**: `flutter run --release` で `No file or variants found for asset: assets/.env.` エラー。
+
+**原因**: `git subtree add` は **コミット済みファイルのみ** を取り込むため、gitignore 対象だった以下のファイルが mobile から moonsrepo に持ち越されなかった:
+- `fit-connect-mobile/assets/.env` — Supabase URL/Key、Google Web Client ID 入り（pubspec.yaml の assets で必須）
+- `fit-connect-mobile/android/gradlew`、`gradlew.bat`
+- `fit-connect-mobile/android/gradle/wrapper/gradle-wrapper.jar`
+
+**対応**: `FIT-CONNECT-BACKUP-2026-04-26/fit-connect-mobile/` から手動コピーで復元（gitignore 対象なので git status には現れない）。
+
+**教訓**: 今後 subtree や fresh clone で開発環境を立ち上げるときは、上記4ファイルを別経路で配布する仕組み（README に記載 / 1Password 等）を整えること。
+特に `.env` はチーム間で共有が必要だが gitignore のため手動配布が必要。
+
+
+### 1. Supabase `config.toml` の `project_id` 統一 ✅ 解決済み
+
+- 旧mobile側の `project_id = "fit-connect-mobile"` を `"fit-connect"` に統一（Supabase CLI 参照時に自動書き換えされたものをそのまま採用）
+- リモート Supabase プロジェクトには影響なし
 
 ### 2. `pre-monorepo-migration: WIP on feature/weight-prediction` stash の処理
 
