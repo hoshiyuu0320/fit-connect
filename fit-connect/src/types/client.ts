@@ -59,6 +59,24 @@ export type ExerciseRecord = {
   recorded_at: string
 }
 
+// 睡眠記録
+export type SleepRecord = {
+  id: string
+  client_id: string
+  recorded_date: string                      // 'YYYY-MM-DD'
+  bed_time: string | null
+  wake_time: string | null
+  total_sleep_minutes: number | null
+  deep_minutes: number | null
+  light_minutes: number | null
+  rem_minutes: number | null
+  awake_minutes: number | null
+  wakeup_rating: 1 | 2 | 3 | null
+  source: 'manual' | 'healthkit'
+  created_at: string
+  updated_at: string
+}
+
 // メッセージ
 export type Message = {
   id: string
@@ -250,6 +268,19 @@ export const EXERCISE_TYPE_OPTIONS = {
   pilates: 'ピラティス',
   cardio: '有酸素運動',
   other: 'その他',
+} as const
+
+// 目覚め評価の選択肢（Mobile の WakeupRating と一致: 1=groggy, 2=okay, 3=refreshed）
+export const WAKEUP_RATING_OPTIONS = {
+  1: 'だるい',
+  2: 'まあまあ',
+  3: 'すっきり',
+} as const
+
+// 睡眠データソースの表示ラベル
+export const SLEEP_SOURCE_LABELS = {
+  manual: '手動',
+  healthkit: 'HealthKit',
 } as const
 
 // チケット種別の選択肢
