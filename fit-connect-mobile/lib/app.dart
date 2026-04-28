@@ -114,8 +114,10 @@ class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen>
     final settings = ref.read(healthSettingsProvider).valueOrNull;
     if (settings == null || !settings.isEnabled) return;
     final last = settings.lastSyncAt;
+    // resume 時は 5分以上経過していれば再同期（HealthKit に新しいデータが追加された
+    // 可能性が高いため、長すぎるしきい値はユーザー体験を損なう）
     if (last != null &&
-        DateTime.now().difference(last) < const Duration(hours: 1)) {
+        DateTime.now().difference(last) < const Duration(minutes: 5)) {
       return; // まだ十分新しい
     }
     _isResumeSyncing = true;
