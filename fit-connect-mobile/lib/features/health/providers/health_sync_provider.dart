@@ -102,8 +102,13 @@ class HealthSync extends _$HealthSync {
       status: HealthSyncStatus.syncing,
     );
 
-    final startDate = settings.lastSyncAt ??
-        DateTime.now().subtract(const Duration(days: 30));
+    // HealthKit/Health Connect のクエリ範囲は常に過去30日。
+    // `lastSyncAt` を startDate に使うと、ユーザーが Apple Health で
+    // バックデート登録したサンプル（例: 朝8:57に体重を記録 → 9:35にアプリ起動 →
+    // lastSyncAt=9:35 で次回 sync すると 8:57 のサンプルがクエリ範囲外）を
+    // 取りこぼすため、毎回フル30日を読み直して `filterHealthData` /
+    // `upsertObjectiveData` の冪等性に依存する。
+    final startDate = DateTime.now().subtract(const Duration(days: 30));
 
     String? weightError;
     String? sleepError;
