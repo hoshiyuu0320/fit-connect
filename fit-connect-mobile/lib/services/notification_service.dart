@@ -255,6 +255,41 @@ class NotificationService {
     }
   }
 
+  /// バックグラウンド同期失敗時のローカル通知
+  ///
+  /// 同期エラー専用の固定 ID (9001) を使うため、連続して呼ばれた場合は
+  /// 既存の通知を上書きする（通知トレイに溜まらない）。
+  static Future<void> showSyncErrorNotification(String message) async {
+    try {
+      const androidDetails = AndroidNotificationDetails(
+        'high_importance_channel',
+        '重要な通知',
+        channelDescription: 'このチャンネルは重要な通知に使用されます',
+        importance: Importance.high,
+        priority: Priority.high,
+      );
+      const iosDetails = DarwinNotificationDetails();
+      const details = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
+
+      final body = message.length > 120
+          ? '${message.substring(0, 120)}…'
+          : message;
+
+      await _localNotifications.show(
+        9001, // 固定ID（同期エラー専用、上書きされる）
+        'ヘルスケア同期に失敗しました',
+        body,
+        details,
+        payload: 'health_sync_error',
+      );
+    } catch (e) {
+      print('[NotificationService] 同期エラー通知エラー: $e');
+    }
+  }
+
   /// トークンリフレッシュハンドラ
   static Future<void> _handleTokenRefresh(String newToken) async {
     try {

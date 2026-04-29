@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/features/home/presentation/screens/home_screen.dart';
@@ -11,6 +12,8 @@ import 'package:fit_connect_mobile/features/goals/presentation/widgets/goal_achi
 import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
 import 'package:fit_connect_mobile/features/messages/providers/messages_provider.dart';
 import 'package:fit_connect_mobile/features/workout/presentation/screens/workout_screen.dart';
+import 'package:fit_connect_mobile/features/health/providers/health_provider.dart';
+import 'package:fit_connect_mobile/features/health/providers/health_sync_provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 class MainScreen extends ConsumerStatefulWidget {
@@ -25,11 +28,53 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   int _recordsTabIndex = 0;
   bool _initialized = false;
 
+  /// 最後にホーム遷移トリガで sync を発火した時刻（連打防止）
+  DateTime? _lastHomeTriggerSyncAt;
+
+  @override
+  void initState() {
+    super.initState();
+    // ホーム画面マウント時にヘルスケア同期を試行（アプリ起動時 / 再ログイン時）
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _maybeSyncOnHomeEntry();
+    });
+  }
+
   void _navigateToRecordsTab(int tabIndex) {
     setState(() {
       _currentIndex = 3;
       _recordsTabIndex = tabIndex;
     });
+  }
+
+  /// ホーム画面に到達したタイミングで同期を発火する。
+  /// 連打防止のため直近 30 秒以内のみスキップ。
+  /// HealthKit のデータを即座に画面に反映させるのが目的なので、
+  /// `lastSyncAt` ベースの長時間レート制限はかけない（_AuthLoadingScreen の
+  /// 起動時同期と並行することはあるが、HealthKit の呼び出しは軽量で
+  /// `filterHealthData` / `upsertObjectiveData` が冪等なので実害はない）。
+  Future<void> _maybeSyncOnHomeEntry() async {
+    if (!mounted) return;
+
+    // settings provider が cold start 直後でまだ resolve していないケースに備え、
+    // valueOrNull ではなく future を await する
+    final settings = await ref.read(healthSettingsProvider.future);
+    if (!mounted) return;
+    if (!settings.isEnabled) return;
+
+    final now = DateTime.now();
+    if (_lastHomeTriggerSyncAt != null &&
+        now.difference(_lastHomeTriggerSyncAt!) < const Duration(seconds: 30)) {
+      return;
+    }
+
+    _lastHomeTriggerSyncAt = now;
+    try {
+      await ref.read(healthSyncProvider.notifier).syncOnLaunch();
+      debugPrint('[MainScreen] Home遷移時の同期完了');
+    } catch (e) {
+      debugPrint('[MainScreen] Home遷移時の同期エラー: $e');
+    }
   }
 
   List<Widget> get _screens => [
@@ -137,7 +182,13 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     final colors = AppColors.of(context);
     final isSelected = _currentIndex == index;
     return InkWell(
-      onTap: () => setState(() => _currentIndex = index),
+      onTap: () {
+        setState(() => _currentIndex = index);
+        // ホームタブに切り替わった時もヘルスケア同期を試行（30秒の連打防止のみ）
+        if (index == 0) {
+          _maybeSyncOnHomeEntry();
+        }
+      },
       customBorder: const CircleBorder(),
       child: Container(
         padding: const EdgeInsets.all(12),

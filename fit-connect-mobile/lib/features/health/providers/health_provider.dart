@@ -4,6 +4,9 @@ import 'package:fit_connect_mobile/features/health/data/health_repository.dart';
 
 part 'health_provider.g.dart';
 
+/// ヘルスケア同期の状態
+enum HealthSyncStatus { idle, syncing, success, error }
+
 /// HealthRepository のプロバイダ
 @riverpod
 HealthRepository healthRepository(HealthRepositoryRef ref) {
@@ -25,6 +28,8 @@ class HealthSettings extends _$HealthSettings {
   static const _keySleepEnabled = 'health_sleep_enabled';
   static const _keyMorningDialogEnabled = 'health_morning_dialog_enabled';
   static const _keyLastSync = 'health_last_sync';
+  static const _keyLastSyncStatus = 'health_last_sync_status';
+  static const _keyLastSyncError = 'health_last_sync_error';
 
   @override
   Future<HealthSettingsState> build() async {
@@ -35,6 +40,8 @@ class HealthSettings extends _$HealthSettings {
       isSleepEnabled: prefs.getBool(_keySleepEnabled) ?? false,
       isMorningDialogEnabled: prefs.getBool(_keyMorningDialogEnabled) ?? true,
       lastSyncAt: _parseDateTime(prefs.getString(_keyLastSync)),
+      lastSyncStatus: _parseStatus(prefs.getString(_keyLastSyncStatus)),
+      lastSyncError: prefs.getString(_keyLastSyncError),
     );
   }
 
@@ -83,16 +90,51 @@ class HealthSettings extends _$HealthSettings {
     ref.invalidateSelf();
   }
 
-  /// 最終同期日時を更新
+  /// 最終同期日時を更新（互換性維持のため残置。内部的には updateSyncResult を呼ぶ）
   Future<void> updateLastSyncAt(DateTime dateTime) async {
+    await updateSyncResult(
+      status: HealthSyncStatus.success,
+      error: null,
+      syncedAt: dateTime,
+    );
+  }
+
+  /// 同期結果を保存（status / error / syncedAt をまとめて永続化）
+  ///
+  /// - status: 必須。idle/syncing/success/error
+  /// - error: エラーメッセージ。success 時は null を渡してクリアする
+  /// - syncedAt: 成功時のみ渡す。null の場合は lastSyncAt を更新しない
+  Future<void> updateSyncResult({
+    required HealthSyncStatus status,
+    String? error,
+    DateTime? syncedAt,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyLastSync, dateTime.toIso8601String());
+    await prefs.setString(_keyLastSyncStatus, status.name);
+
+    if (error == null) {
+      await prefs.remove(_keyLastSyncError);
+    } else {
+      await prefs.setString(_keyLastSyncError, error);
+    }
+
+    if (syncedAt != null) {
+      await prefs.setString(_keyLastSync, syncedAt.toIso8601String());
+    }
     ref.invalidateSelf();
   }
 
   DateTime? _parseDateTime(String? value) {
     if (value == null) return null;
     return DateTime.tryParse(value);
+  }
+
+  HealthSyncStatus _parseStatus(String? value) {
+    if (value == null) return HealthSyncStatus.idle;
+    for (final s in HealthSyncStatus.values) {
+      if (s.name == value) return s;
+    }
+    return HealthSyncStatus.idle;
   }
 }
 
@@ -103,6 +145,8 @@ class HealthSettingsState {
   final bool isSleepEnabled;
   final bool isMorningDialogEnabled;
   final DateTime? lastSyncAt;
+  final HealthSyncStatus lastSyncStatus;
+  final String? lastSyncError;
 
   const HealthSettingsState({
     required this.isEnabled,
@@ -110,6 +154,8 @@ class HealthSettingsState {
     required this.isSleepEnabled,
     required this.isMorningDialogEnabled,
     this.lastSyncAt,
+    this.lastSyncStatus = HealthSyncStatus.idle,
+    this.lastSyncError,
   });
 
   HealthSettingsState copyWith({
@@ -118,6 +164,8 @@ class HealthSettingsState {
     bool? isSleepEnabled,
     bool? isMorningDialogEnabled,
     DateTime? lastSyncAt,
+    HealthSyncStatus? lastSyncStatus,
+    String? lastSyncError,
   }) =>
       HealthSettingsState(
         isEnabled: isEnabled ?? this.isEnabled,
@@ -126,5 +174,7 @@ class HealthSettingsState {
         isMorningDialogEnabled:
             isMorningDialogEnabled ?? this.isMorningDialogEnabled,
         lastSyncAt: lastSyncAt ?? this.lastSyncAt,
+        lastSyncStatus: lastSyncStatus ?? this.lastSyncStatus,
+        lastSyncError: lastSyncError ?? this.lastSyncError,
       );
 }
