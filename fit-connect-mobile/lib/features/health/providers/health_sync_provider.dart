@@ -11,9 +11,16 @@ import 'package:fit_connect_mobile/services/notification_service.dart';
 
 part 'health_sync_provider.g.dart';
 
-/// 日付をキー文字列に変換するヘルパー
-String dateKey(DateTime dt) =>
-    '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+/// 日付をキー文字列に変換するヘルパー（必ずローカル時刻ベース）
+///
+/// HealthKit の dateFrom と DB から復元した recordedAt のタイムゾーンが
+/// ばらつく可能性があるため、`.toLocal()` で正規化してから日付化する。
+String dateKey(DateTime dt) {
+  final local = dt.toLocal();
+  return '${local.year}-'
+      '${local.month.toString().padLeft(2, '0')}-'
+      '${local.day.toString().padLeft(2, '0')}';
+}
 
 /// HealthKitデータのフィルタリング結果
 class HealthDataFilterResult {
@@ -197,7 +204,11 @@ class HealthSync extends _$HealthSync {
     Error.throwWithStackTrace(lastError!, lastStack ?? StackTrace.current);
   }
 
-  /// 体重同期ロジック（元の _sync から切り出し、振る舞いは同一）
+  /// 体重同期ロジック
+  /// - 既存に message/manual レコードあり → skip（ユーザー入力優先）
+  /// - 既存に healthkit レコードあり & 値が変わっている → UPDATE
+  /// - 既存に healthkit レコードあり & 値が同じ → skip
+  /// - 既存なし → INSERT
   Future<void> _syncWeight(String clientId, DateTime startDate) async {
     final repo = ref.read(healthRepositoryProvider);
     final hasPermission = await repo.hasPermission();
@@ -215,39 +226,81 @@ class HealthSync extends _$HealthSync {
     final weightRepo = WeightRepository();
     final existingRecords = await weightRepo.getWeightRecords(clientId: clientId);
 
-    final filterResult = filterHealthData(
-      healthDataDates: healthData.map((dp) => dp.dateFrom).toList(),
-      existingRecords: existingRecords,
-    );
-    debugPrint(
-      '[HealthSync] Weight: ${filterResult.importIndices.length} to import',
-    );
-
-    int inserted = 0;
-    for (final index in filterResult.importIndices) {
-      final dataPoint = healthData[index];
-      final weightValue =
-          (dataPoint.value as NumericHealthValue).numericValue.toDouble();
-
-      try {
-        await weightRepo.createWeightRecordWithSource(
-          clientId: clientId,
-          weight: weightValue,
-          recordedAt: dataPoint.dateFrom,
-          source: 'healthkit',
-        );
-        inserted++;
-      } catch (e) {
-        debugPrint('[HealthSync] Weight insert failed at $index: $e');
+    // 日付 → 既存レコード のマップを構築（同じ日に複数あれば message/manual 優先）
+    final existingByDate = <String, WeightRecord>{};
+    for (final r in existingRecords) {
+      final key = dateKey(r.recordedAt);
+      final current = existingByDate[key];
+      if (current == null) {
+        existingByDate[key] = r;
+      } else {
+        // 優先度: message > manual > healthkit
+        final priority = {'message': 3, 'manual': 2, 'healthkit': 1};
+        final newP = priority[r.source] ?? 0;
+        final curP = priority[current.source] ?? 0;
+        if (newP > curP) existingByDate[key] = r;
       }
     }
 
-    if (inserted > 0) {
+    int inserted = 0;
+    int updated = 0;
+    int skippedNoChange = 0;
+    int skippedUserSource = 0;
+
+    for (final dataPoint in healthData) {
+      final weightValue =
+          (dataPoint.value as NumericHealthValue).numericValue.toDouble();
+      final key = dateKey(dataPoint.dateFrom);
+      final existing = existingByDate[key];
+
+      try {
+        if (existing == null) {
+          await weightRepo.createWeightRecordWithSource(
+            clientId: clientId,
+            weight: weightValue,
+            recordedAt: dataPoint.dateFrom,
+            source: 'healthkit',
+          );
+          inserted++;
+        } else if (existing.source == 'message' ||
+            existing.source == 'manual') {
+          skippedUserSource++;
+        } else if (existing.source == 'healthkit') {
+          // 値が違うときだけ UPDATE（== 比較は浮動小数誤差に弱いため小数2桁で比較）
+          final sameValue =
+              (existing.weight - weightValue).abs() < 0.005;
+          if (sameValue) {
+            skippedNoChange++;
+          } else {
+            await weightRepo.updateWeightRecord(
+              id: existing.id,
+              weight: weightValue,
+              recordedAt: dataPoint.dateFrom,
+            );
+            updated++;
+            debugPrint(
+              '[HealthSync] Weight: $key updated ${existing.weight} → $weightValue',
+            );
+          }
+        } else {
+          // 未知の source → 安全側で skip
+          skippedUserSource++;
+        }
+      } catch (e) {
+        debugPrint('[HealthSync] Weight write failed for $key: $e');
+      }
+    }
+
+    debugPrint(
+      '[HealthSync] Weight: inserted=$inserted updated=$updated '
+      'skipped(user)=$skippedUserSource skipped(noChange)=$skippedNoChange',
+    );
+
+    if (inserted > 0 || updated > 0) {
       ref.invalidate(weightRecordsProvider);
       ref.invalidate(latestWeightRecordProvider);
       ref.invalidate(weightStatsProvider);
     }
-    debugPrint('[HealthSync] Weight: inserted $inserted');
   }
 
   /// 睡眠同期ロジック（HealthKit から取得 → UPSERT）
