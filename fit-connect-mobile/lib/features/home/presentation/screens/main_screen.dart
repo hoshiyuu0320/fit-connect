@@ -28,7 +28,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   int _recordsTabIndex = 0;
   bool _initialized = false;
 
-  /// 最後にホーム遷移トリガで sync を発火した時刻（重複発火防止）
+  /// 最後にホーム遷移トリガで sync を発火した時刻（連打防止）
   DateTime? _lastHomeTriggerSyncAt;
 
   @override
@@ -48,21 +48,23 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   }
 
   /// ホーム画面に到達したタイミングで同期を発火する。
-  /// 直近 5 分以内に同期済みならスキップ（_AuthLoadingScreen の起動時同期や
-  /// Timer.periodic / resume 経由の同期との重複を回避）。
+  /// 連打防止のため直近 30 秒以内のみスキップ。
+  /// HealthKit のデータを即座に画面に反映させるのが目的なので、
+  /// `lastSyncAt` ベースの長時間レート制限はかけない（_AuthLoadingScreen の
+  /// 起動時同期と並行することはあるが、HealthKit の呼び出しは軽量で
+  /// `filterHealthData` / `upsertObjectiveData` が冪等なので実害はない）。
   Future<void> _maybeSyncOnHomeEntry() async {
     if (!mounted) return;
-    final settings = ref.read(healthSettingsProvider).valueOrNull;
-    if (settings == null || !settings.isEnabled) return;
+
+    // settings provider が cold start 直後でまだ resolve していないケースに備え、
+    // valueOrNull ではなく future を await する
+    final settings = await ref.read(healthSettingsProvider.future);
+    if (!mounted) return;
+    if (!settings.isEnabled) return;
 
     final now = DateTime.now();
     if (_lastHomeTriggerSyncAt != null &&
-        now.difference(_lastHomeTriggerSyncAt!) < const Duration(minutes: 5)) {
-      return;
-    }
-    final lastSync = settings.lastSyncAt;
-    if (lastSync != null &&
-        now.difference(lastSync) < const Duration(minutes: 5)) {
+        now.difference(_lastHomeTriggerSyncAt!) < const Duration(seconds: 30)) {
       return;
     }
 
@@ -182,7 +184,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     return InkWell(
       onTap: () {
         setState(() => _currentIndex = index);
-        // ホームタブに切り替わった時もヘルスケア同期を試行（5分レート制限あり）
+        // ホームタブに切り替わった時もヘルスケア同期を試行（30秒の連打防止のみ）
         if (index == 0) {
           _maybeSyncOnHomeEntry();
         }
