@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import { format } from 'date-fns'
 import { WeightChart } from '@/components/clients/WeightChart'
-import type { WeightRecord, MealRecord, ExerciseRecord, Ticket } from '@/types/client'
+import type { WeightRecord, MealRecord, ExerciseRecord, Ticket, SleepRecord } from '@/types/client'
 import { MEAL_TYPE_OPTIONS, EXERCISE_TYPE_OPTIONS, PURPOSE_OPTIONS } from '@/types/client'
 import {
   type BmrFormula,
@@ -25,6 +25,7 @@ interface SummaryTabProps {
   clientAge?: number
   clientGender?: 'male' | 'female' | 'other'
   bmrFormula?: BmrFormula
+  sleepRecords?: SleepRecord[]
 }
 
 const MEAL_EMOJI: Record<string, string> = {
@@ -47,6 +48,7 @@ export function SummaryTab({
   clientAge,
   clientGender,
   bmrFormula = 'mifflin',
+  sleepRecords = [],
 }: SummaryTabProps) {
   // 有効チケット
   const activeTickets = useMemo(() => {
@@ -83,6 +85,29 @@ export function SummaryTab({
       .sort((a, b) => b.date.getTime() - a.date.getTime())
       .slice(0, 6)
   }, [mealRecords, exerciseRecords])
+
+  // 直近7日の睡眠サマリー
+  const sleepSummary = useMemo(() => {
+    if (sleepRecords.length === 0) {
+      return { avgHours: null, avgWakeupRating: null, hasWarning: false, recentCount: 0 }
+    }
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    const recent = sleepRecords.filter((r) => new Date(r.recorded_date) >= sevenDaysAgo)
+    if (recent.length === 0) {
+      return { avgHours: null, avgWakeupRating: null, hasWarning: false, recentCount: 0 }
+    }
+    const totalMins = recent.filter((r) => r.total_sleep_minutes !== null)
+    const avgHours = totalMins.length > 0
+      ? totalMins.reduce((sum, r) => sum + (r.total_sleep_minutes ?? 0), 0) / totalMins.length / 60
+      : null
+    const ratings = recent.filter((r) => r.wakeup_rating !== null)
+    const avgWakeupRating = ratings.length > 0
+      ? ratings.reduce((sum, r) => sum + (r.wakeup_rating ?? 0), 0) / ratings.length
+      : null
+    // 6時間未満 or 平均評価1.5以下なら注意喚起
+    const hasWarning = (avgHours !== null && avgHours < 6) || (avgWakeupRating !== null && avgWakeupRating <= 1.5)
+    return { avgHours, avgWakeupRating, hasWarning, recentCount: recent.length }
+  }, [sleepRecords])
 
   // 予測データ（30日固定）
   const predictionData = useMemo(() => {
@@ -202,6 +227,41 @@ export function SummaryTab({
               </div>
             )}
           </div>
+        </div>
+
+        {/* 睡眠サマリー（直近7日） */}
+        <div className="bg-white border border-[#E2E8F0] rounded-md p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-[#0F172A]">睡眠（直近7日）</h3>
+            {sleepSummary.hasWarning && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#FEF3C7] text-[#B45309]">
+                改善余地あり
+              </span>
+            )}
+          </div>
+          {sleepSummary.recentCount === 0 ? (
+            <p className="text-sm text-[#94A3B8]">記録がありません</p>
+          ) : (
+            <div className="space-y-2.5">
+              <div className="flex justify-between py-1">
+                <span className="text-xs text-[#94A3B8]">平均睡眠時間</span>
+                <span className="text-sm font-medium text-[#0F172A]">
+                  {sleepSummary.avgHours !== null ? `${sleepSummary.avgHours.toFixed(1)}h` : '--'}
+                </span>
+              </div>
+              <div className="flex justify-between border-t border-[#F1F5F9] py-1 pt-2.5">
+                <span className="text-xs text-[#94A3B8]">平均目覚め評価</span>
+                <span className="text-sm font-medium text-[#0F172A]">
+                  {sleepSummary.avgWakeupRating !== null ? sleepSummary.avgWakeupRating.toFixed(1) : '--'}
+                  <span className="text-[10px] text-[#94A3B8] ml-1">/3.0</span>
+                </span>
+              </div>
+              <div className="flex justify-between border-t border-[#F1F5F9] py-1 pt-2.5">
+                <span className="text-xs text-[#94A3B8]">記録日数</span>
+                <span className="text-sm font-medium text-[#0F172A]">{sleepSummary.recentCount}日</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 体重予測カード（コンパクト） */}

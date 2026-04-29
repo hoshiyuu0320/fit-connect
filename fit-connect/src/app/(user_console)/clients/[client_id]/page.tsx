@@ -10,8 +10,9 @@ import { getExerciseRecords } from '@/lib/supabase/getExerciseRecords'
 import { getTickets } from '@/lib/supabase/getTickets'
 import { getClientNotes } from '@/lib/supabase/getClientNotes'
 import { getClientAssignments } from '@/lib/supabase/getClientAssignments'
+import { getSleepRecords } from '@/lib/supabase/getSleepRecords'
 import { supabase } from '@/lib/supabase'
-import type { ClientDetail, WeightRecord, MealRecord, ExerciseRecord, Ticket, ClientNote } from '@/types/client'
+import type { ClientDetail, WeightRecord, MealRecord, ExerciseRecord, Ticket, ClientNote, SleepRecord } from '@/types/client'
 import type { WorkoutAssignment } from '@/types/workout'
 import type { BmrFormula } from '@/utils/weightPrediction'
 import { ClientHeader } from './_components/ClientHeader'
@@ -22,12 +23,14 @@ import { ExerciseTab } from './_components/ExerciseTab'
 import { NotesTab } from './_components/NotesTab'
 import { TicketsTab } from './_components/TicketsTab'
 import { SessionTab } from './_components/SessionTab'
-import { BarChart3, Scale, UtensilsCrossed, Dumbbell, ClipboardList, Ticket as TicketIcon } from 'lucide-react'
+import { SleepTab } from './_components/SleepTab'
+import { BarChart3, Scale, UtensilsCrossed, Dumbbell, ClipboardList, Ticket as TicketIcon, Moon } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 const TABS: { value: string; label: string; icon: LucideIcon }[] = [
   { value: 'summary', label: 'サマリー', icon: BarChart3 },
   { value: 'weight', label: '体重', icon: Scale },
+  { value: 'sleep', label: '睡眠', icon: Moon },
   { value: 'meal', label: '食事', icon: UtensilsCrossed },
   { value: 'exercise', label: '運動', icon: Dumbbell },
   { value: 'notes', label: 'カルテ', icon: ClipboardList },
@@ -39,7 +42,7 @@ export default function ClientDetailPage() {
   const searchParams = useSearchParams()
   const clientId = params.client_id as string
   const tabParam = searchParams.get('tab')
-  const validTabs = ['summary', 'weight', 'meal', 'exercise', 'notes', 'tickets']
+  const validTabs = ['summary', 'weight', 'sleep', 'meal', 'exercise', 'notes', 'tickets']
   const initialTab = tabParam && validTabs.includes(tabParam) ? tabParam : 'summary'
 
   const [activeTab, setActiveTab] = useState(initialTab)
@@ -50,6 +53,7 @@ export default function ClientDetailPage() {
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [notes, setNotes] = useState<ClientNote[]>([])
   const [workoutAssignments, setWorkoutAssignments] = useState<WorkoutAssignment[]>([])
+  const [sleepRecords, setSleepRecords] = useState<SleepRecord[]>([])
   const [trainerId, setTrainerId] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [mode, setMode] = useState<'info' | 'session'>('info')
@@ -64,7 +68,7 @@ export default function ClientDetailPage() {
           setTrainerId(user.id)
         }
 
-        const [clientData, weights, meals, exercises, ticketsData, notesData, assignmentsData] = await Promise.all([
+        const [clientData, weights, meals, exercises, ticketsData, notesData, assignmentsData, sleeps] = await Promise.all([
           getClientDetail(clientId),
           getWeightRecords(clientId),
           getMealRecords({ clientId, limit: 100 }),
@@ -72,6 +76,7 @@ export default function ClientDetailPage() {
           getTickets(clientId),
           getClientNotes(clientId),
           getClientAssignments(clientId),
+          getSleepRecords(clientId),
         ])
         setClient(clientData)
         setWeightRecords(weights)
@@ -80,6 +85,7 @@ export default function ClientDetailPage() {
         setTickets(ticketsData)
         setNotes(notesData)
         setWorkoutAssignments(assignmentsData)
+        setSleepRecords(sleeps)
       } catch (error) {
         console.error('データ取得エラー：', error)
       } finally {
@@ -280,6 +286,7 @@ export default function ClientDetailPage() {
                 clientAge={client.age}
                 clientGender={client.gender}
                 bmrFormula={bmrFormula}
+                sleepRecords={sleepRecords}
               />
             </TabsContent>
 
@@ -299,6 +306,10 @@ export default function ClientDetailPage() {
                 bmrFormula={bmrFormula}
                 onBmrFormulaChange={setBmrFormula}
               />
+            </TabsContent>
+
+            <TabsContent value="sleep">
+              <SleepTab sleepRecords={sleepRecords} />
             </TabsContent>
 
             <TabsContent value="exercise">
