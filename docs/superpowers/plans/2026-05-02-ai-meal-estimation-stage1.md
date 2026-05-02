@@ -951,6 +951,7 @@ git commit -m "feat(mobile): add MealEstimationResult model with json_serializab
 // lib/features/meal_records/data/meal_estimation_api.dart
 import 'package:fit_connect_mobile/features/meal_records/models/meal_estimation_result.dart';
 import 'package:fit_connect_mobile/services/supabase_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show FunctionException;
 
 enum MealEstimationErrorCode { forbidden, rateLimit, invalidInput, estimationFailed, network }
 
@@ -973,19 +974,26 @@ class MealEstimationApi {
         body: {
           'meal_type': mealType,
           'content': content,
-          'image_urls': const <String>[],
         },
       );
 
-      final status = response.status;
       final data = response.data;
-      if (status >= 200 && status < 300 && data is Map<String, dynamic>) {
+      if (data is Map<String, dynamic>) {
         return MealEstimationResult.fromJson(data);
       }
-
-      // エラーマッピング
-      final errCode = (data is Map && data['error'] is String) ? data['error'] as String : null;
-      final msg = (data is Map && data['message'] is String) ? data['message'] as String : 'Unknown error';
+      throw MealEstimationException(
+        MealEstimationErrorCode.estimationFailed,
+        'Unexpected success body: ${data.runtimeType}',
+      );
+    } on FunctionException catch (e) {
+      // functions_client は non-2xx で例外を投げる。Edge Function の {error, message} は e.details に入る
+      final details = e.details;
+      final errCode = (details is Map && details['error'] is String)
+          ? details['error'] as String
+          : null;
+      final msg = (details is Map && details['message'] is String)
+          ? details['message'] as String
+          : (e.reasonPhrase ?? 'Unknown error');
       switch (errCode) {
         case 'FORBIDDEN':
           throw MealEstimationException(MealEstimationErrorCode.forbidden, msg);
@@ -993,6 +1001,7 @@ class MealEstimationApi {
           throw MealEstimationException(MealEstimationErrorCode.rateLimit, msg);
         case 'INVALID_INPUT':
           throw MealEstimationException(MealEstimationErrorCode.invalidInput, msg);
+        case 'ESTIMATION_FAILED':
         default:
           throw MealEstimationException(MealEstimationErrorCode.estimationFailed, msg);
       }

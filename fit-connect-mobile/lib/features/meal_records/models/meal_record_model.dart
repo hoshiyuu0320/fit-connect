@@ -1,5 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'package:fit_connect_mobile/shared/utils/date_time_converter.dart';
+import 'package:fit_connect_mobile/features/meal_records/models/meal_estimation_result.dart';
 
 part 'meal_record_model.g.dart';
 
@@ -22,7 +23,7 @@ class MealRecord {
   @JsonKey(name: 'estimated_by_ai')
   final bool estimatedByAi;
   @JsonKey(name: 'ai_foods')
-  final List<Map<String, dynamic>>? aiFoods;
+  final List<EstimatedFood>? aiFoods;
   @DateTimeConverter()
   @JsonKey(name: 'recorded_at')
   final DateTime recordedAt;
@@ -70,7 +71,7 @@ class MealRecord {
     double? fatG,
     double? carbsG,
     bool? estimatedByAi,
-    List<Map<String, dynamic>>? aiFoods,
+    List<EstimatedFood>? aiFoods,
     DateTime? recordedAt,
     String? source,
     String? messageId,

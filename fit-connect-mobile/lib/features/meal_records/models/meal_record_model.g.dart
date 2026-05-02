@@ -19,7 +19,7 @@ MealRecord _$MealRecordFromJson(Map<String, dynamic> json) => MealRecord(
       carbsG: (json['carbs_g'] as num?)?.toDouble(),
       estimatedByAi: json['estimated_by_ai'] as bool? ?? false,
       aiFoods: (json['ai_foods'] as List<dynamic>?)
-          ?.map((e) => e as Map<String, dynamic>)
+          ?.map((e) => EstimatedFood.fromJson(e as Map<String, dynamic>))
           .toList(),
       recordedAt:
           const DateTimeConverter().fromJson(json['recorded_at'] as String),
