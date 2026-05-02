@@ -166,7 +166,10 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
   }
 
   Future<void> _handleSend(
-      String text, List<String>? imageUrls, String? replyToId) async {
+      String text,
+      List<String>? imageUrls,
+      String? replyToId,
+      Map<String, dynamic>? metadata) async {
     if (text.trim().isEmpty && (imageUrls == null || imageUrls.isEmpty)) return;
 
     // 編集モードの場合
@@ -185,6 +188,7 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
             imageUrls: imageUrls,
             tags: tags,
             replyToMessageId: replyToId,
+            metadata: metadata,
           );
       _clearReplyTarget();
     } catch (e) {

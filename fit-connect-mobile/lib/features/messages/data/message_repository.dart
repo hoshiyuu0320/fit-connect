@@ -109,6 +109,7 @@ class MessageRepository {
     List<String>? imageUrls,
     List<String>? tags,
     String? replyToMessageId,
+    Map<String, dynamic>? metadata,
   }) async {
     final response = await _supabase
         .from('messages')
@@ -122,6 +123,7 @@ class MessageRepository {
           'tags': tags,
           'reply_to_message_id': replyToMessageId,
           'is_edited': false,
+          if (metadata != null) 'metadata': metadata,
         })
         .select()
         .single();
