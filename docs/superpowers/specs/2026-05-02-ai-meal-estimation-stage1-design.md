@@ -203,6 +203,8 @@ CREATE INDEX idx_ai_logs_trainer_created ON ai_estimation_logs(trainer_id, creat
 }
 ```
 
+**Stage 1 における `image_urls` の扱い**: Stage 2 への前方互換のため schema には含めるが、Stage 1 では **受信しても無視する**（プロンプトには反映しない）。Stage 2 で本格的にハンドリングする想定。
+
 **Response（成功）**:
 ```json
 {
@@ -260,6 +262,10 @@ CREATE INDEX idx_ai_logs_trainer_created ON ai_estimation_logs(trainer_id, creat
 | トレーナー（合計） | 1000 回/24h | コスト上限のセーフティネット |
 
 判定: Edge Function 内で `ai_estimation_logs` に対して `client_id` および `trainer_id` 別の COUNT を実行。超過時は `429 RATE_LIMIT` を返却。
+
+**ログ挿入のタイミング**: `ai_estimation_logs` への INSERT は **Claude API 呼び出しの直後（成功・失敗ともに）** に行う。これにより、現在処理中のリクエスト自体は自身の枠を消費しない（同時並行リクエストのセルフスロットルを避けるため）。
+
+**Edge Function 側のタイムアウト**: Claude API への呼び出しには Anthropic SDK のデフォルト（10分）ではなく **20秒のタイムアウトを明示設定**。クライアント側の30秒タイムアウトと合わせて、ユーザーへの応答性を担保する。
 
 ### 5.5 シークレット管理
 
@@ -359,6 +365,8 @@ if (tagData.category === '食事') {
 ### 7.4 Provider 設計
 
 - `aiFeaturesEnabledProvider` (Riverpod): 自身の担当トレーナーの `subscription_plan` を取得し、`'pro'` なら `true`
+  - 参照経路: `auth.uid()` → `clients.client_id` → `clients.trainer_id` → `trainers.subscription_plan`
+  - RLS 前提条件は §4.5 / §10 を参照
 - `mealEstimationNotifier`: `MealTagForm` の3状態を保持する `AsyncNotifier` または `StateNotifier`
 
 ---
@@ -440,6 +448,7 @@ if (tagData.category === '食事') {
 - [ ] テストアカウント（'pro' プラン）でフルフロー成功
 - [ ] テストアカウント（'free' プラン）で既存挙動が変わらないことを確認
 - [ ] `IMPLEMENTATION_TASKS.md` のフェーズ2 進捗を更新（2.1 / 2.2 完了マーク）
+- [ ] 実装中に得られた知見・ハマりどころを `docs/tasks/lessons.md` に追記（CLAUDE.md ルールに準拠）
 
 ---
 
