@@ -72,6 +72,7 @@ Deno.serve(async (req) => {
           recorded_at: message.created_at,
           notes: tagData.remainingContent,
           image_urls: message.image_urls || [], // 画像URLを追加
+          meal_estimation: message.metadata?.meal_estimation, // ← 追加
         }
 
         let createResult;
@@ -155,8 +156,37 @@ async function createMealRecord(supabase, commonData, tagData) {
     else if (tagData.detail.includes('夕') || tagData.detail.includes('晩')) mealType = 'dinner'
   }
 
-  console.log('Creating meal record:', mealType, 'with', commonData.image_urls?.length || 0, 'images')
+  // metadata.meal_estimation があれば PFC込みで保存
+  // 上流（mobile送信パス + estimate-meal-nutrition）が形式を保証する想定だが、
+  // 万一 metadata.meal_estimation が空オブジェクト等で届いた場合に
+  // estimated_by_ai=true / PFC=NULL の矛盾レコードを生まないよう防御する
+  const estimation = commonData.meal_estimation
+  const hasValidEstimation =
+    estimation &&
+    typeof estimation.calories === 'number' &&
+    Array.isArray(estimation.foods) &&
+    estimation.foods.length > 0
+  if (hasValidEstimation) {
+    console.log('Creating meal record with AI estimation:', mealType, 'totals=', estimation)
+    return await supabase.from('meal_records').insert({
+      client_id: commonData.client_id,
+      source: commonData.source,
+      message_id: commonData.message_id,
+      recorded_at: commonData.recorded_at,
+      notes: commonData.notes,
+      meal_type: mealType,
+      images: commonData.image_urls,
+      calories: estimation.calories,
+      protein_g: estimation.protein_g,
+      fat_g: estimation.fat_g,
+      carbs_g: estimation.carbs_g,
+      ai_foods: estimation.foods,
+      estimated_by_ai: true,
+    })
+  }
 
+  // 既存挙動（PFCなし）
+  console.log('Creating meal record (no AI):', mealType, 'images=', commonData.image_urls?.length || 0)
   return await supabase.from('meal_records').insert({
     client_id: commonData.client_id,
     source: commonData.source,
@@ -164,7 +194,7 @@ async function createMealRecord(supabase, commonData, tagData) {
     recorded_at: commonData.recorded_at,
     notes: commonData.notes,
     meal_type: mealType,
-    images: commonData.image_urls, // 画像URLを保存
+    images: commonData.image_urls,
   })
 }
 
