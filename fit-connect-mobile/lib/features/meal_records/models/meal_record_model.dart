@@ -13,6 +13,16 @@ class MealRecord {
   final String? notes;
   final List<String>? images;
   final double? calories;
+  @JsonKey(name: 'protein_g')
+  final double? proteinG;
+  @JsonKey(name: 'fat_g')
+  final double? fatG;
+  @JsonKey(name: 'carbs_g')
+  final double? carbsG;
+  @JsonKey(name: 'estimated_by_ai')
+  final bool estimatedByAi;
+  @JsonKey(name: 'ai_foods')
+  final List<Map<String, dynamic>>? aiFoods;
   @DateTimeConverter()
   @JsonKey(name: 'recorded_at')
   final DateTime recordedAt;
@@ -33,6 +43,11 @@ class MealRecord {
     this.notes,
     this.images,
     this.calories,
+    this.proteinG,
+    this.fatG,
+    this.carbsG,
+    this.estimatedByAi = false,
+    this.aiFoods,
     required this.recordedAt,
     required this.source,
     this.messageId,
@@ -51,6 +66,11 @@ class MealRecord {
     String? notes,
     List<String>? images,
     double? calories,
+    double? proteinG,
+    double? fatG,
+    double? carbsG,
+    bool? estimatedByAi,
+    List<Map<String, dynamic>>? aiFoods,
     DateTime? recordedAt,
     String? source,
     String? messageId,
@@ -64,6 +84,11 @@ class MealRecord {
       notes: notes ?? this.notes,
       images: images ?? this.images,
       calories: calories ?? this.calories,
+      proteinG: proteinG ?? this.proteinG,
+      fatG: fatG ?? this.fatG,
+      carbsG: carbsG ?? this.carbsG,
+      estimatedByAi: estimatedByAi ?? this.estimatedByAi,
+      aiFoods: aiFoods ?? this.aiFoods,
       recordedAt: recordedAt ?? this.recordedAt,
       source: source ?? this.source,
       messageId: messageId ?? this.messageId,
