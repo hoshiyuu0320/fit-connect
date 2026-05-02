@@ -1132,7 +1132,7 @@ In the state class:
   _MealFormPhase _phase = _MealFormPhase.input;
   MealEstimationResult? _estimation;
   EstimationTotals? _editableTotals; // 確認画面で編集される値
-  String? _estimationError;
+  // 注: エラーメッセージはスナックバーで表示するだけなので state には持たない（local 変数で十分）
 ```
 
 Add imports at top of file:
@@ -1172,7 +1172,27 @@ Add:
   final Future<void> Function(String composedText, MealEstimationResult estimation)? onSendWithEstimation;
 ```
 
-Add to constructor and `StructuredTagForm` parent passthrough.
+Add to `MealTagForm` constructor.
+
+Also add a **nullable** `onSendWithEstimation` parameter to the parent `StructuredTagForm` (StatelessWidget) and pass it through ONLY to the `'meal'` branch:
+```dart
+class StructuredTagForm extends StatelessWidget {
+  // ... existing params
+  final Future<void> Function(String composedText, MealEstimationResult estimation)? onSendWithEstimation; // ← 新規（nullable）
+
+  // build() の case 'meal':
+  return MealTagForm(
+    onCompose: onCompose,
+    onClose: onClose,
+    hasImages: hasImages,
+    selectedImages: selectedImages,
+    onPickImage: onPickImage,
+    onRemoveImage: onRemoveImage,
+    onSendWithEstimation: onSendWithEstimation, // ← 新規
+  );
+```
+
+`WeightTagForm` / `ExerciseTagForm` は変更不要（AI推定対象外）。
 
 - [ ] **Step 4: Replace `_handleInsert` with branching logic**
 
@@ -1207,12 +1227,12 @@ Add to constructor and `StructuredTagForm` parent passthrough.
       });
     } on MealEstimationException catch (e) {
       if (!mounted) return;
+      final msg = _humanError(e);
       setState(() {
-        _estimationError = _humanError(e);
         _phase = _MealFormPhase.input;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_estimationError!), backgroundColor: AppColors.rose800),
+        SnackBar(content: Text(msg), backgroundColor: AppColors.rose800),
       );
     }
   }
@@ -1555,17 +1575,27 @@ git commit -am "feat(mobile): add MealEstimationConfirmView and wire into MealTa
 
 The chat send path currently calls `widget.onSend(text, imageUrls, replyTo)`. We need to extend it so that when `MealTagForm` returns an estimation, the message INSERT includes `metadata.meal_estimation`.
 
-### Task G1: Find the message repository / send call site
+### Task G1: Confirm message repository send signature
 
 **Files:** investigate (no code change yet)
 
-- [ ] **Step 1: Locate the file that ultimately INSERTs into `messages`**
+The pre-confirmed file is `fit-connect-mobile/lib/features/messages/data/message_repository.dart`. The method to extend is `sendMessage(...)` (around line 103). Existing parameters are positional-named (e.g. `senderId`, `receiverId`, `senderType`, `receiverType`, `content`, `imageUrls`, `tags`, `replyToMessageId`).
+
+- [ ] **Step 1: Open the file and read the full `sendMessage` signature**
 
 ```bash
-grep -rn "from('messages').*insert\|from(\"messages\").*insert" /Users/hoshidayuuya/Documents/FIT-CONNECT/fit-connect-mobile/lib --include="*.dart"
+sed -n '100,140p' /Users/hoshidayuuya/Documents/FIT-CONNECT/fit-connect-mobile/lib/features/messages/data/message_repository.dart
 ```
 
-- [ ] **Step 2: Note the file path** in this plan as a comment for Task G2 (the most likely candidate is `lib/features/messages/data/...repository.dart` or similar). Record the exact path before proceeding.
+Note the exact parameter list — Task G2 must preserve all existing parameters and only ADD `Map<String, dynamic>? metadata`.
+
+- [ ] **Step 2: Identify all existing call sites of `sendMessage`**
+
+```bash
+grep -rn "sendMessage(" /Users/hoshidayuuya/Documents/FIT-CONNECT/fit-connect-mobile/lib --include="*.dart"
+```
+
+Each call site must keep working with `metadata: null` as default.
 
 ---
 
