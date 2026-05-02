@@ -13,6 +13,7 @@ class MealEstimationConfirmView extends StatefulWidget {
   final ValueChanged<EstimationTotals> onTotalsChanged;
   final VoidCallback onBack;
   final VoidCallback onSend;
+  final bool isSending;
 
   const MealEstimationConfirmView({
     super.key,
@@ -21,6 +22,7 @@ class MealEstimationConfirmView extends StatefulWidget {
     required this.onTotalsChanged,
     required this.onBack,
     required this.onSend,
+    this.isSending = false,
   });
 
   @override
@@ -130,21 +132,30 @@ class _MealEstimationConfirmViewState extends State<MealEstimationConfirmView> {
         ),
         const SizedBox(height: 10),
 
-        // Send button
+        // Send button (送信中は無効化、二重送信防止)
         Align(
           alignment: Alignment.centerRight,
           child: GestureDetector(
-            onTap: widget.onSend,
+            onTap: widget.isSending ? null : widget.onSend,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: AppColors.primary,
+                color: widget.isSending ? AppColors.primary.withAlpha(128) : AppColors.primary,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Text(
-                '送信',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white),
-              ),
+              child: widget.isSending
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Text(
+                      '送信',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white),
+                    ),
             ),
           ),
         ),

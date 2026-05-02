@@ -313,6 +313,7 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
   _MealFormPhase _phase = _MealFormPhase.input;
   MealEstimationResult? _estimation;
   EstimationTotals? _editableTotals;
+  bool _isSending = false;
   // 注: エラーメッセージはスナックバーで表示するだけなので state には持たない
 
   static const _mealTypes = ['朝食', '昼食', '夕食', '間食'];
@@ -432,12 +433,20 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
 
   Future<void> _handleSendWithEstimation() async {
     if (_estimation == null || _editableTotals == null) return;
+    if (_isSending) return; // 二重送信防止（GestureDetectorの onTap=null と二重に保護）
+    setState(() => _isSending = true);
     final estimationToSend = MealEstimationResult(
       foods: _estimation!.foods,
       totals: _editableTotals!,
     );
-    await widget.onSendWithEstimation?.call(_composedText, estimationToSend);
-    // 親側でシートクローズが行われる想定
+    try {
+      await widget.onSendWithEstimation?.call(_composedText, estimationToSend);
+      // 親側でシートクローズが行われる想定。このウィジェットは unmount される
+    } finally {
+      if (mounted) {
+        setState(() => _isSending = false);
+      }
+    }
   }
 
   @override
@@ -582,6 +591,7 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
         _editableTotals = null;
       }),
       onSend: _handleSendWithEstimation,
+      isSending: _isSending,
     );
   }
 }
