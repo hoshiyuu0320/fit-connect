@@ -1,8 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
+import 'package:fit_connect_mobile/features/meal_records/data/meal_estimation_api.dart';
+import 'package:fit_connect_mobile/features/meal_records/models/meal_estimation_result.dart';
+import 'package:fit_connect_mobile/features/messages/presentation/widgets/meal_estimation_confirm_view.dart';
+import 'package:fit_connect_mobile/features/subscription/providers/ai_features_enabled_provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 // ============================================
@@ -18,6 +23,9 @@ class StructuredTagForm extends StatelessWidget {
   final VoidCallback? onPickImage;
   final Function(int)? onRemoveImage;
 
+  /// PFC込みで送信。MealTagForm のみで使用。null の場合は AI推定なしで `onCompose` のみ
+  final Future<void> Function(String composedText, MealEstimationResult estimation)? onSendWithEstimation;
+
   const StructuredTagForm({
     super.key,
     required this.formType,
@@ -27,6 +35,7 @@ class StructuredTagForm extends StatelessWidget {
     this.selectedImages = const [],
     this.onPickImage,
     this.onRemoveImage,
+    this.onSendWithEstimation,
   });
 
   @override
@@ -48,6 +57,7 @@ class StructuredTagForm extends StatelessWidget {
           selectedImages: selectedImages,
           onPickImage: onPickImage,
           onRemoveImage: onRemoveImage,
+          onSendWithEstimation: onSendWithEstimation,
         );
       case 'exercise':
         return ExerciseTagForm(
@@ -269,13 +279,18 @@ class _WeightTagFormState extends State<WeightTagForm> {
 // MealTagForm
 // ============================================
 
-class MealTagForm extends StatefulWidget {
+enum _MealFormPhase { input, loading, confirm }
+
+class MealTagForm extends ConsumerStatefulWidget {
   final Function(String composedText) onCompose;
   final VoidCallback onClose;
   final bool hasImages;
   final List<File> selectedImages;
   final VoidCallback? onPickImage;
   final Function(int)? onRemoveImage;
+
+  /// PFC込みで送信。null の場合は AI推定なしで `onCompose` のみ実行
+  final Future<void> Function(String composedText, MealEstimationResult estimation)? onSendWithEstimation;
 
   const MealTagForm({
     super.key,
@@ -285,15 +300,20 @@ class MealTagForm extends StatefulWidget {
     this.selectedImages = const [],
     this.onPickImage,
     this.onRemoveImage,
+    this.onSendWithEstimation,
   });
 
   @override
-  State<MealTagForm> createState() => _MealTagFormState();
+  ConsumerState<MealTagForm> createState() => _MealTagFormState();
 }
 
-class _MealTagFormState extends State<MealTagForm> {
+class _MealTagFormState extends ConsumerState<MealTagForm> {
   late String _selectedMealType;
   final TextEditingController _contentController = TextEditingController();
+  _MealFormPhase _phase = _MealFormPhase.input;
+  MealEstimationResult? _estimation;
+  EstimationTotals? _editableTotals;
+  // 注: エラーメッセージはスナックバーで表示するだけなので state には持たない
 
   static const _mealTypes = ['朝食', '昼食', '夕食', '間食'];
 
@@ -333,105 +353,235 @@ class _MealTagFormState extends State<MealTagForm> {
     return '#食事:$type $content';
   }
 
-  void _handleInsert() {
+  Future<void> _handleInsert() async {
     if (!_isValid) return;
-    widget.onCompose(_composedText);
+
+    final aiEnabled = ref.read(aiFeaturesEnabledProvider).valueOrNull ?? false;
+    final canEstimate = aiEnabled
+        && widget.onSendWithEstimation != null
+        && _contentController.text.trim().isNotEmpty;
+
+    if (!canEstimate) {
+      // 既存挙動: チャット入力欄に挿入
+      widget.onCompose(_composedText);
+      return;
+    }
+
+    setState(() {
+      _phase = _MealFormPhase.loading;
+    });
+
+    try {
+      final result = await MealEstimationApi.estimate(
+        mealType: _mealTypeToEnum(_selectedMealType),
+        content: _contentController.text.trim(),
+      );
+      if (!mounted) return;
+      setState(() {
+        _estimation = result;
+        _editableTotals = result.totals;
+        _phase = _MealFormPhase.confirm;
+      });
+    } on MealEstimationException catch (e) {
+      if (!mounted) return;
+      final msg = _humanError(e);
+      setState(() {
+        _phase = _MealFormPhase.input;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(msg),
+          backgroundColor: AppColors.rose800,
+          action: SnackBarAction(
+            label: 'AIなしで送信',
+            textColor: Colors.white,
+            onPressed: () => widget.onCompose(_composedText),
+          ),
+        ),
+      );
+    }
+  }
+
+  String _mealTypeToEnum(String label) {
+    switch (label) {
+      case '朝食':
+        return 'breakfast';
+      case '昼食':
+        return 'lunch';
+      case '夕食':
+        return 'dinner';
+      default:
+        return 'snack';
+    }
+  }
+
+  String _humanError(MealEstimationException e) {
+    switch (e.code) {
+      case MealEstimationErrorCode.rateLimit:
+        return 'AI推定の上限に達しました。しばらくしてからお試しください';
+      case MealEstimationErrorCode.network:
+        return '通信エラーが発生しました';
+      case MealEstimationErrorCode.forbidden:
+        return 'AI機能が利用できません';
+      case MealEstimationErrorCode.invalidInput:
+        return '入力内容が不正です';
+      case MealEstimationErrorCode.estimationFailed:
+        return '推定に失敗しました。内容を変えてお試しください';
+    }
+  }
+
+  Future<void> _handleSendWithEstimation() async {
+    if (_estimation == null || _editableTotals == null) return;
+    final estimationToSend = MealEstimationResult(
+      foods: _estimation!.foods,
+      totals: _editableTotals!,
+    );
+    await widget.onSendWithEstimation?.call(_composedText, estimationToSend);
+    // 親側でシートクローズが行われる想定
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
-
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       decoration: BoxDecoration(
         color: colors.surfaceDim,
         border: Border(top: BorderSide(color: colors.border)),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ヘッダー行
-          Row(
-            children: [
-              Icon(LucideIcons.utensils, size: 16, color: colors.textPrimary),
-              const SizedBox(width: 6),
-              Text(
-                '食事を記録',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: colors.textPrimary,
-                ),
-              ),
-              const Spacer(),
-              GestureDetector(
-                onTap: widget.onClose,
-                child: Icon(LucideIcons.x, size: 20, color: colors.textHint),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
+      child: switch (_phase) {
+        _MealFormPhase.input => _buildInputState(colors),
+        _MealFormPhase.loading => _buildLoadingState(colors),
+        _MealFormPhase.confirm => _buildConfirmState(colors),
+      },
+    );
+  }
 
-          // セグメントコントロール
-          _SegmentControl(
-            items: _mealTypes,
-            selected: _selectedMealType,
-            onChanged: (value) => setState(() => _selectedMealType = value),
-            colors: colors,
-          ),
-          const SizedBox(height: 8),
-
-          // 食事内容入力
-          TextField(
-            controller: _contentController,
-            onChanged: (_) => setState(() {}),
-            decoration: InputDecoration(
-              hintText: '食事内容やコメントを入力',
-              hintStyle: TextStyle(color: colors.textHint),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: colors.border),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: colors.border),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide:
-                    const BorderSide(color: AppColors.primary, width: 2),
-              ),
-              filled: true,
-              fillColor: colors.surface,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 10,
+  Widget _buildInputState(AppColorsExtension colors) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ヘッダー行
+        Row(
+          children: [
+            Icon(LucideIcons.utensils, size: 16, color: colors.textPrimary),
+            const SizedBox(width: 6),
+            Text(
+              '食事を記録',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: colors.textPrimary,
               ),
             ),
-            style: TextStyle(color: colors.textPrimary, fontSize: 14),
-          ),
-          const SizedBox(height: 8),
+            const Spacer(),
+            GestureDetector(
+              onTap: widget.onClose,
+              child: Icon(LucideIcons.x, size: 20, color: colors.textHint),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
 
-          // 画像ピッカー行
-          _ImagePickerRow(
-            images: widget.selectedImages,
-            onPick: widget.onPickImage,
-            onRemove: widget.onRemoveImage,
-            colors: colors,
-          ),
-          const SizedBox(height: 10),
+        // セグメントコントロール
+        _SegmentControl(
+          items: _mealTypes,
+          selected: _selectedMealType,
+          onChanged: (value) => setState(() => _selectedMealType = value),
+          colors: colors,
+        ),
+        const SizedBox(height: 8),
 
-          // プレビュー行
-          _PreviewRow(
-            previewText: _previewText,
-            isValid: _isValid,
-            onInsert: _handleInsert,
-            colors: colors,
+        // 食事内容入力
+        TextField(
+          controller: _contentController,
+          onChanged: (_) => setState(() {}),
+          decoration: InputDecoration(
+            hintText: '食事内容やコメントを入力',
+            hintStyle: TextStyle(color: colors.textHint),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: colors.border),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: colors.border),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide:
+                  const BorderSide(color: AppColors.primary, width: 2),
+            ),
+            filled: true,
+            fillColor: colors.surface,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 10,
+            ),
           ),
-        ],
-      ),
+          style: TextStyle(color: colors.textPrimary, fontSize: 14),
+        ),
+        const SizedBox(height: 8),
+
+        // 画像ピッカー行
+        _ImagePickerRow(
+          images: widget.selectedImages,
+          onPick: widget.onPickImage,
+          onRemove: widget.onRemoveImage,
+          colors: colors,
+        ),
+        const SizedBox(height: 10),
+
+        // プレビュー行
+        _PreviewRow(
+          previewText: _previewText,
+          isValid: _isValid,
+          onInsert: _handleInsert,
+          colors: colors,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLoadingState(AppColorsExtension colors) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(LucideIcons.utensils, size: 16, color: colors.textPrimary),
+            const SizedBox(width: 6),
+            Text(
+              'AI推定中…',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colors.textPrimary),
+            ),
+            const Spacer(),
+            GestureDetector(
+              onTap: () => setState(() => _phase = _MealFormPhase.input),
+              child: Text('キャンセル', style: TextStyle(fontSize: 13, color: colors.textSecondary)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        const Center(child: CircularProgressIndicator()),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+
+  Widget _buildConfirmState(AppColorsExtension colors) {
+    return MealEstimationConfirmView(
+      estimation: _estimation!,
+      totals: _editableTotals!,
+      onTotalsChanged: (t) => setState(() => _editableTotals = t),
+      onBack: () => setState(() {
+        _phase = _MealFormPhase.input;
+        _estimation = null;
+        _editableTotals = null;
+      }),
+      onSend: _handleSendWithEstimation,
     );
   }
 }
@@ -1068,16 +1218,18 @@ Widget previewWeightTagFormFilled() {
 
 @Preview(name: 'MealTagForm - Default')
 Widget previewMealTagFormDefault() {
-  return MaterialApp(
-    theme: AppTheme.lightTheme,
-    home: Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      body: SafeArea(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            MealTagForm(onCompose: (_) {}, onClose: () {}),
-          ],
+  return ProviderScope(
+    child: MaterialApp(
+      theme: AppTheme.lightTheme,
+      home: Scaffold(
+        backgroundColor: const Color(0xFFF5F5F5),
+        body: SafeArea(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              MealTagForm(onCompose: (_) {}, onClose: () {}),
+            ],
+          ),
         ),
       ),
     ),
