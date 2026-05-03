@@ -55,6 +55,20 @@ Deno.serve(async (req) => {
       if (tagData) {
         console.log('Tag detected:', JSON.stringify(tagData))
 
+        // Webhook payload may not include all columns (Supabase webhook config can filter columns).
+        // Re-fetch the full row so we have access to metadata, tags, etc. regardless of webhook config.
+        const { data: fullRow, error: fetchErr } = await supabase
+          .from('messages')
+          .select('metadata')
+          .eq('id', message.id)
+          .maybeSingle()
+        if (fetchErr) {
+          console.error('Failed to re-fetch message row for metadata:', fetchErr)
+        } else if (fullRow) {
+          message.metadata = fullRow.metadata
+          console.log('[parse-message-tags] re-fetched metadata =', JSON.stringify(message.metadata))
+        }
+
         // 2. Update message with normalized tags
         const { error: updateError } = await supabase.from('messages').update({
           tags: [tagData.fullTag]
