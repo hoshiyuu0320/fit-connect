@@ -357,20 +357,38 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
   Future<void> _handleInsert() async {
     if (!_isValid) return;
 
-    final aiEnabled = ref.read(aiFeaturesEnabledProvider).valueOrNull ?? false;
-    final canEstimate = aiEnabled
-        && widget.onSendWithEstimation != null
+    // AI 推定を試せる前提条件のうち、同期的に判断できるもの
+    final canTryEstimate = widget.onSendWithEstimation != null
         && _contentController.text.trim().isNotEmpty;
 
-    if (!canEstimate) {
+    if (!canTryEstimate) {
       // 既存挙動: チャット入力欄に挿入
       widget.onCompose(_composedText);
       return;
     }
 
+    // 課金プラン判定は Future なので、ローディング状態に切り替えてから await
     setState(() {
       _phase = _MealFormPhase.loading;
     });
+
+    // aiFeaturesEnabledProvider が resolve するまで待つ（初回 read 時は非同期に Supabase クエリが走る）
+    bool aiEnabled = false;
+    try {
+      aiEnabled = await ref.read(aiFeaturesEnabledProvider.future);
+    } catch (_) {
+      aiEnabled = false;
+    }
+    if (!mounted) return;
+
+    if (!aiEnabled) {
+      // 課金プラン未解放 → 既存挙動にフォールバック（loading 状態は破棄）
+      setState(() {
+        _phase = _MealFormPhase.input;
+      });
+      widget.onCompose(_composedText);
+      return;
+    }
 
     try {
       final result = await MealEstimationApi.estimate(

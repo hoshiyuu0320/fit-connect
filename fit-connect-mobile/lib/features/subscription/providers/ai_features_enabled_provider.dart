@@ -1,4 +1,5 @@
 import 'package:fit_connect_mobile/services/supabase_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'ai_features_enabled_provider.g.dart';
@@ -14,7 +15,10 @@ Future<bool> aiFeaturesEnabled(AiFeaturesEnabledRef ref) async {
   try {
     final supabase = SupabaseService.client;
     final user = supabase.auth.currentUser;
-    if (user == null) return false;
+    if (user == null) {
+      debugPrint('[aiFeaturesEnabled] no auth user → false');
+      return false;
+    }
 
     final clientRow = await supabase
         .from('clients')
@@ -22,16 +26,22 @@ Future<bool> aiFeaturesEnabled(AiFeaturesEnabledRef ref) async {
         .eq('client_id', user.id)
         .maybeSingle();
     final trainerId = clientRow?['trainer_id'] as String?;
-    if (trainerId == null) return false;
+    if (trainerId == null) {
+      debugPrint('[aiFeaturesEnabled] no trainer_id for client ${user.id} → false');
+      return false;
+    }
 
     final trainerRow = await supabase
         .from('trainers')
         .select('subscription_plan')
         .eq('id', trainerId)
         .maybeSingle();
-    return (trainerRow?['subscription_plan'] as String?) == 'pro';
-  } catch (_) {
-    // どんな失敗（ネットワーク・RLS拒否・型キャスト）でも false を返す（dartdoc の契約）
+    final plan = trainerRow?['subscription_plan'] as String?;
+    final enabled = plan == 'pro';
+    debugPrint('[aiFeaturesEnabled] trainer=$trainerId plan=$plan → $enabled');
+    return enabled;
+  } catch (e, st) {
+    debugPrint('[aiFeaturesEnabled] error: $e\n$st');
     return false;
   }
 }
