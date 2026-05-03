@@ -322,6 +322,10 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
   void initState() {
     super.initState();
     _selectedMealType = _getDefaultMealType();
+    // シート表示と同時に AI 機能解放状態を事前フェッチ。
+    // 挿入タップ時には resolve 済みになっているように先に future を発火させ、
+    // free プランの場合に「AI推定中」のフラッシュが出ないようにする。
+    ref.read(aiFeaturesEnabledProvider);
   }
 
   String _getDefaultMealType() {
