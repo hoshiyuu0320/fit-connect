@@ -54,10 +54,30 @@ async function callClaude(apiKey: string, mealType: string, content: string): Pr
     const data = await resp.json()
     const textBlock = data.content?.find((b: any) => b.type === 'text')
     if (!textBlock?.text) throw new Error('No text in Claude response')
-    return JSON.parse(textBlock.text)
+    const jsonText = extractJson(textBlock.text)
+    return JSON.parse(jsonText)
   } finally {
     clearTimeout(timeoutId)
   }
+}
+
+/**
+ * Claude が ```json ... ``` のコードフェンスや前後のテキストを返してきても
+ * 最初の { から最後の } までを抜き出して JSON.parse できる形にする防御層。
+ */
+function extractJson(text: string): string {
+  const trimmed = text.trim()
+  // コードフェンス除去（```json ... ``` または ``` ... ```）
+  const fenceMatch = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/)
+  if (fenceMatch) return fenceMatch[1].trim()
+  // 最初の { と最後の } で囲まれた範囲を抽出（前後にプロセス説明がある場合のフォールバック）
+  const first = trimmed.indexOf('{')
+  const last = trimmed.lastIndexOf('}')
+  if (first !== -1 && last !== -1 && last > first) {
+    return trimmed.substring(first, last + 1)
+  }
+  // 抽出できなければそのまま返す（JSON.parse がエラーを投げる）
+  return trimmed
 }
 
 function clampPositive(n: any): number {
