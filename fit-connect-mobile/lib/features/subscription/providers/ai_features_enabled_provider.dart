@@ -16,7 +16,7 @@ Future<bool> aiFeaturesEnabled(AiFeaturesEnabledRef ref) async {
     final supabase = SupabaseService.client;
     final user = supabase.auth.currentUser;
     if (user == null) {
-      debugPrint('[aiFeaturesEnabled] no auth user → false');
+      if (kDebugMode) debugPrint('[aiFeaturesEnabled] no auth user → false');
       return false;
     }
 
@@ -27,7 +27,7 @@ Future<bool> aiFeaturesEnabled(AiFeaturesEnabledRef ref) async {
         .maybeSingle();
     final trainerId = clientRow?['trainer_id'] as String?;
     if (trainerId == null) {
-      debugPrint('[aiFeaturesEnabled] no trainer_id for client ${user.id} → false');
+      if (kDebugMode) debugPrint('[aiFeaturesEnabled] no trainer_id for client ${user.id} → false');
       return false;
     }
 
@@ -38,10 +38,10 @@ Future<bool> aiFeaturesEnabled(AiFeaturesEnabledRef ref) async {
         .maybeSingle();
     final plan = trainerRow?['subscription_plan'] as String?;
     final enabled = plan == 'pro';
-    debugPrint('[aiFeaturesEnabled] trainer=$trainerId plan=$plan → $enabled');
+    if (kDebugMode) debugPrint('[aiFeaturesEnabled] trainer=$trainerId plan=$plan → $enabled');
     return enabled;
   } catch (e, st) {
-    debugPrint('[aiFeaturesEnabled] error: $e\n$st');
+    if (kDebugMode) debugPrint('[aiFeaturesEnabled] error: $e\n$st');
     return false;
   }
 }

@@ -4,20 +4,14 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 Deno.serve(async (req) => {
   try {
     const payload = await req.json()
-    console.log('Received payload:', JSON.stringify(payload))
 
     // Check if this is a webhook payload (INSERT or UPDATE on messages)
     if ((payload.type === 'INSERT' || payload.type === 'UPDATE') && payload.table === 'messages') {
       const message = payload.record
-      console.log('[parse-message-tags] message.metadata =', JSON.stringify(message.metadata))
-      console.log('[parse-message-tags] payload type =', payload.type, 'message.id =', message.id)
       // Skip if message is from system or doesn't have content
       if (!message.content) {
-        console.log('Skipping message: No content')
         return new Response(JSON.stringify({ skipped: true }), { headers: { 'Content-Type': 'application/json' } })
       }
-
-      console.log('Processing message:', payload.type, message.id, message.content)
 
       // Initialize Supabase Client with Service Role Key
       const supabaseUrl = Deno.env.get('SUPABASE_URL')
@@ -53,8 +47,6 @@ Deno.serve(async (req) => {
       const tagData = parseTag(message.content)
 
       if (tagData) {
-        console.log('Tag detected:', JSON.stringify(tagData))
-
         // Webhook payload may not include all columns (Supabase webhook config can filter columns).
         // Re-fetch the full row so we have access to metadata, tags, etc. regardless of webhook config.
         const { data: fullRow, error: fetchErr } = await supabase
@@ -66,7 +58,6 @@ Deno.serve(async (req) => {
           console.error('Failed to re-fetch message row for metadata:', fetchErr)
         } else if (fullRow) {
           message.metadata = fullRow.metadata
-          console.log('[parse-message-tags] re-fetched metadata =', JSON.stringify(message.metadata))
         }
 
         // 2. Update message with normalized tags
@@ -98,17 +89,12 @@ Deno.serve(async (req) => {
           createResult = await createWeightRecord(supabase, commonData, tagData)
         } else if (tagData.category === '運動') {
           createResult = await createExerciseRecord(supabase, commonData, tagData)
-        } else {
-          console.log('Unknown category:', tagData.category)
         }
 
         if (createResult && createResult.error) {
           console.error('Error creating record:', createResult.error)
-        } else {
-          console.log('Record created successfully')
         }
       } else {
-        console.log('No tag detected in message')
         // UPDATE時にタグがない場合は削除のみで終了（既に削除済み）
         if (payload.type === 'UPDATE') {
           console.log('UPDATE: No tags found, existing records were deleted')
@@ -177,20 +163,13 @@ async function createMealRecord(supabase, commonData, tagData) {
   // 万一 metadata.meal_estimation が空オブジェクト等で届いた場合に
   // estimated_by_ai=true / PFC=NULL の矛盾レコードを生まないよう防御する
   const estimation = commonData.meal_estimation
-  console.log('[createMealRecord] estimation =', JSON.stringify(estimation))
   const hasValidEstimation =
     estimation &&
     typeof estimation.calories === 'number' &&
     Array.isArray(estimation.foods) &&
     estimation.foods.length > 0
-  console.log('[createMealRecord] hasValidEstimation =', hasValidEstimation,
-    '(estimation truthy:', !!estimation,
-    ', calories type:', typeof estimation?.calories,
-    ', foods is array:', Array.isArray(estimation?.foods),
-    ', foods length:', estimation?.foods?.length, ')')
 
   if (hasValidEstimation) {
-    console.log('[createMealRecord] Inserting WITH AI estimation:', mealType, 'totals=', estimation)
     return await supabase.from('meal_records').insert({
       client_id: commonData.client_id,
       source: commonData.source,
@@ -209,7 +188,6 @@ async function createMealRecord(supabase, commonData, tagData) {
   }
 
   // 既存挙動（PFCなし）
-  console.log('[createMealRecord] Inserting WITHOUT AI estimation (legacy path):', mealType)
   return await supabase.from('meal_records').insert({
     client_id: commonData.client_id,
     source: commonData.source,

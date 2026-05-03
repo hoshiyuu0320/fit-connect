@@ -194,6 +194,13 @@ Deno.serve(async (req) => {
       .gte('created_at', since)
     if (cErr) console.error('rate-limit (client) query error:', cErr)
     if ((clientCount ?? 0) >= 50) {
+      await supabase.from('ai_estimation_logs').insert({
+        client_id: authUid,
+        trainer_id: client.trainer_id,
+        function_name: FUNCTION_NAME,
+        status: 'error',
+        error_code: 'RATE_LIMIT',
+      })
       return errorResponse('RATE_LIMIT', 'Per-client daily limit (50) exceeded', 429)
     }
     const { count: trainerCount, error: tErr } = await supabase
@@ -203,6 +210,13 @@ Deno.serve(async (req) => {
       .gte('created_at', since)
     if (tErr) console.error('rate-limit (trainer) query error:', tErr)
     if ((trainerCount ?? 0) >= 1000) {
+      await supabase.from('ai_estimation_logs').insert({
+        client_id: authUid,
+        trainer_id: client.trainer_id,
+        function_name: FUNCTION_NAME,
+        status: 'error',
+        error_code: 'RATE_LIMIT',
+      })
       return errorResponse('RATE_LIMIT', 'Per-trainer daily limit (1000) exceeded', 429)
     }
 
