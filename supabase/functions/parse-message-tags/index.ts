@@ -9,6 +9,8 @@ Deno.serve(async (req) => {
     // Check if this is a webhook payload (INSERT or UPDATE on messages)
     if ((payload.type === 'INSERT' || payload.type === 'UPDATE') && payload.table === 'messages') {
       const message = payload.record
+      console.log('[parse-message-tags] message.metadata =', JSON.stringify(message.metadata))
+      console.log('[parse-message-tags] payload type =', payload.type, 'message.id =', message.id)
       // Skip if message is from system or doesn't have content
       if (!message.content) {
         console.log('Skipping message: No content')
@@ -161,13 +163,20 @@ async function createMealRecord(supabase, commonData, tagData) {
   // 万一 metadata.meal_estimation が空オブジェクト等で届いた場合に
   // estimated_by_ai=true / PFC=NULL の矛盾レコードを生まないよう防御する
   const estimation = commonData.meal_estimation
+  console.log('[createMealRecord] estimation =', JSON.stringify(estimation))
   const hasValidEstimation =
     estimation &&
     typeof estimation.calories === 'number' &&
     Array.isArray(estimation.foods) &&
     estimation.foods.length > 0
+  console.log('[createMealRecord] hasValidEstimation =', hasValidEstimation,
+    '(estimation truthy:', !!estimation,
+    ', calories type:', typeof estimation?.calories,
+    ', foods is array:', Array.isArray(estimation?.foods),
+    ', foods length:', estimation?.foods?.length, ')')
+
   if (hasValidEstimation) {
-    console.log('Creating meal record with AI estimation:', mealType, 'totals=', estimation)
+    console.log('[createMealRecord] Inserting WITH AI estimation:', mealType, 'totals=', estimation)
     return await supabase.from('meal_records').insert({
       client_id: commonData.client_id,
       source: commonData.source,
@@ -186,7 +195,7 @@ async function createMealRecord(supabase, commonData, tagData) {
   }
 
   // 既存挙動（PFCなし）
-  console.log('Creating meal record (no AI):', mealType, 'images=', commonData.image_urls?.length || 0)
+  console.log('[createMealRecord] Inserting WITHOUT AI estimation (legacy path):', mealType)
   return await supabase.from('meal_records').insert({
     client_id: commonData.client_id,
     source: commonData.source,
