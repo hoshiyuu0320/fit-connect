@@ -367,12 +367,19 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
       return;
     }
 
-    // 課金プラン判定は Future なので、ローディング状態に切り替えてから await
+    // すでに provider が resolve していれば同期判定で即時フォールバック
+    // （free プランの場合、ローディング状態への一瞬の遷移を避ける）
+    final cached = ref.read(aiFeaturesEnabledProvider);
+    if (cached.hasValue && cached.value == false) {
+      widget.onCompose(_composedText);
+      return;
+    }
+
+    // 未 resolve または resolve 済み true なら、ローディング状態に切り替えてから await
     setState(() {
       _phase = _MealFormPhase.loading;
     });
 
-    // aiFeaturesEnabledProvider が resolve するまで待つ（初回 read 時は非同期に Supabase クエリが走る）
     bool aiEnabled = false;
     try {
       aiEnabled = await ref.read(aiFeaturesEnabledProvider.future);
@@ -382,7 +389,7 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
     if (!mounted) return;
 
     if (!aiEnabled) {
-      // 課金プラン未解放 → 既存挙動にフォールバック（loading 状態は破棄）
+      // 未 resolve 状態から false が確定した場合 → 既存挙動にフォールバック
       setState(() {
         _phase = _MealFormPhase.input;
       });
