@@ -110,6 +110,7 @@ class PaginatedMessages extends _$PaginatedMessages {
     List<String>? imageUrls,
     List<String>? tags,
     String? replyToMessageId,
+    Map<String, dynamic>? metadata,
   }) async {
     final user = ref.read(authNotifierProvider).valueOrNull;
     final trainerId = ref.read(currentTrainerIdProvider);
@@ -128,6 +129,7 @@ class PaginatedMessages extends _$PaginatedMessages {
       imageUrls: imageUrls,
       tags: tags,
       replyToMessageId: replyToMessageId,
+      metadata: metadata,
     );
 
     // 楽観的更新: ローカルstateに即追加

@@ -1,9 +1,9 @@
 # FIT-CONNECT - 新機能タスク一覧
 
 **作成日**: 2026年3月29日
-**バージョン**: 1.5
-**進捗状況**: 全体 25%（フェーズ1 ヘルスケア連携 完了：1.3 睡眠データ連携 / 1.4 バックグラウンド同期 / 1.5 トレーナー可視化）
-**最終更新**: 2026年4月29日 - フェーズ2に「2.5 食事アプリスクショ画像分析」を追加（バックログから昇格）
+**バージョン**: 1.6
+**進捗状況**: 全体 35%（フェーズ1 完了 / フェーズ2 Stage 1 完了：2.1 Claude API 連携基盤 + 2.2 テキスト入力からのカロリー推定）
+**最終更新**: 2026年5月3日 - フェーズ2 Stage 1（2.1 + 2.2）完了
 
 > **2026-04-26 モノレポ化完了**: 旧 `fit-connect-mobile` リポジトリを `git subtree` で取り込み、単一 git リポジトリで Web/Mobile 両方を管理する構成に移行。詳細は `docs/tasks/2026-04-26-monorepo-migration.md`。
 
@@ -23,7 +23,7 @@
 | フェーズ | 機能 | 対象 | 進捗 | 状態 |
 |---------|------|------|------|------|
 | 1 | ヘルスケア連携（体重・睡眠） | Mobile + Web | 100% | 🟢 体重・睡眠連携・バックグラウンド同期・トレーナー可視化 完了 |
-| 2 | LLM カロリー計算 | Mobile + Supabase | 0% | 🔴 未着手 |
+| 2 | LLM カロリー計算 | Mobile + Supabase | 40% | 🟡 Stage 1（テキスト推定）完了 / Stage 2-4（画像・スクショ）未着手 |
 | 3 | オンボーディングフロー | Mobile | 0% | 🔴 未着手 |
 | 4 | ランディングページ | Web | 0% | 🔴 未着手 |
 
@@ -88,17 +88,21 @@
 
 ### タスク
 
-- [ ] **2.1 Claude API 連携基盤（Supabase Edge Function）**
-  - [ ] Edge Function 作成（Claude API 呼び出し）
-  - [ ] プロンプト設計（食事内容 → カロリー・栄養素推定）
-  - [ ] レスポンスのパース・バリデーション
-  - [ ] API キー管理（Supabase Secrets）
+- [x] **2.1 Claude API 連携基盤（Supabase Edge Function）**（2026-05-03 完了）
+  - [x] Edge Function `estimate-meal-nutrition` 作成（Haiku 4.5 + prompt caching）
+  - [x] プロンプト設計（食事内容 → 食品リスト + カロリー + PFC 推定）
+  - [x] レスポンスのパース・バリデーション（コードフェンス除去 + totals 再計算）
+  - [x] API キー管理（Supabase Secrets `ANTHROPIC_API_KEY`）
+  - [x] Rate limit (`ai_estimation_logs` テーブル: 50/client/day, 1000/trainer/day)
+  - [x] Subscription gate（`trainers.subscription_plan = 'pro'` のクライアントのみ）
 
-- [ ] **2.2 テキスト入力からのカロリー推定**
-  - [ ] 食事テキスト入力 → Edge Function → Claude → 結果表示
-  - [ ] 推定結果の表示UI（カロリー・タンパク質・脂質・炭水化物）
-  - [ ] 推定結果の確認・修正フロー
-  - [ ] meal_records への保存統合
+- [x] **2.2 テキスト入力からのカロリー推定**（2026-05-03 完了）
+  - [x] `MealTagForm` を 3-state ステートマシン化（input → loading → confirm）
+  - [x] 推定結果の表示 UI（食品リスト + 編集可能な合計 kcal/P/F/C）
+  - [x] 推定結果の確認・修正フロー（送信前にトレーナーへ送るデータをクライアントが調整可能）
+  - [x] meal_records への保存統合（`messages.metadata` 経由 + `parse-message-tags` webhook 改修）
+  - [x] `aiFeaturesEnabledProvider` で課金ゲート（free プランは AI を呼ばず既存挙動）
+  - [x] エラー時フォールバック（snackbar + 「AIなしで送信」アクション）
 
 - [ ] **2.3 画像からのカロリー推定**
   - [ ] 食事写真撮影/選択 → Edge Function → Claude Vision → 結果表示

@@ -14,6 +14,13 @@ MealRecord _$MealRecordFromJson(Map<String, dynamic> json) => MealRecord(
       images:
           (json['images'] as List<dynamic>?)?.map((e) => e as String).toList(),
       calories: (json['calories'] as num?)?.toDouble(),
+      proteinG: (json['protein_g'] as num?)?.toDouble(),
+      fatG: (json['fat_g'] as num?)?.toDouble(),
+      carbsG: (json['carbs_g'] as num?)?.toDouble(),
+      estimatedByAi: json['estimated_by_ai'] as bool? ?? false,
+      aiFoods: (json['ai_foods'] as List<dynamic>?)
+          ?.map((e) => EstimatedFood.fromJson(e as Map<String, dynamic>))
+          .toList(),
       recordedAt:
           const DateTimeConverter().fromJson(json['recorded_at'] as String),
       source: json['source'] as String,
@@ -32,6 +39,11 @@ Map<String, dynamic> _$MealRecordToJson(MealRecord instance) =>
       'notes': instance.notes,
       'images': instance.images,
       'calories': instance.calories,
+      'protein_g': instance.proteinG,
+      'fat_g': instance.fatG,
+      'carbs_g': instance.carbsG,
+      'estimated_by_ai': instance.estimatedByAi,
+      'ai_foods': instance.aiFoods,
       'recorded_at': const DateTimeConverter().toJson(instance.recordedAt),
       'source': instance.source,
       'message_id': instance.messageId,

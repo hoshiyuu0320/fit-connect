@@ -7,12 +7,16 @@ import 'package:fit_connect_mobile/features/messages/presentation/widgets/tag_su
 import 'package:fit_connect_mobile/features/messages/presentation/widgets/reply_preview.dart';
 import 'package:fit_connect_mobile/features/messages/presentation/widgets/quick_action_bar.dart';
 import 'package:fit_connect_mobile/features/messages/presentation/widgets/structured_tag_form.dart';
+import 'package:fit_connect_mobile/features/meal_records/models/meal_estimation_result.dart';
 import 'package:fit_connect_mobile/services/storage_service.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 class ChatInput extends StatefulWidget {
   final Future<void> Function(
-      String text, List<String>? imageUrls, String? replyToMessageId) onSend;
+      String text,
+      List<String>? imageUrls,
+      String? replyToMessageId,
+      Map<String, dynamic>? metadata) onSend;
   final String? userId;
   final String? replyToMessageId;
   final String? replyToContent;
@@ -237,6 +241,63 @@ class _ChatInputState extends State<ChatInput> {
     });
   }
 
+  /// 選択中の画像があればアップロードして URLs を返す。
+  /// - 画像が1枚も選択されていない場合は空のリスト（`const []`）を返す。
+  /// - アップロード失敗 / userId 不在等の異常時は null を返す（呼び出し側は早期 return すべし）。
+  Future<List<String>?> _uploadImagesIfAny() async {
+    if (_selectedImages.isEmpty) return const [];
+    if (widget.userId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('ユーザー情報が取得できませんでした'),
+            backgroundColor: AppColors.rose800,
+          ),
+        );
+      }
+      return null;
+    }
+
+    setState(() {
+      _isUploading = true;
+    });
+
+    try {
+      final urls = await StorageService.uploadImages(
+        _selectedImages,
+        widget.userId!,
+      );
+      if (urls.isEmpty && _selectedImages.isNotEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('画像のアップロードに失敗しました'),
+              backgroundColor: AppColors.rose800,
+            ),
+          );
+        }
+        setState(() {
+          _isUploading = false;
+        });
+        return null;
+      }
+      return urls;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('画像のアップロードに失敗しました: $e'),
+            backgroundColor: AppColors.rose800,
+          ),
+        );
+      }
+      setState(() {
+        _isUploading = false;
+      });
+      return null;
+    }
+  }
+
   Future<void> _handleSend() async {
     final text = _controller.text.trim();
 
@@ -255,62 +316,68 @@ class _ChatInputState extends State<ChatInput> {
     }
 
     // 画像がある場合はアップロード
-    List<String>? imageUrls;
-    if (_selectedImages.isNotEmpty) {
-      if (widget.userId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('ユーザー情報が取得できませんでした'),
-            backgroundColor: AppColors.rose800,
-          ),
-        );
-        return;
-      }
-
-      setState(() {
-        _isUploading = true;
-      });
-
-      try {
-        imageUrls = await StorageService.uploadImages(
-          _selectedImages,
-          widget.userId!,
-        );
-
-        if (imageUrls.isEmpty && _selectedImages.isNotEmpty) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('画像のアップロードに失敗しました'),
-                backgroundColor: AppColors.rose800,
-              ),
-            );
-          }
-          setState(() {
-            _isUploading = false;
-          });
-          return;
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('画像のアップロードに失敗しました: $e'),
-              backgroundColor: AppColors.rose800,
-            ),
-          );
-        }
-        setState(() {
-          _isUploading = false;
-        });
-        return;
-      }
-    }
+    final imageUrls = await _uploadImagesIfAny();
+    if (imageUrls == null) return; // upload失敗 or 異常終了
 
     // メッセージ送信
     try {
-      await widget.onSend(text, imageUrls, widget.replyToMessageId);
+      await widget.onSend(
+        text,
+        imageUrls.isEmpty ? null : imageUrls,
+        widget.replyToMessageId,
+        null,
+      );
       _controller.clear();
+      setState(() {
+        _showSuggestions = false;
+        _selectedTagHint = null;
+        _selectedImages = [];
+        _isUploading = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('送信に失敗しました: $e'),
+            backgroundColor: AppColors.rose800,
+          ),
+        );
+      }
+      setState(() {
+        _isUploading = false;
+      });
+    }
+  }
+
+  /// MealTagForm からのAI推定送信フロー。
+  /// metadata に meal_estimation を含めてメッセージを送信し、
+  /// parse-message-tags webhook が PFC込みで meal_records を作成する。
+  Future<void> _handleSendWithEstimation(
+    String composedText,
+    MealEstimationResult estimation,
+  ) async {
+    final imageUrls = await _uploadImagesIfAny();
+    if (imageUrls == null) return; // upload失敗 or 異常終了
+
+    final metadata = <String, dynamic>{
+      'meal_estimation': {
+        'foods': estimation.foods.map((f) => f.toJson()).toList(),
+        'calories': estimation.totals.calories,
+        'protein_g': estimation.totals.proteinG,
+        'fat_g': estimation.totals.fatG,
+        'carbs_g': estimation.totals.carbsG,
+      },
+    };
+
+    try {
+      await widget.onSend(
+        composedText,
+        imageUrls.isEmpty ? null : imageUrls,
+        widget.replyToMessageId,
+        metadata,
+      );
+      _controller.clear();
+      _closeStructuredForm();
       setState(() {
         _showSuggestions = false;
         _selectedTagHint = null;
@@ -448,6 +515,7 @@ class _ChatInputState extends State<ChatInput> {
             selectedImages: _selectedImages,
             onPickImage: _pickImage,
             onRemoveImage: _removeImage,
+            onSendWithEstimation: _handleSendWithEstimation,
           ),
         if (_showSuggestions && _activeFormType == null)
           TagSuggestionList(
@@ -682,7 +750,7 @@ Widget previewChatInputNormal() {
           children: [
             const Spacer(),
             ChatInput(
-              onSend: (text, images, replyTo) async {},
+              onSend: (text, images, replyTo, metadata) async {},
               userId: 'user-123',
             ),
           ],
@@ -702,7 +770,7 @@ Widget previewChatInputReply() {
           children: [
             const Spacer(),
             ChatInput(
-              onSend: (text, images, replyTo) async {},
+              onSend: (text, images, replyTo, metadata) async {},
               userId: 'user-123',
               replyToMessageId: 'msg-123',
               replyToContent: '昨日のトレーニングはどうでしたか?',
@@ -725,7 +793,7 @@ Widget previewChatInputEdit() {
           children: [
             const Spacer(),
             ChatInput(
-              onSend: (text, images, replyTo) async {},
+              onSend: (text, images, replyTo, metadata) async {},
               userId: 'user-123',
               editingMessageId: 'msg-456',
               editingMessageContent: '今日のトレーニングは30分のランニングと腹筋100回をやりました！',
@@ -787,7 +855,7 @@ Widget previewChatInputQuickAction() {
           children: [
             const Spacer(),
             ChatInput(
-              onSend: (text, images, replyTo) async {},
+              onSend: (text, images, replyTo, metadata) async {},
               userId: 'user-123',
             ),
           ],
@@ -807,7 +875,7 @@ Widget previewChatInputDark() {
           children: [
             const Spacer(),
             ChatInput(
-              onSend: (text, images, replyTo) async {},
+              onSend: (text, images, replyTo, metadata) async {},
               userId: 'user-123',
             ),
           ],

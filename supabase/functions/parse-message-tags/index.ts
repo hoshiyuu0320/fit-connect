@@ -4,18 +4,14 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 Deno.serve(async (req) => {
   try {
     const payload = await req.json()
-    console.log('Received payload:', JSON.stringify(payload))
 
     // Check if this is a webhook payload (INSERT or UPDATE on messages)
     if ((payload.type === 'INSERT' || payload.type === 'UPDATE') && payload.table === 'messages') {
       const message = payload.record
       // Skip if message is from system or doesn't have content
       if (!message.content) {
-        console.log('Skipping message: No content')
         return new Response(JSON.stringify({ skipped: true }), { headers: { 'Content-Type': 'application/json' } })
       }
-
-      console.log('Processing message:', payload.type, message.id, message.content)
 
       // Initialize Supabase Client with Service Role Key
       const supabaseUrl = Deno.env.get('SUPABASE_URL')
@@ -51,7 +47,18 @@ Deno.serve(async (req) => {
       const tagData = parseTag(message.content)
 
       if (tagData) {
-        console.log('Tag detected:', JSON.stringify(tagData))
+        // Webhook payload may not include all columns (Supabase webhook config can filter columns).
+        // Re-fetch the full row so we have access to metadata, tags, etc. regardless of webhook config.
+        const { data: fullRow, error: fetchErr } = await supabase
+          .from('messages')
+          .select('metadata')
+          .eq('id', message.id)
+          .maybeSingle()
+        if (fetchErr) {
+          console.error('Failed to re-fetch message row for metadata:', fetchErr)
+        } else if (fullRow) {
+          message.metadata = fullRow.metadata
+        }
 
         // 2. Update message with normalized tags
         const { error: updateError } = await supabase.from('messages').update({
@@ -72,6 +79,7 @@ Deno.serve(async (req) => {
           recorded_at: message.created_at,
           notes: tagData.remainingContent,
           image_urls: message.image_urls || [], // 画像URLを追加
+          meal_estimation: message.metadata?.meal_estimation, // ← 追加
         }
 
         let createResult;
@@ -81,17 +89,12 @@ Deno.serve(async (req) => {
           createResult = await createWeightRecord(supabase, commonData, tagData)
         } else if (tagData.category === '運動') {
           createResult = await createExerciseRecord(supabase, commonData, tagData)
-        } else {
-          console.log('Unknown category:', tagData.category)
         }
 
         if (createResult && createResult.error) {
           console.error('Error creating record:', createResult.error)
-        } else {
-          console.log('Record created successfully')
         }
       } else {
-        console.log('No tag detected in message')
         // UPDATE時にタグがない場合は削除のみで終了（既に削除済み）
         if (payload.type === 'UPDATE') {
           console.log('UPDATE: No tags found, existing records were deleted')
@@ -155,8 +158,36 @@ async function createMealRecord(supabase, commonData, tagData) {
     else if (tagData.detail.includes('夕') || tagData.detail.includes('晩')) mealType = 'dinner'
   }
 
-  console.log('Creating meal record:', mealType, 'with', commonData.image_urls?.length || 0, 'images')
+  // metadata.meal_estimation があれば PFC込みで保存
+  // 上流（mobile送信パス + estimate-meal-nutrition）が形式を保証する想定だが、
+  // 万一 metadata.meal_estimation が空オブジェクト等で届いた場合に
+  // estimated_by_ai=true / PFC=NULL の矛盾レコードを生まないよう防御する
+  const estimation = commonData.meal_estimation
+  const hasValidEstimation =
+    estimation &&
+    typeof estimation.calories === 'number' &&
+    Array.isArray(estimation.foods) &&
+    estimation.foods.length > 0
 
+  if (hasValidEstimation) {
+    return await supabase.from('meal_records').insert({
+      client_id: commonData.client_id,
+      source: commonData.source,
+      message_id: commonData.message_id,
+      recorded_at: commonData.recorded_at,
+      notes: commonData.notes,
+      meal_type: mealType,
+      images: commonData.image_urls,
+      calories: estimation.calories,
+      protein_g: estimation.protein_g,
+      fat_g: estimation.fat_g,
+      carbs_g: estimation.carbs_g,
+      ai_foods: estimation.foods,
+      estimated_by_ai: true,
+    })
+  }
+
+  // 既存挙動（PFCなし）
   return await supabase.from('meal_records').insert({
     client_id: commonData.client_id,
     source: commonData.source,
@@ -164,7 +195,7 @@ async function createMealRecord(supabase, commonData, tagData) {
     recorded_at: commonData.recorded_at,
     notes: commonData.notes,
     meal_type: mealType,
-    images: commonData.image_urls, // 画像URLを保存
+    images: commonData.image_urls,
   })
 }
 
