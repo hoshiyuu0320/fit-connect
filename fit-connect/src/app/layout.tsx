@@ -23,6 +23,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja" className={`${jakarta.variable} ${noto.variable}`}>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+      </head>
       <body className="font-sans antialiased">
         <header className="fixed top-0 left-0 right-0 h-14 z-50 bg-white border-b border-[#E2E8F0] flex items-center justify-between px-6">
           <div className="flex items-center gap-2.5">
