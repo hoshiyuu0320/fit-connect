@@ -59,6 +59,7 @@ export const AssignmentMiniCard: React.FC<AssignmentMiniCardProps> = ({
           borderLeft: `3px solid ${colors.border}`,
           color: colors.text,
           borderRadius: '4px',
+          touchAction: 'none',
         }}
         {...(!isDragOverlay ? listeners : {})}
         {...(!isDragOverlay ? attributes : {})}
@@ -91,6 +92,7 @@ export const AssignmentMiniCard: React.FC<AssignmentMiniCardProps> = ({
         borderLeft: `3px solid ${colors.border}`,
         color: colors.text,
         borderRadius: '6px',
+        touchAction: 'none',
       }}
       {...(!isDragOverlay ? listeners : {})}
       {...(!isDragOverlay ? attributes : {})}
@@ -100,7 +102,7 @@ export const AssignmentMiniCard: React.FC<AssignmentMiniCardProps> = ({
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(assignment.id); }}
           onPointerDown={(e) => e.stopPropagation()}
-          className="absolute top-1 right-1 opacity-0 group-hover/card:opacity-100 transition-opacity p-0.5 rounded hover:bg-red-100 text-gray-400 hover:text-red-500"
+          className="absolute top-1 right-1 opacity-0 group-hover/card:opacity-100 transition-opacity w-8 h-8 flex items-center justify-center rounded hover:bg-red-100 text-gray-400 hover:text-red-500"
         >
           <X size={14} />
         </button>

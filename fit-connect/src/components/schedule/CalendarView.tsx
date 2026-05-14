@@ -6,7 +6,7 @@ import { ScheduleSkeleton } from './ScheduleSkeleton';
 import { format, startOfMonth, endOfMonth, startOfWeek, isSameMonth, isSameDay, addMonths, addDays, getDay } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Plus, Search, ClipboardList, Calendar, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
-import { DndContext, DragOverlay, closestCenter, DragEndEvent, DragStartEvent, useDroppable, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
+import { DndContext, DragOverlay, closestCenter, DragEndEvent, DragStartEvent, useDroppable, useSensor, useSensors, MouseSensor, TouchSensor } from '@dnd-kit/core';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/lib/supabase';
 import { getSessions, Session } from '@/lib/supabase/getSessions';
@@ -95,10 +95,11 @@ export default function CalendarView() {
     const [pendingTemplateDrop, setPendingTemplateDrop] = useState<{ planId: string; date: string; hour?: number } | null>(null);
 
     const sensors = useSensors(
-        useSensor(PointerSensor, {
-            activationConstraint: {
-                distance: 8,
-            },
+        useSensor(MouseSensor, {
+            activationConstraint: { distance: 8 },
+        }),
+        useSensor(TouchSensor, {
+            activationConstraint: { delay: 250, tolerance: 8 },
         })
     );
 
