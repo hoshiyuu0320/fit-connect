@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
@@ -15,6 +16,10 @@ class MealEstimationConfirmView extends StatefulWidget {
   final VoidCallback onSend;
   final bool isSending;
 
+  /// AI 推定に使った画像の Storage 公開 URL（confirm phase では読み取り専用）。
+  /// 空リストならサムネイル領域を描画しない。
+  final List<String> imageUrls;
+
   const MealEstimationConfirmView({
     super.key,
     required this.estimation,
@@ -23,6 +28,7 @@ class MealEstimationConfirmView extends StatefulWidget {
     required this.onBack,
     required this.onSend,
     this.isSending = false,
+    this.imageUrls = const [],
   });
 
   @override
@@ -105,6 +111,36 @@ class _MealEstimationConfirmViewState extends State<MealEstimationConfirmView> {
           ],
         ),
         const SizedBox(height: 12),
+
+        // Image thumbnails (read-only)
+        if (widget.imageUrls.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 64,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: widget.imageUrls.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (context, i) => ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: CachedNetworkImage(
+                  imageUrl: widget.imageUrls[i],
+                  width: 64,
+                  height: 64,
+                  fit: BoxFit.cover,
+                  placeholder: (_, __) => Container(
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  ),
+                  errorWidget: (_, __, ___) => Container(
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    child: const Icon(Icons.broken_image_outlined, size: 24),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
 
         // Foods list (read-only in Stage 1)
         ...widget.estimation.foods.map(
@@ -225,6 +261,45 @@ Widget previewMealEstimationConfirmViewDefault() {
               child: MealEstimationConfirmView(
                 estimation: estimation,
                 totals: estimation.totals,
+                onTotalsChanged: (_) {},
+                onBack: () {},
+                onSend: () {},
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+@Preview(name: 'MealEstimationConfirmView - With Images')
+Widget previewMealEstimationConfirmViewWithImages() {
+  const estimation = MealEstimationResult(
+    foods: [
+      EstimatedFood(name: '牛丼大盛り', calories: 850, proteinG: 32, fatG: 28, carbsG: 95),
+      EstimatedFood(name: 'サラダ', calories: 50, proteinG: 2, fatG: 3, carbsG: 5),
+    ],
+    totals: EstimationTotals(calories: 900, proteinG: 34, fatG: 31, carbsG: 100),
+  );
+  return MaterialApp(
+    theme: AppTheme.lightTheme,
+    home: Scaffold(
+      backgroundColor: const Color(0xFFF5F5F5),
+      body: SafeArea(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Container(
+              color: Colors.white,
+              padding: const EdgeInsets.all(16),
+              child: MealEstimationConfirmView(
+                estimation: estimation,
+                totals: estimation.totals,
+                imageUrls: const [
+                  'https://placehold.jp/64x64.png',
+                  'https://placehold.jp/64x64.png',
+                ],
                 onTotalsChanged: (_) {},
                 onBack: () {},
                 onSend: () {},

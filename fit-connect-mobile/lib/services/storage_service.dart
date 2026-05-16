@@ -62,6 +62,11 @@ class StorageService {
     }
   }
 
+  /// AI 由来の画像を保存するときの相対パス（テスト容易化のため pure に切り出し）
+  static String aiImagePath(String userId, String uuid) {
+    return '$userId/ai/$uuid.jpg';
+  }
+
   /// 画像をSupabase Storageにアップロード
   /// [file] - アップロードする画像ファイル
   /// [userId] - ユーザーID（フォルダ分けに使用）
@@ -104,6 +109,35 @@ class StorageService {
     }
 
     return urls;
+  }
+
+  /// AI 推定で利用する画像を Supabase Storage にアップロード（プレフィックス分離）
+  /// パス形式: `${userId}/ai/${uuid}.jpg`
+  /// orphan 識別のため、通常のメッセージ画像 (`${userId}/${uuid}.jpg`) とフォルダで分離する。
+  static Future<String?> uploadAiImage(File file, String userId) async {
+    try {
+      final filePath = aiImagePath(userId, _uuid.v4());
+      await SupabaseService.client.storage
+          .from(bucketName)
+          .upload(filePath, file)
+          .timeout(const Duration(seconds: 30));
+      final publicUrl = SupabaseService.client.storage
+          .from(bucketName)
+          .getPublicUrl(filePath);
+      debugPrint('[StorageService] AI uploaded: $publicUrl');
+      return publicUrl;
+    } catch (e) {
+      debugPrint('[StorageService] uploadAiImage error: $e');
+      return null;
+    }
+  }
+
+  /// 複数の AI 用画像を並列アップロード（推定レイテンシ短縮）
+  /// 戻り値は files と同じ順序、失敗した要素は null
+  static Future<List<String?>> uploadAiImages(
+      List<File> files, String userId) async {
+    if (files.isEmpty) return const [];
+    return Future.wait(files.map((f) => uploadAiImage(f, userId)));
   }
 
   /// 画像を削除

@@ -3,7 +3,7 @@ import 'package:fit_connect_mobile/features/meal_records/models/meal_estimation_
 import 'package:fit_connect_mobile/services/supabase_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show FunctionException;
 
-enum MealEstimationErrorCode { forbidden, rateLimit, invalidInput, estimationFailed, network }
+enum MealEstimationErrorCode { forbidden, rateLimit, invalidInput, estimationFailed, emptyResult, network }
 
 class MealEstimationException implements Exception {
   final MealEstimationErrorCode code;
@@ -17,6 +17,7 @@ class MealEstimationApi {
   static Future<MealEstimationResult> estimate({
     required String mealType, // 'breakfast' | 'lunch' | 'dinner' | 'snack'
     required String content,
+    List<String> imageUrls = const [],
   }) async {
     try {
       final response = await SupabaseService.client.functions.invoke(
@@ -24,8 +25,9 @@ class MealEstimationApi {
         body: {
           'meal_type': mealType,
           'content': content,
+          if (imageUrls.isNotEmpty) 'image_urls': imageUrls,
         },
-      );
+      ).timeout(const Duration(seconds: 45));
 
       final data = response.data;
       if (data is Map<String, dynamic>) {
@@ -51,6 +53,8 @@ class MealEstimationApi {
           throw MealEstimationException(MealEstimationErrorCode.rateLimit, msg);
         case 'INVALID_INPUT':
           throw MealEstimationException(MealEstimationErrorCode.invalidInput, msg);
+        case 'EMPTY_RESULT':
+          throw MealEstimationException(MealEstimationErrorCode.emptyResult, msg);
         case 'ESTIMATION_FAILED':
         default:
           throw MealEstimationException(MealEstimationErrorCode.estimationFailed, msg);

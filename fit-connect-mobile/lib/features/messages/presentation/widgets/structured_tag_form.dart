@@ -8,6 +8,8 @@ import 'package:fit_connect_mobile/features/meal_records/data/meal_estimation_ap
 import 'package:fit_connect_mobile/features/meal_records/models/meal_estimation_result.dart';
 import 'package:fit_connect_mobile/features/messages/presentation/widgets/meal_estimation_confirm_view.dart';
 import 'package:fit_connect_mobile/features/subscription/providers/ai_features_enabled_provider.dart';
+import 'package:fit_connect_mobile/services/storage_service.dart';
+import 'package:fit_connect_mobile/services/supabase_service.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 // ============================================
@@ -23,8 +25,13 @@ class StructuredTagForm extends StatelessWidget {
   final VoidCallback? onPickImage;
   final Function(int)? onRemoveImage;
 
-  /// PFC込みで送信。MealTagForm のみで使用。null の場合は AI推定なしで `onCompose` のみ
-  final Future<void> Function(String composedText, MealEstimationResult estimation)? onSendWithEstimation;
+  /// PFC込みで送信。preUploadedUrls は AI 推定時に upload 済みの画像 URL（再 upload 回避用）。
+  /// null の場合は AI推定なしで `onCompose` のみ実行
+  final Future<void> Function(
+    String composedText,
+    MealEstimationResult estimation,
+    List<String> preUploadedUrls,
+  )? onSendWithEstimation;
 
   const StructuredTagForm({
     super.key,
@@ -289,8 +296,13 @@ class MealTagForm extends ConsumerStatefulWidget {
   final VoidCallback? onPickImage;
   final Function(int)? onRemoveImage;
 
-  /// PFC込みで送信。null の場合は AI推定なしで `onCompose` のみ実行
-  final Future<void> Function(String composedText, MealEstimationResult estimation)? onSendWithEstimation;
+  /// PFC込みで送信。preUploadedUrls は AI 推定時に upload 済みの画像 URL（再 upload 回避用）。
+  /// null の場合は AI推定なしで `onCompose` のみ実行
+  final Future<void> Function(
+    String composedText,
+    MealEstimationResult estimation,
+    List<String> preUploadedUrls,
+  )? onSendWithEstimation;
 
   const MealTagForm({
     super.key,
@@ -315,6 +327,10 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
   EstimationTotals? _editableTotals;
   bool _isSending = false;
   // 注: エラーメッセージはスナックバーで表示するだけなので state には持たない
+
+  /// 「戻る」→「挿入」再試行時の再 upload を防ぐため、File と Storage URL の対応を保持。
+  /// 確認シートの「送信」時にこの値を `onSendWithEstimation` の preUploadedUrls として渡す。
+  final Map<File, String> _fileToUrlMap = {};
 
   static const _mealTypes = ['朝食', '昼食', '夕食', '間食'];
 
@@ -361,20 +377,16 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
   Future<void> _handleInsert() async {
     if (!_isValid) return;
 
-    // AI 推定を試せる前提条件のうち、同期的に判断できるもの
+    // テキストも画像もない場合は AI 推定をしない（安全網）
+    final hasContent = _contentController.text.trim().isNotEmpty;
     final canTryEstimate = widget.onSendWithEstimation != null
-        && _contentController.text.trim().isNotEmpty;
+        && (hasContent || widget.hasImages);
 
     if (!canTryEstimate) {
-      // 既存挙動: チャット入力欄に挿入
       widget.onCompose(_composedText);
       return;
     }
 
-    // ローディング状態へ切り替える前に provider 解決を完了させる。
-    // 未 resolve のまま loading フェーズに入ると、free プランでも一瞬「AI推定中…」
-    // が表示されてフラッシュが発生する。aiEnabled == true が確定するまでは
-    // input フェーズのまま待機する（initState で先行フェッチ済みなので大半は即時解決）。
     bool aiEnabled = false;
     try {
       aiEnabled = await ref.read(aiFeaturesEnabledProvider.future);
@@ -384,22 +396,44 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
     if (!mounted) return;
 
     if (!aiEnabled) {
-      // free プラン or 解決失敗 → AI を呼ばずに既存挙動へフォールバック
       widget.onCompose(_composedText);
       return;
     }
 
-    // aiEnabled == true が確定したのでローディング状態へ
     setState(() {
       _phase = _MealFormPhase.loading;
     });
 
     try {
+      // 1. 未 upload の画像のみ upload する（既存 URL は再利用）
+      final imageUrls = await _ensureImagesUploaded();
+      if (!mounted || _phase != _MealFormPhase.loading) return;
+
+      // 全画像 upload に失敗した場合
+      if (widget.selectedImages.isNotEmpty && imageUrls.isEmpty) {
+        setState(() => _phase = _MealFormPhase.input);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('画像のアップロードに失敗しました'),
+            backgroundColor: AppColors.rose800,
+            action: SnackBarAction(
+              label: 'AIなしで送信',
+              textColor: Colors.white,
+              onPressed: () => widget.onCompose(_composedText),
+            ),
+          ),
+        );
+        return;
+      }
+
+      // 2. AI 推定
       final result = await MealEstimationApi.estimate(
         mealType: _mealTypeToEnum(_selectedMealType),
         content: _contentController.text.trim(),
+        imageUrls: imageUrls,
       );
-      if (!mounted) return;
+      // ユーザーがローディング中にキャンセルした場合は確認画面に進めない
+      if (!mounted || _phase != _MealFormPhase.loading) return;
       setState(() {
         _estimation = result;
         _editableTotals = result.totals;
@@ -425,6 +459,37 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
     }
   }
 
+  /// 未 upload の選択画像のみを Storage にアップロードし、最終的な URL リストを返す。
+  /// 「戻る」→「挿入」再試行時、既に `_fileToUrlMap` に存在する File は再 upload しない。
+  /// 部分失敗（一部の File だけ upload 失敗）した場合、成功した URL のみで推定を継続する。
+  Future<List<String>> _ensureImagesUploaded() async {
+    if (widget.selectedImages.isEmpty) return const [];
+    final userId = SupabaseService.client.auth.currentUser?.id;
+    if (userId == null) return const [];
+
+    // 削除された File に対応するエントリを map から取り除く（orphan は許容）
+    _fileToUrlMap.removeWhere((file, _) => !widget.selectedImages.contains(file));
+
+    // 未 upload の File を抽出
+    final pending = widget.selectedImages
+        .where((f) => !_fileToUrlMap.containsKey(f))
+        .toList();
+
+    if (pending.isNotEmpty) {
+      final results = await StorageService.uploadAiImages(pending, userId);
+      for (var i = 0; i < pending.length; i++) {
+        final url = results[i];
+        if (url != null) _fileToUrlMap[pending[i]] = url;
+      }
+    }
+
+    // selectedImages の順序で URL を返す（upload 失敗した File は除外）
+    return widget.selectedImages
+        .map((f) => _fileToUrlMap[f])
+        .whereType<String>()
+        .toList();
+  }
+
   String _mealTypeToEnum(String label) {
     switch (label) {
       case '朝食':
@@ -448,6 +513,8 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
         return 'AI機能が利用できません';
       case MealEstimationErrorCode.invalidInput:
         return '入力内容が不正です';
+      case MealEstimationErrorCode.emptyResult:
+        return '画像から食事を識別できませんでした。テキストで補足して再試行してください';
       case MealEstimationErrorCode.estimationFailed:
         return '推定に失敗しました。内容を変えてお試しください';
     }
@@ -461,8 +528,17 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
       foods: _estimation!.foods,
       totals: _editableTotals!,
     );
+    // selectedImages の順序を保ちつつ upload 済み URL を抽出
+    final preUploaded = widget.selectedImages
+        .map((f) => _fileToUrlMap[f])
+        .whereType<String>()
+        .toList();
     try {
-      await widget.onSendWithEstimation?.call(_composedText, estimationToSend);
+      await widget.onSendWithEstimation?.call(
+        _composedText,
+        estimationToSend,
+        preUploaded,
+      );
       // 親側でシートクローズが行われる想定。このウィジェットは unmount される
     } finally {
       if (mounted) {
@@ -606,6 +682,10 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
     return MealEstimationConfirmView(
       estimation: _estimation!,
       totals: _editableTotals!,
+      imageUrls: widget.selectedImages
+          .map((f) => _fileToUrlMap[f])
+          .whereType<String>()
+          .toList(),
       onTotalsChanged: (t) => setState(() => _editableTotals = t),
       onBack: () => setState(() {
         _phase = _MealFormPhase.input;

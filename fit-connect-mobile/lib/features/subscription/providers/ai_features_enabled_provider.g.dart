@@ -6,7 +6,7 @@ part of 'ai_features_enabled_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$aiFeaturesEnabledHash() => r'6788a4cbe47b41a92ad5cf34f15925bd0500c133';
+String _$aiFeaturesEnabledHash() => r'020c8c57370d1777c2f3d8d5e6871db426b38f86';
 
 /// 自身の担当トレーナーの subscription_plan が 'pro' かどうか。
 /// 取得失敗・未認証・未紐付けの場合は false を返す（保守的にAI非表示）。
