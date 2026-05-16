@@ -6,7 +6,7 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const SYSTEM_PROMPT = `あなたは栄養素推定アシスタントです。日本語の食事内容テキストから、食品ごとに推定値（カロリー・タンパク質・脂質・炭水化物）を計算します。
+const SYSTEM_PROMPT = `あなたは栄養素推定アシスタントです。日本語の食事内容テキストおよび/または食事画像から、食品ごとに推定値（カロリー・タンパク質・脂質・炭水化物）を計算します。
 
 返却形式は厳密に以下の JSON のみ（説明文・コードフェンス禁止）:
 {
@@ -19,14 +19,34 @@ const SYSTEM_PROMPT = `あなたは栄養素推定アシスタントです。日
 - 量が明示されていない場合は「標準的な1人前」として推定する
 - 信頼できないものは推定せず foods を空配列で返す
 - すべて整数（小数点以下は切り捨て）
-- totals は foods の合計と一致させる`
+- totals は foods の合計と一致させる
+- 画像が複数枚ある場合は同一食事の異なる視点／別皿として扱い、合計値を返す
+- 画像が食事と無関係（人物、風景、ミーム等）と判断したら foods を空配列で返す
+- テキスト補足は画像から得た情報の修正に優先する（例:「ご飯大盛り」なら米飯の量を増やす）`
 
 const FUNCTION_NAME = 'estimate-meal-nutrition'
 
-async function callClaude(apiKey: string, mealType: string, content: string): Promise<any> {
+async function callClaude(
+  apiKey: string,
+  mealType: string,
+  content: string,
+  imageUrls: string[],
+): Promise<any> {
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 20_000)
+  const timeoutId = setTimeout(() => controller.abort(), 30_000)
   try {
+    const hasImages = imageUrls.length > 0
+    const model = hasImages ? 'claude-sonnet-4-6' : 'claude-haiku-4-5'
+
+    const userBlocks: any[] = []
+    for (const url of imageUrls) {
+      userBlocks.push({ type: 'image', source: { type: 'url', url } })
+    }
+    const textPart = content && content.trim().length > 0
+      ? `食事タイプ: ${mealType}\n補足: ${content.trim()}`
+      : `食事タイプ: ${mealType}\n補足: (なし、画像のみ)`
+    userBlocks.push({ type: 'text', text: textPart })
+
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -36,15 +56,13 @@ async function callClaude(apiKey: string, mealType: string, content: string): Pr
       },
       signal: controller.signal,
       body: JSON.stringify({
-        model: 'claude-haiku-4-5',
+        model,
         max_tokens: 1024,
         temperature: 0.2,
         system: [
           { type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
         ],
-        messages: [
-          { role: 'user', content: `食事タイプ: ${mealType}\n内容: ${content}` },
-        ],
+        messages: [{ role: 'user', content: userBlocks }],
       }),
     })
     if (!resp.ok) {
@@ -176,13 +194,17 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => null)
     if (!body) return errorResponse('INVALID_INPUT', 'Invalid JSON body', 400)
     const { meal_type, content } = body
-    // 注: image_urls は Stage 1 では受信しても無視（仕様書 §5.1）
+    const rawImageUrls = body.image_urls
+    const imageUrls: string[] = Array.isArray(rawImageUrls)
+      ? rawImageUrls.filter((u): u is string => typeof u === 'string' && u.length > 0).slice(0, 3)
+      : []
 
     if (!['breakfast', 'lunch', 'dinner', 'snack'].includes(meal_type)) {
       return errorResponse('INVALID_INPUT', 'Invalid meal_type', 400)
     }
-    if (typeof content !== 'string' || content.trim().length === 0) {
-      return errorResponse('INVALID_INPUT', 'Empty content', 400)
+    const contentStr = typeof content === 'string' ? content : ''
+    if (contentStr.trim().length === 0 && imageUrls.length === 0) {
+      return errorResponse('INVALID_INPUT', 'Empty content and no images', 400)
     }
 
     // 5. Rate limit (Claude 呼び出し前にチェック、ログは Claude 呼び出し後に挿入)
@@ -223,7 +245,7 @@ Deno.serve(async (req) => {
     // 6. Claude 呼び出し
     let result
     try {
-      const raw = await callClaude(anthropicKey, meal_type, content)
+      const raw = await callClaude(anthropicKey, meal_type, contentStr, imageUrls)
       result = validateEstimation(raw)
     } catch (e) {
       console.error('Claude call/parse failed:', e)
@@ -245,7 +267,7 @@ Deno.serve(async (req) => {
         status: 'error',
         error_code: 'EMPTY_RESULT',
       })
-      return errorResponse('ESTIMATION_FAILED', 'No foods could be estimated', 500)
+      return errorResponse('EMPTY_RESULT', 'No foods could be identified', 422)
     }
 
     // 7. 成功ログ

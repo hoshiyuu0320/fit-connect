@@ -355,9 +355,11 @@ class _ChatInputState extends State<ChatInput> {
   Future<void> _handleSendWithEstimation(
     String composedText,
     MealEstimationResult estimation,
+    List<String> preUploadedUrls,
   ) async {
-    final imageUrls = await _uploadImagesIfAny();
-    if (imageUrls == null) return; // upload失敗 or 異常終了
+    // AI 推定フェーズで既に upload 済みなら再 upload しない（二重 upload 防止）。
+    // _selectedImages が空なら preUploadedUrls も空のまま、上流の検証で挿入は防がれている。
+    final List<String> imageUrls = preUploadedUrls;
 
     final metadata = <String, dynamic>{
       'meal_estimation': {
@@ -366,6 +368,7 @@ class _ChatInputState extends State<ChatInput> {
         'protein_g': estimation.totals.proteinG,
         'fat_g': estimation.totals.fatG,
         'carbs_g': estimation.totals.carbsG,
+        'source': imageUrls.isNotEmpty ? 'vision' : 'text',
       },
     };
 
