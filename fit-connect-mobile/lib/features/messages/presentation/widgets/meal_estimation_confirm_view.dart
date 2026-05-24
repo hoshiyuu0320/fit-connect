@@ -4,7 +4,7 @@ import 'package:flutter/widget_previews.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
 import 'package:fit_connect_mobile/features/meal_records/models/meal_estimation_result.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// AI推定結果を確認するビュー。
 /// 食品リスト（read-only）+ 合計4値（kcal/P/F/C, 編集可）+ 戻る/送信ボタン

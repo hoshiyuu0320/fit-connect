@@ -4,7 +4,7 @@ import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
 import 'package:fit_connect_mobile/features/auth/presentation/screens/onboarding_screen.dart';
 import 'package:fit_connect_mobile/features/auth/presentation/screens/login_screen.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});

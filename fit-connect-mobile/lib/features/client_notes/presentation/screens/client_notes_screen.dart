@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:fit_connect_mobile/features/client_notes/models/client_note_model.dart';
 import 'package:fit_connect_mobile/features/client_notes/providers/client_notes_provider.dart';
 import 'package:fit_connect_mobile/features/client_notes/presentation/widgets/note_card.dart';

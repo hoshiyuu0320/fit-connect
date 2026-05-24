@@ -10,7 +10,7 @@ import 'package:fit_connect_mobile/features/messages/presentation/widgets/meal_e
 import 'package:fit_connect_mobile/features/subscription/providers/ai_features_enabled_provider.dart';
 import 'package:fit_connect_mobile/services/storage_service.dart';
 import 'package:fit_connect_mobile/services/supabase_service.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 // ============================================
 // StructuredTagForm（親Widget）

@@ -10,7 +10,7 @@ import 'package:fit_connect_mobile/features/messages/presentation/widgets/messag
 import 'package:fit_connect_mobile/features/messages/presentation/widgets/chat_input.dart';
 import 'package:fit_connect_mobile/features/auth/providers/auth_provider.dart';
 import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import 'package:fit_connect_mobile/features/schedules/providers/trainer_schedule_provider.dart';
 

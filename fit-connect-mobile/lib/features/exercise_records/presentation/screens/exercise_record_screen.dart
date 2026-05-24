@@ -13,7 +13,7 @@ import 'package:fit_connect_mobile/features/workout/models/workout_assignment_ex
 import 'package:fit_connect_mobile/features/workout/models/actual_set_model.dart';
 import 'package:fit_connect_mobile/features/exercise_records/presentation/widgets/completed_workout_card.dart';
 import 'package:fit_connect_mobile/shared/models/period_filter.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:intl/intl.dart';
 
 // 統合表示用のラッパー型

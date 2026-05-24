@@ -9,7 +9,7 @@ import 'package:fit_connect_mobile/features/messages/presentation/widgets/quick_
 import 'package:fit_connect_mobile/features/messages/presentation/widgets/structured_tag_form.dart';
 import 'package:fit_connect_mobile/features/meal_records/models/meal_estimation_result.dart';
 import 'package:fit_connect_mobile/services/storage_service.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class ChatInput extends StatefulWidget {
   final Future<void> Function(

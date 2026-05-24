@@ -4,7 +4,7 @@ import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
 import 'package:fit_connect_mobile/features/messages/presentation/widgets/reply_quote.dart';
 import 'package:fit_connect_mobile/shared/widgets/full_screen_image_viewer.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class MessageBubble extends StatelessWidget {
   final String message;

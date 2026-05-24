@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class TagSuggestionList extends StatelessWidget {
   final String query;

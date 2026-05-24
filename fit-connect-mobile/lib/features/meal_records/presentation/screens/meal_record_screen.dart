@@ -9,7 +9,7 @@ import 'package:fit_connect_mobile/features/meal_records/presentation/widgets/me
 import 'package:fit_connect_mobile/features/meal_records/presentation/widgets/meal_week_calendar.dart';
 import 'package:fit_connect_mobile/features/meal_records/presentation/widgets/meal_month_calendar.dart';
 import 'package:fit_connect_mobile/shared/models/period_filter.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:intl/intl.dart';
 
 class MealRecordScreen extends ConsumerStatefulWidget {

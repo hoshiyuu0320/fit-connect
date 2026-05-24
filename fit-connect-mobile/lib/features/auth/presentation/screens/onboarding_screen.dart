@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/features/auth/presentation/screens/qr_scan_screen.dart';
 import 'package:fit_connect_mobile/features/auth/presentation/screens/invite_code_screen.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class OnboardingScreen extends StatelessWidget {
   const OnboardingScreen({super.key});

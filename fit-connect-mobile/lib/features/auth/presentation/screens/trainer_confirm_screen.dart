@@ -4,7 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/features/auth/providers/registration_provider.dart';
 import 'package:fit_connect_mobile/features/auth/presentation/screens/login_screen.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class TrainerConfirmScreen extends ConsumerWidget {
   const TrainerConfirmScreen({super.key});

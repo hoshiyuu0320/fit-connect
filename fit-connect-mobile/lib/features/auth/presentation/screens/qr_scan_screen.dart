@@ -4,7 +4,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/features/auth/providers/registration_provider.dart';
 import 'package:fit_connect_mobile/features/auth/presentation/screens/trainer_confirm_screen.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class QrScanScreen extends ConsumerStatefulWidget {
   const QrScanScreen({super.key});

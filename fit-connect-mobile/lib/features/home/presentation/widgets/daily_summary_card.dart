@@ -7,7 +7,7 @@ import 'package:fit_connect_mobile/features/meal_records/providers/meal_records_
 import 'package:fit_connect_mobile/features/exercise_records/providers/exercise_records_provider.dart';
 import 'package:fit_connect_mobile/features/weight_records/providers/weight_records_provider.dart';
 import 'package:fit_connect_mobile/shared/models/period_filter.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class DailySummaryCard extends ConsumerWidget {
   final VoidCallback? onMealsTap;

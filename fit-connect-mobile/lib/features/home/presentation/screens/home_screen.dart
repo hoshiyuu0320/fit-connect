@@ -12,7 +12,7 @@ import 'package:fit_connect_mobile/features/schedules/providers/trainer_schedule
 import 'package:fit_connect_mobile/features/schedules/presentation/widgets/trainer_status_card.dart';
 import 'package:fit_connect_mobile/features/sleep_records/presentation/screens/sleep_record_screen.dart';
 import 'package:fit_connect_mobile/features/sleep_records/presentation/widgets/sleep_summary_card.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class HomeScreen extends ConsumerWidget {
   final void Function(int tabIndex)? onNavigateToRecordsTab;

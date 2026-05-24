@@ -4,7 +4,7 @@ import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
 import 'package:fit_connect_mobile/features/workout/models/workout_assignment_model.dart';
 import 'package:fit_connect_mobile/features/workout/presentation/widgets/reschedule_date_picker.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class OverdueAssignmentCard extends StatelessWidget {
   const OverdueAssignmentCard({

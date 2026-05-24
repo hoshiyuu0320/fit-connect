@@ -14,7 +14,7 @@ import 'package:fit_connect_mobile/features/messages/providers/messages_provider
 import 'package:fit_connect_mobile/features/workout/presentation/screens/workout_screen.dart';
 import 'package:fit_connect_mobile/features/health/providers/health_provider.dart';
 import 'package:fit_connect_mobile/features/health/providers/health_sync_provider.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class MainScreen extends ConsumerStatefulWidget {
   const MainScreen({super.key});

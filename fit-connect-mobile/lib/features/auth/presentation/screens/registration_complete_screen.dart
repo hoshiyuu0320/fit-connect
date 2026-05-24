@@ -5,7 +5,7 @@ import 'package:confetti/confetti.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/features/auth/providers/registration_provider.dart';
 import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// 登録完了画面
 ///

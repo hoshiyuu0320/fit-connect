@@ -9,7 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  lucide_icons: ^0.257.0
+  lucide_icons_flutter: ^3.0.0
 
   # 状態管理
   flutter_riverpod: ^2.6.1

@@ -3,7 +3,7 @@ import 'package:flutter/widget_previews.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:fit_connect_mobile/features/meal_records/providers/meal_records_provider.dart';
 
 /// 月カレンダー（7列×複数行のグリッド）

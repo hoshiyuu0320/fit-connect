@@ -9,7 +9,7 @@ import 'package:fit_connect_mobile/features/weight_records/providers/weight_reco
 import 'package:fit_connect_mobile/features/goals/providers/goal_provider.dart';
 import 'package:fit_connect_mobile/features/auth/models/client_model.dart';
 import 'package:fit_connect_mobile/shared/models/period_filter.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:intl/intl.dart';
 
 class WeightRecordScreen extends ConsumerStatefulWidget {
