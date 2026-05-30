@@ -1,0 +1,8 @@
+# Codex CLI プロジェクト設定 — FIT-CONNECT monorepo
+#
+# プロジェクト固有の Codex 動作のみをここに置く。
+# 開発ルール・構成・運用方針の正本は AGENTS.md → CLAUDE.md を参照すること。
+
+[shell_environment_policy]
+# Codex が起動するシェルへ渡す環境変数のポリシー（core: 必要最小限のみ継承）
+inherit = "core"
