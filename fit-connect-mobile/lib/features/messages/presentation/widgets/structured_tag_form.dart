@@ -374,10 +374,20 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
     return '#食事:$type $content';
   }
 
-  Future<void> _handleInsert() async {
+  /// テキスト挿入のみ（AI 呼び出しなし）。free プランの「挿入」ボタンと
+  /// Pro プランの副「AIなしで挿入」ボタンの両方から呼ばれる。
+  void _handleInsert() {
+    if (!_isValid) return;
+    widget.onCompose(_composedText);
+  }
+
+  /// AI 推定ボタン専用。aiEnabled を前提とし、入力がある状態でのみ呼ばれる
+  /// （未入力時はボタンが無効化されている）。
+  /// loading → estimate → confirm のフローを実行する。
+  Future<void> _handleEstimate() async {
     if (!_isValid) return;
 
-    // テキストも画像もない場合は AI 推定をしない（安全網）
+    // テキストも画像もない場合は推定しない（安全網）
     final hasContent = _contentController.text.trim().isNotEmpty;
     final canTryEstimate = widget.onSendWithEstimation != null
         && (hasContent || widget.hasImages);
@@ -387,6 +397,7 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
       return;
     }
 
+    // 念のため AI 機能解放状態を再確認（initState で事前フェッチ済み）
     bool aiEnabled = false;
     try {
       aiEnabled = await ref.read(aiFeaturesEnabledProvider.future);
@@ -640,12 +651,103 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
         ),
         const SizedBox(height: 10),
 
-        // プレビュー行
-        _PreviewRow(
-          previewText: _previewText,
-          isValid: _isValid,
-          onInsert: _handleInsert,
-          colors: colors,
+        // プレビュー行 + アクションボタン
+        _buildPreviewActions(colors),
+      ],
+    );
+  }
+
+  /// プレビューテキストとアクションボタンを構築する。
+  /// AI 機能解放状態（aiFeaturesEnabledProvider）で「AI推定」「挿入」を出し分ける。
+  ///
+  /// 未解決（loading/error）時は保守的に free 版（「挿入」1つ）を表示し、
+  /// true 確定後に2ボタンへ切り替える（ゲート結果が確定するまで保守的なUI）。
+  Widget _buildPreviewActions(AppColorsExtension colors) {
+    final aiEnabled = ref.watch(aiFeaturesEnabledProvider).maybeWhen(
+          data: (enabled) => enabled,
+          orElse: () => false,
+        );
+
+    // free（または未解決）: 従来どおり「挿入」1つ
+    if (!aiEnabled) {
+      return _PreviewRow(
+        previewText: _previewText,
+        isValid: _isValid,
+        onInsert: _handleInsert,
+        colors: colors,
+      );
+    }
+
+    // Pro: プレビューテキスト + 「AI推定」「AIなしで挿入」の2ボタン
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // プレビューテキスト
+        Row(
+          children: [
+            Icon(LucideIcons.messageCircle,
+                size: 13, color: colors.textSecondary),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                _previewText,
+                style: TextStyle(fontSize: 13, color: colors.textSecondary),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        // 主「AI推定」・副「AIなしで挿入」
+        Row(
+          children: [
+            // 副: AIなしで挿入（低強調）
+            Expanded(
+              child: OutlinedButton(
+                onPressed: _isValid ? _handleInsert : null,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor:
+                      AppColors.primary.withValues(alpha: 0.75),
+                  backgroundColor:
+                      AppColors.primary.withValues(alpha: 0.05),
+                  side: BorderSide(
+                    color: AppColors.primary.withValues(alpha: 0.3),
+                  ),
+                  minimumSize: const Size.fromHeight(44),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                child: const Text('AIなしで挿入'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            // 主: AI推定（高強調）
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: _isValid ? _handleEstimate : null,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(44),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                icon: const Icon(LucideIcons.sparkles, size: 16),
+                label: const Text('AI推定'),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -1331,6 +1433,29 @@ Widget previewWeightTagFormFilled() {
 @Preview(name: 'MealTagForm - Default')
 Widget previewMealTagFormDefault() {
   return ProviderScope(
+    child: MaterialApp(
+      theme: AppTheme.lightTheme,
+      home: Scaffold(
+        backgroundColor: const Color(0xFFF5F5F5),
+        body: SafeArea(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              MealTagForm(onCompose: (_) {}, onClose: () {}),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+@Preview(name: 'MealTagForm - Pro (AI推定)')
+Widget previewMealTagFormPro() {
+  return ProviderScope(
+    overrides: [
+      aiFeaturesEnabledProvider.overrideWith((ref) async => true),
+    ],
     child: MaterialApp(
       theme: AppTheme.lightTheme,
       home: Scaffold(
