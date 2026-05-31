@@ -13,6 +13,7 @@ import 'package:fit_connect_mobile/features/auth/providers/current_user_provider
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import 'package:fit_connect_mobile/features/schedules/providers/trainer_schedule_provider.dart';
+import 'package:fit_connect_mobile/features/subscription/providers/ai_features_enabled_provider.dart';
 
 class MessageScreen extends ConsumerStatefulWidget {
   const MessageScreen({super.key});
@@ -36,6 +37,12 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
     // 画面表示時に既存の未読メッセージを既読化
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(paginatedMessagesProvider.notifier).markConversationAsRead();
+    });
+    // AI機能ゲートを画面表示時に先読みし、食事フォームを開いた瞬間に
+    // 解決済みになるようにする（モード切替セグメントの遅延表示を防ぐ）。
+    // keepAlive 化と併せてセッション中はキャッシュされ、再フェッチも防がれる。
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(aiFeaturesEnabledProvider);
     });
   }
 

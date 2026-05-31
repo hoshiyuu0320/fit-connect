@@ -6,7 +6,7 @@ part of 'ai_features_enabled_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$aiFeaturesEnabledHash() => r'020c8c57370d1777c2f3d8d5e6871db426b38f86';
+String _$aiFeaturesEnabledHash() => r'0b94306966f993e7868cff9bd8b85de60ede9a46';
 
 /// 自身の担当トレーナーの subscription_plan が 'pro' かどうか。
 /// 取得失敗・未認証・未紐付けの場合は false を返す（保守的にAI非表示）。
@@ -15,7 +15,7 @@ String _$aiFeaturesEnabledHash() => r'020c8c57370d1777c2f3d8d5e6871db426b38f86';
 ///
 /// Copied from [aiFeaturesEnabled].
 @ProviderFor(aiFeaturesEnabled)
-final aiFeaturesEnabledProvider = AutoDisposeFutureProvider<bool>.internal(
+final aiFeaturesEnabledProvider = FutureProvider<bool>.internal(
   aiFeaturesEnabled,
   name: r'aiFeaturesEnabledProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -27,6 +27,6 @@ final aiFeaturesEnabledProvider = AutoDisposeFutureProvider<bool>.internal(
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-typedef AiFeaturesEnabledRef = AutoDisposeFutureProviderRef<bool>;
+typedef AiFeaturesEnabledRef = FutureProviderRef<bool>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
