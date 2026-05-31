@@ -46,6 +46,11 @@ export type MealRecord = {
   images: string[] | null
   ai_source: string | null  // AI推定の入力経路: text / photo / screenshot:<app名>、手動記録は null
   recorded_at: string
+  protein_g?: number | null
+  fat_g?: number | null
+  carbs_g?: number | null
+  estimated_by_ai?: boolean
+  ai_foods?: unknown // jsonb
 }
 
 // 運動記録

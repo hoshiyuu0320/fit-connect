@@ -161,3 +161,11 @@
 ### Edge Function は deno 未導入環境で構文検証できない
 
 - ローカルに deno が無く `deno check` 不可。`// @ts-nocheck` 付きのため型検証も限定的。→ **デプロイ前に deno check を通すこと**を必須化（QA/デプロイ手順に明記）。実装中はコード全行の目視確認で代替
+
+## lucide_icons が新Flutter(IconData final化)でビルド不可（2026-05-31）
+
+- **症状**: `flutter run`(iOS) が `lucide_icons-0.257.0/lib/src/icon_data.dart:3: Error: The class 'IconData' can't be extended outside of its library because it's a final class.` で失敗。Xcodeログ末尾は `keyWindow` deprecated 等の警告ばかりで真因が埋もれる。`flutter build ios --debug --simulator 2>&1 | grep -i "error:"` で抽出するのが速い
+- **原因**: Flutter 3.44.0 で `IconData` が `final class` 化。`lucide_icons` は `class LucideIconData extends IconData` で継承しており継承不可に。`lucide_icons` は pubspec が `sdk: ">=2.12.0 <3.0.0"`（Dart2系）で実質メンテ終了、最新 0.257.0 でも修正なし。アプリ側は50ファイル・81種を `LucideIcons.xxx` で使用中
+- **対策（採用）**: ローカル vendor + パッチ。`fit-connect-mobile/third_party/lucide_icons/` にコピーし、(1) 自動生成 `lib/lucide_icons.dart` の `const LucideIconData(0xYYYY)` を `IconData(0xYYYY, fontFamily: 'Lucide', fontPackage: 'lucide_icons')` に一括 sed 置換、(2) 壊れた `lib/src/icon_data.dart` を空(コメントのみ)化＋import削除、(3) vendor pubspec の sdk を `<4.0.0` に緩和、(4) アプリ pubspec に `dependency_overrides: lucide_icons: { path: third_party/lucide_icons }`。アプリ50ファイルは無変更で `LucideIcons.xxx` API 互換のままビルド成功(EXIT 0)
+- **トレードオフ/今後**: 放置気味パッケージを vendor として抱えた状態。長期的には active な後継 `lucide_icons_flutter`(^3.x) 移行が本筋（アイコン名差異の照合が必要なため今回見送り）
+- **横展開**: Flutter SDK 更新時、`IconData`/`Color` 等を `extends` する古いパッケージは同様に壊れる。`flutter upgrade` を安易に勧めない方針とも整合

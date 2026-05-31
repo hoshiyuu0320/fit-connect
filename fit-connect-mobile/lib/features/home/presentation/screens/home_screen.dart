@@ -67,15 +67,16 @@ class HomeScreen extends ConsumerWidget {
               const SizedBox(height: 16),
 
               // Daily Summary
+              // Records tabs order: 0=サマリ, 1=体重, 2=食事, 3=運動, 4=ノート
               DailySummaryCard(
                 onMealsTap: onNavigateToRecordsTab != null
-                    ? () => onNavigateToRecordsTab!(1)
+                    ? () => onNavigateToRecordsTab!(2)
                     : null,
                 onWeightTap: onNavigateToRecordsTab != null
-                    ? () => onNavigateToRecordsTab!(0)
+                    ? () => onNavigateToRecordsTab!(1)
                     : null,
                 onActivityTap: onNavigateToRecordsTab != null
-                    ? () => onNavigateToRecordsTab!(2)
+                    ? () => onNavigateToRecordsTab!(3)
                     : null,
               ),
 
