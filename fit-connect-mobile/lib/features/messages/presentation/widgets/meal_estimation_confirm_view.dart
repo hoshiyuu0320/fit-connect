@@ -20,6 +20,9 @@ class MealEstimationConfirmView extends StatefulWidget {
   /// 空リストならサムネイル領域を描画しない。
   final List<String> imageUrls;
 
+  /// スクショ取り込み時の検出アプリ名（'unknown' や null のときラベル非表示）。
+  final String? appName;
+
   const MealEstimationConfirmView({
     super.key,
     required this.estimation,
@@ -29,6 +32,7 @@ class MealEstimationConfirmView extends StatefulWidget {
     required this.onSend,
     this.isSending = false,
     this.imageUrls = const [],
+    this.appName,
   });
 
   @override
@@ -83,10 +87,24 @@ class _MealEstimationConfirmViewState extends State<MealEstimationConfirmView> {
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
+    final appName = widget.appName;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (appName != null && appName.isNotEmpty && appName != 'unknown') ...[
+          Row(
+            children: [
+              Icon(LucideIcons.smartphone, size: 14, color: colors.textSecondary),
+              const SizedBox(width: 6),
+              Text(
+                '$appName から読み取り',
+                style: TextStyle(fontSize: 13, color: colors.textSecondary),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+        ],
         // Header
         Row(
           children: [
