@@ -288,6 +288,10 @@ class _WeightTagFormState extends State<WeightTagForm> {
 
 enum _MealFormPhase { input, loading, confirm }
 
+/// 食事タグフォームの入力モード。
+/// cook = 料理を記録（写真/テキスト）、screenshot = 他アプリのスクショから取込。
+enum _MealInputMode { cook, screenshot }
+
 class MealTagForm extends ConsumerStatefulWidget {
   final Function(String composedText) onCompose;
   final VoidCallback onClose;
@@ -304,6 +308,9 @@ class MealTagForm extends ConsumerStatefulWidget {
     List<String> preUploadedUrls,
   )? onSendWithEstimation;
 
+  /// Preview/テスト用に screenshot モードで初期表示する（本番の通常導線では未指定）。
+  final bool debugInitialScreenshotMode;
+
   const MealTagForm({
     super.key,
     required this.onCompose,
@@ -313,6 +320,7 @@ class MealTagForm extends ConsumerStatefulWidget {
     this.onPickImage,
     this.onRemoveImage,
     this.onSendWithEstimation,
+    this.debugInitialScreenshotMode = false,
   });
 
   @override
@@ -326,6 +334,7 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
   MealEstimationResult? _estimation;
   EstimationTotals? _editableTotals;
   bool _isSending = false;
+  late _MealInputMode _inputMode;
   // 注: エラーメッセージはスナックバーで表示するだけなので state には持たない
 
   /// 「戻る」→「挿入」再試行時の再 upload を防ぐため、File と Storage URL の対応を保持。
@@ -338,6 +347,9 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
   void initState() {
     super.initState();
     _selectedMealType = _getDefaultMealType();
+    _inputMode = widget.debugInitialScreenshotMode
+        ? _MealInputMode.screenshot
+        : _MealInputMode.cook;
     // シート表示と同時に AI 機能解放状態を事前フェッチ。
     // 挿入タップ時には resolve 済みになっているように先に future を発火させ、
     // free プランの場合に「AI推定中」のフラッシュが出ないようにする。
@@ -386,6 +398,9 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
   /// loading → estimate → confirm のフローを実行する。
   Future<void> _handleEstimate() async {
     if (!_isValid) return;
+
+    // screenshot モードは画像必須
+    if (_inputMode == _MealInputMode.screenshot && !widget.hasImages) return;
 
     // テキストも画像もない場合は推定しない（安全網）
     final hasContent = _contentController.text.trim().isNotEmpty;
@@ -442,6 +457,7 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
         mealType: _mealTypeToEnum(_selectedMealType),
         content: _contentController.text.trim(),
         imageUrls: imageUrls,
+        inputKind: _inputMode == _MealInputMode.screenshot ? 'screenshot' : 'photo',
       );
       // ユーザーがローディング中にキャンセルした場合は確認画面に進めない
       if (!mounted || _phase != _MealFormPhase.loading) return;
@@ -602,6 +618,26 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
         ),
         const SizedBox(height: 12),
 
+        // 入力モード切替（Pro のみ表示）。free/未解決時は従来フォーム（cook 固定）。
+        if (ref.watch(aiFeaturesEnabledProvider).maybeWhen(
+              data: (enabled) => enabled,
+              orElse: () => false,
+            )) ...[
+          _SegmentControl(
+            items: const ['料理を記録', '他アプリから取込'],
+            selected: _inputMode == _MealInputMode.screenshot
+                ? '他アプリから取込'
+                : '料理を記録',
+            onChanged: (value) => setState(() {
+              _inputMode = value == '他アプリから取込'
+                  ? _MealInputMode.screenshot
+                  : _MealInputMode.cook;
+            }),
+            colors: colors,
+          ),
+          const SizedBox(height: 8),
+        ],
+
         // セグメントコントロール
         _SegmentControl(
           items: _mealTypes,
@@ -616,7 +652,9 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
           controller: _contentController,
           onChanged: (_) => setState(() {}),
           decoration: InputDecoration(
-            hintText: '食事内容やコメントを入力',
+            hintText: _inputMode == _MealInputMode.screenshot
+                ? 'メモ（任意）'
+                : '食事内容やコメントを入力',
             hintStyle: TextStyle(color: colors.textHint),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
@@ -648,6 +686,7 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
           onPick: widget.onPickImage,
           onRemove: widget.onRemoveImage,
           colors: colors,
+          addLabel: _inputMode == _MealInputMode.screenshot ? 'スクショを追加' : null,
         ),
         const SizedBox(height: 10),
 
@@ -675,6 +714,55 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
         isValid: _isValid,
         onInsert: _handleInsert,
         colors: colors,
+      );
+    }
+
+    // Pro かつ screenshot モード: 「スクショを解析」主ボタン1つ（「AIなしで挿入」は出さない）
+    if (_inputMode == _MealInputMode.screenshot) {
+      final canAnalyze = widget.hasImages;
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(LucideIcons.messageCircle, size: 13, color: colors.textSecondary),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  _previewText,
+                  style: TextStyle(fontSize: 13, color: colors.textSecondary),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: canAnalyze ? _handleEstimate : null,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(44),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+              icon: const Icon(LucideIcons.sparkles, size: 16),
+              label: const Text('スクショを解析'),
+            ),
+          ),
+          if (!canAnalyze) ...[
+            const SizedBox(height: 6),
+            Text(
+              'スクショ画像を追加してください',
+              style: TextStyle(fontSize: 12, color: colors.textHint),
+            ),
+          ],
+        ],
       );
     }
 
@@ -796,6 +884,7 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
       }),
       onSend: _handleSendWithEstimation,
       isSending: _isSending,
+      appName: _estimation!.appName,
     );
   }
 }
@@ -1069,11 +1158,16 @@ class _ImagePickerRow extends StatelessWidget {
   final Function(int)? onRemove;
   final AppColorsExtension colors;
 
+  /// 追加ボタンに表示する任意ラベル（screenshot モードの「スクショを追加」等）。
+  /// null の場合はラベルを表示しない（従来のカメラアイコンのみの見た目を維持）。
+  final String? addLabel;
+
   const _ImagePickerRow({
     required this.images,
     this.onPick,
     this.onRemove,
     required this.colors,
+    this.addLabel,
   });
 
   @override
@@ -1133,11 +1227,36 @@ class _ImagePickerRow extends StatelessWidget {
                 color: colors.border,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(
-                LucideIcons.camera,
-                color: colors.textHint,
-                size: 24,
-              ),
+              child: addLabel == null
+                  ? Icon(
+                      LucideIcons.camera,
+                      color: colors.textHint,
+                      size: 24,
+                    )
+                  : Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          LucideIcons.camera,
+                          color: colors.textHint,
+                          size: 22,
+                        ),
+                        const SizedBox(height: 4),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Text(
+                            addLabel!,
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: colors.textHint,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
             ),
           ),
       ],
