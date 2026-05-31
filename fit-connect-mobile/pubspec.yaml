@@ -59,6 +59,12 @@ dependencies:
   flutter_svg: ^2.2.4
   app_settings: ^5.1.1
 
+# lucide_icons 0.257.0 は Flutter の IconData final 化に非対応のため、
+# third_party/ にコピーしてパッチした版で上書きする（詳細: third_party/lucide_icons/lib/src/icon_data.dart）
+dependency_overrides:
+  lucide_icons:
+    path: third_party/lucide_icons
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

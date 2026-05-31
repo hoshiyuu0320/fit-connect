@@ -63,6 +63,12 @@ class AppColors {
   static const Color purple500 = Color(0xFFA855F7);
   static const Color purple600 = Color(0xFF9333EA);
 
+  // PFC Macronutrient Colors (栄養トレンド用)
+  static const Color pfcProtein = Color(0xFFA8D8D3); // soft teal
+  static const Color pfcFat = Color(0xFFFBD9A0); // soft amber
+  static const Color pfcCarbs = Color(0xFFEFB7C8); // soft rose（炭水化物＝ローズ振替）
+  static const Color weightLine = Color(0xFF0F172A); // slate-900（後方互換のため残置）
+
   // GitHub Grass Colors
   static const Color grassLevel0 = Color(0xFFEBEDF0); // グレー
   static const Color grassLevel1 = Color(0xFF9BE9A8); // 薄い緑
