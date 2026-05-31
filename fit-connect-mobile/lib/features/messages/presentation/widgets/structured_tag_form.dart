@@ -687,7 +687,6 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
           onPick: widget.onPickImage,
           onRemove: widget.onRemoveImage,
           colors: colors,
-          addLabel: _inputMode == _MealInputMode.screenshot ? 'スクショを追加' : null,
         ),
         const SizedBox(height: 10),
 
@@ -1159,16 +1158,11 @@ class _ImagePickerRow extends StatelessWidget {
   final Function(int)? onRemove;
   final AppColorsExtension colors;
 
-  /// 追加ボタンに表示する任意ラベル（screenshot モードの「スクショを追加」等）。
-  /// null の場合はラベルを表示しない（従来のカメラアイコンのみの見た目を維持）。
-  final String? addLabel;
-
   const _ImagePickerRow({
     required this.images,
     this.onPick,
     this.onRemove,
     required this.colors,
-    this.addLabel,
   });
 
   @override
@@ -1228,36 +1222,11 @@ class _ImagePickerRow extends StatelessWidget {
                 color: colors.border,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: addLabel == null
-                  ? Icon(
-                      LucideIcons.camera,
-                      color: colors.textHint,
-                      size: 24,
-                    )
-                  : Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          LucideIcons.camera,
-                          color: colors.textHint,
-                          size: 22,
-                        ),
-                        const SizedBox(height: 4),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Text(
-                            addLabel!,
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: colors.textHint,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+              child: Icon(
+                LucideIcons.camera,
+                color: colors.textHint,
+                size: 24,
+              ),
             ),
           ),
       ],
