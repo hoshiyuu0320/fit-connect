@@ -554,6 +554,7 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
     final estimationToSend = MealEstimationResult(
       foods: _estimation!.foods,
       totals: _editableTotals!,
+      appName: _estimation!.appName,
     );
     // selectedImages の順序を保ちつつ upload 済み URL を抽出
     final preUploaded = widget.selectedImages
