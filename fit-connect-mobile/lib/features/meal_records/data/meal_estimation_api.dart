@@ -18,6 +18,7 @@ class MealEstimationApi {
     required String mealType, // 'breakfast' | 'lunch' | 'dinner' | 'snack'
     required String content,
     List<String> imageUrls = const [],
+    String inputKind = 'photo', // 'photo' | 'screenshot'
   }) async {
     try {
       final response = await SupabaseService.client.functions.invoke(
@@ -26,6 +27,7 @@ class MealEstimationApi {
           'meal_type': mealType,
           'content': content,
           if (imageUrls.isNotEmpty) 'image_urls': imageUrls,
+          'input_kind': inputKind,
         },
       ).timeout(const Duration(seconds: 45));
 
