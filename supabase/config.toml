@@ -68,3 +68,15 @@ enabled = false
 
 [analytics]
 enabled = false
+
+# Edge Functions の認証設定。
+# どちらも verify_jwt=false（ゲートウェイで JWT 検証しない）。
+# - parse-message-tags: DB Webhook から呼ばれ user JWT を持たないため必須で false
+# - estimate-meal-nutrition: 関数内で Authorization ヘッダの JWT を自前検証するため false
+# 注: この設定が無いと `supabase functions deploy` が verify_jwt=true をデフォルト適用し、
+#     webhook が 401 で記録停止する事故になる（タスク2.5 デプロイ時の知見）。
+[functions.parse-message-tags]
+verify_jwt = false
+
+[functions.estimate-meal-nutrition]
+verify_jwt = false
