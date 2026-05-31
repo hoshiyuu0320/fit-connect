@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/features/meal_records/presentation/screens/meal_record_screen.dart';
+import 'package:fit_connect_mobile/features/records_overview/presentation/screens/records_overview_screen.dart';
 import 'package:fit_connect_mobile/features/weight_records/presentation/screens/weight_record_screen.dart';
 import 'package:fit_connect_mobile/features/exercise_records/presentation/screens/exercise_record_screen.dart';
 import 'package:fit_connect_mobile/features/client_notes/presentation/screens/client_notes_screen.dart';
@@ -23,7 +24,7 @@ class _RecordsScreenState extends State<RecordsScreen>
   void initState() {
     super.initState();
     _tabController = TabController(
-      length: 4,
+      length: 5,
       vsync: this,
       initialIndex: widget.initialTabIndex,
     );
@@ -64,12 +65,15 @@ class _RecordsScreenState extends State<RecordsScreen>
         centerTitle: true,
         bottom: TabBar(
           controller: _tabController,
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
           labelColor: AppColors.primary600,
           unselectedLabelColor: colors.textHint,
           indicatorColor: AppColors.primary600,
           indicatorWeight: 3,
           labelStyle: const TextStyle(fontWeight: FontWeight.bold),
           tabs: const [
+            Tab(text: 'サマリ'),
             Tab(text: '体重'),
             Tab(text: '食事'),
             Tab(text: '運動'),
@@ -80,6 +84,7 @@ class _RecordsScreenState extends State<RecordsScreen>
       body: TabBarView(
         controller: _tabController,
         children: const [
+          RecordsOverviewScreen(),
           WeightRecordScreen(),
           MealRecordScreen(),
           ExerciseRecordScreen(),

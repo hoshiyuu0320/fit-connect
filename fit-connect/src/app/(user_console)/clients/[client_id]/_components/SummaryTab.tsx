@@ -1,8 +1,12 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { format } from 'date-fns'
 import { WeightChart } from '@/components/clients/WeightChart'
+import { NutritionTrendChart } from '@/components/clients/NutritionTrendChart'
+import { PeriodSelector } from '@/components/clients/PeriodSelector'
+import { aggregateDailyNutrition } from '@/lib/nutrition/aggregate'
+import type { PeriodFilter } from '@/types/period'
 import type { WeightRecord, MealRecord, ExerciseRecord, Ticket, SleepRecord } from '@/types/client'
 import { MEAL_TYPE_OPTIONS, EXERCISE_TYPE_OPTIONS, PURPOSE_OPTIONS } from '@/types/client'
 import {
@@ -50,6 +54,15 @@ export function SummaryTab({
   bmrFormula = 'mifflin',
   sleepRecords = [],
 }: SummaryTabProps) {
+  // 栄養トレンド: 期間フィルター
+  const [nutritionPeriod, setNutritionPeriod] = useState<PeriodFilter>('month')
+
+  // 栄養トレンド: 日次集計（メモ化）
+  const nutritionTrendData = useMemo(
+    () => aggregateDailyNutrition(mealRecords, weightRecords, nutritionPeriod),
+    [mealRecords, weightRecords, nutritionPeriod]
+  )
+
   // 有効チケット
   const activeTickets = useMemo(() => {
     const todayStr = format(new Date(), 'yyyy-MM-dd')
@@ -146,6 +159,7 @@ export function SummaryTab({
   }, [weightRecords, height, clientAge, clientGender, bmrFormula, mealRecords, exerciseRecords, targetWeight])
 
   return (
+    <div className="space-y-4">
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
       {/* 左カラム (col-span-2) */}
       <div className="lg:col-span-2 space-y-4">
@@ -337,6 +351,21 @@ export function SummaryTab({
           )}
         </div>
       </div>
+    </div>
+
+      {/* 栄養トレンドセクション */}
+      <section className="bg-white border border-slate-200 rounded-lg p-6">
+        <header className="flex items-start justify-between gap-4 mb-4 flex-wrap">
+          <div>
+            <h3 className="text-base font-semibold text-slate-900">栄養トレンド</h3>
+            <p className="text-sm text-slate-500 mt-0.5">
+              体重・摂取カロリー・PFCの推移
+            </p>
+          </div>
+          <PeriodSelector value={nutritionPeriod} onChange={setNutritionPeriod} />
+        </header>
+        <NutritionTrendChart data={nutritionTrendData} />
+      </section>
     </div>
   )
 }

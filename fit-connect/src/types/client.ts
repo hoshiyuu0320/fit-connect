@@ -45,6 +45,11 @@ export type MealRecord = {
   calories: number | null
   images: string[] | null
   recorded_at: string
+  protein_g?: number | null
+  fat_g?: number | null
+  carbs_g?: number | null
+  estimated_by_ai?: boolean
+  ai_foods?: unknown // jsonb
 }
 
 // 運動記録

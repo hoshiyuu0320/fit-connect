@@ -46,4 +46,4 @@ app.*.map.json
 assets/.env
 
 # FVM Version Cache
-.fvm/
+.fvm/third_party/lucide_icons/.dart_tool/
