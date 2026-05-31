@@ -105,7 +105,28 @@
 
 ### 残タスク（フェーズ 2 続き）
 
-- **Stage 2**: 画像からのカロリー推定（タスク 2.3）
-- **Stage 3**: メッセージタグからの自動推定（タスク 2.4 一部）
 - **Stage 4**: 食事アプリスクショ画像分析（タスク 2.5）
+- **2.4 任意項目（バックログ）**: 手入力 #食事 送信の自動推定 / 推定履歴・精度フィードバックUI
 - **インフラ**: Stripe 連携で `trainers.subscription_plan` を自動更新（フェーズ 7 想定）
+
+## 「AI推定」ボタンの明示化と責務分離（タスク 2.4(a)、2026-05-31 完了）
+
+### 「食事記録画面への追加」が実は別物だった — 既存アーキテクチャ確認の重要性
+
+- **背景**: タスク定義は「食事記録画面への『AI推定』ボタン追加」だったが、調査の結果 `MealRecordScreen` は**閲覧専用**で入力導線が一切なく（`meal_records_provider` の `addRecord`/`updateRecord` はUI未配線）、食事記録の作成は**メッセージ #食事 タグ経由のみ**だった
+- **判断**: 記録画面に直接入力UIを新設すると「食事記録はトレーナーとのメッセージ経由で作る」というプロダクトモデルを変えてしまう。ユーザー確認の上、**記録画面は閲覧専用のまま維持し、AI推定をメッセージ #食事 タグフォーム内の明示ボタンとして分離**する最小スコープに決定
+- **教訓**: タスク文言を額面どおり受け取らず、まず既存フローを調査してから方針を確定する。「画面に〇〇を追加」が、その画面に前提機能が無いために実質「新機能の新設」になるケースがある
+
+### 暗黙分岐ボタンの責務分離
+
+- **症状になりかけた設計**: 「挿入」1ボタンが、Pro+入力ありの時だけ暗黙でAI推定→確認に分岐していた（押すまで挙動が読めない）
+- **対策**: `_handleInsert`（暗黙分岐, async）を `_handleInsert`（テキスト挿入のみ, 同期）と `_handleEstimate`（AI専用, async）に分割。UIも Pro では「AI推定」主＋「AIなしで挿入」副の2ボタンに分離。「ボタン＝1つの明確な動作」に
+- **フラッシュ対策**: ボタン構成を `ref.watch(aiFeaturesEnabledProvider).maybeWhen(data: e=>e, orElse: ()=>false)` で出し分け、**未解決時は保守的に free 版を表示**。既存「AsyncValueゲートは結果確定までUIを変えない」原則の踏襲
+- **関連**: `lib/features/messages/presentation/widgets/structured_tag_form.dart`
+
+### ios-simulator-qa スキルの制約（このセッションでの実情）
+
+- **症状**: `ios-simulator-qa` スキルは `mcp__computer-use__*` ツール前提だが、当セッションには computer-use MCP が未登録（利用可能MCPは supabase / Google系のみ）、`idb` も未インストール。→ **シミュレータへのタップ/入力の自動操作が不可**。加えてアプリ未ログイン（認証情報は手入力依頼が必要）
+- **代替で確保した検証**: `fvm flutter run` での**ビルド成功 + アプリ起動成功**、`fvm flutter analyze`（対象ファイル No issues）、`xcrun simctl io <udid> screenshot` での画面キャプチャ確認。対話的UI検証（ボタン表示・無効化・推定フロー）は未実施として正直に区別して報告
+- **補完策**: UI変更時はプレビュー関数（`@Preview`）を必ず追加し、provider依存UIは override で状態を再現（`previewMealTagFormPro` で `aiFeaturesEnabledProvider.overrideWith((ref) async => true)`）。`flutter widget-preview` で視覚確認の手段を残す
+- **スキル内の旧パス**: skill本文のプロジェクトルートが旧構成 `/Users/hoshidayuuya/Documents/FIT-CONNECT/...` のまま。実際は `/Users/hosidayuya/Documents/work/fit-connect/fit-connect-mobile`、Flutter は fvm 3.41.9 pinned。スキル更新候補
