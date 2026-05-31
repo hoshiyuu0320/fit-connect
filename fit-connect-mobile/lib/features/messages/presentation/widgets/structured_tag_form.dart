@@ -1593,6 +1593,30 @@ Widget previewMealTagFormPro() {
   );
 }
 
+@Preview(name: 'MealTagForm - スクショ取込モード')
+Widget previewMealTagFormScreenshot() {
+  return ProviderScope(
+    overrides: [
+      aiFeaturesEnabledProvider.overrideWith((ref) async => true),
+    ],
+    child: MaterialApp(
+      theme: AppTheme.lightTheme,
+      home: Scaffold(
+        body: Align(
+          alignment: Alignment.bottomCenter,
+          child: MealTagForm(
+            onCompose: (_) {},
+            onClose: () {},
+            hasImages: true,
+            onSendWithEstimation: (_, __, ___) async {},
+            debugInitialScreenshotMode: true,
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 @Preview(name: 'ExerciseTagForm - Default')
 Widget previewExerciseTagFormDefault() {
   return MaterialApp(
