@@ -131,6 +131,37 @@
 - **補完策**: UI変更時はプレビュー関数（`@Preview`）を必ず追加し、provider依存UIは override で状態を再現（`previewMealTagFormPro` で `aiFeaturesEnabledProvider.overrideWith((ref) async => true)`）。`flutter widget-preview` で視覚確認の手段を残す
 - **スキル内の旧パス**: skill本文のプロジェクトルートが旧構成 `/Users/hoshidayuuya/Documents/FIT-CONNECT/...` のまま。実際は `/Users/hosidayuya/Documents/work/fit-connect/fit-connect-mobile`、Flutter は fvm 3.41.9 pinned。スキル更新候補
 
+## 食事アプリ スクショ取り込み（タスク 2.5、2026-05-31 完了）
+
+### 既存の画像推定インフラを「OCR的読み取り」に転用 — プロンプトだけ分岐
+
+- **方針**: 料理写真推定（2.3）とスクショ読み取りは、画像をURLで Claude Vision に渡す配管が**完全に同一**。違いは「推定する」vs「画面の数値を読み取る」というタスク性質だけ。→ Edge Function に `input_kind='screenshot'` を足し、**システムプロンプトのみ分岐**（`SCREENSHOT_SYSTEM_PROMPT`）。モデル（sonnet）・サブスクゲート・レートリミット・アップロード・confirm UI・webhook はすべて流用
+- **教訓**: 新機能でも「データフローのどこが本当に違うのか」を見極めると、差分を1点（プロンプト）に閉じ込められる。配管を再発明しない
+
+### `source` カラムの CHECK 制約に既存意味があり流用不可 → 新カラム
+
+- **罠**: `meal_records.source` は `manual`/`message`（記録の**作成経路**）の CHECK 制約付き。AI推定の**入力経路**（text/photo/screenshot）を入れたくなるが、意味が違ううえ制約に弾かれる
+- **対策**: 新カラム `ai_source text`（CHECK なし、`screenshot:<可変app名>` を許容）。`metadata.meal_estimation.source` は従来 webhook で読み捨てていたので、ここで初めて永続化。`vision`→`photo` に改称し意味を明確化（過去データ未保存のため安全）
+
+### 確認画面で totals を再構築すると `appName` が落ちる（計画の見落としを実装者が検出）
+
+- **症状**: confirm 画面はユーザーが合計値を編集できるため、送信時に `MealEstimationResult(foods:..., totals: _editableTotals!)` を**作り直す**。ここで `appName` を渡し忘れると、chat_input 側の `estimation.appName` が常に null になり `source` が `screenshot:<app>` にならず機能が無効化される
+- **対策**: 再構築時に `appName: _estimation!.appName` を明示的に引き継ぐ。**「オブジェクトを部分的に作り直す箇所」は新フィールド追加時の漏れポイント** — copyWith が無いモデルは特に注意
+- **関連**: `structured_tag_form.dart` `_handleSendWithEstimation`
+
+### Pro 限定UIは AsyncValue ゲートで保守的に出し分け（2.4(a) の踏襲）
+
+- スクショ取込モードのセグメント切替は `aiFeaturesEnabledProvider.maybeWhen(data: e=>e, orElse: ()=>false)` で**未解決時は非表示**。さらに `_handleEstimate` 内で再確認、`_buildPreviewActions` の `!aiEnabled` 早期 return で三重に防御。free ユーザーに screenshot UI が一瞬も漏れない
+
+### サブプロジェクト固有エージェントは親レベルから呼べない
+
+- **症状**: `flutter-ui` / `riverpod`（`fit-connect-mobile/.claude/agents/`）は**親ディレクトリの Agent ツールからは未登録**でエラー。利用可能なのは `general-purpose` / `explore` / `supabase` / `plan` 等のみ
+- **対策**: Mobile 実装の委託は `general-purpose` に、fvm/Flutter 制約（`fvm flutter` 必須・3.41.9 pinned・lucide_icons）をプロンプトで明示して渡す
+
+### Edge Function は deno 未導入環境で構文検証できない
+
+- ローカルに deno が無く `deno check` 不可。`// @ts-nocheck` 付きのため型検証も限定的。→ **デプロイ前に deno check を通すこと**を必須化（QA/デプロイ手順に明記）。実装中はコード全行の目視確認で代替
+
 ## lucide_icons が新Flutter(IconData final化)でビルド不可（2026-05-31）
 
 - **症状**: `flutter run`(iOS) が `lucide_icons-0.257.0/lib/src/icon_data.dart:3: Error: The class 'IconData' can't be extended outside of its library because it's a final class.` で失敗。Xcodeログ末尾は `keyWindow` deprecated 等の警告ばかりで真因が埋もれる。`flutter build ios --debug --simulator 2>&1 | grep -i "error:"` で抽出するのが速い

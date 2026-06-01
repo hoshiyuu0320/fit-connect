@@ -288,6 +288,10 @@ class _WeightTagFormState extends State<WeightTagForm> {
 
 enum _MealFormPhase { input, loading, confirm }
 
+/// 食事タグフォームの入力モード。
+/// cook = 料理を記録（写真/テキスト）、screenshot = 他アプリのスクショから取込。
+enum _MealInputMode { cook, screenshot }
+
 class MealTagForm extends ConsumerStatefulWidget {
   final Function(String composedText) onCompose;
   final VoidCallback onClose;
@@ -304,6 +308,9 @@ class MealTagForm extends ConsumerStatefulWidget {
     List<String> preUploadedUrls,
   )? onSendWithEstimation;
 
+  /// Preview/テスト用に screenshot モードで初期表示する（本番の通常導線では未指定）。
+  final bool debugInitialScreenshotMode;
+
   const MealTagForm({
     super.key,
     required this.onCompose,
@@ -313,6 +320,7 @@ class MealTagForm extends ConsumerStatefulWidget {
     this.onPickImage,
     this.onRemoveImage,
     this.onSendWithEstimation,
+    this.debugInitialScreenshotMode = false,
   });
 
   @override
@@ -326,6 +334,7 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
   MealEstimationResult? _estimation;
   EstimationTotals? _editableTotals;
   bool _isSending = false;
+  late _MealInputMode _inputMode;
   // 注: エラーメッセージはスナックバーで表示するだけなので state には持たない
 
   /// 「戻る」→「挿入」再試行時の再 upload を防ぐため、File と Storage URL の対応を保持。
@@ -338,6 +347,9 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
   void initState() {
     super.initState();
     _selectedMealType = _getDefaultMealType();
+    _inputMode = widget.debugInitialScreenshotMode
+        ? _MealInputMode.screenshot
+        : _MealInputMode.cook;
     // シート表示と同時に AI 機能解放状態を事前フェッチ。
     // 挿入タップ時には resolve 済みになっているように先に future を発火させ、
     // free プランの場合に「AI推定中」のフラッシュが出ないようにする。
@@ -386,6 +398,9 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
   /// loading → estimate → confirm のフローを実行する。
   Future<void> _handleEstimate() async {
     if (!_isValid) return;
+
+    // screenshot モードは画像必須
+    if (_inputMode == _MealInputMode.screenshot && !widget.hasImages) return;
 
     // テキストも画像もない場合は推定しない（安全網）
     final hasContent = _contentController.text.trim().isNotEmpty;
@@ -442,6 +457,7 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
         mealType: _mealTypeToEnum(_selectedMealType),
         content: _contentController.text.trim(),
         imageUrls: imageUrls,
+        inputKind: _inputMode == _MealInputMode.screenshot ? 'screenshot' : 'photo',
       );
       // ユーザーがローディング中にキャンセルした場合は確認画面に進めない
       if (!mounted || _phase != _MealFormPhase.loading) return;
@@ -538,6 +554,7 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
     final estimationToSend = MealEstimationResult(
       foods: _estimation!.foods,
       totals: _editableTotals!,
+      appName: _estimation!.appName,
     );
     // selectedImages の順序を保ちつつ upload 済み URL を抽出
     final preUploaded = widget.selectedImages
@@ -602,6 +619,26 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
         ),
         const SizedBox(height: 12),
 
+        // 入力モード切替（Pro のみ表示）。free/未解決時は従来フォーム（cook 固定）。
+        if (ref.watch(aiFeaturesEnabledProvider).maybeWhen(
+              data: (enabled) => enabled,
+              orElse: () => false,
+            )) ...[
+          _SegmentControl(
+            items: const ['料理を記録', '他アプリから取込'],
+            selected: _inputMode == _MealInputMode.screenshot
+                ? '他アプリから取込'
+                : '料理を記録',
+            onChanged: (value) => setState(() {
+              _inputMode = value == '他アプリから取込'
+                  ? _MealInputMode.screenshot
+                  : _MealInputMode.cook;
+            }),
+            colors: colors,
+          ),
+          const SizedBox(height: 8),
+        ],
+
         // セグメントコントロール
         _SegmentControl(
           items: _mealTypes,
@@ -616,7 +653,9 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
           controller: _contentController,
           onChanged: (_) => setState(() {}),
           decoration: InputDecoration(
-            hintText: '食事内容やコメントを入力',
+            hintText: _inputMode == _MealInputMode.screenshot
+                ? 'メモ（任意）'
+                : '食事内容やコメントを入力',
             hintStyle: TextStyle(color: colors.textHint),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
@@ -649,6 +688,35 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
           onRemove: widget.onRemoveImage,
           colors: colors,
         ),
+        // スクショモード限定: PFC が写ったスクショで精度が上がる旨のヒント
+        if (_inputMode == _MealInputMode.screenshot) ...[
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: colors.border),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(LucideIcons.info, size: 14, color: colors.textSecondary),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'カロリー・PFCが表示されたスクショを添付すると、PFCも記録され精度が上がります',
+                    style: TextStyle(
+                      fontSize: 12,
+                      height: 1.4,
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 10),
 
         // プレビュー行 + アクションボタン
@@ -675,6 +743,55 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
         isValid: _isValid,
         onInsert: _handleInsert,
         colors: colors,
+      );
+    }
+
+    // Pro かつ screenshot モード: 「スクショを解析」主ボタン1つ（「AIなしで挿入」は出さない）
+    if (_inputMode == _MealInputMode.screenshot) {
+      final canAnalyze = widget.hasImages;
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(LucideIcons.messageCircle, size: 13, color: colors.textSecondary),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  _previewText,
+                  style: TextStyle(fontSize: 13, color: colors.textSecondary),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: canAnalyze ? _handleEstimate : null,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(44),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+              icon: const Icon(LucideIcons.sparkles, size: 16),
+              label: const Text('スクショを解析'),
+            ),
+          ),
+          if (!canAnalyze) ...[
+            const SizedBox(height: 6),
+            Text(
+              'スクショ画像を追加してください',
+              style: TextStyle(fontSize: 12, color: colors.textHint),
+            ),
+          ],
+        ],
       );
     }
 
@@ -796,6 +913,7 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
       }),
       onSend: _handleSendWithEstimation,
       isSending: _isSending,
+      appName: _estimation!.appName,
     );
   }
 }
@@ -1466,6 +1584,30 @@ Widget previewMealTagFormPro() {
             children: [
               MealTagForm(onCompose: (_) {}, onClose: () {}),
             ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+@Preview(name: 'MealTagForm - スクショ取込モード')
+Widget previewMealTagFormScreenshot() {
+  return ProviderScope(
+    overrides: [
+      aiFeaturesEnabledProvider.overrideWith((ref) async => true),
+    ],
+    child: MaterialApp(
+      theme: AppTheme.lightTheme,
+      home: Scaffold(
+        body: Align(
+          alignment: Alignment.bottomCenter,
+          child: MealTagForm(
+            onCompose: (_) {},
+            onClose: () {},
+            hasImages: true,
+            onSendWithEstimation: (_, __, ___) async {},
+            debugInitialScreenshotMode: true,
           ),
         ),
       ),

@@ -184,6 +184,7 @@ async function createMealRecord(supabase, commonData, tagData) {
       carbs_g: estimation.carbs_g,
       ai_foods: estimation.foods,
       estimated_by_ai: true,
+      ai_source: typeof estimation.source === 'string' ? estimation.source : null,
     })
   }
 

@@ -7,7 +7,16 @@ class MealEstimationResult {
   final List<EstimatedFood> foods;
   final EstimationTotals totals;
 
-  const MealEstimationResult({required this.foods, required this.totals});
+  /// スクショ取り込み時に Claude が検出したアプリ名（例: 'あすけん', 'unknown'）。
+  /// 料理写真・テキスト推定では null。
+  @JsonKey(name: 'app_name')
+  final String? appName;
+
+  const MealEstimationResult({
+    required this.foods,
+    required this.totals,
+    this.appName,
+  });
 
   factory MealEstimationResult.fromJson(Map<String, dynamic> json) =>
       _$MealEstimationResultFromJson(json);

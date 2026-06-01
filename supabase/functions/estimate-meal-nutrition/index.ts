@@ -24,6 +24,25 @@ const SYSTEM_PROMPT = `あなたは栄養素推定アシスタントです。日
 - 画像が食事と無関係（人物、風景、ミーム等）と判断したら foods を空配列で返す
 - テキスト補足は画像から得た情報の修正に優先する（例:「ご飯大盛り」なら米飯の量を増やす）`
 
+const SCREENSHOT_SYSTEM_PROMPT = `あなたは食事管理アプリの画面スクリーンショットから栄養情報を読み取るアシスタントです。これは他社の食事管理アプリ（あすけん、カロミル、MyFitnessPal 等）の画面のスクリーンショットです。
+
+返却形式は厳密に以下の JSON のみ（説明文・コードフェンス禁止）:
+{
+  "foods": [{"name": string, "calories": number, "protein_g": number, "fat_g": number, "carbs_g": number}],
+  "totals": {"calories": number, "protein_g": number, "fat_g": number, "carbs_g": number},
+  "app_name": string
+}
+
+指針:
+- 数値は画面に表示されている値をそのまま使う。自分で推定や再計算をしない
+- 画面に表示された合計の「カロリー・たんぱく質(P)・脂質(F)・炭水化物(C)」のグラム数を totals に必ず入れる。多くのアプリは食品リストの上部や円グラフ/棒グラフで P・F・C のグラム数を表示しているので、それを読み取る
+- food 単位で PFC が表示されていない場合は、各 food の protein_g/fat_g/carbs_g は 0 でよい。ただし totals の P・F・C は画面の合計表示から必ず読み取ること（totals を 0 のままにしない）
+- 食品名リストが画面にあれば foods に列挙する。合計値しか読み取れない場合は foods に1件「合計」としてまとめてよい
+- すべて整数（小数点以下は切り捨て）
+- app_name には画面の特徴から推測したアプリ名（例: "あすけん", "カロミル", "MyFitnessPal"）を入れる。判別できなければ "unknown"
+- 1日分（朝・昼・夕・間食）が写っている場合でも、画面の合計または最も主要な1食分のみを返す
+- 食事管理アプリの画面でない、または栄養数値を読み取れない場合は foods を空配列で返す`
+
 const FUNCTION_NAME = 'estimate-meal-nutrition'
 
 async function callClaude(
@@ -31,6 +50,7 @@ async function callClaude(
   mealType: string,
   content: string,
   imageUrls: string[],
+  inputKind: 'photo' | 'screenshot',
 ): Promise<any> {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 30_000)
@@ -60,7 +80,11 @@ async function callClaude(
         max_tokens: 1024,
         temperature: 0.2,
         system: [
-          { type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
+          {
+            type: 'text',
+            text: inputKind === 'screenshot' ? SCREENSHOT_SYSTEM_PROMPT : SYSTEM_PROMPT,
+            cache_control: { type: 'ephemeral' },
+          },
         ],
         messages: [{ role: 'user', content: userBlocks }],
       }),
@@ -104,7 +128,7 @@ function clampPositive(n: any): number {
   return Math.floor(v)
 }
 
-function validateEstimation(raw: any): { foods: any[]; totals: any } {
+function validateEstimation(raw: any, trustTotals: boolean): { foods: any[]; totals: any } {
   if (!raw || typeof raw !== 'object') throw new Error('Invalid response shape')
   if (!Array.isArray(raw.foods)) throw new Error('Missing foods array')
   if (!raw.totals || typeof raw.totals !== 'object') throw new Error('Missing totals')
@@ -118,16 +142,29 @@ function validateEstimation(raw: any): { foods: any[]; totals: any } {
       carbs_g: clampPositive(f.carbs_g),
     }
   })
-  // totals は foods から再計算（Claude のtotals不整合への防御）
-  const totals = foods.reduce(
-    (acc, f) => ({
-      calories: acc.calories + f.calories,
-      protein_g: acc.protein_g + f.protein_g,
-      fat_g: acc.fat_g + f.fat_g,
-      carbs_g: acc.carbs_g + f.carbs_g,
-    }),
-    { calories: 0, protein_g: 0, fat_g: 0, carbs_g: 0 },
-  )
+
+  let totals
+  if (trustTotals) {
+    // スクショ: 画面に表示された合計値をそのまま採用（食品ごとのPFCは未表示のことが多く、
+    // foods から再計算すると画面の合計PFCを 0 に潰してしまうため）。clamp のみ行う。
+    totals = {
+      calories: clampPositive(raw.totals.calories),
+      protein_g: clampPositive(raw.totals.protein_g),
+      fat_g: clampPositive(raw.totals.fat_g),
+      carbs_g: clampPositive(raw.totals.carbs_g),
+    }
+  } else {
+    // 料理写真/テキスト: foods から再計算（Claude のtotals不整合への防御）
+    totals = foods.reduce(
+      (acc, f) => ({
+        calories: acc.calories + f.calories,
+        protein_g: acc.protein_g + f.protein_g,
+        fat_g: acc.fat_g + f.fat_g,
+        carbs_g: acc.carbs_g + f.carbs_g,
+      }),
+      { calories: 0, protein_g: 0, fat_g: 0, carbs_g: 0 },
+    )
+  }
   return { foods, totals }
 }
 
@@ -194,6 +231,8 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => null)
     if (!body) return errorResponse('INVALID_INPUT', 'Invalid JSON body', 400)
     const { meal_type, content } = body
+    const inputKind: 'photo' | 'screenshot' =
+      body.input_kind === 'screenshot' ? 'screenshot' : 'photo'
     const rawImageUrls = body.image_urls
     const imageUrls: string[] = Array.isArray(rawImageUrls)
       ? rawImageUrls.filter((u): u is string => typeof u === 'string' && u.length > 0).slice(0, 3)
@@ -203,6 +242,9 @@ Deno.serve(async (req) => {
       return errorResponse('INVALID_INPUT', 'Invalid meal_type', 400)
     }
     const contentStr = typeof content === 'string' ? content : ''
+    if (inputKind === 'screenshot' && imageUrls.length === 0) {
+      return errorResponse('INVALID_INPUT', 'Screenshot mode requires an image', 400)
+    }
     if (contentStr.trim().length === 0 && imageUrls.length === 0) {
       return errorResponse('INVALID_INPUT', 'Empty content and no images', 400)
     }
@@ -244,9 +286,15 @@ Deno.serve(async (req) => {
 
     // 6. Claude 呼び出し
     let result
+    let appName = ''
     try {
-      const raw = await callClaude(anthropicKey, meal_type, contentStr, imageUrls)
-      result = validateEstimation(raw)
+      const raw = await callClaude(anthropicKey, meal_type, contentStr, imageUrls, inputKind)
+      result = validateEstimation(raw, inputKind === 'screenshot')
+      if (inputKind === 'screenshot') {
+        appName = typeof raw.app_name === 'string' && raw.app_name.trim().length > 0
+          ? raw.app_name.trim()
+          : 'unknown'
+      }
     } catch (e) {
       console.error('Claude call/parse failed:', e)
       await supabase.from('ai_estimation_logs').insert({
@@ -278,7 +326,10 @@ Deno.serve(async (req) => {
       status: 'success',
     })
 
-    return new Response(JSON.stringify(result), {
+    const responseBody = inputKind === 'screenshot'
+      ? { ...result, app_name: appName }
+      : result
+    return new Response(JSON.stringify(responseBody), {
       headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
     })
   } catch (e) {
