@@ -688,6 +688,35 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
           onRemove: widget.onRemoveImage,
           colors: colors,
         ),
+        // スクショモード限定: PFC が写ったスクショで精度が上がる旨のヒント
+        if (_inputMode == _MealInputMode.screenshot) ...[
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: colors.border),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(LucideIcons.info, size: 14, color: colors.textSecondary),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'カロリー・PFCが表示されたスクショを添付すると、PFCも記録され精度が上がります',
+                    style: TextStyle(
+                      fontSize: 12,
+                      height: 1.4,
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 10),
 
         // プレビュー行 + アクションボタン
