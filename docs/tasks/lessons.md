@@ -162,6 +162,20 @@
 
 - ローカルに deno が無く `deno check` 不可。`// @ts-nocheck` 付きのため型検証も限定的。→ **デプロイ前に deno check を通すこと**を必須化（QA/デプロイ手順に明記）。実装中はコード全行の目視確認で代替
 
+### スクショ推定では totals の「foods 再計算」が画面の合計PFCを潰す（2026-06-01 修正）
+
+- **症状**: PFC が写ったスクショを渡しても `meal_records` の protein_g/fat_g/carbs_g が常に 0。calories は入る
+- **原因**: `validateEstimation` が **totals を foods（食品ごと）から再計算**する設計（料理写真ルート用の「Claude の totals 不整合への防御」）。あすけん等の食事リスト画面は **food 単位の PFC を出さない**（PFC は画面上部の合計バー/数値）。モデルは food 配列の PFC を 0 で返し、合計を再計算すると画面の合計PFCも 0 に潰れる
+- **対策**: `validateEstimation(raw, trustTotals)` を追加。`input_kind='screenshot'` のときは **totals をモデル値（画面の合計）採用**（clamp のみ）、photo/text は従来どおり再計算。あわせてプロンプトで「合計 P/F/C のグラムを必ず totals に入れる／totals を 0 のままにしない」を明示
+- **教訓**: 「読み取り（OCR的）」タスクと「推定」タスクで totals の信頼源が逆（前者=画面の合計が真、後者=食品ごとの推定の合計が真）。同じ関数を流用するなら入力種別で分岐する
+- **副次**: PFC が画面に無いスクショ（カロリー/食品だけ）は 0 のまま正しく返る（捏造しない）。UI 側で「PFCが写ったスクショを添付すると精度が上がる」ヒントを出して運用で補う
+
+### 複数スクショの整合性は Claude に判定させ非ブロッキング警告（2026-06-01）
+
+- **要件**: PFCの画面と食べ物の画面を別々に添付したとき、それらが噛み合わない（別の食事/別日）と「組み合わせ正しい？」と警告したい
+- **実装**: スクショは元々まとめて1リクエストで Claude に渡すので、レスポンスに `warning: string|null` を追加。プロンプトで「2枚以上のとき同じ食事か・`P×4+F×9+C×4 ≒ kcal` が噛み合うかを見て、不整合なら短い指摘文、問題なければ null、1枚なら常に null」と指示。確認画面に**非ブロッキングの警告バナー**（アンバー、送信は可能）
+- **設計判断**: per-image の構造化出力は作らず、合算結果＋Claude の総合判定だけで足りる（YAGNI）。warning は送信前の助言なので DB 保存しない
+
 ## lucide_icons が新Flutter(IconData final化)でビルド不可（2026-05-31）
 
 - **症状**: `flutter run`(iOS) が `lucide_icons-0.257.0/lib/src/icon_data.dart:3: Error: The class 'IconData' can't be extended outside of its library because it's a final class.` で失敗。Xcodeログ末尾は `keyWindow` deprecated 等の警告ばかりで真因が埋もれる。`flutter build ios --debug --simulator 2>&1 | grep -i "error:"` で抽出するのが速い
