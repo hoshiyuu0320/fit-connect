@@ -10,7 +10,7 @@ part 'ai_features_enabled_provider.g.dart';
 /// 参照経路: auth.uid() → clients.client_id → clients.trainer_id → trainers.subscription_plan
 // TODO(stage 2): subscribe to auth.onAuthStateChange to invalidate on sign-in/out, and
 //                handle subscription_plan changes (Stripe webhook) to flip the gate live.
-@riverpod
+@Riverpod(keepAlive: true)
 Future<bool> aiFeaturesEnabled(AiFeaturesEnabledRef ref) async {
   try {
     final supabase = SupabaseService.client;

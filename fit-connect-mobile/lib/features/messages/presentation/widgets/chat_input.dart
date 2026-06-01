@@ -361,6 +361,16 @@ class _ChatInputState extends State<ChatInput> {
     // _selectedImages が空なら preUploadedUrls も空のまま、上流の検証で挿入は防がれている。
     final List<String> imageUrls = preUploadedUrls;
 
+    final appName = estimation.appName;
+    final String mealSource;
+    if (appName != null && appName.isNotEmpty) {
+      mealSource = 'screenshot:$appName';
+    } else if (imageUrls.isNotEmpty) {
+      mealSource = 'photo';
+    } else {
+      mealSource = 'text';
+    }
+
     final metadata = <String, dynamic>{
       'meal_estimation': {
         'foods': estimation.foods.map((f) => f.toJson()).toList(),
@@ -368,7 +378,7 @@ class _ChatInputState extends State<ChatInput> {
         'protein_g': estimation.totals.proteinG,
         'fat_g': estimation.totals.fatG,
         'carbs_g': estimation.totals.carbsG,
-        'source': imageUrls.isNotEmpty ? 'vision' : 'text',
+        'source': mealSource,
       },
     };
 
