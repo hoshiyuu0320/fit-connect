@@ -14,6 +14,7 @@ MealEstimationResult _$MealEstimationResultFromJson(
           .toList(),
       totals: EstimationTotals.fromJson(json['totals'] as Map<String, dynamic>),
       appName: json['app_name'] as String?,
+      warning: json['warning'] as String?,
     );
 
 Map<String, dynamic> _$MealEstimationResultToJson(
@@ -22,6 +23,7 @@ Map<String, dynamic> _$MealEstimationResultToJson(
       'foods': instance.foods,
       'totals': instance.totals,
       'app_name': instance.appName,
+      'warning': instance.warning,
     };
 
 EstimatedFood _$EstimatedFoodFromJson(Map<String, dynamic> json) =>

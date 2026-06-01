@@ -23,6 +23,10 @@ class MealEstimationConfirmView extends StatefulWidget {
   /// スクショ取り込み時の検出アプリ名（'unknown' や null のときラベル非表示）。
   final String? appName;
 
+  /// 複数スクショの整合性が取れない場合の警告文（null/空なら非表示）。
+  /// 非ブロッキング: 表示されても送信は可能。
+  final String? warning;
+
   const MealEstimationConfirmView({
     super.key,
     required this.estimation,
@@ -33,6 +37,7 @@ class MealEstimationConfirmView extends StatefulWidget {
     this.isSending = false,
     this.imageUrls = const [],
     this.appName,
+    this.warning,
   });
 
   @override
@@ -129,6 +134,33 @@ class _MealEstimationConfirmViewState extends State<MealEstimationConfirmView> {
           ],
         ),
         const SizedBox(height: 12),
+
+        // 複数スクショの整合性警告（非ブロッキング: 表示されても送信可能）
+        if (widget.warning != null && widget.warning!.isNotEmpty) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.amber100,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.amber300),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(LucideIcons.alertTriangle, size: 16, color: AppColors.amber800),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    widget.warning!,
+                    style: const TextStyle(fontSize: 12, height: 1.4, color: AppColors.amber800),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
 
         // Image thumbnails (read-only)
         if (widget.imageUrls.isNotEmpty) ...[
@@ -279,6 +311,45 @@ Widget previewMealEstimationConfirmViewDefault() {
               child: MealEstimationConfirmView(
                 estimation: estimation,
                 totals: estimation.totals,
+                onTotalsChanged: (_) {},
+                onBack: () {},
+                onSend: () {},
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+@Preview(name: 'MealEstimationConfirmView - 整合性警告')
+Widget previewMealEstimationConfirmViewWarning() {
+  const estimation = MealEstimationResult(
+    foods: [
+      EstimatedFood(name: '鶏胸肉（100g）', calories: 154, proteinG: 0, fatG: 0, carbsG: 0),
+      EstimatedFood(name: 'ご飯（100g）', calories: 203, proteinG: 0, fatG: 0, carbsG: 0),
+    ],
+    totals: EstimationTotals(calories: 589, proteinG: 45, fatG: 12, carbsG: 60),
+    appName: 'あすけん',
+    warning: 'カロリーの画面とPFCの画面で合計が噛み合いません。同じ食事の画面か確認してください',
+  );
+  return MaterialApp(
+    theme: AppTheme.lightTheme,
+    home: Scaffold(
+      backgroundColor: const Color(0xFFF5F5F5),
+      body: SafeArea(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Container(
+              color: Colors.white,
+              padding: const EdgeInsets.all(16),
+              child: MealEstimationConfirmView(
+                estimation: estimation,
+                totals: estimation.totals,
+                appName: estimation.appName,
+                warning: estimation.warning,
                 onTotalsChanged: (_) {},
                 onBack: () {},
                 onSend: () {},

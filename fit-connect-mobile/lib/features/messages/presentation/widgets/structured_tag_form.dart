@@ -914,6 +914,7 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
       onSend: _handleSendWithEstimation,
       isSending: _isSending,
       appName: _estimation!.appName,
+      warning: _estimation!.warning,
     );
   }
 }

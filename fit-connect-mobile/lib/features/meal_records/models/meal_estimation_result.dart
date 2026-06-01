@@ -12,10 +12,16 @@ class MealEstimationResult {
   @JsonKey(name: 'app_name')
   final String? appName;
 
+  /// 複数スクショの整合性が取れない場合の警告文（スクショモードのみ・問題なければ null）。
+  /// 例: 別の食事/別日のスクショが混在、カロリーと PFC が噛み合わない等。
+  @JsonKey(name: 'warning')
+  final String? warning;
+
   const MealEstimationResult({
     required this.foods,
     required this.totals,
     this.appName,
+    this.warning,
   });
 
   factory MealEstimationResult.fromJson(Map<String, dynamic> json) =>
