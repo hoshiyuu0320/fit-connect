@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from 'react'
 import { format } from 'date-fns'
-import { WeightChart } from '@/components/clients/WeightChart'
-import { NutritionTrendChart } from '@/components/clients/NutritionTrendChart'
+import { WeightNutritionChart } from '@/components/clients/WeightNutritionChart'
+import { PfcBalanceCard } from '@/components/clients/PfcBalanceCard'
 import { PeriodSelector } from '@/components/clients/PeriodSelector'
 import { aggregateDailyNutrition } from '@/lib/nutrition/aggregate'
 import type { PeriodFilter } from '@/types/period'
@@ -163,16 +163,16 @@ export function SummaryTab({
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
       {/* 左カラム (col-span-2) */}
       <div className="lg:col-span-2 space-y-4">
-        {/* 体重グラフカード */}
+        {/* 体重×PFC オーバーレイグラフ + 共通期間セレクタ */}
         <div className="bg-white border border-[#E2E8F0] rounded-md p-4">
-          <h3 className="text-sm font-semibold text-[#0F172A] mb-3">体重推移</h3>
-          {weightRecords.length > 0 ? (
-            <WeightChart weightRecords={weightRecords} targetWeight={targetWeight} />
-          ) : (
-            <div className="flex items-center justify-center h-[200px] bg-[#F8FAFC] rounded-md">
-              <p className="text-sm text-[#94A3B8]">体重記録がありません</p>
+          <div className="flex items-start justify-between gap-4 mb-3 flex-wrap">
+            <div>
+              <h3 className="text-sm font-semibold text-[#0F172A]">体重推移</h3>
+              <p className="text-xs text-slate-600 mt-0.5">体重・摂取カロリー・PFCの推移</p>
             </div>
-          )}
+            <PeriodSelector value={nutritionPeriod} onChange={setNutritionPeriod} />
+          </div>
+          <WeightNutritionChart data={nutritionTrendData} targetWeight={targetWeight} />
         </div>
 
         {/* 最近の活動タイムライン */}
@@ -353,18 +353,15 @@ export function SummaryTab({
       </div>
     </div>
 
-      {/* 栄養トレンドセクション */}
+      {/* PFC構成比セクション */}
       <section className="bg-white border border-slate-200 rounded-lg p-6">
-        <header className="flex items-start justify-between gap-4 mb-4 flex-wrap">
-          <div>
-            <h3 className="text-base font-semibold text-slate-900">栄養トレンド</h3>
-            <p className="text-sm text-slate-500 mt-0.5">
-              体重・摂取カロリー・PFCの推移
-            </p>
-          </div>
-          <PeriodSelector value={nutritionPeriod} onChange={setNutritionPeriod} />
+        <header className="mb-4">
+          <h3 className="text-base font-semibold text-slate-900">PFC構成比</h3>
+          <p className="text-sm text-slate-600 mt-0.5">
+            期間平均のエネルギー比と適正バランス（目安: 厚労省 食事摂取基準）
+          </p>
         </header>
-        <NutritionTrendChart data={nutritionTrendData} />
+        <PfcBalanceCard data={nutritionTrendData} />
       </section>
     </div>
   )
