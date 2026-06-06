@@ -35,3 +35,4 @@ fit-connect-mobile/android/app/build/
 # Supabase
 supabase/.branches/
 supabase/.temp/
+.superpowers/

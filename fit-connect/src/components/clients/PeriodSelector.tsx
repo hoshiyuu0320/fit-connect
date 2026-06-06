@@ -22,7 +22,7 @@ export function PeriodSelector({ value, onChange }: PeriodSelectorProps) {
             aria-pressed={isActive}
             className={
               isActive
-                ? 'px-3 py-1.5 text-sm font-medium rounded-md bg-slate-900 text-white transition'
+                ? 'px-3 py-1.5 text-sm font-medium rounded-md bg-[#14B8A6] text-white transition'
                 : 'px-3 py-1.5 text-sm text-slate-600 rounded-md hover:bg-white transition'
             }
           >
