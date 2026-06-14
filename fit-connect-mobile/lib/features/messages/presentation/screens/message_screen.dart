@@ -442,7 +442,9 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'トレーナーにメッセージを送りましょう！',
+            recordsOnly
+                ? '食事・体重・運動などを記録してみましょう'
+                : 'トレーナーにメッセージを送りましょう！',
             style: TextStyle(
               color: colors.textHint,
               fontSize: 14,
@@ -456,6 +458,7 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
   Widget _buildMessageList(PaginatedMessagesState paginatedState,
       String? currentUserId, AppColorsExtension colors, List<Message> messages) {
     final allMessages = paginatedState.messages;
+    final messageFilter = ref.watch(messageFilterControllerProvider);
     final trainerProfile = ref.watch(trainerProfileProvider).valueOrNull;
     final trainerName = trainerProfile?.name ?? 'トレーナー';
 
@@ -500,7 +503,9 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Center(
                 child: Text(
-                  'これ以上メッセージはありません',
+                  messageFilter == MessageFilter.recordsOnly
+                      ? 'これ以上記録はありません'
+                      : 'これ以上メッセージはありません',
                   style: TextStyle(
                     color: colors.textHint,
                     fontSize: 12,
