@@ -107,6 +107,7 @@ function MessageContent() {
                     senderType: 'trainer',
                     receiverType: 'client',
                     image_urls: imageUrls,
+                    tags: [],
                     is_edited: false,
                     edited_at: null,
                     read_at: null,
@@ -302,6 +303,7 @@ function MessageContent() {
                         senderType: msg.sender_type,
                         receiverType: msg.receiver_type,
                         image_urls: msg.image_urls || [],
+                        tags: msg.tags || [],
                         is_edited: msg.is_edited || false,
                         edited_at: msg.edited_at || null,
                         read_at: msg.read_at || null,
@@ -371,6 +373,7 @@ function MessageContent() {
                                 senderType: msg.sender_type,
                                 receiverType: msg.receiver_type,
                                 image_urls: msg.image_urls || [],
+                                tags: msg.tags || [],
                                 is_edited: msg.is_edited || false,
                                 edited_at: msg.edited_at || null,
                                 read_at: msg.read_at || null,
@@ -413,6 +416,7 @@ function MessageContent() {
                                         is_edited: msg.is_edited || false,
                                         edited_at: msg.edited_at || null,
                                         read_at: msg.read_at || null,
+                                        tags: msg.tags ?? m.tags,
                                     }
                                     : m
                             )

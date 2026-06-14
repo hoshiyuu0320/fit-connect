@@ -64,6 +64,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
           senderType: 'client',
           receiverType: 'trainer',
           content: messageContent,
+          tags: ['#運動:完了'],
         );
       } catch (e) {
         debugPrint('[WorkoutScreen] メッセージ送信エラー: $e');
