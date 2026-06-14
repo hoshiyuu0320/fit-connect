@@ -19,7 +19,12 @@ import { MessageBubble } from '@/components/message/MessageBubble';
 import { ClientListItem } from '@/components/message/ClientListItem';
 import { ChatHeader } from '@/components/message/ChatHeader';
 import { MessageDateDivider } from '@/components/message/MessageDateDivider';
+import { RecordSidePanel } from '@/components/message/RecordSidePanel';
 import { getMessageById } from '@/lib/supabase/getMessageById';
+import { getMealRecords } from '@/lib/supabase/getMealRecords';
+import { getWeightRecords } from '@/lib/supabase/getWeightRecords';
+import { aggregateDailyNutrition, type DailyNutritionPoint } from '@/lib/nutrition/aggregate';
+import { PanelRightOpen } from 'lucide-react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import type { Client, Message } from '@/types/client'
 
@@ -55,6 +60,9 @@ function MessageContent() {
     const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
     const [unreadCounts, setUnreadCounts] = useState<Map<string, number>>(new Map());
     const [lastMessages, setLastMessages] = useState<Map<string, LastMessageInfo>>(new Map());
+    const [isRecordPanelOpen, setIsRecordPanelOpen] = useState(true);
+    const [nutritionData, setNutritionData] = useState<DailyNutritionPoint[]>([]);
+    const [summaryLoading, setSummaryLoading] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const selectedClientRef = useRef<Client | null>(null);
 
@@ -62,6 +70,30 @@ function MessageContent() {
     useEffect(() => {
         selectedClientRef.current = selectedClient;
     }, [selectedClient]);
+
+    // 記録サマリー取得（クライアント切替時）
+    useEffect(() => {
+        const cid = selectedClient?.client_id;
+        if (!cid) { setNutritionData([]); return; }
+        let cancelled = false;
+        (async () => {
+            setSummaryLoading(true);
+            try {
+                const [mealsRes, weights] = await Promise.all([
+                    getMealRecords({ clientId: cid, limit: 1000, offset: 0 }),
+                    getWeightRecords(cid),
+                ]);
+                if (cancelled) return;
+                setNutritionData(aggregateDailyNutrition(mealsRes.data, weights, 'month'));
+            } catch (e) {
+                if (!cancelled) setNutritionData([]);
+                console.error('記録サマリー取得エラー:', e);
+            } finally {
+                if (!cancelled) setSummaryLoading(false);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [selectedClient?.client_id]);
 
     const handleSend = async () => {
         const hasText = input.trim().length > 0;
@@ -474,6 +506,17 @@ function MessageContent() {
                     } : null}
                 />
 
+                {!isRecordPanelOpen && selectedClient && (
+                    <div className="flex justify-end px-4 py-2 border-b border-[#E2E8F0] bg-white">
+                        <button
+                            onClick={() => setIsRecordPanelOpen(true)}
+                            className="flex items-center gap-1 text-sm text-[#14B8A6] hover:text-[#0D9488] cursor-pointer transition-colors"
+                        >
+                            <PanelRightOpen size={16} /> 記録を表示
+                        </button>
+                    </div>
+                )}
+
                 {/* Messages */}
                 <main className="flex-1 overflow-y-auto p-4 flex flex-col-reverse gap-1">
                     {reversedMessages.map((msg, index) => {
@@ -558,6 +601,19 @@ function MessageContent() {
                     </div>
                 </footer>
             </div>
+
+            {/* 記録サイドパネル（開閉式・デフォルト開） */}
+            {isRecordPanelOpen && selectedClient && (
+                <RecordSidePanel
+                    messages={messages}
+                    clientId={selectedClient.client_id}
+                    nutritionData={nutritionData}
+                    targetWeight={selectedClient.target_weight ?? undefined}
+                    summaryLoading={summaryLoading}
+                    onClose={() => setIsRecordPanelOpen(false)}
+                    onImageClick={setSelectedImageUrl}
+                />
+            )}
 
             {/* 画像拡大モーダル */}
             <ImageModal
