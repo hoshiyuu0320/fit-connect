@@ -75,6 +75,7 @@ function MessageContent() {
     useEffect(() => {
         const cid = selectedClient?.client_id;
         if (!cid) { setNutritionData([]); return; }
+        setIsRecordPanelOpen(true); // クライアント切替時にパネルを開く（デフォルト開を維持）
         let cancelled = false;
         (async () => {
             setSummaryLoading(true);
@@ -509,10 +510,12 @@ function MessageContent() {
                 {!isRecordPanelOpen && selectedClient && (
                     <div className="flex justify-end px-4 py-2 border-b border-[#E2E8F0] bg-white">
                         <button
+                            type="button"
+                            aria-label="記録パネルを表示"
                             onClick={() => setIsRecordPanelOpen(true)}
                             className="flex items-center gap-1 text-sm text-[#14B8A6] hover:text-[#0D9488] cursor-pointer transition-colors"
                         >
-                            <PanelRightOpen size={16} /> 記録を表示
+                            <PanelRightOpen size={16} aria-hidden="true" /> 記録を表示
                         </button>
                     </div>
                 )}
