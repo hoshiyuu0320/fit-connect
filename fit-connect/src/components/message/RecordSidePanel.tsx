@@ -40,11 +40,9 @@ export function RecordSidePanel({
 
   const logItems = useMemo(() => {
     const all = extractRecordLog(messages)
-    return filterByType(all, typeFilter).reverse()
+    // filterByType('all') は元配列をそのまま返すため slice() で複製してから reverse（in-place 破壊防止）
+    return filterByType(all, typeFilter).slice().reverse()
   }, [messages, typeFilter])
-
-  // WeightNutritionChart requires a non-optional targetWeight; default to 0 when undefined
-  const resolvedTargetWeight = targetWeight ?? 0
 
   return (
     <aside className="w-96 bg-white border-l border-[#E2E8F0] flex flex-col h-full overflow-hidden">
@@ -75,7 +73,7 @@ export function RecordSidePanel({
           <div className="mb-4">
             <WeightNutritionChart
               data={nutritionData}
-              targetWeight={resolvedTargetWeight}
+              targetWeight={targetWeight}
               loading={summaryLoading}
             />
           </div>
@@ -101,7 +99,7 @@ export function RecordSidePanel({
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14B8A6]',
                 isActive
                   ? 'bg-[#14B8A6] text-white border-[#14B8A6]'
-                  : 'bg-white text-[#64748B] border border-[#E2E8F0] hover:border-[#14B8A6] hover:text-[#0F172A]',
+                  : 'bg-white text-[#64748B] border-[#E2E8F0] hover:border-[#14B8A6] hover:text-[#0F172A]',
               ].join(' ')}
             >
               {tab.label}

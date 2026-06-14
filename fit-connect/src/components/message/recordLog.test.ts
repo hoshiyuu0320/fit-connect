@@ -44,4 +44,14 @@ describe('filterByType', () => {
     expect(out).toHaveLength(1)
     expect(out[0].card.type).toBe('meal')
   })
+  it('exercise フィルタは運動＋達成を含む', () => {
+    const withAchievement = extractRecordLog([
+      msg('1', '#運動:筋トレ ベンチ', ['#運動:筋トレ']),
+      msg('2', '本日のワークアウトプラン「脚の日」を達成しました！'),
+      msg('3', '#食事:昼食 サラダ', ['#食事:昼食']),
+    ])
+    const out = filterByType(withAchievement, 'exercise')
+    expect(out).toHaveLength(2)
+    expect(out.map((it) => it.card.type).sort()).toEqual(['achievement', 'exercise'])
+  })
 })

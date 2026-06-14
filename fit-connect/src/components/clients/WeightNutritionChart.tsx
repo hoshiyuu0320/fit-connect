@@ -21,7 +21,7 @@ import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion'
 
 interface WeightNutritionChartProps {
   data: DailyNutritionPoint[]
-  targetWeight: number
+  targetWeight?: number
   loading?: boolean
 }
 

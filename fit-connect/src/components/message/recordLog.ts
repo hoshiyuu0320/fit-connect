@@ -20,11 +20,18 @@ export function extractRecordLog(messages: Message[]): RecordLogItem[] {
   return items
 }
 
-/** 種別（all/weight/meal/exercise/achievement）で絞り込む。 */
+/**
+ * 種別（all/weight/meal/exercise/achievement）で絞り込む。
+ * exercise 選択時はワークアウト達成（achievement）も含める
+ * （トレーナーが達成を「運動」フィルタで探せるように）。
+ */
 export function filterByType(
   items: RecordLogItem[],
   type: RecordCardType | 'all',
 ): RecordLogItem[] {
   if (type === 'all') return items
+  if (type === 'exercise') {
+    return items.filter((it) => it.card.type === 'exercise' || it.card.type === 'achievement')
+  }
   return items.filter((it) => it.card.type === type)
 }
