@@ -105,8 +105,16 @@ src/
 - `receiver_id` (UUID) - Trainer or client ID
 - `sender_type` (TEXT) - 'trainer' or 'client'
 - `receiver_type` (TEXT) - 'trainer' or 'client'
-- `message` (TEXT)
-- `timestamp` (TIMESTAMPTZ)
+- `content` (TEXT) - メッセージ本文（記録タグを含む）
+- `image_urls` (TEXT[]) - 画像URL配列（最大3枚）
+- `tags` (TEXT[]) - 記録分類タグ（例: ["#食事:昼食"]、空配列なら通常会話）
+- `metadata` (JSONB) - メッセージ付随メタデータ（例: meal_estimation = {foods, calories, protein_g, fat_g, carbs_g}）
+- `reply_to_message_id` (UUID) - 返信先メッセージID
+- `read_at` (TIMESTAMPTZ) - 既読日時（NULL=未読）
+- `edited_at` (TIMESTAMPTZ) - 編集日時
+- `is_edited` (BOOLEAN) - 編集済みフラグ
+- `created_at` (TIMESTAMPTZ)
+- `updated_at` (TIMESTAMPTZ)
 
 **weight_records** (client weight tracking)
 - `id` (UUID, PK)

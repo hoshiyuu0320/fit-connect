@@ -43,32 +43,31 @@ Deno.serve(async (req) => {
         })
       }
 
-      // 1. Parse Tag
-      const tagData = parseTag(message.content)
+      // 0. Re-fetch full row (webhook payload may omit columns like tags/metadata)
+      const { data: fullRow, error: fetchErr } = await supabase
+        .from('messages')
+        .select('metadata, tags')
+        .eq('id', message.id)
+        .maybeSingle()
+      if (fetchErr) {
+        console.error('Failed to re-fetch message row:', fetchErr)
+      } else if (fullRow) {
+        message.metadata = fullRow.metadata
+        message.tags = fullRow.tags
+      }
+
+      // 1. Determine tag — 送信側付与のtagsを正準とし、無ければcontentから解析
+      const tagData = parseTagFromTags(message.tags, message.content) ?? parseTag(message.content)
 
       if (tagData) {
-        // Webhook payload may not include all columns (Supabase webhook config can filter columns).
-        // Re-fetch the full row so we have access to metadata, tags, etc. regardless of webhook config.
-        const { data: fullRow, error: fetchErr } = await supabase
-          .from('messages')
-          .select('metadata')
-          .eq('id', message.id)
-          .maybeSingle()
-        if (fetchErr) {
-          console.error('Failed to re-fetch message row for metadata:', fetchErr)
-        } else if (fullRow) {
-          message.metadata = fullRow.metadata
-        }
-
-        // 2. Update message with normalized tags
-        const { error: updateError } = await supabase.from('messages').update({
-          tags: [tagData.fullTag]
-        }).eq('id', message.id)
-
-        if (updateError) {
-          console.error('Error updating message tags:', updateError)
-        } else if (payload.type === 'UPDATE') {
-          console.log('UPDATE: Message tags updated (this should not trigger another webhook)')
+        // 2. tags が空のときだけ補完（送信側付与を主とする。空でなければ上書きしない）
+        if (!message.tags || message.tags.length === 0) {
+          const { error: updateError } = await supabase.from('messages').update({
+            tags: [tagData.fullTag]
+          }).eq('id', message.id)
+          if (updateError) {
+            console.error('Error backfilling message tags:', updateError)
+          }
         }
 
         // 3. Create specific record based on category
@@ -138,6 +137,24 @@ function parseTag(content: string) {
     detail: match[2], // 朝食, 筋トレ etc (undefined if not present)
     fullTag: match[0].trim(),
     remainingContent: content.replace(match[0], '').trim()
+  }
+}
+
+/**
+ * tags配列（#付き正準形）から tagData を構築する。送信側付与のtagsを正準として扱う。
+ * @example parseTagFromTags(['#運動:完了'], '本日の…達成しました！🔥 消費カロリー: 300kcal')
+ *   // => { category: '運動', detail: '完了', fullTag: '#運動:完了', remainingContent: '本日の…300kcal' }
+ */
+function parseTagFromTags(tags, content) {
+  if (!tags || tags.length === 0) return null
+  const fullTag = tags[0]
+  const m = fullTag.match(/^#(食事|運動|体重)(?::(.+))?$/)
+  if (!m) return null
+  return {
+    category: m[1],
+    detail: m[2],
+    fullTag,
+    remainingContent: (content || '').replace(fullTag, '').trim(),
   }
 }
 
@@ -280,7 +297,7 @@ async function createWeightRecord(supabase, commonData, tagData) {
  * - #運動:ウォーキング → walking
  * - #運動 → other (本文から推測)
  *
- * ※ DB制約: duration または distance が必須
+ * ※ duration/distance は NULL 可（必須制約は削除済み）
  */
 async function createExerciseRecord(supabase, commonData, tagData) {
   let exerciseType = 'other'
@@ -304,8 +321,10 @@ async function createExerciseRecord(supabase, commonData, tagData) {
     }
   }
 
-  // 本文からも運動タイプを推測（タグに詳細がない場合）
-  if (exerciseType === 'other' && commonData.notes) {
+  // 本文からも運動タイプを推測（タグに詳細がない＝'#運動'単体のときだけ）
+  // detail がある場合（例: '完了'）は notes からの推測は不要かつ有害
+  // （達成メッセージの「ワークアウトプラン」が「ラン」に誤マッチする等）
+  if (exerciseType === 'other' && !tagData.detail && commonData.notes) {
     const notes = commonData.notes
     if (notes.includes('走') || notes.includes('ラン')) exerciseType = 'running'
     else if (notes.includes('歩')) exerciseType = 'walking'

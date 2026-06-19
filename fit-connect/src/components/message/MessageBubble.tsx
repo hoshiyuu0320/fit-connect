@@ -43,7 +43,7 @@ export function MessageBubble({
 }: MessageBubbleProps) {
   const editTextareaRef = useRef<HTMLTextAreaElement>(null)
 
-  const recordCardData = !isTrainer ? parseRecordMessage(message.content) : null
+  const recordCardData = !isTrainer ? parseRecordMessage(message.content, message.tags) : null
 
   const avatarInitial = clientName.charAt(0).toUpperCase()
 

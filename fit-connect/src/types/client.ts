@@ -93,6 +93,7 @@ export type Message = {
   senderType: 'client' | 'trainer'
   receiverType: 'client' | 'trainer'
   image_urls: string[]
+  tags?: string[] | null
   is_edited: boolean
   edited_at: string | null
   read_at: string | null
