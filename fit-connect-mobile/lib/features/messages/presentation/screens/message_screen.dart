@@ -15,6 +15,8 @@ import 'package:intl/intl.dart';
 import 'package:fit_connect_mobile/features/schedules/providers/trainer_schedule_provider.dart';
 import 'package:fit_connect_mobile/features/subscription/providers/ai_features_enabled_provider.dart';
 import 'package:fit_connect_mobile/features/messages/utils/message_tag_parser.dart';
+import 'package:fit_connect_mobile/features/messages/utils/message_filter.dart';
+import 'package:fit_connect_mobile/features/messages/providers/message_filter_provider.dart';
 
 class MessageScreen extends ConsumerStatefulWidget {
   const MessageScreen({super.key});
@@ -170,6 +172,12 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
             replyToMessageId: replyToId,
             metadata: metadata,
           );
+      // 記録のみ表示中にタグなしメッセージを送ったら「すべて」に戻す（送ったものが隠れないように）
+      if (tags == null || tags.isEmpty) {
+        ref
+            .read(messageFilterControllerProvider.notifier)
+            .setFilter(MessageFilter.all);
+      }
       _clearReplyTarget();
     } catch (e) {
       if (mounted) {
@@ -187,6 +195,7 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
     final stateAsync = ref.watch(paginatedMessagesProvider);
+    final messageFilter = ref.watch(messageFilterControllerProvider);
 
     // 自動既読処理: 受信メッセージに未読があれば既読化（新着メッセージ到着時）
     ref.listen<AsyncValue<PaginatedMessagesState>>(paginatedMessagesProvider,
@@ -238,15 +247,46 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
                   ],
                 ),
               ),
+            // 会話/記録 切替トグル（記録だけに絞り込める）
+            Container(
+              width: double.infinity,
+              color: colors.surface,
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: SegmentedButton<MessageFilter>(
+                showSelectedIcon: false,
+                segments: const [
+                  ButtonSegment(
+                    value: MessageFilter.all,
+                    icon: Icon(LucideIcons.messagesSquare, size: 16),
+                    label: Text('すべて'),
+                  ),
+                  ButtonSegment(
+                    value: MessageFilter.recordsOnly,
+                    icon: Icon(LucideIcons.clipboardList, size: 16),
+                    label: Text('記録'),
+                  ),
+                ],
+                selected: {messageFilter},
+                onSelectionChanged: (selected) {
+                  ref
+                      .read(messageFilterControllerProvider.notifier)
+                      .setFilter(selected.first);
+                },
+              ),
+            ),
             Expanded(
               child: stateAsync.when(
                 data: (paginatedState) {
-                  if (paginatedState.messages.isEmpty) {
-                    return _buildEmptyState(colors);
+                  final filtered = applyMessageFilter(
+                      paginatedState.messages, messageFilter);
+                  if (filtered.isEmpty) {
+                    return _buildEmptyState(
+                      colors,
+                      recordsOnly: messageFilter == MessageFilter.recordsOnly,
+                    );
                   }
-
                   return _buildMessageList(
-                      paginatedState, currentUser?.id, colors);
+                      paginatedState, currentUser?.id, colors, filtered);
                 },
                 loading: () => const Center(
                   child: CircularProgressIndicator(),
@@ -386,7 +426,7 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
     );
   }
 
-  Widget _buildEmptyState(AppColorsExtension colors) {
+  Widget _buildEmptyState(AppColorsExtension colors, {bool recordsOnly = false}) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -394,7 +434,7 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
           Icon(LucideIcons.messageCircle, size: 64, color: colors.textHint),
           const SizedBox(height: 16),
           Text(
-            'メッセージはまだありません',
+            recordsOnly ? 'まだ記録がありません' : 'メッセージはまだありません',
             style: TextStyle(
               color: colors.textSecondary,
               fontSize: 16,
@@ -402,7 +442,9 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'トレーナーにメッセージを送りましょう！',
+            recordsOnly
+                ? '食事・体重・運動などを記録してみましょう'
+                : 'トレーナーにメッセージを送りましょう！',
             style: TextStyle(
               color: colors.textHint,
               fontSize: 14,
@@ -414,8 +456,9 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
   }
 
   Widget _buildMessageList(PaginatedMessagesState paginatedState,
-      String? currentUserId, AppColorsExtension colors) {
-    final messages = paginatedState.messages;
+      String? currentUserId, AppColorsExtension colors, List<Message> messages) {
+    final allMessages = paginatedState.messages;
+    final messageFilter = ref.watch(messageFilterControllerProvider);
     final trainerProfile = ref.watch(trainerProfileProvider).valueOrNull;
     final trainerName = trainerProfile?.name ?? 'トレーナー';
 
@@ -423,7 +466,7 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
     Message? findMessageById(String? id) {
       if (id == null) return null;
       try {
-        return messages.firstWhere((m) => m.id == id);
+        return allMessages.firstWhere((m) => m.id == id);
       } catch (_) {
         return null;
       }
@@ -460,7 +503,9 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Center(
                 child: Text(
-                  'これ以上メッセージはありません',
+                  messageFilter == MessageFilter.recordsOnly
+                      ? 'これ以上記録はありません'
+                      : 'これ以上メッセージはありません',
                   style: TextStyle(
                     color: colors.textHint,
                     fontSize: 12,
