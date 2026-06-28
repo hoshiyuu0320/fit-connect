@@ -184,3 +184,11 @@
 - **トレードオフ/今後**: 放置気味パッケージを vendor として抱えた状態。長期的には active な後継 `lucide_icons_flutter`(^3.x) 移行が本筋（アイコン名差異の照合が必要なため今回見送り）
 - **横展開**: Flutter SDK 更新時、`IconData`/`Color` 等を `extends` する古いパッケージは同様に壊れる。`flutter upgrade` を安易に勧めない方針とも整合
 - **再発モード（2026-06-19, 別マシン継続時に再発）**: vendor パッチ自体は健全（`third_party/lucide_icons/lib/lucide_icons.dart` は `IconData(...)` 直書き、壊れた `src/icon_data.dart` は未 import の死にコード）でも、**`pubspec.lock` が `source: path` → `source: hosted`（pub.dev 0.257.0）に巻き戻る**と、ビルドが `.pub-cache` の壊れた本家版を読みに行き同じ `IconData can't be extended` で失敗する。`pubspec.yaml` の `dependency_overrides: lucide_icons: { path: ... }` は無傷なので、**`flutter pub get` で lock を `source: path` に再生成**すれば解消（`git diff pubspec.lock` で hosted への巻き戻りを確認できる）。別マシンへの環境移動・`flutter pub upgrade`・マージ後はこの lock 巻き戻りを最初に疑う。※このマシンは `flutter` 3.44.0 直（fvm ではない）
+
+## develop の生成物 (package-lock.json / .g.dart) が feature ブランチへ漏れ出す（2026-06-28）
+
+- **症状**: `feature/*` で作業中、`git status` に `fit-connect/package-lock.json` や Mobile の `*.g.dart`（Riverpod 生成物）が変更として出る。中身は develop 側で、`package.json` は feature のまま（例: `vitest` 未導入）なのに `package-lock.json` の `root.devDependencies` だけ `vitest` を含む、という **package.json と lock の不整合**になる。上の pubspec.lock 巻き戻りと同じ「生成物のブランチ間漏れ」族
+- **原因**: `develop/<version>` ⇄ `feature/*` のブランチ往復後に `npm install` / `build_runner` を流す、または別マシン・別セッションで develop をチェックアウトした生成物が working tree に残るため。コードの意図的変更ではなくツール再実行・ブランチ往復の副産物。`vitest` は develop/1.0.0 の PR #55（サマリータブ再編, c1b52b2 / 3dbc794）で導入され、現 feature ブランチには未取り込みだった
+- **診断**: 生成物・lock の差分を「npm install の結果」と即断しない。`git diff --numstat origin/develop/<version>:<path> -- <path>` で develop と完全一致しないか確認（完全一致＝漏れ出し）。`git log -S <pkg>` で依存追加コミットが出ても `git merge-base --is-ancestor <commit> HEAD` で現ブランチの先祖か必ず確認する
+- **対処**: 漏れ出しと判断したら `git restore <files>` で破棄してからコミットする
+- **横展開**: pubspec.lock と同根。生成物・ロックファイルはブランチ往復で漏れるものとして、コミット前に develop との差分を必ず確認する
