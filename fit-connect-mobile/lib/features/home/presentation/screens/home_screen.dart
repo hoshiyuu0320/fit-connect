@@ -10,8 +10,6 @@ import 'package:fit_connect_mobile/features/home/presentation/widgets/goal_card.
 import 'package:fit_connect_mobile/features/home/presentation/widgets/daily_summary_card.dart';
 import 'package:fit_connect_mobile/features/schedules/providers/trainer_schedule_provider.dart';
 import 'package:fit_connect_mobile/features/schedules/presentation/widgets/trainer_status_card.dart';
-import 'package:fit_connect_mobile/features/sleep_records/presentation/screens/sleep_record_screen.dart';
-import 'package:fit_connect_mobile/features/sleep_records/presentation/widgets/sleep_summary_card.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -67,7 +65,7 @@ class HomeScreen extends ConsumerWidget {
               const SizedBox(height: 16),
 
               // Daily Summary
-              // Records tabs order: 0=サマリ, 1=体重, 2=食事, 3=運動, 4=ノート
+              // Records tabs order: 0=サマリ, 1=体重, 2=食事, 3=運動, 4=睡眠, 5=ノート
               DailySummaryCard(
                 onMealsTap: onNavigateToRecordsTab != null
                     ? () => onNavigateToRecordsTab!(2)
@@ -78,17 +76,9 @@ class HomeScreen extends ConsumerWidget {
                 onActivityTap: onNavigateToRecordsTab != null
                     ? () => onNavigateToRecordsTab!(3)
                     : null,
-              ),
-
-              const SizedBox(height: 16),
-
-              // Sleep summary
-              SleepSummaryCard(
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const SleepRecordScreen(),
-                  ),
-                ),
+                onSleepTap: onNavigateToRecordsTab != null
+                    ? () => onNavigateToRecordsTab!(4)
+                    : null,
               ),
 
               const SizedBox(height: 100), // Bottom padding for FAB/Nav
