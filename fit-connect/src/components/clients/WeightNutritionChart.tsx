@@ -23,6 +23,11 @@ interface WeightNutritionChartProps {
   data: DailyNutritionPoint[]
   targetWeight?: number
   loading?: boolean
+  /**
+   * true のとき親要素の高さに追従して伸縮する（記録パネルの可変サマリー用）。
+   * 既定 false では従来どおり固定 320px。
+   */
+  fillHeight?: boolean
 }
 
 const COLORS = {
@@ -95,9 +100,15 @@ function ChartTooltip({ active, payload, label }: ChartTooltipProps) {
   )
 }
 
-function EmptyState() {
+function EmptyState({ fillHeight = false }: { fillHeight?: boolean }) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
+    <div
+      className={
+        fillHeight
+          ? 'h-full flex flex-col items-center justify-center text-center'
+          : 'flex flex-col items-center justify-center py-16 text-center'
+      }
+    >
       <LineChartIcon className="w-12 h-12 text-slate-400 mb-3" />
       <p className="font-semibold text-slate-900">データがありません</p>
       <p className="text-sm text-slate-600 mt-1">選択期間に記録された体重・食事がありません</p>
@@ -105,15 +116,15 @@ function EmptyState() {
   )
 }
 
-function LoadingState() {
+function LoadingState({ fillHeight = false }: { fillHeight?: boolean }) {
   return (
-    <div className="flex items-center justify-center h-[320px]">
+    <div className={fillHeight ? 'flex items-center justify-center h-full' : 'flex items-center justify-center h-[320px]'}>
       <div className="w-full h-full bg-slate-50 rounded-md animate-pulse" />
     </div>
   )
 }
 
-export function WeightNutritionChart({ data, targetWeight, loading = false }: WeightNutritionChartProps) {
+export function WeightNutritionChart({ data, targetWeight, loading = false, fillHeight = false }: WeightNutritionChartProps) {
   const reducedMotion = usePrefersReducedMotion()
 
   const chartData = useMemo<ChartRow[]>(
@@ -136,8 +147,8 @@ export function WeightNutritionChart({ data, targetWeight, loading = false }: We
     return [Math.floor(Math.min(...all) - 2), Math.ceil(Math.max(...all) + 2)]
   }, [data, targetWeight])
 
-  if (loading) return <LoadingState />
-  if (data.length === 0) return <EmptyState />
+  if (loading) return <LoadingState fillHeight={fillHeight} />
+  if (data.length === 0) return <EmptyState fillHeight={fillHeight} />
 
   const xTickFormatter = (value: string) => {
     try {
@@ -148,7 +159,7 @@ export function WeightNutritionChart({ data, targetWeight, loading = false }: We
   }
 
   return (
-    <ResponsiveContainer width="100%" height={320}>
+    <ResponsiveContainer width="100%" height={fillHeight ? '100%' : 320}>
       <ComposedChart data={chartData} margin={{ top: 16, right: 8, left: 0, bottom: 8 }}>
         <CartesianGrid stroke={COLORS.grid} strokeDasharray="3 3" vertical={false} />
         <XAxis

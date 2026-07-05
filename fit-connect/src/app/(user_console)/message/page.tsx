@@ -20,6 +20,8 @@ import { ClientListItem } from '@/components/message/ClientListItem';
 import { ChatHeader } from '@/components/message/ChatHeader';
 import { MessageDateDivider } from '@/components/message/MessageDateDivider';
 import { RecordSidePanel } from '@/components/message/RecordSidePanel';
+import { ResizeHandle } from '@/components/message/ResizeHandle';
+import { useResizablePanel } from '@/hooks/useResizablePanel';
 import { getMessageById } from '@/lib/supabase/getMessageById';
 import { getMealRecords } from '@/lib/supabase/getMealRecords';
 import { getWeightRecords } from '@/lib/supabase/getWeightRecords';
@@ -65,6 +67,10 @@ function MessageContent() {
     const [summaryLoading, setSummaryLoading] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const selectedClientRef = useRef<Client | null>(null);
+
+    // パネル幅のドラッグリサイズ（localStorage 永続化）
+    const leftResize = useResizablePanel({ axis: 'x', storageKey: 'fc.message.leftWidth', defaultSize: 288, min: 180, max: 400, edge: 'right' });
+    const rightResize = useResizablePanel({ axis: 'x', storageKey: 'fc.message.rightWidth', defaultSize: 384, min: 320, max: 480, edge: 'left' });
 
     // Keep ref in sync with state for use inside Realtime callbacks
     useEffect(() => {
@@ -471,7 +477,17 @@ function MessageContent() {
         <div className="flex h-[calc(100vh-48px)] bg-[#F8FAFC] text-[#0F172A] overflow-hidden">
 
             {/* Sidebar */}
-            <aside className="w-72 bg-white border-r border-[#E2E8F0] flex flex-col">
+            <aside
+                style={{ width: leftResize.size }}
+                className="relative shrink-0 bg-white border-r border-[#E2E8F0] flex flex-col"
+            >
+                {/* 右端リサイズハンドル */}
+                <ResizeHandle
+                    side="right"
+                    isDragging={leftResize.isDragging}
+                    ariaLabel="顧客リストの幅を調整"
+                    handleProps={leftResize.handleProps}
+                />
                 <div className="px-4 py-4 border-b border-[#E2E8F0]">
                     <h2 className="text-base font-semibold text-[#0F172A]">メッセージ</h2>
                 </div>
@@ -613,6 +629,9 @@ function MessageContent() {
                     nutritionData={nutritionData}
                     targetWeight={selectedClient.target_weight ?? undefined}
                     summaryLoading={summaryLoading}
+                    width={rightResize.size}
+                    isResizing={rightResize.isDragging}
+                    resizeHandleProps={rightResize.handleProps}
                     onClose={() => setIsRecordPanelOpen(false)}
                     onImageClick={setSelectedImageUrl}
                 />
