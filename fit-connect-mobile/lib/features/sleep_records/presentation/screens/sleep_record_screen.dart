@@ -4,85 +4,39 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
-import 'package:fit_connect_mobile/features/health/providers/health_sync_provider.dart';
 import 'package:fit_connect_mobile/features/sleep_records/data/sleep_date_utils.dart';
 import 'package:fit_connect_mobile/features/sleep_records/models/sleep_record_model.dart';
 import 'package:fit_connect_mobile/features/sleep_records/providers/sleep_records_provider.dart';
 import 'package:fit_connect_mobile/features/sleep_records/presentation/widgets/sleep_history_list_item.dart';
 import 'package:fit_connect_mobile/features/sleep_records/presentation/widgets/sleep_stage_bar.dart';
 import 'package:fit_connect_mobile/features/sleep_records/presentation/widgets/sleep_week_chart.dart';
-import 'package:fit_connect_mobile/features/sleep_records/presentation/widgets/wakeup_rating_selector.dart';
+import 'package:fit_connect_mobile/features/sleep_records/presentation/widgets/wakeup_record_sheet.dart';
 
-class SleepRecordScreen extends ConsumerStatefulWidget {
-  const SleepRecordScreen({super.key});
+class SleepRecordScreen extends StatelessWidget {
+  /// 引っぱって更新（pull-to-refresh）で呼ばれる同期処理。
+  /// 記録タブのサブタブとして埋め込む際に、記録タブ側の同期処理を渡す。
+  /// null の場合は RefreshIndicator を付けない。
+  final Future<void> Function()? onRefresh;
 
-  @override
-  ConsumerState<SleepRecordScreen> createState() => _SleepRecordScreenState();
-}
-
-class _SleepRecordScreenState extends ConsumerState<SleepRecordScreen> {
-  bool _syncing = false;
-
-  Future<void> _onRefresh() async {
-    if (_syncing) return;
-    setState(() => _syncing = true);
-    try {
-      await ref.read(healthSyncProvider.notifier).syncManual();
-      ref.invalidate(sleepRecordsProvider);
-      ref.invalidate(todaySleepRecordProvider);
-      ref.invalidate(recentSleepRecordsProvider);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('同期しました')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('同期に失敗しました: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _syncing = false);
-    }
-  }
+  const SleepRecordScreen({super.key, this.onRefresh});
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColorsExtension.of(context);
-    return Scaffold(
-      backgroundColor: colors.background,
-      appBar: AppBar(
-        title: const Text('睡眠記録'),
-        backgroundColor: colors.surface,
-        elevation: 0,
-        actions: [
-          IconButton(
-            onPressed: _syncing ? null : _onRefresh,
-            icon: _syncing
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(LucideIcons.refreshCw, size: 18),
-            tooltip: '同期',
-          ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-        children: [
-          const _SummarySection(),
-          const SizedBox(height: 24),
-          const _SectionTitle(title: '直近7日間'),
-          const SizedBox(height: 8),
-          const _WeekSection(),
-          const SizedBox(height: 24),
-          const _HistorySection(),
-        ],
-      ),
+    final list = ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+      children: const [
+        _SummarySection(),
+        SizedBox(height: 24),
+        _SectionTitle(title: '直近7日間'),
+        SizedBox(height: 8),
+        _WeekSection(),
+        SizedBox(height: 24),
+        _HistorySection(),
+      ],
     );
+    if (onRefresh == null) return list;
+    return RefreshIndicator(onRefresh: onRefresh!, child: list);
   }
 }
 
@@ -223,7 +177,7 @@ class _SummaryEmpty extends ConsumerWidget {
           width: double.infinity,
           height: 44,
           child: ElevatedButton(
-            onPressed: () => _showRatingSheet(context, ref),
+            onPressed: () => showWakeupRecordSheet(context, ref),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
@@ -413,7 +367,7 @@ class _SummaryHealthkit extends ConsumerWidget {
                   ],
                 ),
                 TextButton.icon(
-                  onPressed: () => _showRatingSheet(
+                  onPressed: () => showWakeupRecordSheet(
                     context,
                     ref,
                     current: record.wakeupRating,
@@ -578,7 +532,7 @@ class _SummaryManualOnly extends ConsumerWidget {
                 ),
                 TextButton.icon(
                   onPressed: () =>
-                      _showRatingSheet(context, ref, current: rating),
+                      showWakeupRecordSheet(context, ref, current: rating),
                   icon: const Icon(LucideIcons.edit3, size: 13),
                   label: const Text('編集'),
                   style: TextButton.styleFrom(
@@ -792,65 +746,6 @@ Widget _ratingIcon(WakeupRating r, {double size = 18}) {
 
 String _formatHm(DateTime dt) =>
     '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-
-Future<void> _showRatingSheet(
-  BuildContext context,
-  WidgetRef ref, {
-  WakeupRating? current,
-}) async {
-  WakeupRating? selected = current;
-  await showModalBottomSheet<void>(
-    context: context,
-    backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-    ),
-    builder: (sheetCtx) => StatefulBuilder(
-      builder: (ctx, setSt) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              '目覚めを記録',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 16),
-            WakeupRatingSelector(
-              selected: selected,
-              onSelect: (r) async {
-                setSt(() => selected = r);
-                try {
-                  await ref
-                      .read(sleepRecordsProvider().notifier)
-                      .upsertWakeupRating(
-                        recordedDate: todayJstDateKey(),
-                        rating: r,
-                      );
-                  if (sheetCtx.mounted) {
-                    Navigator.of(sheetCtx).pop();
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('記録しました')),
-                      );
-                    }
-                  }
-                } catch (e) {
-                  if (sheetCtx.mounted) {
-                    ScaffoldMessenger.of(sheetCtx).showSnackBar(
-                      SnackBar(content: Text('記録に失敗しました: $e')),
-                    );
-                  }
-                }
-              },
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-}
 
 // =====================================
 // プレビュー (静的)

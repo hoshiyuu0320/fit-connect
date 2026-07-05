@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>睡眠記録 UIモック — 記録タブ統合（2026-07-05）</title>
+<style>
+  :root{
+    /* AppColors (light) 実値 */
+    --surface:#FFFFFF; --surface-dim:#F8FAFC; --border:#F1F5F9; --app-bg:#FAFAFA;
+    --tp:#1E293B; --ts:#64748B; --th:#94A3B8;
+    --primary:#2563EB; --primary50:#EFF6FF; --primary100:#DBEAFE; --primary500:#3B82F6; --primary600:#2563EB;
+    --orange100:#FFEDD5; --orange500:#F97316;
+    --emerald50:#ECFDF5; --emerald100:#D1FAE5; --emerald500:#10B981;
+    --rose100:#FFE4E6; --rose800:#9F1239;
+    --indigo50:#EEF2FF; --indigo100:#E0E7FF; --indigo600:#4F46E5;
+    --error:#EF4444;
+    --stage-deep:#4338CA; --stage-light:#818CF8; --stage-rem:#60A5FA; --stage-awake:#E2E8F0;
+    --page:#EDF1F5;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
+    background:var(--page); color:var(--tp); padding:32px 24px 64px; -webkit-font-smoothing:antialiased;
+  }
+  .ic{width:1em;height:1em;display:inline-block;vertical-align:middle}
+
+  .page-head{max-width:960px;margin:0 auto 28px}
+  .page-head h1{font-size:20px;font-weight:700;letter-spacing:-.02em}
+  .page-head p{font-size:13px;color:var(--ts);margin-top:8px;line-height:1.7}
+  .page-head .hint{display:inline-block;margin-top:10px;font-size:12px;color:var(--primary600);
+    background:var(--primary50);border:1px solid var(--primary100);border-radius:6px;padding:6px 10px}
+
+  .phones{display:flex;gap:48px;justify-content:center;flex-wrap:wrap;align-items:flex-start}
+  .phone-col{display:flex;flex-direction:column;align-items:center;gap:14px}
+  .col-title{font-size:13px;font-weight:700;color:var(--tp)}
+
+  /* segmented control (モック操作用) */
+  .seg{display:flex;background:#fff;border:1px solid #E2E8F0;border-radius:8px;padding:3px;gap:2px}
+  .seg button{border:0;background:transparent;font:inherit;font-size:12px;color:var(--ts);
+    padding:5px 12px;border-radius:6px;cursor:pointer;white-space:nowrap}
+  .seg button.active{background:var(--tp);color:#fff;font-weight:600}
+  .seg-note{font-size:11px;color:var(--th)}
+
+  /* phone frame */
+  .phone{width:360px;background:#0F172A;border-radius:44px;padding:10px;box-shadow:0 24px 48px rgba(15,23,42,.18)}
+  .screen{position:relative;background:var(--app-bg);border-radius:36px;overflow:hidden;height:700px;display:flex;flex-direction:column}
+  .statusbar{height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 26px;position:relative}
+  .statusbar .time{font-size:13px;font-weight:600}
+  .island{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:96px;height:26px;background:#000;border-radius:14px}
+  .sb-right{display:flex;gap:5px;align-items:center;color:var(--tp)}
+  .home-ind{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:120px;height:4px;border-radius:2px;background:#CBD5E1}
+
+  .ph-body{flex:1;overflow-y:auto;padding:12px 16px 40px}
+  .ctx-ph{border:1.5px dashed #E2E8F0;border-radius:16px;color:var(--th);font-size:11px;
+    display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.4)}
+
+  /* ===== 今日のまとめカード ===== */
+  .sumcard{background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:24px;
+    box-shadow:0 4px 10px rgba(0,0,0,.05)}
+  .sumcard h2{font-size:16px;font-weight:700;text-align:center;color:var(--tp);margin-bottom:24px}
+  .row{display:flex;align-items:center;padding:8px 4px}
+  .row-main{flex:1;min-width:0}
+  .row-line{display:flex;align-items:center;justify-content:space-between}
+  .row-left{display:flex;align-items:center;gap:10px}
+  .icirc{width:32px;height:32px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center}
+  .icirc .ic{width:16px;height:16px}
+  .rlabel{font-size:14px;font-weight:700;color:var(--ts)}
+  .rsub{font-size:10px;color:var(--th);line-height:1.2}
+  .val{font-size:14px;font-weight:700;color:var(--tp)}
+  .unit{font-size:12px;color:var(--th);font-weight:400}
+  .chev{width:18px;height:18px;color:var(--border);flex:none;margin-left:8px}
+  .gap16{height:16px}
+  .divider{height:32px;display:flex;align-items:center}
+  .divider::before{content:"";display:block;width:100%;height:1px;background:var(--surface-dim)}
+  .mealbar{margin:8px 0 0 42px}
+  .mealbar .track{height:8px;border-radius:4px;background:var(--border);overflow:hidden}
+  .mealbar .fill{height:100%;width:67%;background:var(--orange500);border-radius:4px}
+  .mealbar .capt{font-size:10px;color:var(--th);text-align:right;margin-top:4px}
+  .wbadge{display:inline-block;margin-top:4px;font-size:10px;font-weight:700;color:var(--emerald500);
+    background:var(--emerald50);border-radius:4px;padding:2px 6px}
+  .right-col{display:flex;flex-direction:column;align-items:flex-end}
+
+  /* 睡眠行 状態 */
+  .rate{display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:700}
+  .rate .ic{width:16px;height:16px}
+  .mini-btn{border:0;background:var(--primary50);color:var(--primary);font:inherit;font-size:13px;
+    font-weight:600;border-radius:6px;padding:4px 12px;cursor:pointer}
+  .mini-btn:active{opacity:.7}
+  .tappable{cursor:pointer;border-radius:12px;transition:background .15s}
+  .tappable:active{background:var(--surface-dim)}
+
+  /* ===== 記録タブ ===== */
+  .appbar{background:var(--surface);flex:none}
+  .appbar .bar{height:48px;display:flex;align-items:center;justify-content:center;position:relative}
+  .appbar .title{font-size:17px;font-weight:700;color:var(--tp)}
+  .appbar .actions{position:absolute;right:6px;top:0;height:48px;display:flex;align-items:center}
+  .iconbtn{width:40px;height:40px;border:0;background:transparent;border-radius:20px;cursor:pointer;
+    display:none;align-items:center;justify-content:center;color:var(--tp)}
+  .iconbtn.visible{display:flex}
+  .iconbtn:active{background:var(--surface-dim)}
+  .iconbtn .ic{width:18px;height:18px}
+  .spinner{width:16px;height:16px;border:2px solid var(--primary100);border-top-color:var(--primary600);
+    border-radius:50%;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .tabs{display:flex;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--border);padding:0 4px}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{flex:none;padding:13px 16px 10px;font-size:14px;font-weight:700;color:var(--th);cursor:pointer;
+    border-bottom:3px solid transparent;white-space:nowrap}
+  .tab.active{color:var(--primary600);border-bottom-color:var(--primary600)}
+  .rec-body{flex:1;overflow-y:auto;background:var(--surface-dim);padding:16px 16px 40px}
+  .tab-ph{height:200px;border:1.5px dashed #E2E8F0;border-radius:12px;display:flex;align-items:center;
+    justify-content:center;color:var(--th);font-size:12px;background:rgba(255,255,255,.5)}
+  .pull-hint{text-align:center;font-size:10px;color:var(--th);padding-bottom:10px}
+
+  /* 睡眠タブ中身（既存画面の近似・変更なし） */
+  .scard{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px}
+  .scard .head{display:flex;align-items:center;gap:10px}
+  .isq{width:32px;height:32px;border-radius:6px;background:var(--indigo50);display:flex;align-items:center;justify-content:center}
+  .isq .ic{width:17px;height:17px;color:var(--indigo600)}
+  .scard .h-label{font-size:14px;font-weight:600;color:var(--tp)}
+  .bigtime{font-size:22px;font-weight:700;color:var(--tp);margin-top:12px;letter-spacing:-.01em}
+  .bedtime{font-size:12px;color:var(--th);margin-top:2px}
+  .stagebar{display:flex;height:10px;border-radius:5px;overflow:hidden;margin-top:12px}
+  .legend{display:flex;gap:12px;margin-top:8px;flex-wrap:wrap}
+  .legend span{font-size:10px;color:var(--ts);display:inline-flex;align-items:center;gap:4px}
+  .dot{width:8px;height:8px;border-radius:2px;display:inline-block}
+  .scard .sep{height:1px;background:var(--border);margin:14px -16px}
+  .wakerow{display:flex;align-items:center;justify-content:space-between;padding:0 0 0}
+  .wakerow .l{font-size:13px;color:var(--ts);font-weight:600}
+  .linkbtn{font-size:12px;color:var(--primary);background:transparent;border:0;font-weight:600;cursor:pointer}
+  .sec-title{font-size:14px;font-weight:600;color:var(--tp);margin:24px 0 8px}
+  .week{display:flex;align-items:flex-end;gap:8px;background:var(--surface);border:1px solid var(--border);
+    border-radius:8px;padding:14px 16px 10px;height:110px}
+  .wcol{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;justify-content:flex-end;height:100%}
+  .wbar{width:100%;max-width:18px;border-radius:4px;background:var(--stage-light)}
+  .wcol i{font-style:normal;font-size:9px;color:var(--th)}
+  .hitem{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px;
+    display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .hitem .d{font-size:12px;color:var(--ts)}
+  .hitem .r{display:flex;align-items:center;gap:10px}
+  .hitem .t{font-size:14px;font-weight:700;color:var(--tp)}
+  .hitem .ic{width:16px;height:16px}
+
+  /* bottom sheet */
+  .overlay{position:absolute;inset:0;background:rgba(15,23,42,.4);opacity:0;pointer-events:none;
+    transition:opacity .2s;z-index:20;border-radius:36px}
+  .overlay.open{opacity:1;pointer-events:auto}
+  .sheet{position:absolute;left:0;right:0;bottom:0;background:var(--app-bg);border-radius:16px 16px 36px 36px;
+    padding:24px 16px 40px;transform:translateY(105%);transition:transform .25s ease;z-index:21}
+  .overlay.open .sheet{transform:translateY(0)}
+  .sheet h3{font-size:16px;font-weight:600;color:var(--tp);margin-bottom:16px}
+  .opt{height:56px;border-radius:6px;background:var(--surface-dim);border:2px solid transparent;
+    display:flex;align-items:center;gap:14px;padding:0 16px;margin-bottom:8px;cursor:pointer;font:inherit;width:100%}
+  .opt .emoji{font-size:24px}
+  .opt .ol{font-size:16px;font-weight:500;color:var(--tp);letter-spacing:-.16px}
+  .opt.selected{background:var(--indigo50);border-color:var(--primary)}
+  .opt.selected .ol{color:var(--primary)}
+  .opt:active{opacity:.8}
+
+  /* snackbar */
+  .snack{position:absolute;left:12px;right:12px;bottom:18px;background:#2F3542;color:#fff;font-size:13px;
+    border-radius:4px;padding:14px 16px;box-shadow:0 6px 16px rgba(15,23,42,.25);opacity:0;
+    transform:translateY(8px);transition:all .2s;pointer-events:none;z-index:30}
+  .snack.show{opacity:1;transform:translateY(0)}
+
+  .cap{font-size:12px;color:var(--ts);max-width:360px;line-height:1.7}
+  .cap b{color:var(--tp)}
+
+  /* ===== 下段: 3状態一覧 + シート静止プレビュー ===== */
+  .strip-wrap{max-width:1180px;margin:56px auto 0}
+  .strip-wrap h2{font-size:15px;font-weight:700;margin-bottom:14px}
+  .strip{display:flex;gap:16px;flex-wrap:wrap}
+  .mini{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 18px;width:300px;
+    box-shadow:0 2px 6px rgba(0,0,0,.04)}
+  .mini .tag{font-size:10px;font-weight:700;color:var(--th);letter-spacing:.06em;margin-bottom:6px}
+  .sheet-mini{background:var(--app-bg);border:1px solid var(--border);border-radius:16px;padding:20px 16px;width:300px}
+  .sheet-mini h3{font-size:15px;font-weight:600;margin-bottom:12px}
+  .sheet-mini .opt{height:48px}
+
+  .notes{max-width:960px;margin:48px auto 0;background:var(--surface);border:1px solid var(--border);
+    border-radius:12px;padding:20px 24px}
+  .notes h2{font-size:14px;font-weight:700;margin-bottom:10px}
+  .notes li{font-size:13px;color:var(--ts);line-height:1.9;margin-left:18px}
+  .notes code{font-size:12px;background:var(--surface-dim);border:1px solid var(--border);border-radius:4px;padding:1px 5px;color:var(--tp)}
+</style>
+</head>
+<body>
+
+<!-- Lucide icon sprite -->
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+  <symbol id="i-utensils" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></symbol>
+  <symbol id="i-dumbbell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6.5 6.5 11 11"/><path d="m21 21-1-1"/><path d="m3 3 1 1"/><path d="m18 22 4-4"/><path d="m2 6 4-4"/><path d="m3 10 7-7"/><path d="m14 21 7-7"/></symbol>
+  <symbol id="i-scale" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
+  <symbol id="i-smile" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/></symbol>
+  <symbol id="i-meh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="8" x2="16" y1="15" y2="15"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/></symbol>
+  <symbol id="i-frown" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/></symbol>
+  <symbol id="i-wifi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13a10 10 0 0 1 14 0"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 20 0"/><line x1="12" x2="12.01" y1="20" y2="20"/></symbol>
+  <symbol id="i-battery" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="10" x="2" y="7" rx="2" ry="2"/><line x1="22" x2="22" y1="11" y2="13"/><rect width="10" height="6" x="4" y="9" rx="1" fill="currentColor" stroke="none"/></symbol>
+</svg>
+
+<header class="page-head">
+  <h1>睡眠記録 UIモック — 記録タブ統合</h1>
+  <p>
+    色・角丸・余白・文字サイズは <code>app_colors.dart</code>（ライト）と既存実装の実値を使用。アイコンは Lucide。<br>
+    左: ホーム「今日のまとめ」に<b>睡眠行を追加</b>（独立カード廃止）／ 右: 記録タブに<b>『睡眠』サブタブ + 同期ボタン</b>を追加。
+  </p>
+  <span class="hint">🖱 操作できます — 睡眠行の状態切替・「記録」ボタン→ボトムシート・タブ切替（同期ボタンは睡眠タブのみ表示）・同期ボタン</span>
+</header>
+
+<main>
+  <section class="phones">
+
+    <!-- ================= Phone A: ホーム ================= -->
+    <div class="phone-col">
+      <div class="col-title">① ホーム「今日のまとめ」カード + 睡眠行</div>
+      <div class="seg" id="seg">
+        <button class="active" data-s="hk" onclick="setSleepState('hk')">HealthKitあり</button>
+        <button data-s="manual" onclick="setSleepState('manual')">手動評価のみ</button>
+        <button data-s="empty" onclick="setSleepState('empty')">未記録</button>
+      </div>
+      <div class="phone">
+        <div class="screen" id="homePhone">
+          <div class="statusbar"><span class="time">9:41</span><div class="island"></div>
+            <span class="sb-right"><svg class="ic" style="width:15px;height:15px"><use href="#i-wifi"/></svg><svg class="ic" style="width:22px;height:22px"><use href="#i-battery"/></svg></span>
+          </div>
+          <div class="ph-body">
+            <div class="ctx-ph" style="height:56px;margin-bottom:14px">（既存）あいさつ・日付ヘッダー</div>
+
+            <div class="sumcard">
+              <h2>今日のまとめ</h2>
+
+              <!-- 食事 -->
+              <div class="row tappable">
+                <div class="row-main">
+                  <div class="row-line">
+                    <span class="row-left">
+                      <span class="icirc" style="background:var(--orange100);color:var(--orange500)"><svg class="ic"><use href="#i-utensils"/></svg></span>
+                      <span class="rlabel">食事</span>
+                    </span>
+                    <span class="val">2<span class="unit">/3</span></span>
+                  </div>
+                  <div class="mealbar">
+                    <div class="track"><div class="fill"></div></div>
+                    <div class="capt">67% 記録済み</div>
+                  </div>
+                </div>
+                <svg class="ic chev"><use href="#i-chevron"/></svg>
+              </div>
+
+              <div class="gap16"></div>
+
+              <!-- 運動 -->
+              <div class="row tappable">
+                <div class="row-main">
+                  <div class="row-line">
+                    <span class="row-left">
+                      <span class="icirc" style="background:var(--primary100);color:var(--primary500)"><svg class="ic"><use href="#i-dumbbell"/></svg></span>
+                      <span>
+                        <div class="rlabel" style="line-height:1.2">運動</div>
+                        <div class="rsub">今週</div>
+                      </span>
+                    </span>
+                    <span class="val">3 <span class="unit">/ 7日</span></span>
+                  </div>
+                </div>
+                <svg class="ic chev"><use href="#i-chevron"/></svg>
+              </div>
+
+              <div class="divider"></div>
+
+              <!-- 体重 -->
+              <div class="row tappable">
+                <div class="row-main">
+                  <div class="row-line">
+                    <span class="row-left">
+                      <span class="icirc" style="background:var(--emerald100);color:var(--emerald500)"><svg class="ic"><use href="#i-scale"/></svg></span>
+                      <span class="rlabel">体重</span>
+                    </span>
+                    <span class="right-col">
+                      <span class="val">65.2 kg</span>
+                      <span class="wbadge">-0.6kg 今週</span>
+                    </span>
+                  </div>
+                </div>
+                <svg class="ic chev"><use href="#i-chevron"/></svg>
+              </div>
+
+              <div class="divider"></div>
+
+              <!-- ★ 睡眠（新規行） -->
+              <div class="row tappable" onclick="snack('homePhone','記録タブ『睡眠』へ遷移します（モック）')">
+                <div class="row-main">
+                  <div class="row-line">
+                    <span class="row-left">
+                      <span class="icirc" style="background:var(--indigo100);color:var(--indigo600)"><svg class="ic"><use href="#i-moon"/></svg></span>
+                      <span class="rlabel">睡眠</span>
+                    </span>
+                    <span id="sleepRight"><!-- JSで状態描画 --></span>
+                  </div>
+                </div>
+                <svg class="ic chev"><use href="#i-chevron"/></svg>
+              </div>
+            </div>
+
+            <div class="ctx-ph" style="height:110px;margin-top:14px">（既存）続くカード群 — SleepSummaryCard は廃止</div>
+          </div>
+
+          <!-- bottom sheet -->
+          <div class="overlay" id="overlay" onclick="if(event.target===this)closeSheet()">
+            <div class="sheet">
+              <h3>目覚めを記録</h3>
+              <button class="opt" onclick="pickRating('refreshed')"><span class="emoji">😊</span><span class="ol">すっきり</span></button>
+              <button class="opt" onclick="pickRating('okay')"><span class="emoji">😐</span><span class="ol">まあまあ</span></button>
+              <button class="opt" onclick="pickRating('groggy')"><span class="emoji">😫</span><span class="ol">だるい</span></button>
+            </div>
+          </div>
+
+          <div class="snack" id="snack-homePhone"></div>
+          <div class="home-ind"></div>
+        </div>
+      </div>
+      <p class="cap">
+        睡眠行は<b>体重の下・最後</b>（Divider区切り）。アイコンは <b>moon / indigo100×indigo600</b>。<br>
+        <b>行タップ</b> → 記録タブ『睡眠』へ遷移。<b>未記録時のみ「記録」ミニボタン</b>（primary50/primary・radius 6）が出て、その場でボトムシート（ホーム完結）。
+      </p>
+    </div>
+
+    <!-- ================= Phone B: 記録タブ ================= -->
+    <div class="phone-col">
+      <div class="col-title">② 記録タブ『睡眠』サブタブ + 同期ボタン</div>
+      <div class="seg-note" style="padding:6px 0 7px">タブをタップすると同期ボタンの出し分けを確認できます</div>
+      <div class="phone">
+        <div class="screen" id="recPhone">
+          <div class="statusbar" style="background:var(--surface)"><span class="time">9:41</span><div class="island"></div>
+            <span class="sb-right"><svg class="ic" style="width:15px;height:15px"><use href="#i-wifi"/></svg><svg class="ic" style="width:22px;height:22px"><use href="#i-battery"/></svg></span>
+          </div>
+          <div class="appbar">
+            <div class="bar">
+              <span class="title">記録</span>
+              <span class="actions">
+                <button class="iconbtn visible" id="syncBtn" onclick="doSync()" title="同期">
+                  <svg class="ic"><use href="#i-refresh"/></svg>
+                </button>
+              </span>
+            </div>
+            <div class="tabs" id="tabs">
+              <div class="tab" onclick="selectTab(0)">サマリ</div>
+              <div class="tab" onclick="selectTab(1)">体重</div>
+              <div class="tab" onclick="selectTab(2)">食事</div>
+              <div class="tab" onclick="selectTab(3)">運動</div>
+              <div class="tab active" onclick="selectTab(4)">睡眠</div>
+              <div class="tab" onclick="selectTab(5)">ノート</div>
+            </div>
+          </div>
+          <div class="rec-body" id="recBody">
+            <!-- 睡眠タブ中身（既存 SleepRecordScreen の中身をそのまま埋め込み・AppBarのみ撤去） -->
+            <div id="sleepTabContent">
+              <div class="pull-hint">⌄ 引き下げて同期（pull-to-refresh）</div>
+              <div class="scard">
+                <div class="head">
+                  <span class="isq"><svg class="ic"><use href="#i-moon"/></svg></span>
+                  <span class="h-label">今日の睡眠</span>
+                </div>
+                <div class="bigtime">7時間23分</div>
+                <div class="bedtime">23:45 → 7:20（HealthKit）</div>
+                <div class="stagebar">
+                  <span style="width:6%;background:var(--stage-awake)"></span>
+                  <span style="width:30%;background:var(--stage-light)"></span>
+                  <span style="width:26%;background:var(--stage-deep)"></span>
+                  <span style="width:18%;background:var(--stage-rem)"></span>
+                  <span style="width:16%;background:var(--stage-light)"></span>
+                  <span style="width:4%;background:var(--stage-awake)"></span>
+                </div>
+                <div class="legend">
+                  <span><i class="dot" style="background:var(--stage-deep)"></i>深い</span>
+                  <span><i class="dot" style="background:var(--stage-light)"></i>浅い</span>
+                  <span><i class="dot" style="background:var(--stage-rem)"></i>レム</span>
+                  <span><i class="dot" style="background:var(--stage-awake)"></i>覚醒</span>
+                </div>
+                <div class="sep"></div>
+                <div class="wakerow">
+                  <span class="l">寝起き</span>
+                  <span style="display:flex;align-items:center;gap:10px">
+                    <span class="rate" style="color:var(--emerald500)"><svg class="ic"><use href="#i-smile"/></svg>すっきり</span>
+                    <button class="linkbtn">変更</button>
+                  </span>
+                </div>
+              </div>
+
+              <div class="sec-title">直近7日間</div>
+              <div class="week">
+                <div class="wcol"><div class="wbar" style="height:58%"></div><i>月</i></div>
+                <div class="wcol"><div class="wbar" style="height:70%"></div><i>火</i></div>
+                <div class="wcol"><div class="wbar" style="height:44%"></div><i>水</i></div>
+                <div class="wcol"><div class="wbar" style="height:66%"></div><i>木</i></div>
+                <div class="wcol"><div class="wbar" style="height:80%"></div><i>金</i></div>
+                <div class="wcol"><div class="wbar" style="height:52%"></div><i>土</i></div>
+                <div class="wcol"><div class="wbar" style="height:74%;background:var(--indigo600)"></div><i>日</i></div>
+              </div>
+
+              <div class="sec-title">履歴</div>
+              <div class="hitem"><span class="d">7/4（土）</span><span class="r"><span class="t">6時間48分</span><span class="rate" style="color:var(--orange500)"><svg class="ic"><use href="#i-meh"/></svg></span></span></div>
+              <div class="hitem"><span class="d">7/3（金）</span><span class="r"><span class="t">7時間52分</span><span class="rate" style="color:var(--emerald500)"><svg class="ic"><use href="#i-smile"/></svg></span></span></div>
+              <div class="hitem"><span class="d">7/2（木）</span><span class="r"><span class="t">—</span><span class="rate" style="color:var(--error)"><svg class="ic"><use href="#i-frown"/></svg></span></span></div>
+            </div>
+            <div id="otherTabContent" style="display:none">
+              <div class="tab-ph" id="otherTabLabel">既存タブ（変更なし）</div>
+            </div>
+          </div>
+          <div class="snack" id="snack-recPhone"></div>
+          <div class="home-ind"></div>
+        </div>
+      </div>
+      <p class="cap">
+        タブ並びは <b>サマリ / 体重 / 食事 / 運動 / 睡眠 / ノート</b>（睡眠 = index 4）。<br>
+        同期ボタン（refreshCw 18px）は<b>睡眠タブ選択時のみ</b> AppBar 右上に表示。タップで同期→スピナー→SnackBar。
+        睡眠タブの中身は既存画面のまま（自身の AppBar のみ撤去、pull-to-refresh も同じ同期処理）。
+      </p>
+    </div>
+  </section>
+
+  <!-- ================= 3状態一覧 ================= -->
+  <section class="strip-wrap">
+    <h2>睡眠行の3状態（一覧比較）</h2>
+    <div class="strip">
+      <div class="mini">
+        <div class="tag">A — HEALTHKITあり（睡眠時間を表示）</div>
+        <div class="row" style="padding:8px 0">
+          <div class="row-main"><div class="row-line">
+            <span class="row-left"><span class="icirc" style="background:var(--indigo100);color:var(--indigo600)"><svg class="ic"><use href="#i-moon"/></svg></span><span class="rlabel">睡眠</span></span>
+            <span class="val">7時間23分</span>
+          </div></div>
+          <svg class="ic chev"><use href="#i-chevron"/></svg>
+        </div>
+      </div>
+      <div class="mini">
+        <div class="tag">B — 手動評価のみ（アイコン+ラベル）</div>
+        <div class="row" style="padding:8px 0">
+          <div class="row-main"><div class="row-line">
+            <span class="row-left"><span class="icirc" style="background:var(--indigo100);color:var(--indigo600)"><svg class="ic"><use href="#i-moon"/></svg></span><span class="rlabel">睡眠</span></span>
+            <span class="rate" style="color:var(--emerald500)"><svg class="ic"><use href="#i-smile"/></svg>すっきり</span>
+          </div></div>
+          <svg class="ic chev"><use href="#i-chevron"/></svg>
+        </div>
+        <div style="display:flex;gap:14px;justify-content:flex-end;padding:4px 26px 0 0">
+          <span class="rate" style="color:var(--orange500);font-size:12px"><svg class="ic"><use href="#i-meh"/></svg>まあまあ</span>
+          <span class="rate" style="color:var(--error);font-size:12px"><svg class="ic"><use href="#i-frown"/></svg>だるい</span>
+        </div>
+      </div>
+      <div class="mini">
+        <div class="tag">C — 未記録（「記録」ミニボタン）</div>
+        <div class="row" style="padding:8px 0">
+          <div class="row-main"><div class="row-line">
+            <span class="row-left"><span class="icirc" style="background:var(--indigo100);color:var(--indigo600)"><svg class="ic"><use href="#i-moon"/></svg></span><span class="rlabel">睡眠</span></span>
+            <button class="mini-btn">記録</button>
+          </div></div>
+          <svg class="ic chev"><use href="#i-chevron"/></svg>
+        </div>
+      </div>
+      <div class="sheet-mini">
+        <div class="tag" style="font-size:10px;font-weight:700;color:var(--th);letter-spacing:.06em;margin-bottom:8px">ボトムシート（既存踏襲・共通化のみ）</div>
+        <h3>目覚めを記録</h3>
+        <div class="opt selected"><span class="emoji">😊</span><span class="ol">すっきり</span></div>
+        <div class="opt"><span class="emoji">😐</span><span class="ol">まあまあ</span></div>
+        <div class="opt"><span class="emoji">😫</span><span class="ol">だるい</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 変更点まとめ ================= -->
+  <section class="notes">
+    <h2>このモックが表す変更点（合意済み設計①〜⑥）</h2>
+    <ul>
+      <li>記録タブに『睡眠』サブタブ新設。並びは <b>サマリ / 体重 / 食事 / 運動 / 睡眠 / ノート</b>（ノートは index 4→5 へ）。</li>
+      <li>HealthKit 同期ボタンは記録タブ共通 AppBar 右上・<b>睡眠タブ選択時のみ</b>表示（<code>refreshCw</code>・同期中はスピナー）。睡眠タブは pull-to-refresh でも同じ同期処理。</li>
+      <li>ホームの独立カード <code>SleepSummaryCard</code> は廃止し、「今日のまとめ」末尾に睡眠行を追加（<code>indigo100</code> 背景 × <code>indigo600</code> の <code>moon</code>）。</li>
+      <li>睡眠行タップで記録タブ『睡眠』へ。未記録の日のみ行内「記録」ミニボタン（<code>primary50</code>/<code>primary</code>・13px/w600・radius 6）→ その場でボトムシート（ホーム完結）。</li>
+      <li>ボトムシート・評価アイコン（すっきり=smile/緑、まあまあ=meh/橙、だるい=frown/赤）は既存の見た目を踏襲（共通ウィジェット化のみ）。</li>
+      <li>朝の自動起床ダイアログ・Provider・DB スキーマは変更なし。睡眠タブの中身も既存画面のまま。</li>
+    </ul>
+  </section>
+</main>
+
+<script>
+  const RATINGS = {
+    refreshed: { icon:'#i-smile', color:'var(--emerald500)', label:'すっきり' },
+    okay:      { icon:'#i-meh',   color:'var(--orange500)',  label:'まあまあ' },
+    groggy:    { icon:'#i-frown', color:'var(--error)',      label:'だるい' },
+  };
+  const TABS = ['サマリ','体重','食事','運動','睡眠','ノート'];
+  let currentRating = 'refreshed';
+
+  function setSleepState(state, rating) {
+    if (rating) currentRating = rating;
+    const right = document.getElementById('sleepRight');
+    if (state === 'hk') {
+      right.innerHTML = '<span class="val">7時間23分</span>';
+    } else if (state === 'manual') {
+      const r = RATINGS[currentRating];
+      right.innerHTML = '<span class="rate" style="color:' + r.color + '"><svg class="ic"><use href="' + r.icon + '"/></svg>' + r.label + '</span>';
+    } else {
+      right.innerHTML = '<button class="mini-btn" onclick="openSheet(event)">記録</button>';
+    }
+    document.querySelectorAll('#seg button').forEach(b =>
+      b.classList.toggle('active', b.dataset.s === state));
+  }
+
+  function openSheet(e) { e.stopPropagation(); document.getElementById('overlay').classList.add('open'); }
+  function closeSheet() { document.getElementById('overlay').classList.remove('open'); }
+  function pickRating(r) {
+    closeSheet();
+    setTimeout(() => { setSleepState('manual', r); snack('homePhone', '記録しました'); }, 220);
+  }
+
+  function selectTab(i) {
+    document.querySelectorAll('#tabs .tab').forEach((t, idx) =>
+      t.classList.toggle('active', idx === i));
+    document.getElementById('syncBtn').classList.toggle('visible', i === 4);
+    const isSleep = i === 4;
+    document.getElementById('sleepTabContent').style.display = isSleep ? '' : 'none';
+    document.getElementById('otherTabContent').style.display = isSleep ? 'none' : '';
+    if (!isSleep) document.getElementById('otherTabLabel').textContent = '既存の『' + TABS[i] + '』タブ（変更なし）';
+  }
+
+  let syncing = false;
+  function doSync() {
+    if (syncing) return;
+    syncing = true;
+    const btn = document.getElementById('syncBtn');
+    btn.innerHTML = '<span class="spinner"></span>';
+    setTimeout(() => {
+      btn.innerHTML = '<svg class="ic"><use href="#i-refresh"/></svg>';
+      syncing = false;
+      snack('recPhone', '同期しました');
+    }, 1300);
+  }
+
+  const snackTimers = {};
+  function snack(phoneId, msg) {
+    const el = document.getElementById('snack-' + phoneId);
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(snackTimers[phoneId]);
+    snackTimers[phoneId] = setTimeout(() => el.classList.remove('show'), 1800);
+  }
+
+  setSleepState('hk');
+</script>
+</body>
+</html>

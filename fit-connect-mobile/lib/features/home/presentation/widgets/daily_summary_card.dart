@@ -6,6 +6,9 @@ import 'package:fit_connect_mobile/core/theme/app_theme.dart';
 import 'package:fit_connect_mobile/features/meal_records/providers/meal_records_provider.dart';
 import 'package:fit_connect_mobile/features/exercise_records/providers/exercise_records_provider.dart';
 import 'package:fit_connect_mobile/features/weight_records/providers/weight_records_provider.dart';
+import 'package:fit_connect_mobile/features/sleep_records/models/sleep_record_model.dart';
+import 'package:fit_connect_mobile/features/sleep_records/providers/sleep_records_provider.dart';
+import 'package:fit_connect_mobile/features/sleep_records/presentation/widgets/wakeup_record_sheet.dart';
 import 'package:fit_connect_mobile/shared/models/period_filter.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
@@ -13,12 +16,14 @@ class DailySummaryCard extends ConsumerWidget {
   final VoidCallback? onMealsTap;
   final VoidCallback? onActivityTap;
   final VoidCallback? onWeightTap;
+  final VoidCallback? onSleepTap;
 
   const DailySummaryCard({
     super.key,
     this.onMealsTap,
     this.onActivityTap,
     this.onWeightTap,
+    this.onSleepTap,
   });
 
   @override
@@ -29,6 +34,7 @@ class DailySummaryCard extends ConsumerWidget {
     final latestWeightAsync = ref.watch(latestWeightRecordProvider);
     final weightStatsAsync =
         ref.watch(weightStatsProvider(period: PeriodFilter.week));
+    final todaySleepAsync = ref.watch(todaySleepRecordProvider);
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -82,6 +88,15 @@ class DailySummaryCard extends ConsumerWidget {
             onTap: onWeightTap,
             child: _buildWeightSection(
                 context, latestWeightAsync, weightStatsAsync),
+          ),
+
+          Divider(height: 32, color: colors.surfaceDim),
+
+          // Sleep Section
+          _buildTappableSection(
+            context: context,
+            onTap: onSleepTap,
+            child: _buildSleepSection(context, ref, todaySleepAsync),
           ),
         ],
       ),
@@ -529,6 +544,137 @@ class DailySummaryCard extends ConsumerWidget {
       ],
     );
   }
+
+  Widget _buildSleepSection(
+    BuildContext context,
+    WidgetRef ref,
+    AsyncValue<SleepRecord?> todaySleepAsync,
+  ) {
+    return todaySleepAsync.when(
+      data: (record) {
+        if (record == null) return _buildSleepEmpty(context, ref);
+        if (record.hasObjectiveData) {
+          return _buildSleepHealthkit(context, record);
+        }
+        if (record.wakeupRating != null) {
+          return _buildSleepManual(context, record);
+        }
+        return _buildSleepEmpty(context, ref);
+      },
+      loading: () => _buildSleepLoading(context),
+      error: (_, __) => _buildSleepEmpty(context, ref),
+    );
+  }
+
+  Widget _buildSleepLabel(BuildContext context) {
+    final colors = AppColors.of(context);
+    return Row(
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          decoration: const BoxDecoration(
+            color: AppColors.indigo100,
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(LucideIcons.moon,
+              color: AppColors.indigo600, size: 16),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          '睡眠',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: colors.textSecondary,
+            fontSize: 14,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSleepHealthkit(BuildContext context, SleepRecord record) {
+    final colors = AppColors.of(context);
+    final mins = record.totalSleepMinutes!;
+    final h = mins ~/ 60;
+    final m = mins % 60;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _buildSleepLabel(context),
+        Text(
+          '$h時間$m分',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: colors.textPrimary,
+            fontSize: 14,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSleepManual(BuildContext context, SleepRecord record) {
+    final rating = record.wakeupRating!;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _buildSleepLabel(context),
+        Row(
+          children: [
+            wakeupRatingIcon(rating, size: 16),
+            const SizedBox(width: 6),
+            Text(
+              rating.labelJa,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: wakeupRatingColor(rating),
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSleepEmpty(BuildContext context, WidgetRef ref) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _buildSleepLabel(context),
+        TextButton(
+          onPressed: () => showWakeupRecordSheet(context, ref),
+          style: TextButton.styleFrom(
+            backgroundColor: AppColors.primary50,
+            foregroundColor: AppColors.primary,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+            ),
+            textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          ),
+          child: const Text('記録'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSleepLoading(BuildContext context) {
+    return Row(
+      children: [
+        _buildSleepLabel(context),
+        const Spacer(),
+        const SizedBox(
+          width: 16,
+          height: 16,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      ],
+    );
+  }
 }
 
 // ============================================
@@ -559,6 +705,21 @@ Widget previewDailySummaryCardEmpty() {
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: _PreviewDailySummaryCardEmpty(),
+        ),
+      ),
+    ),
+  );
+}
+
+@Preview(name: 'DailySummaryCard - Sleep Manual State')
+Widget previewDailySummaryCardSleepManual() {
+  return MaterialApp(
+    theme: AppTheme.lightTheme,
+    home: Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: _PreviewDailySummaryCardSleepManual(),
         ),
       ),
     ),
@@ -608,6 +769,11 @@ class _PreviewDailySummaryCard extends StatelessWidget {
 
           // Weight Section
           _buildTappableRow(context: context, child: _buildWeightRow(context, 65.2, -0.6)),
+
+          Divider(height: 32, color: colors.surfaceDim),
+
+          // Sleep Section (HealthKit state)
+          _buildTappableRow(context: context, child: _buildSleepRowHealthkit(context, 450)),
         ],
       ),
     );
@@ -827,6 +993,100 @@ class _PreviewDailySummaryCard extends StatelessWidget {
     );
   }
 
+  Widget _buildSleepLabel(BuildContext context) {
+    final colors = AppColors.of(context);
+    return Row(
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          decoration: const BoxDecoration(
+            color: AppColors.indigo100,
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(LucideIcons.moon,
+              color: AppColors.indigo600, size: 16),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          '睡眠',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: colors.textSecondary,
+            fontSize: 14,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSleepRowHealthkit(BuildContext context, int totalMinutes) {
+    final colors = AppColors.of(context);
+    final h = totalMinutes ~/ 60;
+    final m = totalMinutes % 60;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _buildSleepLabel(context),
+        Text(
+          '$h時間$m分',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: colors.textPrimary,
+            fontSize: 14,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSleepRowManual(BuildContext context, WakeupRating rating) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _buildSleepLabel(context),
+        Row(
+          children: [
+            wakeupRatingIcon(rating, size: 16),
+            const SizedBox(width: 6),
+            Text(
+              rating.labelJa,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: wakeupRatingColor(rating),
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSleepRowEmpty(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _buildSleepLabel(context),
+        TextButton(
+          onPressed: () {},
+          style: TextButton.styleFrom(
+            backgroundColor: AppColors.primary50,
+            foregroundColor: AppColors.primary,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+            ),
+            textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          ),
+          child: const Text('記録'),
+        ),
+      ],
+    );
+  }
+
   Widget _buildTappableRow({required BuildContext context, required Widget child}) {
     final colors = AppColors.of(context);
     return Padding(
@@ -934,7 +1194,43 @@ class _PreviewDailySummaryCardEmpty extends StatelessWidget {
               ],
             ),
           ),
+
+          Divider(height: 32, color: colors.surfaceDim),
+
+          // Sleep Section - Empty
+          _PreviewDailySummaryCard()._buildTappableRow(
+            context: context,
+            child: _PreviewDailySummaryCard()._buildSleepRowEmpty(context),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+// Preview helper widget for sleep row - manual (wakeup rating) state
+class _PreviewDailySummaryCardSleepManual extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: colors.border),
+        boxShadow: [
+          BoxShadow(
+            color: colors.shadow,
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: _PreviewDailySummaryCard()._buildTappableRow(
+        context: context,
+        child: _PreviewDailySummaryCard()
+            ._buildSleepRowManual(context, WakeupRating.okay),
       ),
     );
   }

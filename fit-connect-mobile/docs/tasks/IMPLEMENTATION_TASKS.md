@@ -1,9 +1,9 @@
 # FIT-CONNECT Mobile - 実装タスク一覧
 
 **作成日**: 2025年12月30日
-**バージョン**: 3.7
+**バージョン**: 3.8
 **進捗状況**: 全体 99% 完了
-**最終更新**: 2026年2月23日 - タグ入力UX改善（クイックアクション＋構造化フォーム）
+**最終更新**: 2026年7月5日 - 睡眠記録を記録タブへ統合（ホームは今日のまとめ睡眠行に）
 
 ---
 
@@ -184,6 +184,30 @@
 ---
 
 ## 最新の変更履歴
+
+### 2026年7月5日
+
+#### 18. 睡眠記録を記録タブへ統合
+
+**目的**: 睡眠記録を「記録タブ」の新サブタブ『睡眠』へ移し、ホームでは独立カードを廃止して「今日のまとめ」カードの睡眠行に統合する。UI再配置のみでデータ層（Provider / Model / Supabase）は変更なし。
+
+**新規作成ファイル**:
+- `lib/features/sleep_records/presentation/widgets/wakeup_record_sheet.dart` — 寝起き記録ボトムシートの共通化（`showWakeupRecordSheet` / `wakeupRatingIcon` / `wakeupRatingColor`、連打ガード付き）
+
+**改修ファイル**:
+- `lib/features/sleep_records/presentation/screens/sleep_record_screen.dart` — AppBar/Scaffold を撤去しタブ埋め込み用本体に（`onRefresh` + RefreshIndicator、`AlwaysScrollableScrollPhysics`）
+- `lib/features/home/presentation/screens/records_screen.dart` — ConsumerStatefulWidget 化、6タブ化（サマリ/体重/食事/運動/睡眠/ノート）、睡眠タブ選択時のみ AppBar 同期ボタン（`_onSyncSleep`: syncManual + provider invalidate + SnackBar）
+- `lib/features/home/presentation/widgets/daily_summary_card.dart` — 睡眠行を末尾に追加（HealthKit=睡眠時間 / 手動=評価アイコン+ラベル / 未記録=「記録」ミニボタン→その場でボトムシート。プレビュー3状態対応）
+- `lib/features/home/presentation/screens/home_screen.dart` — 独立 SleepSummaryCard 削除、`onSleepTap` → 記録タブ睡眠(index 4) 遷移配線
+
+**削除ファイル**:
+- `lib/features/sleep_records/presentation/widgets/sleep_summary_card.dart` — 統合により不要
+
+**機能詳細**:
+- 記録タブ並び: サマリ / 体重 / 食事 / 運動 / 睡眠 / ノート（ノートは index 4→5 へ移動、外部からの旧 index 4 遷移は grep で不存在を確認済み）
+- HealthKit 同期は AppBar ボタン（睡眠タブのみ表示・同期中スピナー）と pull-to-refresh で同一処理を共有
+- ホーム睡眠行: 行タップ=記録タブ『睡眠』へ遷移 / 寝起き未記録の日のみ「記録」ボタンでホーム完結のボトムシート
+- 朝の自動起床ダイアログ（morning_wakeup_dialog）は従来どおり（スコープ外・無変更）
 
 ### 2026年2月23日
 
