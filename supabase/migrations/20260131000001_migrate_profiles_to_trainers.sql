@@ -1,5 +1,9 @@
 -- ================================================
 -- Migration: profiles → trainers (Idempotent)
+-- 2026-07-10 空DB reset 修復のため加筆（リモート適用済み・再実行されない）:
+--   Step 2 のデータ移行を「profiles に profile_image_url / role 列が存在する場合のみ」
+--   実行するようガードを追加。空DBでは remote_schema.sql の profiles は
+--   (id, name, email) のみで空のためスキップで問題ない。
 -- ================================================
 
 -- Step 1: trainersテーブル作成（存在しない場合のみ）
@@ -17,7 +21,8 @@ CREATE TABLE IF NOT EXISTS "public"."trainers" (
 -- Step 2: データ移行（profilesが存在する場合のみ）
 DO $$
 BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'profiles') THEN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = 'profile_image_url')
+     AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = 'role') THEN
     INSERT INTO "public"."trainers" (id, name, email, profile_image_url, created_at, updated_at)
     SELECT id, COALESCE(name, ''), email, profile_image_url, NOW(), NOW()
     FROM "public"."profiles"

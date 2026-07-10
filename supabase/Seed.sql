@@ -75,7 +75,8 @@ INSERT INTO auth.identities (
 );
 
 -- トレーナーのプロフィール
-INSERT INTO public.profiles (id, name, email) VALUES
+-- 2026-07-10 修復: profiles は 20260131000001 で trainers へ移行・DROP されたため trainers へ INSERT
+INSERT INTO public.trainers (id, name, email) VALUES
   ('11111111-1111-1111-1111-111111111111', '山田太郎', 'yamada@fitconnect.jp');
 
 -- =============================================
@@ -147,8 +148,7 @@ INSERT INTO auth.identities (
 );
 
 -- クライアントのプロフィール
-INSERT INTO public.profiles (id, name, email) VALUES
-  ('22222222-2222-2222-2222-222222222222', '佐藤花子', 'sato@test.com');
+-- 2026-07-10 修復: profiles は DROP 済み。クライアントは直後の public.clients INSERT で登録されるため不要
 
 -- =============================================
 -- 2. クライアントの登録（トレーナーに紐づけ）
