@@ -233,11 +233,11 @@ class _CompletedWorkoutAssignmentsProviderElement
 }
 
 String _$workoutScreenNotifierHash() =>
-    r'787849580641cb2ccc6d76ff5bd02dae3ffbd6ec';
+    r'0c78ec67fb74cc9938778ca89b00b5cd07772c27';
 
 /// ワークアウト画面の状態を管理するNotifier
 ///
-/// - 初期ロード: 期限切れ・今日・週間の3クエリを並列取得して WorkoutScreenState を返す
+/// - 初期ロード: 期限切れ・今日・週間・今後の予定の4クエリを並列取得して WorkoutScreenState を返す
 /// - [toggleExercise]: 種目の完了状態をDB更新 + ローカルstateの楽観的更新
 /// - [updateExerciseSets]: セット記録をDB更新 + 楽観的ローカルstate更新
 /// - [submitCompletion]: アサインメントをDB上で完了にしてローカルstateを更新

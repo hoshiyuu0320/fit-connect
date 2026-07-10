@@ -8,12 +8,16 @@ class WorkoutScreenState {
   /// 今日のアサインメント（assigned_date = today）
   final List<WorkoutAssignment> todayAssignments;
 
+  /// 今後の予定（today < assigned_date <= today+30日, status = 'pending'）
+  final List<WorkoutAssignment> upcomingAssignments;
+
   /// 週間カレンダー用データ（日付 → アサインメントリスト）
   final Map<DateTime, List<WorkoutAssignment>> weeklyData;
 
   const WorkoutScreenState({
     required this.overdueAssignments,
     required this.todayAssignments,
+    required this.upcomingAssignments,
     required this.weeklyData,
   });
 
@@ -22,5 +26,8 @@ class WorkoutScreenState {
       [...overdueAssignments, ...todayAssignments];
 
   /// 空判定
-  bool get isEmpty => overdueAssignments.isEmpty && todayAssignments.isEmpty;
+  bool get isEmpty =>
+      overdueAssignments.isEmpty &&
+      todayAssignments.isEmpty &&
+      upcomingAssignments.isEmpty;
 }
