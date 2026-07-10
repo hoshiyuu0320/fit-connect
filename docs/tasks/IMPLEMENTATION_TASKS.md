@@ -33,7 +33,7 @@
 | 2 | LLM カロリー計算 | Mobile + Supabase | 90% | 🟢 2.1〜2.5 完了（スクショ取り込み含む）/ 2.4任意項目のみバックログ |
 | 3 | オンボーディングフロー | Mobile | 0% | 🔴 未着手（実装時はカタログ cat2 3-A の設計を使用） |
 | 4 | ランディングページ | Web | 0% | 🔴 未着手（フェーズ6と連動） |
-| 5 | セキュリティ・基盤修復【緊急】 | Supabase + Web | 0% | 🔴 未着手 |
+| 5 | セキュリティ・基盤修復【緊急】 | Supabase + Web | 60% | 🟡 5.1・5.2 完了 / 5.3 cron migration 化済み・Vault 登録はユーザー作業待ち（手順書: `2026-07-10-cron-vault-setup.md`）/ 5.4 未着手 |
 | 6 | 収益化・リリース準備（Stripe/法務/アカウント削除/Apple Sign-In） | Web + Mobile + Supabase | 0% | 🔴 未着手 |
 | 7 | 通知基盤統一（device_tokens + 共通ディスパッチャ） | Supabase + Web + Mobile | 0% | 🔴 未着手 |
 | 8 | 不具合修正・顧客体験の底上げ | Mobile + Web + Supabase | 0% | 🔴 未着手 |
@@ -224,21 +224,27 @@
 
 ### タスク
 
-- [ ] **5.1 anon ポリシー DROP + LINE レガシー撤去**（cat7 1-A + 6-A、同一PR推奨・〜1日）
-  - [ ] `clients` の anon 全行 SELECT/INSERT/UPDATE ポリシー3本を DROP する migration
-  - [ ] `/liff` ページ・`/api/line/webhook`・`saveLineUser.ts` の削除、`line_user_id` 型参照の整理
-  - [ ] 適用後、anon キーで `clients` が 0 行になることを確認
-  - [ ] （後続・任意）anon への書き込み系 GRANT の REVOKE（cat7 1-B、安定稼働1〜2週間後）
-- [ ] **5.2 migration 欠落修復パック**（cat7 3-A / 4-A + 追加発見分、〜2日）
-  - [ ] `client_notes` の CREATE TABLE 復元 migration（冪等・リモート実スキーマと `db diff` で照合してから）
-  - [ ] `workout_assignments.status` 列の追認 migration + バックフィル（`is_completed` の段階廃止は別タスク）
-  - [ ] `clients.fcm_token` / `trainers.fcm_token` カラムの追認 migration（フェーズ7の device_tokens 移行の前提）
-  - [ ] `profile-images` / `client-notes` Storage バケットの作成 migration（現状コード管理外）
-  - [ ] ローカル `supabase db reset` が通ることを確認
+- [x] **5.1 anon ポリシー DROP + LINE レガシー撤去**（cat7 1-A + 6-A、同一PR推奨・〜1日）
+  - [x] `clients` の anon 全行 SELECT/INSERT/UPDATE ポリシー3本を DROP する migration
+  - [x] `/liff` ページ・`/api/line/webhook`・`saveLineUser.ts` の削除、`line_user_id` 型参照の整理
+  - [x] 適用後、anon キーで `clients` が 0 行になることを確認
+  - [x] （後続・任意）anon への書き込み系 GRANT の REVOKE（cat7 1-B、安定稼働1〜2週間後）
+  - 2026-07-10 完了（PR #62）。リモート適用済み・anon キーで `clients` が 0 行になることを検証済み
+- [x] **5.2 migration 欠落修復パック**（cat7 3-A / 4-A + 追加発見分、〜2日）
+  - [x] `client_notes` の CREATE TABLE 復元 migration（冪等・リモート実スキーマと `db diff` で照合してから）
+  - [x] `workout_assignments.status` 列の追認 migration + バックフィル（`is_completed` の段階廃止は別タスク）
+  - [x] `clients.fcm_token` / `trainers.fcm_token` カラムの追認 migration（フェーズ7の device_tokens 移行の前提）
+  - [x] `profile-images` / `client-notes` Storage バケットの作成 migration（現状コード管理外）
+  - [x] ローカル `supabase db reset` が通ることを確認
+  - 2026-07-10 完了（PR #63）。実際のドリフトは上記に加え workout 系全域（workout_plans / workout_exercises / workout_assignments / workout_assignment_exercises）・tickets 系・Seed.sql にまで及んでいたため、修復 migration 3本（`20260710010000`〜`010002`）で追認
+  - 空DBからの `supabase db reset` が通ることを確認し復旧済み
 - [ ] **5.3 pg_cron の migration 化**（cat7 5-A、〜1日）
-  - [ ] Vault に `project_url` / `service_role_key` を登録（手順を docs に記録）
-  - [ ] `auto-skip-workouts` の cron を pg_cron + pg_net で migration 化
+  - [ ] Vault に `project_url` / `service_role_key` を登録（手順を docs に記録）→ **ユーザー作業待ち**（手順書: `docs/tasks/2026-07-10-cron-vault-setup.md`）
+  - [x] `auto-skip-workouts` の cron を pg_cron + pg_net で migration 化（2026-07-10、`20260710020000_codify_cron_jobs.sql`）
   - [ ] `cron.job_run_details` の失敗監視ジョブの設計（フェーズ7の通知ディスパッチャ完成後に配線）
+  - 発見事項（2026-07-10 リモートDB実測）:
+    - `issue_recurring_tickets()` 関数 + cron ジョブ `issue-recurring-tickets` も migration 管理外だった → `20260710020000` で追認（既存ジョブには触れない存在チェック付き・リモート no-op）
+    - `auto-skip-workouts` は Edge Function がデプロイ済み ACTIVE なのに cron が存在せず、機能が休眠していた → **無効(inactive)状態で cron 登録**。有効化すると現存25件の期限切れ pending 課題が初回実行で一括スキップされるため、有効化は繰越問題（cat2 8-A）修正後にユーザー判断
 - [ ] **5.4 RLS の CI テスト基盤**（統合判断7-4、任意だが推奨）
   - [ ] anon/authenticated/他人ロールでのアクセス可否テストを `supabase/tests/` に新設（再発防止）
 
