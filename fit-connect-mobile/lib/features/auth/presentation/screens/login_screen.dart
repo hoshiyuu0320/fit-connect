@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/features/auth/data/auth_repository.dart';
@@ -23,6 +24,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   bool _isLoading = false;
   bool _isGoogleLoading = false;
+  bool _isAppleLoading = false;
   bool _isEmailSent = false;
   final _authRepository = AuthRepository();
 
@@ -117,6 +119,39 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     }
   }
+
+  Future<void> _handleAppleLogin() async {
+    setState(() {
+      _isAppleLoading = true;
+    });
+
+    try {
+      final response = await _authRepository.signInWithApple();
+      if (response == null) {
+        // ユーザーがキャンセル — 何もしない
+        return;
+      }
+      // 認証成功 → _authSubscription が検知してナビゲーション
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Apple認証エラー: ${e.toString()}'),
+            backgroundColor: AppColors.rose800,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isAppleLoading = false;
+        });
+      }
+    }
+  }
+
+  /// いずれかの認証処理が実行中か
+  bool get _isAnyLoading => _isLoading || _isGoogleLoading || _isAppleLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -274,7 +309,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                           // Login Button
                           ElevatedButton(
-                            onPressed: (_isLoading || _isGoogleLoading) ? null : _handleLogin,
+                            onPressed: _isAnyLoading ? null : _handleLogin,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary600,
                               foregroundColor: Colors.white,
@@ -329,10 +364,17 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: 24),
 
+                          // Appleでサインインボタン（iOSのみ、App Store Guideline 4.8対応）
+                          // Apple HIG準拠: 他のソーシャルログインボタンより上に配置
+                          if (Platform.isIOS) ...[
+                            _buildAppleSignInButton(context),
+                            const SizedBox(height: 12),
+                          ],
+
                           // Googleでログインボタン
                           OutlinedButton(
                             onPressed:
-                                (_isGoogleLoading || _isLoading) ? null : _handleGoogleLogin,
+                                _isAnyLoading ? null : _handleGoogleLogin,
                             style: OutlinedButton.styleFrom(
                               foregroundColor: colors.textPrimary,
                               side: BorderSide(color: colors.border),
@@ -396,6 +438,56 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  /// Appleデザインガイドライン準拠のサインインボタン。
+  /// 高さ（padding vertical 16）・角丸（12）は既存のGoogleボタンと揃える。
+  /// ライトテーマでは黒ボタン、ダークテーマでは白ボタン（Appleの推奨スタイル）。
+  Widget _buildAppleSignInButton(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDark ? Colors.white : Colors.black;
+    final foregroundColor = isDark ? Colors.black : Colors.white;
+
+    return ElevatedButton(
+      onPressed: _isAnyLoading ? null : _handleAppleLogin,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: backgroundColor,
+        foregroundColor: foregroundColor,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        elevation: 0,
+      ),
+      child: _isAppleLoading
+          ? SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                color: foregroundColor,
+                strokeWidth: 2,
+              ),
+            )
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.apple,
+                  size: 22,
+                  color: foregroundColor,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Appleでサインイン',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: foregroundColor,
+                  ),
+                ),
+              ],
+            ),
     );
   }
 }

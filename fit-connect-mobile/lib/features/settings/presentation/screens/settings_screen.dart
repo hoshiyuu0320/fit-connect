@@ -508,6 +508,36 @@ class SettingsScreen extends ConsumerWidget {
             ),
             onTap: () => _showLogoutDialog(context, ref),
           ),
+
+          // アカウント削除ボタン（App Store Guideline 5.1.1(v) 対応）
+          ListTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.rose100,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                LucideIcons.userX,
+                size: 20,
+                color: AppColors.rose800,
+              ),
+            ),
+            title: const Text(
+              'アカウントを削除',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: AppColors.rose800,
+              ),
+            ),
+            trailing: Icon(
+              LucideIcons.chevronRight,
+              size: 20,
+              color: colors.textHint,
+            ),
+            onTap: () => _showDeleteAccountDialog(context, ref),
+          ),
         ],
       ),
     );
@@ -704,6 +734,167 @@ class SettingsScreen extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+
+  /// アカウント削除・確認ダイアログ（1段階目: 削除されるデータの説明）
+  void _showDeleteAccountDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('アカウントを削除'),
+        content: const _DeleteAccountWarningContent(),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(
+              'キャンセル',
+              style:
+                  TextStyle(color: AppColors.of(dialogContext).textSecondary),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              _showDeleteAccountConfirmDialog(context, ref);
+            },
+            child: const Text(
+              '続ける',
+              style: TextStyle(
+                color: AppColors.rose800,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// アカウント削除・確認ダイアログ（2段階目: 最終確認 + 実行）
+  void _showDeleteAccountConfirmDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        var isDeleting = false;
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) => AlertDialog(
+            title: const Text('本当に削除しますか？'),
+            content: const Text('この操作は取り消せません。すべてのデータが完全に削除されます。'),
+            actions: [
+              TextButton(
+                onPressed: isDeleting
+                    ? null
+                    : () => Navigator.of(dialogContext).pop(),
+                child: Text(
+                  'キャンセル',
+                  style: TextStyle(
+                      color: AppColors.of(dialogContext).textSecondary),
+                ),
+              ),
+              TextButton(
+                onPressed: isDeleting
+                    ? null
+                    : () async {
+                        setDialogState(() => isDeleting = true);
+                        try {
+                          await ref
+                              .read(authNotifierProvider.notifier)
+                              .deleteAccount();
+                          // 成功: deleteAccount 内で signOut 済み。
+                          // ルーティングはapp.dartのStreamBuilderが自動処理
+                          if (dialogContext.mounted) {
+                            Navigator.of(dialogContext).pop();
+                          }
+                        } catch (e) {
+                          // 失敗: ダイアログを閉じて SnackBar 表示（再試行可能）
+                          if (dialogContext.mounted) {
+                            Navigator.of(dialogContext).pop();
+                          }
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('アカウントの削除に失敗しました: $e'),
+                                backgroundColor: AppColors.rose800,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                child: isDeleting
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            AppColors.rose800,
+                          ),
+                        ),
+                      )
+                    : const Text(
+                        '削除する',
+                        style: TextStyle(
+                          color: AppColors.rose800,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// アカウント削除ダイアログ（1段階目）の本文
+/// 実装とプレビューで共用するため独立Widgetにしている
+class _DeleteAccountWarningContent extends StatelessWidget {
+  const _DeleteAccountWarningContent();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+
+    Widget bullet(String text) => Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('・', style: TextStyle(color: colors.textPrimary)),
+              Expanded(
+                child: Text(
+                  text,
+                  style: TextStyle(color: colors.textPrimary),
+                ),
+              ),
+            ],
+          ),
+        );
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'アカウントを削除すると、以下のデータがすべて削除されます。',
+          style: TextStyle(color: colors.textPrimary),
+        ),
+        const SizedBox(height: 12),
+        bullet('体重・食事・運動・睡眠の記録'),
+        bullet('トレーナーとのメッセージと写真'),
+        bullet('セッション・チケット情報'),
+        const SizedBox(height: 12),
+        const Text(
+          'この操作は取り消せません。',
+          style: TextStyle(
+            color: AppColors.rose800,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -989,8 +1180,110 @@ class _PreviewSettingsSection extends StatelessWidget {
               // プレビューでは何もしない
             },
           ),
+
+          // アカウント削除ボタン
+          ListTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.rose100,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                LucideIcons.userX,
+                size: 20,
+                color: AppColors.rose800,
+              ),
+            ),
+            title: const Text(
+              'アカウントを削除',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: AppColors.rose800,
+              ),
+            ),
+            trailing: const Icon(
+              LucideIcons.chevronRight,
+              size: 20,
+              color: AppColors.slate400,
+            ),
+            onTap: () {
+              // プレビューでは何もしない
+            },
+          ),
         ],
       ),
     );
   }
+}
+
+@Preview(name: 'DeleteAccountDialog - Step1 削除データ説明')
+Widget previewDeleteAccountDialogStep1() {
+  return MaterialApp(
+    theme: AppTheme.lightTheme,
+    home: Scaffold(
+      backgroundColor: AppColors.background,
+      body: Center(
+        child: AlertDialog(
+          title: const Text('アカウントを削除'),
+          content: const _DeleteAccountWarningContent(),
+          actions: [
+            TextButton(
+              onPressed: () {},
+              child: const Text(
+                'キャンセル',
+                style: TextStyle(color: AppColors.slate600),
+              ),
+            ),
+            TextButton(
+              onPressed: () {},
+              child: const Text(
+                '続ける',
+                style: TextStyle(
+                  color: AppColors.rose800,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+@Preview(name: 'DeleteAccountDialog - Step2 最終確認')
+Widget previewDeleteAccountDialogStep2() {
+  return MaterialApp(
+    theme: AppTheme.lightTheme,
+    home: Scaffold(
+      backgroundColor: AppColors.background,
+      body: Center(
+        child: AlertDialog(
+          title: const Text('本当に削除しますか？'),
+          content: const Text('この操作は取り消せません。すべてのデータが完全に削除されます。'),
+          actions: [
+            TextButton(
+              onPressed: () {},
+              child: const Text(
+                'キャンセル',
+                style: TextStyle(color: AppColors.slate600),
+              ),
+            ),
+            TextButton(
+              onPressed: () {},
+              child: const Text(
+                '削除する',
+                style: TextStyle(
+                  color: AppColors.rose800,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }

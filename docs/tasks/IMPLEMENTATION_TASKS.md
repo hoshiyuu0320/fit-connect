@@ -262,7 +262,8 @@
   - [ ] 健康データのAI送信（外部API）に関する顧客側の明示同意の設計（横断レビュー1-6節）
   - [ ] トレーナー＝個人情報取扱事業者 / FIT-CONNECT＝委託先の責任分界を規約に明記
 - [ ] **6.2 アカウント削除 + Sign in with Apple**【App Store 審査ブロッカー】（横断レビュー1-1節）
-  - [ ] Mobile アプリ内からのアカウント削除（Guideline 5.1.1(v)）: auth 削除 + records/Storage 画像のカスケード削除 Edge Function
+  - [x] Mobile アプリ内からのアカウント削除（Guideline 5.1.1(v)）: auth 削除 + records/Storage 画像のカスケード削除 Edge Function
+    - Edge Function `delete-account` 新設（JWT 自前検証・削除順序: clients DELETE(子は CASCADE) → messages DELETE → Storage ベストエフォート → auth.users 削除。設定画面から2段階確認で実行）
   - [ ] Sign in with Apple 追加（Guideline 4.8。Google Sign-In があるため必須）
   - [ ] （関連）データエクスポート（個情法の開示請求対応）の方針決定
 - [ ] **6.3 Stripe SaaS 課金**（cat3 1-A、トレーナーサブスク）
