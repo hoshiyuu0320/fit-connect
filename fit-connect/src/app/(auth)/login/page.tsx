@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
@@ -147,6 +148,23 @@ export default function LoginPage() {
                     >
                         新規登録
                     </button>
+                </div>
+
+                {/* Legal links */}
+                <div className="mt-4 text-center text-xs text-[#94A3B8]">
+                    <Link
+                        href="/terms"
+                        className="hover:text-[#475569] transition-colors"
+                    >
+                        利用規約
+                    </Link>
+                    <span className="mx-2">·</span>
+                    <Link
+                        href="/privacy"
+                        className="hover:text-[#475569] transition-colors"
+                    >
+                        プライバシーポリシー
+                    </Link>
                 </div>
             </div>
         </main>
