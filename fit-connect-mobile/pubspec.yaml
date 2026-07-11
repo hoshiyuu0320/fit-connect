@@ -33,6 +33,10 @@ dependencies:
   # Google認証
   google_sign_in: ^6.2.2
 
+  # Apple認証（App Store Guideline 4.8 対応）
+  sign_in_with_apple: ^8.1.0
+  crypto: ^3.0.7
+
   # QRコード
   mobile_scanner: ^7.1.4
   qr_flutter: ^4.1.0

@@ -2,6 +2,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase show User;
+import 'package:fit_connect_mobile/features/auth/data/account_deletion_repository.dart';
 import 'package:fit_connect_mobile/services/supabase_service.dart';
 import 'package:fit_connect_mobile/services/notification_service.dart';
 
@@ -71,6 +72,20 @@ class AuthNotifier extends _$AuthNotifier {
       }
     }
     await SupabaseService.client.auth.signOut();
+  }
+
+  /// アカウント削除（App Store Guideline 5.1.1(v) 対応）
+  ///
+  /// delete-account Edge Function がバックエンドの全データ
+  /// （clients + CASCADE / messages / Storage / auth.users）を削除する。
+  /// 成功後は signOut() でローカルセッションを破棄し、
+  /// app.dart の認証 StreamBuilder がウェルカム画面へ遷移させる。
+  /// 注: FCMトークンは auth.users ごと消えるため掃除は本来不要だが、
+  /// signOut 内の clearTokenFromSupabase は対象行が無くても
+  /// エラーにならない（0行更新 + try-catch 済み）ためそのまま呼んでよい。
+  Future<void> deleteAccount() async {
+    await ref.read(accountDeletionRepositoryProvider).deleteAccount();
+    await signOut();
   }
 }
 
