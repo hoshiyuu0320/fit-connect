@@ -4,6 +4,10 @@
 /node_modules
 /.pnp
 .pnp.*
+
+# lockfiles (pnpm 管理: pnpm-lock.yaml が正。npm/yarn の lockfile は禁止)
+package-lock.json
+yarn.lock
 .yarn/*
 !.yarn/patches
 !.yarn/plugins
