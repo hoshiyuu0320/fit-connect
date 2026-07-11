@@ -16,7 +16,7 @@ WorkoutRepository workoutRepository(WorkoutRepositoryRef ref) {
 
 /// ワークアウト画面の状態を管理するNotifier
 ///
-/// - 初期ロード: 期限切れ・今日・週間の3クエリを並列取得して WorkoutScreenState を返す
+/// - 初期ロード: 期限切れ・今日・週間・今後の予定の4クエリを並列取得して WorkoutScreenState を返す
 /// - [toggleExercise]: 種目の完了状態をDB更新 + ローカルstateの楽観的更新
 /// - [updateExerciseSets]: セット記録をDB更新 + 楽観的ローカルstate更新
 /// - [submitCompletion]: アサインメントをDB上で完了にしてローカルstateを更新
@@ -32,6 +32,7 @@ class WorkoutScreenNotifier extends _$WorkoutScreenNotifier {
       return const WorkoutScreenState(
         overdueAssignments: [],
         todayAssignments: [],
+        upcomingAssignments: [],
         weeklyData: {},
       );
     }
@@ -56,11 +57,13 @@ class WorkoutScreenNotifier extends _$WorkoutScreenNotifier {
       repo.getOverdueAssignments(clientId, todayStr),
       repo.getAssignmentsByDate(clientId, todayStr),
       repo.getWeeklyAssignments(clientId, weekStartStr, weekEndStr),
+      repo.getUpcomingAssignments(clientId),
     ]);
 
     final overdueAssignments = results[0];
     final todayAssignments = results[1];
     final weeklyAssignments = results[2];
+    final upcomingAssignments = results[3];
 
     // 週間データをMap化
     final weeklyData = <DateTime, List<WorkoutAssignment>>{};
@@ -77,6 +80,7 @@ class WorkoutScreenNotifier extends _$WorkoutScreenNotifier {
     return WorkoutScreenState(
       overdueAssignments: overdueAssignments,
       todayAssignments: todayAssignments,
+      upcomingAssignments: upcomingAssignments,
       weeklyData: weeklyData,
     );
   }
@@ -96,6 +100,7 @@ class WorkoutScreenNotifier extends _$WorkoutScreenNotifier {
       todayAssignments: currentState.todayAssignments.map((a) {
         return a.id == assignmentId ? updater(a) : a;
       }).toList(),
+      upcomingAssignments: currentState.upcomingAssignments,
       weeklyData: currentState.weeklyData,
     ));
   }
@@ -211,6 +216,7 @@ class WorkoutScreenNotifier extends _$WorkoutScreenNotifier {
           .where((a) => a.id != assignmentId)
           .toList(),
       todayAssignments: currentState.todayAssignments,
+      upcomingAssignments: currentState.upcomingAssignments,
       weeklyData: currentState.weeklyData,
     ));
   }

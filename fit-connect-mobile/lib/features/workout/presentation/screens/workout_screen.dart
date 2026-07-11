@@ -10,6 +10,7 @@ import 'package:fit_connect_mobile/features/workout/models/workout_assignment_mo
 import 'package:fit_connect_mobile/features/workout/providers/workout_provider.dart';
 import 'package:fit_connect_mobile/features/workout/presentation/widgets/weekly_mini_calendar.dart';
 import 'package:fit_connect_mobile/features/workout/presentation/widgets/overdue_assignment_card.dart';
+import 'package:fit_connect_mobile/features/workout/presentation/widgets/reschedule_date_picker.dart';
 import 'package:fit_connect_mobile/features/workout/presentation/widgets/workout_exercise_card.dart';
 import 'package:fit_connect_mobile/features/workout/presentation/widgets/workout_progress_bar.dart';
 import 'package:fit_connect_mobile/features/workout/presentation/widgets/workout_completion_overlay.dart';
@@ -77,6 +78,24 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
     });
   }
 
+  Future<void> _handleDoToday(String assignmentId) async {
+    await ref.read(workoutScreenNotifierProvider.notifier).doToday(assignmentId);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('今日に移動しました')),
+    );
+  }
+
+  Future<void> _handleReschedule(String assignmentId, DateTime newDate) async {
+    await ref
+        .read(workoutScreenNotifierProvider.notifier)
+        .reschedule(assignmentId, newDate);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${newDate.month}月${newDate.day}日に移動しました')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final today = DateTime.now();
@@ -113,15 +132,11 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
                     if (screenState.overdueAssignments.isNotEmpty) ...[
                       _OverdueSection(
                         assignments: screenState.overdueAssignments,
-                        onDoToday: (id) => ref
-                            .read(workoutScreenNotifierProvider.notifier)
-                            .doToday(id),
+                        onDoToday: _handleDoToday,
                         onSkip: (id) => ref
                             .read(workoutScreenNotifierProvider.notifier)
                             .skip(id),
-                        onReschedule: (id, date) => ref
-                            .read(workoutScreenNotifierProvider.notifier)
-                            .reschedule(id, date),
+                        onReschedule: _handleReschedule,
                       ),
                       const SizedBox(height: 24),
                     ],
@@ -134,7 +149,10 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
                     if (screenState.isEmpty) ...[
                       _EmptyState(),
                     ] else if (screenState.todayAssignments.isEmpty) ...[
-                      _TodayEmptyHint(),
+                      _TodayEmptyHint(
+                        hasOverdue:
+                            screenState.overdueAssignments.isNotEmpty,
+                      ),
                     ] else ...[
                       for (int i = 0;
                           i < screenState.todayAssignments.length;
@@ -149,6 +167,15 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
                               screenState.todayAssignments[i]),
                         ),
                       ],
+                    ],
+
+                    // 5. 今後の予定セクション（upcomingAssignments がある場合のみ）
+                    if (screenState.upcomingAssignments.isNotEmpty) ...[
+                      const SizedBox(height: 24),
+                      _UpcomingSection(
+                        assignments: screenState.upcomingAssignments,
+                        onReschedule: _handleReschedule,
+                      ),
                     ],
                   ],
                 );
@@ -223,6 +250,10 @@ class _OverdueSection extends StatelessWidget {
 
 // 今日のプランがない場合のヒントWidget
 class _TodayEmptyHint extends StatelessWidget {
+  final bool hasOverdue;
+
+  const _TodayEmptyHint({this.hasOverdue = false});
+
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
@@ -241,14 +272,199 @@ class _TodayEmptyHint extends StatelessWidget {
               color: colors.textHint,
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            '上の未完了プランを「今日やる」で\n実行できます',
-            style: TextStyle(
-              fontSize: 12,
-              color: colors.textHint,
+          if (hasOverdue) ...[
+            const SizedBox(height: 4),
+            Text(
+              '上の未完了プランを「今日やる」で\n実行できます',
+              style: TextStyle(
+                fontSize: 12,
+                color: colors.textHint,
+              ),
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// 今後の予定セクションWidget
+class _UpcomingSection extends StatelessWidget {
+  final List<WorkoutAssignment> assignments;
+  final void Function(String id, DateTime date) onReschedule;
+
+  const _UpcomingSection({
+    required this.assignments,
+    required this.onReschedule,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(LucideIcons.calendarClock,
+                size: 16, color: AppColors.primary500),
+            const SizedBox(width: 6),
+            Text(
+              '今後の予定 (${assignments.length}件)',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primary700,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        for (int i = 0; i < assignments.length; i++) ...[
+          if (i > 0) const SizedBox(height: 8),
+          _UpcomingAssignmentCard(
+            key: ValueKey(assignments[i].id),
+            assignment: assignments[i],
+            onReschedule: (date) => onReschedule(assignments[i].id, date),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+// 今後の予定カードWidget（コンパクト版）
+class _UpcomingAssignmentCard extends StatelessWidget {
+  final WorkoutAssignment assignment;
+  final ValueChanged<DateTime> onReschedule;
+
+  const _UpcomingAssignmentCard({
+    super.key,
+    required this.assignment,
+    required this.onReschedule,
+  });
+
+  String _weekdayLabel(int weekday) {
+    const labels = ['月', '火', '水', '木', '金', '土', '日'];
+    return labels[weekday - 1];
+  }
+
+  /// assigned_date（yyyy-MM-dd）を「M/d(E)」形式の日本語に整形
+  String _formatAssignedDate(String dateStr) {
+    final parts = dateStr.split('-');
+    final dt = DateTime(
+      int.parse(parts[0]),
+      int.parse(parts[1]),
+      int.parse(parts[2]),
+    );
+    return '${dt.month}/${dt.day}(${_weekdayLabel(dt.weekday)})';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final title = assignment.planInfo?.title ?? 'ワークアウト';
+    final exerciseCount = assignment.exercises.length;
+    final formattedDate = _formatAssignedDate(assignment.assignedDate);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.border, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(13),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          // 日付チップ
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: colors.surfaceDim,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              formattedDate,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: colors.textSecondary,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          // タイトル + 種目数
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: colors.textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '$exerciseCount種目',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+
+          // 日付変更アクション
+          GestureDetector(
+            onTap: () async {
+              final picked = await showDialog<DateTime>(
+                context: context,
+                builder: (_) => const RescheduleDatePicker(),
+              );
+              if (picked != null) onReschedule(picked);
+            },
+            child: Container(
+              constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.primary500.withAlpha(20),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.primary500.withAlpha(50)),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(LucideIcons.calendarDays,
+                      size: 16, color: AppColors.primary500),
+                  const SizedBox(height: 4),
+                  const Text(
+                    '日付変更',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -757,6 +973,40 @@ class _PreviewOverdueSection extends StatelessWidget {
   }
 }
 
+class _PreviewUpcomingSection extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+
+    String fmt(DateTime d) =>
+        '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+    WorkoutAssignment makeAssignment(int daysAhead, String title) {
+      return WorkoutAssignment(
+        id: 'preview-upcoming-$daysAhead',
+        clientId: 'client-1',
+        trainerId: 'trainer-1',
+        planId: 'plan-1',
+        assignedDate: fmt(now.add(Duration(days: daysAhead))),
+        status: 'pending',
+        planInfo: WorkoutPlanInfo(
+          title: title,
+          category: 'strength',
+          estimatedMinutes: 45,
+        ),
+      );
+    }
+
+    return _UpcomingSection(
+      assignments: [
+        makeAssignment(3, '上半身トレーニング'),
+        makeAssignment(9, '下半身トレーニング'),
+      ],
+      onReschedule: (_, __) {},
+    );
+  }
+}
+
 class _PreviewTodayEmptyHint extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -964,6 +1214,37 @@ Widget previewWorkoutScreenWithOverdue() {
 
             // 今日のプランなしヒント
             _PreviewTodayEmptyHint(),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+@Preview(name: 'WorkoutScreen - With Upcoming')
+Widget previewWorkoutScreenWithUpcoming() {
+  return MaterialApp(
+    theme: AppTheme.lightTheme,
+    home: Scaffold(
+      appBar: AppBar(title: const Text('ワークアウト')),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            // 週間カレンダー
+            _PreviewWeeklyCalendar(),
+            const SizedBox(height: 16),
+
+            // 日付ヘッダー
+            _PreviewDateHeaderStatic(),
+            const SizedBox(height: 16),
+
+            // 今日のプランなしヒント
+            _PreviewTodayEmptyHint(),
+
+            // 今後の予定セクション
+            const SizedBox(height: 24),
+            _PreviewUpcomingSection(),
           ],
         ),
       ),

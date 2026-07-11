@@ -167,14 +167,55 @@ class WorkoutRepository {
   }
 
   /// アサインメントの実施日を変更する
+  ///
+  /// auto-skip cron とのレースで skipped になった直後でも
+  /// 確実に pending へ戻すため、status も同時に更新する。
   Future<void> rescheduleAssignment(
     String assignmentId,
     String newDateStr,
   ) async {
     await SupabaseService.client.from('workout_assignments').update({
       'assigned_date': newDateStr,
+      'status': 'pending',
       'updated_at': DateTime.now().toUtc().toIso8601String(),
     }).eq('id', assignmentId);
+  }
+
+  /// 今後の予定のアサインメントを取得
+  /// assigned_date > today かつ assigned_date <= today+30日
+  /// かつ status = 'pending' かつ self_guided
+  Future<List<WorkoutAssignment>> getUpcomingAssignments(
+    String clientId,
+  ) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final rangeEnd = today.add(const Duration(days: 30));
+    final todayStr =
+        '${today.year.toString().padLeft(4, '0')}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+    final rangeEndStr =
+        '${rangeEnd.year.toString().padLeft(4, '0')}-${rangeEnd.month.toString().padLeft(2, '0')}-${rangeEnd.day.toString().padLeft(2, '0')}';
+
+    final data = await SupabaseService.client
+        .from('workout_assignments')
+        .select(
+          '*, workout_plans(title, description, category, estimated_minutes, plan_type), workout_assignment_exercises(*)',
+        )
+        .eq('client_id', clientId)
+        .eq('status', 'pending')
+        .gt('assigned_date', todayStr)
+        .lte('assigned_date', rangeEndStr)
+        .order('assigned_date', ascending: true);
+
+    final assignments = data
+        .map((json) => WorkoutAssignment.fromJson(json))
+        .where((a) => a.planInfo?.planType == 'self_guided')
+        .toList();
+
+    return assignments.map((assignment) {
+      final sorted = [...assignment.exercises]
+        ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
+      return assignment.copyWith(exercises: sorted);
+    }).toList();
   }
 
   /// 指定週のアサインメントを取得（カレンダー表示用）
