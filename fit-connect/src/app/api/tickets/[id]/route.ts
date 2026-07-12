@@ -1,16 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { requireTrainer, notFoundResponse, trainerOwnsTicket } from '@/lib/api/guards'
 
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireTrainer()
+  if (auth.response) return auth.response
+  const trainerId = auth.user.id
+
   const { id } = await params
   const body = await req.json()
   const { ticketName, ticketType, totalSessions, remainingSessions, validFrom, validUntil } = body
 
   if (!id) {
     return NextResponse.json({ error: 'Missing ticket ID' }, { status: 400 })
+  }
+
+  if (!(await trainerOwnsTicket(trainerId, id))) {
+    return notFoundResponse()
   }
 
   const updateData: Record<string, unknown> = {}
@@ -41,10 +50,18 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireTrainer()
+  if (auth.response) return auth.response
+  const trainerId = auth.user.id
+
   const { id } = await params
 
   if (!id) {
     return NextResponse.json({ error: 'Missing ticket ID' }, { status: 400 })
+  }
+
+  if (!(await trainerOwnsTicket(trainerId, id))) {
+    return notFoundResponse()
   }
 
   const { error } = await supabaseAdmin

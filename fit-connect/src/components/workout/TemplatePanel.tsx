@@ -108,12 +108,11 @@ function DraggableTemplateCard({
 }
 
 interface TemplatePanelProps {
-  trainerId: string
   templates: WorkoutPlan[]
   onRefetch: () => void
 }
 
-export function TemplatePanel({ trainerId, templates, onRefetch }: TemplatePanelProps) {
+export function TemplatePanel({ templates, onRefetch }: TemplatePanelProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [formModalOpen, setFormModalOpen] = useState(false)
   const [editingPlan, setEditingPlan] = useState<WorkoutPlan | null>(null)
@@ -194,7 +193,6 @@ export function TemplatePanel({ trainerId, templates, onRefetch }: TemplatePanel
       <PlanFormModal
         open={formModalOpen}
         onClose={() => setFormModalOpen(false)}
-        trainerId={trainerId}
         editingPlan={editingPlan}
         onSaved={onRefetch}
       />

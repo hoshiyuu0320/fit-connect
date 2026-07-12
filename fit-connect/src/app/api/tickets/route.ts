@@ -2,13 +2,22 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { isPriceYenInput } from '@/lib/payments/validation'
 import { extractDateOnly } from '@/lib/payments/jstDate'
+import { requireTrainer, notFoundResponse, trainerOwnsClient } from '@/lib/api/guards'
 
 export async function POST(req: NextRequest) {
+  const auth = await requireTrainer()
+  if (auth.response) return auth.response
+  const trainerId = auth.user.id
+
   const body = await req.json()
   const { clientId, ticketName, ticketType, totalSessions, validFrom, validUntil, priceYen } = body
 
   if (!clientId || !ticketName || !ticketType || !totalSessions) {
     return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 })
+  }
+
+  if (!(await trainerOwnsClient(trainerId, clientId))) {
+    return notFoundResponse()
   }
 
   // priceYen は任意入力（0以上の整数 or null）

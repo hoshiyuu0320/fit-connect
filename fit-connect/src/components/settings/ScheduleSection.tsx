@@ -35,7 +35,7 @@ export function ScheduleSection({ trainer }: Props) {
   useEffect(() => {
     const fetchSchedules = async () => {
       try {
-        const res = await fetch(`/api/trainer-schedules?trainerId=${trainer.id}`)
+        const res = await fetch('/api/trainer-schedules')
         const { data } = await res.json()
 
         if (data && data.length > 0) {
@@ -108,7 +108,6 @@ export function ScheduleSection({ trainer }: Props) {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          trainerId: trainer.id,
           schedules: payload,
         }),
       })

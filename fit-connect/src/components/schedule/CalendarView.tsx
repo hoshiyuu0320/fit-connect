@@ -136,7 +136,7 @@ export default function CalendarView() {
     const fetchTemplates = useCallback(async () => {
         if (!trainerId) return;
         try {
-            const res = await fetch(`/api/workout-plans?trainerId=${trainerId}`);
+            const res = await fetch('/api/workout-plans');
             if (res.ok) {
                 const json = await res.json();
                 setTemplates(json.data || []);
@@ -162,7 +162,7 @@ export default function CalendarView() {
             const weekStart = format(start, 'yyyy-MM-dd');
             const weekEnd = format(end, 'yyyy-MM-dd');
             const res = await fetch(
-                `/api/workout-assignments?trainerId=${trainerId}&clientId=${selectedClientId}&weekStart=${weekStart}&weekEnd=${weekEnd}`
+                `/api/workout-assignments?clientId=${selectedClientId}&weekStart=${weekStart}&weekEnd=${weekEnd}`
             );
             if (res.ok) {
                 const json = await res.json();
@@ -319,7 +319,6 @@ export default function CalendarView() {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            trainerId,
                             clientId: selectedClientId,
                             planId: plan.id,
                             assignedDate: dropDate,
@@ -368,7 +367,6 @@ export default function CalendarView() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    trainerId,
                     clientId: selectedClientId,
                     planId: pendingDrop.planId,
                     assignedDate: pendingDrop.date,
@@ -464,7 +462,6 @@ export default function CalendarView() {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        trainerId,
                         clientId,
                         planId: plan.id,
                         assignedDate: date,
@@ -476,7 +473,7 @@ export default function CalendarView() {
                     const start = startOfWeek(startOfMonth(currentDate!), { weekStartsOn: 1 });
                     const end = addDays(start, 41);
                     const assignRes = await fetch(
-                        `/api/workout-assignments?trainerId=${trainerId}&clientId=${clientId}&weekStart=${format(start, 'yyyy-MM-dd')}&weekEnd=${format(end, 'yyyy-MM-dd')}`
+                        `/api/workout-assignments?clientId=${clientId}&weekStart=${format(start, 'yyyy-MM-dd')}&weekEnd=${format(end, 'yyyy-MM-dd')}`
                     );
                     if (assignRes.ok) {
                         const json = await assignRes.json();
@@ -829,7 +826,6 @@ export default function CalendarView() {
                     >
                         {isWorkoutPanelOpen && (
                             <TemplatePanel
-                                trainerId={trainerId}
                                 templates={templates}
                                 onRefetch={fetchTemplates}
                             />

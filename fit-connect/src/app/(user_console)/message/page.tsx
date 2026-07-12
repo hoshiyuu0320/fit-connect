@@ -126,7 +126,6 @@ function MessageContent() {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    trainerId: userId,
                     clientId: selectedClient.client_id,
                     content: input,
                     ...(imageUrls.length > 0 && { image_urls: imageUrls }),

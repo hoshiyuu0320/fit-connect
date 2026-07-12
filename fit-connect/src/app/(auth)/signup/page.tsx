@@ -32,6 +32,7 @@ export default function SignUpPage() {
                 password: password,
                 options: {
                     emailRedirectTo: `${location.origin}/auth/callback`,
+                    data: { full_name: fullName },
                 },
             })
 
@@ -49,7 +50,7 @@ export default function SignUpPage() {
             const res = await fetch('/api/trainers/create', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ userId, name: fullName, email }),
+              body: JSON.stringify({ name: fullName }),
             })
             if (!res.ok) {
               const errorData = await res.json()

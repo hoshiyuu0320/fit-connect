@@ -33,7 +33,7 @@
 | 2 | LLM カロリー計算 | Mobile + Supabase | 90% | 🟢 2.1〜2.5 完了（スクショ取り込み含む）/ 2.4任意項目のみバックログ |
 | 3 | オンボーディングフロー | Mobile | 0% | 🔴 未着手（実装時はカタログ cat2 3-A の設計を使用） |
 | 4 | ランディングページ | Web | 90% | 🟡 4.1〜4.4 + メタタグ・OGP + アナリティクス（GA4）完了（2026/07/12）/ Lighthouse最適化 残 |
-| 5 | セキュリティ・基盤修復【緊急】 | Supabase + Web | 60% | 🟡 5.1・5.2 完了 / 5.3 cron migration 化済み・Vault 登録はユーザー作業待ち（手順書: `2026-07-10-cron-vault-setup.md`）/ 5.4 未着手 |
+| 5 | セキュリティ・基盤修復【緊急】 | Supabase + Web | 75% | 🟡 5.1・5.2・5.5 完了 / 5.3 cron migration 化済み・Vault 登録はユーザー作業待ち（手順書: `2026-07-10-cron-vault-setup.md`）/ 5.4 未着手 |
 | 6 | 収益化・リリース準備（Stripe/法務/アカウント削除/Apple Sign-In） | Web + Mobile + Supabase | 70% | 🟡 6.2 完了（アカウント削除 + Sign in with Apple）/ 6.1 ほぼ完了（法務3ページ + user_consents + signup同意。Mobile側の顧客同意UIのみ残）/ 6.3 Stripe課金コア実装済み（テスト・本番切替はオーナーのStripeセットアップ待ち。手順書: 2026-07-12-stripe-setup-guide.md）/ 6.4 完了（フェーズ4として実装済み）/ 6.5 支払記録 実装済み（領収書PDF・Stripe Connect は後回し） |
 | 7 | 通知基盤統一（device_tokens + 共通ディスパッチャ） | Supabase + Web + Mobile | 80% | 🟡 7.1〜7.3 完了（2026/07/19）/ 残りは 7.4 通知権限プライミングのみ（フェーズ3 オンボーディングと連動） |
 | 8 | 不具合修正・顧客体験の底上げ | Mobile + Web + Supabase | 30% | 🟡 8.1 ワークアウト繰越バグ修正 完了（2026/07/10。拡張の警告通知はフェーズ7待ち）/ 8.2・8.3 未着手 |
@@ -250,6 +250,14 @@
     - `auto-skip-workouts` は Edge Function がデプロイ済み ACTIVE なのに cron が存在せず、機能が休眠していた → **無効(inactive)状態で cron 登録**。有効化すると現存25件の期限切れ pending 課題が初回実行で一括スキップされるため、有効化は繰越問題（cat2 8-A）修正後にユーザー判断
 - [ ] **5.4 RLS の CI テスト基盤**（統合判断7-4、任意だが推奨）
   - [ ] anon/authenticated/他人ロールでのアクセス可否テストを `supabase/tests/` に新設（再発防止）
+- [x] **5.5 チケット系ほか API Route の認証ハードニング**（cat7 派生、〜1日）
+  - [x] `src/lib/api/guards.ts` を新設: `requireTrainer()`（@supabase/ssr の cookie セッション認証・401）+ `notFoundResponse()`（404）+ `trainerOwns*` 所有検証10種（client/ticket/template/subscription/note/message/plan/assignment/assignmentExercise/session）。ユニットテスト付き
+  - [x] 未認証で `supabaseAdmin`(service_role) を使い、リクエストの trainerId/clientId/userId を無検証で信頼していた **22 ルートファイル（全32 export メソッド）** をガード。trainer_id は必ず `auth.user.id` から導出、対象リソースの所有をサーバー側で検証（RLS バイパス穴の封鎖）
+  - [x] レスポンス規約: 未認証→401 `UNAUTHORIZED` / 非所有・不在→404 `NOT_FOUND` / trainers/[id] の id≠self のみ 403 `FORBIDDEN`
+  - [x] フロントの fetch から now-ignored な trainerId/userId 送信を撤去（挙動不変のクリーンアップ）
+  - [x] 対象外: `/api/billing/*`（既にセッション認証）・`/api/stripe/webhook`（署名認証）・`/api/push-notify`（supabaseAdmin 不使用・PUSH_API_KEY ゲート）
+  - [x] tsc / vitest 70 / lint 0 / next build 通過。ブラウザでチケット・カルテ CRUD / メッセージ送信を確認、未ログイン時に対象12ルートが 401 を返すことを curl で確認
+  - 2026-07-13 完了（PR fix/api-auth-hardening）。フェーズ6.3 の billing 認証パターンを全ルートに横展開
 
 ---
 

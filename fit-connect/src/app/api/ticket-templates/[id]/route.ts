@@ -1,13 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { isPriceYenInput } from '@/lib/payments/validation'
+import { requireTrainer, notFoundResponse, trainerOwnsTemplate } from '@/lib/api/guards'
 
 // PUT: テンプレート更新
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireTrainer()
+  if (auth.response) return auth.response
+  const trainerId = auth.user.id
+
   const { id } = await params
+
+  if (!(await trainerOwnsTemplate(trainerId, id))) {
+    return notFoundResponse()
+  }
 
   try {
     const body = await request.json()
@@ -61,7 +70,15 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireTrainer()
+  if (auth.response) return auth.response
+  const trainerId = auth.user.id
+
   const { id } = await params
+
+  if (!(await trainerOwnsTemplate(trainerId, id))) {
+    return notFoundResponse()
+  }
 
   try {
     const { error } = await supabaseAdmin

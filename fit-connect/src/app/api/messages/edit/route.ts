@@ -1,14 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { requireTrainer, notFoundResponse, trainerOwnsMessage } from '@/lib/api/guards';
 
 const EDIT_TIME_LIMIT_MINUTES = 5;
 
 export async function PUT(req: NextRequest) {
+  const auth = await requireTrainer();
+  if (auth.response) return auth.response;
+  const trainerId = auth.user.id;
+
   const body = await req.json();
   const { messageId, content } = body;
 
   if (!messageId || !content || !content.trim()) {
     return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
+  }
+
+  if (!(await trainerOwnsMessage(trainerId, messageId))) {
+    return notFoundResponse();
   }
 
   // メッセージ取得 & 5分以内チェック

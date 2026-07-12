@@ -285,7 +285,6 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            trainerId: userId,
                             clientId: data.client_id,
                             planId: selectedPlanId,
                             assignedDate: dateTime.toISOString(),

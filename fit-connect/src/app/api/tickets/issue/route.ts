@@ -1,9 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { toJstDateString } from '@/lib/payments/jstDate'
+import {
+  requireTrainer,
+  notFoundResponse,
+  trainerOwnsClient,
+  trainerOwnsTemplate,
+} from '@/lib/api/guards'
 
 // POST: テンプレートから都度発行
 export async function POST(request: NextRequest) {
+  const auth = await requireTrainer()
+  if (auth.response) return auth.response
+  const trainerId = auth.user.id
+
   try {
     const body = await request.json()
     const { templateId, clientId } = body
@@ -13,6 +23,13 @@ export async function POST(request: NextRequest) {
         { error: 'templateId and clientId are required' },
         { status: 400 }
       )
+    }
+
+    if (!(await trainerOwnsTemplate(trainerId, templateId))) {
+      return notFoundResponse()
+    }
+    if (!(await trainerOwnsClient(trainerId, clientId))) {
+      return notFoundResponse()
     }
 
     // 1. テンプレート情報を取得

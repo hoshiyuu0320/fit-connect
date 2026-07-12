@@ -182,7 +182,6 @@ export function NotificationSection({ trainerId }: NotificationSectionProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          trainerId,
           endpoint: subscription.endpoint,
           p256dh,
           auth,
@@ -213,7 +212,6 @@ export function NotificationSection({ trainerId }: NotificationSectionProps) {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            trainerId,
             endpoint: subscription.endpoint,
           }),
         })

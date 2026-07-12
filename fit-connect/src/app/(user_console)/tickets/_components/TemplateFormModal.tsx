@@ -42,7 +42,6 @@ interface TemplateFormModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   template: TicketTemplate | null
-  trainerId: string
   onSaved: () => void
 }
 
@@ -50,7 +49,6 @@ export function TemplateFormModal({
   open,
   onOpenChange,
   template,
-  trainerId,
   onSaved,
 }: TemplateFormModalProps) {
   const [submitting, setSubmitting] = useState(false)
@@ -117,7 +115,6 @@ export function TemplateFormModal({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            trainerId,
             templateName: data.template_name,
             ticketType: data.ticket_type,
             totalSessions: data.total_sessions,

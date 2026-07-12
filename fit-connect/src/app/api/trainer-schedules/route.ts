@@ -1,17 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { upsertTrainerSchedules } from '@/lib/supabase/upsertTrainerSchedules'
+import { requireTrainer } from '@/lib/api/guards'
 
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url)
-  const trainerId = searchParams.get('trainerId')
-
-  if (!trainerId) {
-    return NextResponse.json(
-      { error: 'trainerId is required' },
-      { status: 400 }
-    )
-  }
+export async function GET() {
+  const auth = await requireTrainer()
+  if (auth.response) return auth.response
+  const trainerId = auth.user.id
 
   try {
     const { data, error } = await supabaseAdmin
@@ -31,12 +26,16 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  const body = await request.json()
-  const { trainerId, schedules } = body
+  const auth = await requireTrainer()
+  if (auth.response) return auth.response
+  const trainerId = auth.user.id
 
-  if (!trainerId || !schedules) {
+  const body = await request.json()
+  const { schedules } = body
+
+  if (!schedules) {
     return NextResponse.json(
-      { error: 'trainerId and schedules are required' },
+      { error: 'schedules is required' },
       { status: 400 }
     )
   }
