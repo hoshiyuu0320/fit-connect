@@ -21,6 +21,10 @@ Trainer _$TrainerFromJson(Map<String, dynamic> json) => Trainer(
       lastSeenAt: json['last_seen_at'] == null
           ? null
           : DateTime.parse(json['last_seen_at'] as String),
+      subscriptionPlan: json['subscription_plan'] as String?,
+      trialEndsAt: json['trial_ends_at'] == null
+          ? null
+          : DateTime.parse(json['trial_ends_at'] as String),
     );
 
 Map<String, dynamic> _$TrainerToJson(Trainer instance) => <String, dynamic>{
@@ -32,4 +36,6 @@ Map<String, dynamic> _$TrainerToJson(Trainer instance) => <String, dynamic>{
       'updated_at': instance.updatedAt?.toIso8601String(),
       'is_online': instance.isOnline,
       'last_seen_at': instance.lastSeenAt?.toIso8601String(),
+      'subscription_plan': instance.subscriptionPlan,
+      'trial_ends_at': instance.trialEndsAt?.toIso8601String(),
     };

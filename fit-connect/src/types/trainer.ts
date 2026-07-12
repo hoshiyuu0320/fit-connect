@@ -3,6 +3,8 @@ export type Trainer = {
   name: string
   email: string
   profile_image_url: string | null
+  subscription_plan: 'free' | 'pro' | 'business'
+  trial_ends_at: string | null
   created_at: string
   updated_at: string
 }

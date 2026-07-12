@@ -220,12 +220,19 @@ Deno.serve(async (req) => {
     }
 
     // 3. subscription gate
+    // 実効プラン規則: pro / business は利用可。free でも trial_ends_at が未来なら
+    // トライアル中（Pro相当）として利用可。それ以外は不可。
     const { data: trainer, error: trainerErr } = await supabase
       .from('trainers')
-      .select('id, subscription_plan')
+      .select('id, subscription_plan, trial_ends_at')
       .eq('id', client.trainer_id)
       .maybeSingle()
-    if (trainerErr || !trainer || trainer.subscription_plan !== 'pro') {
+    const plan = trainer?.subscription_plan
+    const isPaidPlan = plan === 'pro' || plan === 'business'
+    const isTrialActive =
+      typeof trainer?.trial_ends_at === 'string' &&
+      new Date(trainer.trial_ends_at).getTime() > Date.now()
+    if (trainerErr || !trainer || !(isPaidPlan || isTrialActive)) {
       return errorResponse('FORBIDDEN', 'AI features require pro plan', 403)
     }
 

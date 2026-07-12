@@ -34,7 +34,7 @@
 | 3 | オンボーディングフロー | Mobile | 0% | 🔴 未着手（実装時はカタログ cat2 3-A の設計を使用） |
 | 4 | ランディングページ | Web | 0% | 🔴 未着手（フェーズ6と連動） |
 | 5 | セキュリティ・基盤修復【緊急】 | Supabase + Web | 60% | 🟡 5.1・5.2 完了 / 5.3 cron migration 化済み・Vault 登録はユーザー作業待ち（手順書: `2026-07-10-cron-vault-setup.md`）/ 5.4 未着手 |
-| 6 | 収益化・リリース準備（Stripe/法務/アカウント削除/Apple Sign-In） | Web + Mobile + Supabase | 35% | 🟡 6.2 完了（アカウント削除 + Sign in with Apple）/ 6.1 ほぼ完了（法務3ページ + user_consents + signup同意。Mobile側の顧客同意UIのみ残）/ 6.3 価格・プラン体系決定済み（実装未着手）/ 6.4〜6.5 未着手 |
+| 6 | 収益化・リリース準備（Stripe/法務/アカウント削除/Apple Sign-In） | Web + Mobile + Supabase | 50% | 🟡 6.2 完了（アカウント削除 + Sign in with Apple）/ 6.1 ほぼ完了（法務3ページ + user_consents + signup同意。Mobile側の顧客同意UIのみ残）/ 6.3 Stripe課金コア実装済み（テスト・本番切替はオーナーのStripeセットアップ待ち。手順書: 2026-07-12-stripe-setup-guide.md）/ 6.4〜6.5 未着手 |
 | 7 | 通知基盤統一（device_tokens + 共通ディスパッチャ） | Supabase + Web + Mobile | 0% | 🔴 未着手 |
 | 8 | 不具合修正・顧客体験の底上げ | Mobile + Web + Supabase | 30% | 🟡 8.1 ワークアウト繰越バグ修正 完了（2026/07/10。拡張の警告通知はフェーズ7待ち）/ 8.2・8.3 未着手 |
 | 9 | トレーナー介入機能（異常検知・トリアージ） | Web + Supabase | 0% | 🔴 未着手 |
@@ -271,10 +271,15 @@
   - [ ] （関連）データエクスポート（個情法の開示請求対応）の方針決定
 - [ ] **6.3 Stripe SaaS 課金**（cat3 1-A、トレーナーサブスク）
   - 価格確定（2026-07-12）: Free ¥0（顧客3人・AI月30回プール）/ Pro ¥2,980税込（〜10人）/ Business ¥6,980税込（〜30人）。14日Proトライアル（クレカ無し）・月額のみ・税込表示。レートリミット 10回/顧客/日 + 100回/顧客/月（超過時テキストのみ）。詳細: docs/tasks/2026-07-11-pro-pricing-proposal.md §8
-  - [ ] Stripe Checkout + Customer Portal + webhook（`subscription_plan` 自動更新）
+  - [x] Stripe Checkout + Customer Portal + webhook（`subscription_plan` 自動更新）
+    - PR: `feature/stripe-billing-core`（API Routes: checkout / portal / status / webhook 署名検証）。14日トライアルは DB 管理（`trial_ends_at`、Stripe 非関与）、`trainer_billing` テーブル新設、`subscription_plan` のクライアント改ざん穴もカラム権限で封鎖（2026/07/12）。テスト・本番切替はオーナーの Stripe セットアップ待ち（手順書: docs/tasks/2026-07-12-stripe-setup-guide.md）
   - [ ] Pro 降格時のモバイル側挙動の設計（AI機能・Pro データの扱い。横断レビュー1-8節）
-  - [ ] Mobile 内では Pro 購入導線に言及しない（IAP 規約対応。表示は機能ゲートのみ）
-  - [ ] `allow_promotion_codes` 有効化（将来の紹介コード cat3 5-A の受け皿）
+  - [ ] Mobile 内では Pro 購入導線に言及しない（IAP 規約対応。表示は機能ゲートのみ。現状違反なしを確認済みだが継続ルールとして残す）
+  - [x] `allow_promotion_codes` 有効化（将来の紹介コード cat3 5-A の受け皿）
+    - Checkout Session 作成時に有効化済み（`feature/stripe-billing-core`、2026/07/12）
+  - [ ] 顧客数上限の enforcement（Free 3 / Pro 10 / Business 30。DB側ゲート + 超過時アップグレード誘導UI）【PR2スコープ】
+  - [ ] AIクォータ新値への書き換え（10回/顧客/日 + 100回/顧客/月 + Free 月30回プール、超過時テキストのみ）【PR2スコープ】
+  - [ ] 特商法ページの価格記入（提供開始時）【PR2スコープ】
 - [ ] **6.4 LP + 料金ページ**（cat3 3-A = 既存フェーズ4 を包含。フェーズ4のタスクリストで管理）
 - [ ] **6.5 支払記録・未払い管理**（cat3 2-A、チケット/月契約と金銭の接続。Stripe Connect 決済代行 cat3 2-B はバックログ）
 

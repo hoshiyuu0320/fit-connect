@@ -6,7 +6,7 @@ part of 'morning_dialog_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$morningDialogHash() => r'a78261591be8f7eaca56cef2ce7fa9d914700aa3';
+String _$morningDialogHash() => r'c50d5305c7d37ff98029e7a0db4e7298013c70de';
 
 /// 朝ダイアログ表示制御 Provider
 ///

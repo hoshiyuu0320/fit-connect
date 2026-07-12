@@ -6,7 +6,7 @@ part of 'nutrition_trend_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$nutritionTrendHash() => r'0000000000000000000000000000000000000000';
+String _$nutritionTrendHash() => r'e5859fcf87e770ad45ddec2a2b297bb732fa685d';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -41,14 +41,27 @@ const nutritionTrendProvider = NutritionTrendFamily();
 
 /// 体重 + 食事の日次集計（栄養トレンド）を返す Provider。
 ///
+/// 既存の [weightRecordsProvider] / [mealRecordsProvider] を watch し、
+/// `period` の範囲 (startDate 〜 today) の連続した日付配列に対して
+/// 日単位の体重 / カロリー / PFC を集計する。
+///
 /// Copied from [nutritionTrend].
-class NutritionTrendFamily extends Family<AsyncValue<List<DailyNutritionStat>>> {
+class NutritionTrendFamily
+    extends Family<AsyncValue<List<DailyNutritionStat>>> {
   /// 体重 + 食事の日次集計（栄養トレンド）を返す Provider。
+  ///
+  /// 既存の [weightRecordsProvider] / [mealRecordsProvider] を watch し、
+  /// `period` の範囲 (startDate 〜 today) の連続した日付配列に対して
+  /// 日単位の体重 / カロリー / PFC を集計する。
   ///
   /// Copied from [nutritionTrend].
   const NutritionTrendFamily();
 
   /// 体重 + 食事の日次集計（栄養トレンド）を返す Provider。
+  ///
+  /// 既存の [weightRecordsProvider] / [mealRecordsProvider] を watch し、
+  /// `period` の範囲 (startDate 〜 today) の連続した日付配列に対して
+  /// 日単位の体重 / カロリー / PFC を集計する。
   ///
   /// Copied from [nutritionTrend].
   NutritionTrendProvider call({
@@ -85,10 +98,18 @@ class NutritionTrendFamily extends Family<AsyncValue<List<DailyNutritionStat>>> 
 
 /// 体重 + 食事の日次集計（栄養トレンド）を返す Provider。
 ///
+/// 既存の [weightRecordsProvider] / [mealRecordsProvider] を watch し、
+/// `period` の範囲 (startDate 〜 today) の連続した日付配列に対して
+/// 日単位の体重 / カロリー / PFC を集計する。
+///
 /// Copied from [nutritionTrend].
 class NutritionTrendProvider
     extends AutoDisposeFutureProvider<List<DailyNutritionStat>> {
   /// 体重 + 食事の日次集計（栄養トレンド）を返す Provider。
+  ///
+  /// 既存の [weightRecordsProvider] / [mealRecordsProvider] を watch し、
+  /// `period` の範囲 (startDate 〜 today) の連続した日付配列に対して
+  /// 日単位の体重 / カロリー / PFC を集計する。
   ///
   /// Copied from [nutritionTrend].
   NutritionTrendProvider({
