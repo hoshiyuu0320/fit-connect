@@ -34,7 +34,7 @@
 | 3 | オンボーディングフロー | Mobile | 0% | 🔴 未着手（実装時はカタログ cat2 3-A の設計を使用） |
 | 4 | ランディングページ | Web | 0% | 🔴 未着手（フェーズ6と連動） |
 | 5 | セキュリティ・基盤修復【緊急】 | Supabase + Web | 60% | 🟡 5.1・5.2 完了 / 5.3 cron migration 化済み・Vault 登録はユーザー作業待ち（手順書: `2026-07-10-cron-vault-setup.md`）/ 5.4 未着手 |
-| 6 | 収益化・リリース準備（Stripe/法務/アカウント削除/Apple Sign-In） | Web + Mobile + Supabase | 0% | 🔴 未着手 |
+| 6 | 収益化・リリース準備（Stripe/法務/アカウント削除/Apple Sign-In） | Web + Mobile + Supabase | 35% | 🟡 6.2 完了（アカウント削除 + Sign in with Apple）/ 6.1 ほぼ完了（法務3ページ + user_consents + signup同意。Mobile側の顧客同意UIのみ残）/ 6.3 価格・プラン体系決定済み（実装未着手）/ 6.4〜6.5 未着手 |
 | 7 | 通知基盤統一（device_tokens + 共通ディスパッチャ） | Supabase + Web + Mobile | 0% | 🔴 未着手 |
 | 8 | 不具合修正・顧客体験の底上げ | Mobile + Web + Supabase | 30% | 🟡 8.1 ワークアウト繰越バグ修正 完了（2026/07/10。拡張の警告通知はフェーズ7待ち）/ 8.2・8.3 未着手 |
 | 9 | トレーナー介入機能（異常検知・トリアージ） | Web + Supabase | 0% | 🔴 未着手 |
@@ -258,15 +258,19 @@
 ### タスク
 
 - [ ] **6.1 法務一式 + 同意フロー**（cat3 4-A、全ての前提）
-  - [ ] 利用規約・プライバシーポリシー・特商法表記ページ（Web）+ サインアップ時同意記録
+  - [x] 利用規約・プライバシーポリシー・特商法表記ページ（Web）+ サインアップ時同意記録
+    - 3ページ + `user_consents` テーブル（migration `20260711000000`）+ Web signup 同意チェック実装済み（2026/07/11）。事業者情報は【要記入】プレースホルダのまま、公開前に弁護士レビュー推奨
   - [ ] 健康データのAI送信（外部API）に関する顧客側の明示同意の設計（横断レビュー1-6節）
   - [ ] トレーナー＝個人情報取扱事業者 / FIT-CONNECT＝委託先の責任分界を規約に明記
+    - 上記2件は規約・プライバシーポリシーの文面では対応済み。ただし **Mobile側の同意UI（顧客の登録フロー）が未対応** のため未完了として残す
 - [ ] **6.2 アカウント削除 + Sign in with Apple**【App Store 審査ブロッカー】（横断レビュー1-1節）
   - [x] Mobile アプリ内からのアカウント削除（Guideline 5.1.1(v)）: auth 削除 + records/Storage 画像のカスケード削除 Edge Function
     - Edge Function `delete-account` 新設（JWT 自前検証・削除順序: clients DELETE(子は CASCADE) → messages DELETE → Storage ベストエフォート → auth.users 削除。設定画面から2段階確認で実行）
-  - [ ] Sign in with Apple 追加（Guideline 4.8。Google Sign-In があるため必須）
+  - [x] Sign in with Apple 追加（Guideline 4.8。Google Sign-In があるため必須）
+    - 実装済み・実機ログイン確認済み（2026/07/11、PR #68）
   - [ ] （関連）データエクスポート（個情法の開示請求対応）の方針決定
 - [ ] **6.3 Stripe SaaS 課金**（cat3 1-A、トレーナーサブスク）
+  - 価格確定（2026-07-12）: Free ¥0（顧客3人・AI月30回プール）/ Pro ¥2,980税込（〜10人）/ Business ¥6,980税込（〜30人）。14日Proトライアル（クレカ無し）・月額のみ・税込表示。レートリミット 10回/顧客/日 + 100回/顧客/月（超過時テキストのみ）。詳細: docs/tasks/2026-07-11-pro-pricing-proposal.md §8
   - [ ] Stripe Checkout + Customer Portal + webhook（`subscription_plan` 自動更新）
   - [ ] Pro 降格時のモバイル側挙動の設計（AI機能・Pro データの扱い。横断レビュー1-8節）
   - [ ] Mobile 内では Pro 購入導線に言及しない（IAP 規約対応。表示は機能ゲートのみ）

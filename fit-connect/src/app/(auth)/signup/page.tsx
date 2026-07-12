@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { supabase } from '@/lib/supabase';
+import { saveUserConsents } from '@/lib/supabase/saveUserConsents';
 import { useRouter } from 'next/navigation';
 
 
@@ -10,6 +11,7 @@ export default function SignUpPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
+    const [agreedToTerms, setAgreedToTerms] = useState(false);
     const router = useRouter();
 
     const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -40,6 +42,9 @@ export default function SignUpPage() {
             alert('登録完了メールを確認してください');
             const userId = signUpData.user?.id;
             if (!userId) return;
+
+            // 規約・ポリシーへの同意を記録（ベストエフォート、失敗してもサインアップは継続）
+            await saveUserConsents({ userId, userType: 'trainer' });
 
             const res = await fetch('/api/trainers/create', {
               method: 'POST',
@@ -177,10 +182,44 @@ export default function SignUpPage() {
                             />
                         </div>
 
+                        <div className="flex items-start gap-2">
+                            <input
+                                id="agreeToTerms"
+                                type="checkbox"
+                                checked={agreedToTerms}
+                                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                                className="mt-0.5 h-4 w-4 shrink-0 rounded border-[#E2E8F0] accent-[#14B8A6] cursor-pointer"
+                            />
+                            <label
+                                htmlFor="agreeToTerms"
+                                className="text-sm text-[#475569] cursor-pointer"
+                            >
+                                <a
+                                    href="/terms"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[#14B8A6] hover:text-[#0D9488] underline transition-colors"
+                                >
+                                    利用規約
+                                </a>
+                                および
+                                <a
+                                    href="/privacy"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[#14B8A6] hover:text-[#0D9488] underline transition-colors"
+                                >
+                                    プライバシーポリシー
+                                </a>
+                                に同意します
+                            </label>
+                        </div>
+
                         <div className="pt-1">
                             <button
                                 type="submit"
-                                className="w-full h-11 bg-[#14B8A6] hover:bg-[#0D9488] text-white text-sm font-semibold rounded-md px-4 py-2.5 transition-colors cursor-pointer"
+                                disabled={!agreedToTerms}
+                                className="w-full h-11 bg-[#14B8A6] hover:bg-[#0D9488] text-white text-sm font-semibold rounded-md px-4 py-2.5 transition-colors cursor-pointer disabled:bg-[#94A3B8] disabled:hover:bg-[#94A3B8] disabled:cursor-not-allowed"
                             >
                                 新規登録
                             </button>
