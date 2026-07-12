@@ -17,6 +17,10 @@ class Trainer {
   final bool isOnline;
   @JsonKey(name: 'last_seen_at')
   final DateTime? lastSeenAt;
+  @JsonKey(name: 'subscription_plan')
+  final String? subscriptionPlan;
+  @JsonKey(name: 'trial_ends_at')
+  final DateTime? trialEndsAt;
 
   const Trainer({
     required this.id,
@@ -27,6 +31,8 @@ class Trainer {
     this.updatedAt,
     this.isOnline = false,
     this.lastSeenAt,
+    this.subscriptionPlan,
+    this.trialEndsAt,
   });
 
   factory Trainer.fromJson(Map<String, dynamic> json) =>

@@ -6,12 +6,15 @@ part of 'ai_features_enabled_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$aiFeaturesEnabledHash() => r'0b94306966f993e7868cff9bd8b85de60ede9a46';
+String _$aiFeaturesEnabledHash() => r'42108248a53aa87cb864f5a4ce2070690dda2fc8';
 
-/// 自身の担当トレーナーの subscription_plan が 'pro' かどうか。
-/// 取得失敗・未認証・未紐付けの場合は false を返す（保守的にAI非表示）。
+/// 自身の担当トレーナーがAI機能を利用可能かどうか（実効プラン判定）。
+/// - subscription_plan が 'pro' または 'business' → 利用可
+/// - 'free' でも trial_ends_at が現在より未来（トライアル中・Pro相当） → 利用可
+/// - それ以外・取得失敗・未認証・未紐付け → false（保守的にAI非表示）
 ///
-/// 参照経路: auth.uid() → clients.client_id → clients.trainer_id → trainers.subscription_plan
+/// 参照経路: auth.uid() → clients.client_id → clients.trainer_id
+///           → trainers.subscription_plan / trainers.trial_ends_at
 ///
 /// Copied from [aiFeaturesEnabled].
 @ProviderFor(aiFeaturesEnabled)

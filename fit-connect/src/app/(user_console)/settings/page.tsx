@@ -8,6 +8,7 @@ import { useUserStore } from '@/store/userStore'
 import { ProfileSection } from '@/components/settings/ProfileSection'
 import { ScheduleSection } from '@/components/settings/ScheduleSection'
 import { NotificationSection } from '@/components/settings/NotificationSection'
+import { BillingSection } from '@/components/settings/BillingSection'
 import { AccountSection } from '@/components/settings/AccountSection'
 import type { Trainer } from '@/types/trainer'
 
@@ -91,6 +92,9 @@ export default function SettingsPage() {
 
         {/* 通知設定 */}
         <NotificationSection trainerId={trainer.id} />
+
+        {/* プラン・お支払い */}
+        <BillingSection />
 
         {/* アカウント管理 */}
         <AccountSection onLogout={handleLogout} />

@@ -4,10 +4,13 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'ai_features_enabled_provider.g.dart';
 
-/// 自身の担当トレーナーの subscription_plan が 'pro' かどうか。
-/// 取得失敗・未認証・未紐付けの場合は false を返す（保守的にAI非表示）。
+/// 自身の担当トレーナーがAI機能を利用可能かどうか（実効プラン判定）。
+/// - subscription_plan が 'pro' または 'business' → 利用可
+/// - 'free' でも trial_ends_at が現在より未来（トライアル中・Pro相当） → 利用可
+/// - それ以外・取得失敗・未認証・未紐付け → false（保守的にAI非表示）
 ///
-/// 参照経路: auth.uid() → clients.client_id → clients.trainer_id → trainers.subscription_plan
+/// 参照経路: auth.uid() → clients.client_id → clients.trainer_id
+///           → trainers.subscription_plan / trainers.trial_ends_at
 // TODO(stage 2): subscribe to auth.onAuthStateChange to invalidate on sign-in/out, and
 //                handle subscription_plan changes (Stripe webhook) to flip the gate live.
 @Riverpod(keepAlive: true)
@@ -33,12 +36,23 @@ Future<bool> aiFeaturesEnabled(AiFeaturesEnabledRef ref) async {
 
     final trainerRow = await supabase
         .from('trainers')
-        .select('subscription_plan')
+        .select('subscription_plan, trial_ends_at')
         .eq('id', trainerId)
         .maybeSingle();
     final plan = trainerRow?['subscription_plan'] as String?;
-    final enabled = plan == 'pro';
-    if (kDebugMode) debugPrint('[aiFeaturesEnabled] trainer=$trainerId plan=$plan → $enabled');
+    final trialEndsAtRaw = trainerRow?['trial_ends_at'] as String?;
+    final trialEndsAt =
+        trialEndsAtRaw != null ? DateTime.tryParse(trialEndsAtRaw) : null;
+    final isPaidPlan = plan == 'pro' || plan == 'business';
+    final isTrialActive =
+        trialEndsAt != null && trialEndsAt.isAfter(DateTime.now());
+    final enabled = isPaidPlan || isTrialActive;
+    if (kDebugMode) {
+      debugPrint(
+        '[aiFeaturesEnabled] trainer=$trainerId plan=$plan '
+        'trialEndsAt=$trialEndsAtRaw → $enabled',
+      );
+    }
     return enabled;
   } catch (e, st) {
     if (kDebugMode) debugPrint('[aiFeaturesEnabled] error: $e\n$st');
