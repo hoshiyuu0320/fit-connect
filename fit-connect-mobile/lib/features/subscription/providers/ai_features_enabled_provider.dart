@@ -4,13 +4,15 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'ai_features_enabled_provider.g.dart';
 
-/// 自身の担当トレーナーがAI機能を利用可能かどうか（実効プラン判定）。
-/// - subscription_plan が 'pro' または 'business' → 利用可
-/// - 'free' でも trial_ends_at が現在より未来（トライアル中・Pro相当） → 利用可
-/// - それ以外・取得失敗・未認証・未紐付け → false（保守的にAI非表示）
+/// 自身の担当トレーナーが解決できるかどうか（AI機能のUIゲート）。
+/// - 担当トレーナーが解決できれば true（Freeプランにも月次クォータ内でAIが
+///   開放されたため、プラン文字列による出し分けは行わない）
+/// - 取得失敗・未認証・未紐付け → false（保守的にAI非表示）
+///
+/// クォータ制御はサーバー側（Edge Function の 429 応答）が実体。
+/// このUIゲートは将来のkill switch（AI機能の全停止）用に残している。
 ///
 /// 参照経路: auth.uid() → clients.client_id → clients.trainer_id
-///           → trainers.subscription_plan / trainers.trial_ends_at
 // TODO(stage 2): subscribe to auth.onAuthStateChange to invalidate on sign-in/out, and
 //                handle subscription_plan changes (Stripe webhook) to flip the gate live.
 @Riverpod(keepAlive: true)
@@ -34,26 +36,10 @@ Future<bool> aiFeaturesEnabled(AiFeaturesEnabledRef ref) async {
       return false;
     }
 
-    final trainerRow = await supabase
-        .from('trainers')
-        .select('subscription_plan, trial_ends_at')
-        .eq('id', trainerId)
-        .maybeSingle();
-    final plan = trainerRow?['subscription_plan'] as String?;
-    final trialEndsAtRaw = trainerRow?['trial_ends_at'] as String?;
-    final trialEndsAt =
-        trialEndsAtRaw != null ? DateTime.tryParse(trialEndsAtRaw) : null;
-    final isPaidPlan = plan == 'pro' || plan == 'business';
-    final isTrialActive =
-        trialEndsAt != null && trialEndsAt.isAfter(DateTime.now());
-    final enabled = isPaidPlan || isTrialActive;
     if (kDebugMode) {
-      debugPrint(
-        '[aiFeaturesEnabled] trainer=$trainerId plan=$plan '
-        'trialEndsAt=$trialEndsAtRaw → $enabled',
-      );
+      debugPrint('[aiFeaturesEnabled] trainer=$trainerId → true');
     }
-    return enabled;
+    return true;
   } catch (e, st) {
     if (kDebugMode) debugPrint('[aiFeaturesEnabled] error: $e\n$st');
     return false;

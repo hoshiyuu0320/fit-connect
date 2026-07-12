@@ -2,8 +2,19 @@ import 'dart:io';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:fit_connect_mobile/services/supabase_service.dart';
 import 'package:fit_connect_mobile/services/storage_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 
 part 'registration_provider.g.dart';
+
+/// トレーナーの顧客数上限（DBトリガーが 'CLIENT_LIMIT_REACHED' で拒否）による登録失敗。
+/// 注意: モバイル内では購入・アップグレード・価格への誘導を行わない（Apple IAP 規約）。
+class ClientLimitReachedException implements Exception {
+  static const String userMessage =
+      'このトレーナーは現在新しいお客様の受け入れを停止しています。トレーナーにお問い合わせください。';
+
+  @override
+  String toString() => userMessage;
+}
 
 /// 登録時の状態を保持するクラス
 class RegistrationState {
@@ -162,15 +173,23 @@ class RegistrationNotifier extends _$RegistrationNotifier {
 
     // clientsテーブルにレコード作成（既存の場合は更新）
     final userEmail = SupabaseService.client.auth.currentUser?.email;
-    await SupabaseService.client.from('clients').upsert({
-      'client_id': userId,
-      'trainer_id': trainerId,
-      'name':
-          state.clientName?.isNotEmpty == true ? state.clientName : '新規クライアント',
-      'email': userEmail,
-      if (state.clientAge != null) 'age': state.clientAge,
-      if (state.clientGender != null) 'gender': state.clientGender,
-    }, onConflict: 'client_id');
+    try {
+      await SupabaseService.client.from('clients').upsert({
+        'client_id': userId,
+        'trainer_id': trainerId,
+        'name':
+            state.clientName?.isNotEmpty == true ? state.clientName : '新規クライアント',
+        'email': userEmail,
+        if (state.clientAge != null) 'age': state.clientAge,
+        if (state.clientGender != null) 'gender': state.clientGender,
+      }, onConflict: 'client_id');
+    } on PostgrestException catch (e) {
+      // 顧客数上限のDBトリガーによる拒否のみユーザー向けメッセージに変換。他は既存挙動のまま
+      if (e.message.contains('CLIENT_LIMIT_REACHED')) {
+        throw ClientLimitReachedException();
+      }
+      rethrow;
+    }
 
     // プロフィール画像をアップロード（選択されている場合）
     if (state.profileImageFile != null) {

@@ -47,6 +47,16 @@ const SCREENSHOT_SYSTEM_PROMPT = `あなたは食事管理アプリの画面ス�
 
 const FUNCTION_NAME = 'estimate-meal-nutrition'
 
+// ---- レートリミット / クォータ定数 ----
+// 出典: docs/tasks/2026-07-11-pro-pricing-proposal.md §8 決定事項（2026-07-12 オーナー確定）
+// - Free: 月30回・トレーナー単位の共通プール（担当顧客全員の合計・全リクエスト種別）。使い切りで全ブロック
+// - 有料（pro/business/トライアル中）: 10回/顧客/日 + 100回/顧客/月。超過時はテキストのみ許可
+// - 全プラン共通: トレーナー単位 1000回/日 のバックストップ（従来からの既存値を維持）
+const FREE_TRAINER_MONTHLY_POOL = 30
+const PAID_CLIENT_DAILY_LIMIT = 10
+const PAID_CLIENT_MONTHLY_LIMIT = 100
+const TRAINER_DAILY_BACKSTOP = 1000
+
 async function callClaude(
   apiKey: string,
   mealType: string,
@@ -170,6 +180,19 @@ function validateEstimation(raw: any, trustTotals: boolean): { foods: any[]; tot
   return { foods, totals }
 }
 
+/**
+ * 「月」= JST（Asia/Tokyo, UTC+9・夏時間なし）の暦月。
+ * JST での月初 00:00 を UTC の ISO 文字列に変換して返し、created_at >= の比較に使う。
+ * 注意: UTC の月初とはずれる（例: JST 2026-07-01T00:00:00 は UTC では 2026-06-30T15:00:00Z）。
+ */
+function jstMonthStartIso(now: Date = new Date()): string {
+  const JST_OFFSET_MS = 9 * 60 * 60 * 1000
+  const jst = new Date(now.getTime() + JST_OFFSET_MS)
+  // シフト後の getUTC* が JST のローカル年月を表す
+  const monthStartUtcMs = Date.UTC(jst.getUTCFullYear(), jst.getUTCMonth(), 1) - JST_OFFSET_MS
+  return new Date(monthStartUtcMs).toISOString()
+}
+
 function errorResponse(code: string, message: string, status: number) {
   return new Response(JSON.stringify({ error: code, message }), {
     status,
@@ -219,22 +242,25 @@ Deno.serve(async (req) => {
       return errorResponse('FORBIDDEN', 'Client not found', 403)
     }
 
-    // 3. subscription gate
-    // 実効プラン規則: pro / business は利用可。free でも trial_ends_at が未来なら
-    // トライアル中（Pro相当）として利用可。それ以外は不可。
+    // 3. トレーナー取得と実効プラン判定
+    // §8 決定（2026-07-12）: Free プランも月30回プールで AI を利用可のため、
+    // プランによる全面 403 は廃止。403 は trainers 行が見つからない/取得エラー時のみ。
+    // 実効プラン規則: pro / business、または trial_ends_at が未来（トライアル中 = Pro相当）
+    // なら有料ティア、それ以外は Free ティアとしてクォータ判定する。
     const { data: trainer, error: trainerErr } = await supabase
       .from('trainers')
       .select('id, subscription_plan, trial_ends_at')
       .eq('id', client.trainer_id)
       .maybeSingle()
-    const plan = trainer?.subscription_plan
+    if (trainerErr || !trainer) {
+      return errorResponse('FORBIDDEN', 'Trainer not found', 403)
+    }
+    const plan = trainer.subscription_plan
     const isPaidPlan = plan === 'pro' || plan === 'business'
     const isTrialActive =
-      typeof trainer?.trial_ends_at === 'string' &&
+      typeof trainer.trial_ends_at === 'string' &&
       new Date(trainer.trial_ends_at).getTime() > Date.now()
-    if (trainerErr || !trainer || !(isPaidPlan || isTrialActive)) {
-      return errorResponse('FORBIDDEN', 'AI features require pro plan', 403)
-    }
+    const isPaidTier = isPaidPlan || isTrialActive
 
     // 4. リクエスト body パース
     const body = await req.json().catch(() => null)
@@ -258,39 +284,86 @@ Deno.serve(async (req) => {
       return errorResponse('INVALID_INPUT', 'Empty content and no images', 400)
     }
 
-    // 5. Rate limit (Claude 呼び出し前にチェック、ログは Claude 呼び出し後に挿入)
-    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-    const { count: clientCount, error: cErr } = await supabase
-      .from('ai_estimation_logs')
-      .select('*', { count: 'exact', head: true })
-      .eq('client_id', authUid)
-      .gte('created_at', since)
-    if (cErr) console.error('rate-limit (client) query error:', cErr)
-    if ((clientCount ?? 0) >= 50) {
-      await supabase.from('ai_estimation_logs').insert({
+    // 5. レートリミット / クォータ（Claude 呼び出し前にチェック）
+    // 出典: docs/tasks/2026-07-11-pro-pricing-proposal.md §8（2026-07-12 オーナー確定）
+    // - Free（非トライアル）: トレーナー単位・月30回の共通プール（担当顧客全員の合計・
+    //   全リクエスト種別を count）。使い切ったらテキストも含め全ブロック。日次判定はなし。
+    // - 有料ティア（pro/business/トライアル中）: 顧客単位 10回/日（24hローリング窓）
+    //   + 100回/月（JST暦月）。超過時はテキストのみ許可 = 画像付きリクエストのみ 429 を返す。
+    // - 全プラン共通: トレーナー単位 1000回/日 のバックストップ（既存挙動を維持）。
+    // count はいずれも従来同様「全 status の試行」を対象とする。
+    const hasImages = imageUrls.length > 0
+    const logQuotaError = (errorCode: string) =>
+      supabase.from('ai_estimation_logs').insert({
         client_id: authUid,
         trainer_id: client.trainer_id,
         function_name: FUNCTION_NAME,
         status: 'error',
-        error_code: 'RATE_LIMIT',
+        error_code: errorCode,
       })
-      return errorResponse('RATE_LIMIT', 'Per-client daily limit (50) exceeded', 429)
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+
+    if (isPaidTier) {
+      // 有料ティア: テキストのみのリクエストは顧客単位クォータの対象外（常に通す）ため、
+      // 画像付きのときだけ count クエリを発行する
+      if (hasImages) {
+        const { count: clientDaily, error: cdErr } = await supabase
+          .from('ai_estimation_logs')
+          .select('*', { count: 'exact', head: true })
+          .eq('client_id', authUid)
+          .gte('created_at', since)
+        if (cdErr) console.error('rate-limit (client daily) query error:', cdErr)
+        if ((clientDaily ?? 0) >= PAID_CLIENT_DAILY_LIMIT) {
+          await logQuotaError('RATE_LIMIT')
+          return errorResponse(
+            'RATE_LIMIT',
+            `Per-client daily limit (${PAID_CLIENT_DAILY_LIMIT}) exceeded`,
+            429,
+          )
+        }
+        const { count: clientMonthly, error: cmErr } = await supabase
+          .from('ai_estimation_logs')
+          .select('*', { count: 'exact', head: true })
+          .eq('client_id', authUid)
+          .gte('created_at', jstMonthStartIso())
+        if (cmErr) console.error('rate-limit (client monthly) query error:', cmErr)
+        if ((clientMonthly ?? 0) >= PAID_CLIENT_MONTHLY_LIMIT) {
+          await logQuotaError('MONTHLY_QUOTA_EXCEEDED')
+          return errorResponse(
+            'MONTHLY_QUOTA_EXCEEDED',
+            `Per-client monthly limit (${PAID_CLIENT_MONTHLY_LIMIT}) exceeded`,
+            429,
+          )
+        }
+      }
+    } else {
+      // Free ティア: トレーナー単位・月30回の共通プール（画像有無を問わず全ブロック対象）
+      const { count: trainerMonthly, error: fmErr } = await supabase
+        .from('ai_estimation_logs')
+        .select('*', { count: 'exact', head: true })
+        .eq('trainer_id', client.trainer_id)
+        .gte('created_at', jstMonthStartIso())
+      if (fmErr) console.error('rate-limit (free monthly pool) query error:', fmErr)
+      if ((trainerMonthly ?? 0) >= FREE_TRAINER_MONTHLY_POOL) {
+        await logQuotaError('FREE_QUOTA_EXCEEDED')
+        return errorResponse('FREE_QUOTA_EXCEEDED', '今月のAI利用枠を使い切りました', 429)
+      }
     }
+
+    // 全プラン共通バックストップ: トレーナー単位 1000回/日（既存エラー形式のまま）
     const { count: trainerCount, error: tErr } = await supabase
       .from('ai_estimation_logs')
       .select('*', { count: 'exact', head: true })
       .eq('trainer_id', client.trainer_id)
       .gte('created_at', since)
     if (tErr) console.error('rate-limit (trainer) query error:', tErr)
-    if ((trainerCount ?? 0) >= 1000) {
-      await supabase.from('ai_estimation_logs').insert({
-        client_id: authUid,
-        trainer_id: client.trainer_id,
-        function_name: FUNCTION_NAME,
-        status: 'error',
-        error_code: 'RATE_LIMIT',
-      })
-      return errorResponse('RATE_LIMIT', 'Per-trainer daily limit (1000) exceeded', 429)
+    if ((trainerCount ?? 0) >= TRAINER_DAILY_BACKSTOP) {
+      await logQuotaError('RATE_LIMIT')
+      return errorResponse(
+        'RATE_LIMIT',
+        `Per-trainer daily limit (${TRAINER_DAILY_BACKSTOP}) exceeded`,
+        429,
+      )
     }
 
     // 6. Claude 呼び出し
