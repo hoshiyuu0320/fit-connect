@@ -39,7 +39,7 @@ export default function PrivacyPage() {
         プライバシーポリシー
       </h1>
       <p className="mt-2 text-xs text-[#94A3B8]">
-        制定日: 2026年7月11日 ／ 最終更新日: 2026年7月11日
+        制定日: 2026年7月11日 ／ 最終更新日: 2026年7月12日
       </p>
 
       <p className="mt-8 text-sm leading-7 text-[#334155]">
@@ -198,6 +198,25 @@ export default function PrivacyPage() {
       <Section title="9. Cookie等の利用">
         <p>
           本サービスは、ログイン状態の維持等のため、Cookieおよびこれに類する技術を使用しています。ブラウザの設定によりCookieを無効化することができますが、その場合、本サービスの一部の機能が利用できなくなることがあります。
+        </p>
+        <p>
+          また、本サービスは、アクセス解析ツールとして Google Analytics 4（Google
+          LLC）を利用しています。Google Analytics
+          4は、Cookieおよびこれに類する技術を利用して、利用者に関する以下の情報を収集し、Google
+          LLCに送信します。
+        </p>
+        <ul className="list-disc pl-5 space-y-2">
+          <li>Cookie等により生成される識別子</li>
+          <li>閲覧したページのURL・閲覧日時</li>
+          <li>利用環境・端末に関する情報（ブラウザの種類、OS、画面サイズ、おおよその地域等）</li>
+        </ul>
+        <p>
+          これらの情報は、本サービスの利用状況の分析およびサービス改善の目的で利用します。送信された情報は、Googleのプライバシーポリシーおよび「Googleのサービスを使用するサイトやアプリから収集した情報のGoogleによる使用」（
+          https://policies.google.com/technologies/partner-sites
+          ）に基づき、Google LLCにおいても取り扱われます。利用者は、Google
+          アナリティクス オプトアウト
+          アドオンの利用またはブラウザの設定によるCookieの無効化により、Google
+          Analytics 4による情報の収集を無効化することができます。
         </p>
       </Section>
 

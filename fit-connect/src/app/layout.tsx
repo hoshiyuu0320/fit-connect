@@ -1,6 +1,7 @@
 import React from "react";
 import type { Metadata } from 'next';
 import { Plus_Jakarta_Sans, Noto_Sans_JP } from 'next/font/google';
+import { GoogleAnalytics } from '@next/third-parties/google';
 import { siteConfig } from '@/lib/siteConfig';
 import './globals.css';
 
@@ -41,10 +42,13 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+
   return (
     <html lang="ja" className={`${jakarta.variable} ${noto.variable}`}>
       <body className="font-sans antialiased">
         {children}
+        {gaMeasurementId && <GoogleAnalytics gaId={gaMeasurementId} />}
       </body>
     </html>
   );

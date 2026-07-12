@@ -32,7 +32,7 @@
 | 1 | ヘルスケア連携（体重・睡眠） | Mobile + Web | 100% | 🟢 体重・睡眠連携・バックグラウンド同期・トレーナー可視化 完了 |
 | 2 | LLM カロリー計算 | Mobile + Supabase | 90% | 🟢 2.1〜2.5 完了（スクショ取り込み含む）/ 2.4任意項目のみバックログ |
 | 3 | オンボーディングフロー | Mobile | 0% | 🔴 未着手（実装時はカタログ cat2 3-A の設計を使用） |
-| 4 | ランディングページ | Web | 80% | 🟡 4.1〜4.4 + メタタグ・OGP 完了（2026/07/12）/ アナリティクス・Lighthouse最適化 残 |
+| 4 | ランディングページ | Web | 90% | 🟡 4.1〜4.4 + メタタグ・OGP + アナリティクス（GA4）完了（2026/07/12）/ Lighthouse最適化 残 |
 | 5 | セキュリティ・基盤修復【緊急】 | Supabase + Web | 60% | 🟡 5.1・5.2 完了 / 5.3 cron migration 化済み・Vault 登録はユーザー作業待ち（手順書: `2026-07-10-cron-vault-setup.md`）/ 5.4 未着手 |
 | 6 | 収益化・リリース準備（Stripe/法務/アカウント削除/Apple Sign-In） | Web + Mobile + Supabase | 50% | 🟡 6.2 完了（アカウント削除 + Sign in with Apple）/ 6.1 ほぼ完了（法務3ページ + user_consents + signup同意。Mobile側の顧客同意UIのみ残）/ 6.3 Stripe課金コア実装済み（テスト・本番切替はオーナーのStripeセットアップ待ち。手順書: 2026-07-12-stripe-setup-guide.md）/ 6.4〜6.5 未着手 |
 | 7 | 通知基盤統一（device_tokens + 共通ディスパッチャ） | Supabase + Web + Mobile | 0% | 🔴 未着手 |
@@ -215,7 +215,8 @@
   - [x] メタタグ・OGP 設定
     - layout.tsx の metadata（metadataBase/title template/OGP/Twitter Card）+ robots.ts + sitemap.ts + opengraph-image.tsx（2026/07/12、同PR。URL は NEXT_PUBLIC_APP_URL で切替、src/lib/siteConfig.ts に一元化）
   - [ ] Lighthouse スコア最適化
-  - [ ] アナリティクス導入（ツール選定はオーナー判断待ち）
+  - [x] アナリティクス導入（ツール選定はオーナー判断待ち）
+    - GA4 選定（2026/07/12 オーナー決定）。コード実装済み・計測IDの設定待ち（手順書: 2026-07-12-ga4-setup-guide.md）
 
 ---
 

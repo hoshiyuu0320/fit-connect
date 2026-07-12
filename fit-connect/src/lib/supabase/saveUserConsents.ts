@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 
-export const CONSENT_VERSION = '2026-07-11';
+export const CONSENT_VERSION = '2026-07-12';
 
 type SaveUserConsentsParam = {
     userId: string;
