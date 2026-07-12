@@ -118,9 +118,13 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       registrationNotifier.setRegistrationComplete(true);
     } catch (e) {
       if (mounted) {
+        // 顧客数上限（CLIENT_LIMIT_REACHED）はユーザー向け文言をそのまま表示。他は既存挙動
+        final message = e is ClientLimitReachedException
+            ? ClientLimitReachedException.userMessage
+            : 'エラー: ${e.toString()}';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('エラー: ${e.toString()}'),
+            content: Text(message),
             backgroundColor: AppColors.rose800,
           ),
         );

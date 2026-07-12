@@ -1,9 +1,23 @@
 // lib/features/meal_records/data/meal_estimation_api.dart
 import 'package:fit_connect_mobile/features/meal_records/models/meal_estimation_result.dart';
 import 'package:fit_connect_mobile/services/supabase_service.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:supabase_flutter/supabase_flutter.dart' show FunctionException;
 
-enum MealEstimationErrorCode { forbidden, rateLimit, invalidInput, estimationFailed, emptyResult, network }
+/// - [rateLimit]: 日次上限超過（429 'RATE_LIMIT'）。画像リクエストのみ拒否
+/// - [freeQuotaExceeded]: Freeプランの月次プール使い切り（429 'FREE_QUOTA_EXCEEDED'）。全ブロック
+/// - [monthlyQuotaExceeded]: 有料プランの顧客あたり月次上限超過（429 'MONTHLY_QUOTA_EXCEEDED'）。
+///   画像リクエストのみ拒否（テキスト推定は通る）
+enum MealEstimationErrorCode {
+  forbidden,
+  rateLimit,
+  freeQuotaExceeded,
+  monthlyQuotaExceeded,
+  invalidInput,
+  estimationFailed,
+  emptyResult,
+  network,
+}
 
 class MealEstimationException implements Exception {
   final MealEstimationErrorCode code;
@@ -48,23 +62,34 @@ class MealEstimationApi {
       final msg = (details is Map && details['message'] is String)
           ? details['message'] as String
           : (e.reasonPhrase ?? 'Unknown error');
-      switch (errCode) {
-        case 'FORBIDDEN':
-          throw MealEstimationException(MealEstimationErrorCode.forbidden, msg);
-        case 'RATE_LIMIT':
-          throw MealEstimationException(MealEstimationErrorCode.rateLimit, msg);
-        case 'INVALID_INPUT':
-          throw MealEstimationException(MealEstimationErrorCode.invalidInput, msg);
-        case 'EMPTY_RESULT':
-          throw MealEstimationException(MealEstimationErrorCode.emptyResult, msg);
-        case 'ESTIMATION_FAILED':
-        default:
-          throw MealEstimationException(MealEstimationErrorCode.estimationFailed, msg);
-      }
+      throw MealEstimationException(codeFromServerError(errCode), msg);
     } on MealEstimationException {
       rethrow;
     } catch (e) {
       throw MealEstimationException(MealEstimationErrorCode.network, e.toString());
+    }
+  }
+
+  /// Edge Function の {error: '...'} 文字列を [MealEstimationErrorCode] にマップする。
+  /// 未知のコード・欠落時は estimationFailed にフォールバック。
+  @visibleForTesting
+  static MealEstimationErrorCode codeFromServerError(String? errCode) {
+    switch (errCode) {
+      case 'FORBIDDEN':
+        return MealEstimationErrorCode.forbidden;
+      case 'RATE_LIMIT':
+        return MealEstimationErrorCode.rateLimit;
+      case 'FREE_QUOTA_EXCEEDED':
+        return MealEstimationErrorCode.freeQuotaExceeded;
+      case 'MONTHLY_QUOTA_EXCEEDED':
+        return MealEstimationErrorCode.monthlyQuotaExceeded;
+      case 'INVALID_INPUT':
+        return MealEstimationErrorCode.invalidInput;
+      case 'EMPTY_RESULT':
+        return MealEstimationErrorCode.emptyResult;
+      case 'ESTIMATION_FAILED':
+      default:
+        return MealEstimationErrorCode.estimationFailed;
     }
   }
 }

@@ -533,7 +533,11 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
   String _humanError(MealEstimationException e) {
     switch (e.code) {
       case MealEstimationErrorCode.rateLimit:
-        return 'AI推定の上限に達しました。しばらくしてからお試しください';
+        return '本日のAI推定の上限に達しました。写真なしのテキスト推定は引き続き利用できます';
+      case MealEstimationErrorCode.monthlyQuotaExceeded:
+        return '今月のAI推定（写真）の上限に達しました。テキスト推定は引き続き利用できます';
+      case MealEstimationErrorCode.freeQuotaExceeded:
+        return '今月のAI利用枠を使い切りました。来月また利用できます';
       case MealEstimationErrorCode.network:
         return '通信エラーが発生しました';
       case MealEstimationErrorCode.forbidden:
@@ -619,7 +623,7 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
         ),
         const SizedBox(height: 12),
 
-        // 入力モード切替（Pro のみ表示）。free/未解決時は従来フォーム（cook 固定）。
+        // 入力モード切替（AIゲート有効時のみ表示）。未解決時は従来フォーム（cook 固定）。
         if (ref.watch(aiFeaturesEnabledProvider).maybeWhen(
               data: (enabled) => enabled,
               orElse: () => false,

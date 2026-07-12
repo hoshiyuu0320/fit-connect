@@ -277,8 +277,10 @@
   - [ ] Mobile 内では Pro 購入導線に言及しない（IAP 規約対応。表示は機能ゲートのみ。現状違反なしを確認済みだが継続ルールとして残す）
   - [x] `allow_promotion_codes` 有効化（将来の紹介コード cat3 5-A の受け皿）
     - Checkout Session 作成時に有効化済み（`feature/stripe-billing-core`、2026/07/12）
-  - [ ] 顧客数上限の enforcement（Free 3 / Pro 10 / Business 30。DB側ゲート + 超過時アップグレード誘導UI）【PR2スコープ】
-  - [ ] AIクォータ新値への書き換え（10回/顧客/日 + 100回/顧客/月 + Free 月30回プール、超過時テキストのみ）【PR2スコープ】
+  - [x] 顧客数上限の enforcement（Free 3 / Pro 10 / Business 30。DB側ゲート + 超過時アップグレード誘導UI）【PR2スコープ】
+    - DBトリガー enforce_client_limit + Web招待モーダルの誘導UI + Mobile登録エラーハンドリング（2026/07/12、PR: feature/plan-limits-enforcement）
+  - [x] AIクォータ新値への書き換え（10回/顧客/日 + 100回/顧客/月 + Free 月30回プール、超過時テキストのみ）【PR2スコープ】
+    - 10回/顧客/日 + 100回/顧客/月（超過時テキストのみ）+ Free月30回プール。Freeにも AI お試し開放、Mobile の AI ボタンゲートも開放（2026/07/12、同PR）
   - [ ] 特商法ページの価格記入（提供開始時）【PR2スコープ】
 - [ ] **6.4 LP + 料金ページ**（cat3 3-A = 既存フェーズ4 を包含。フェーズ4のタスクリストで管理）
 - [ ] **6.5 支払記録・未払い管理**（cat3 2-A、チケット/月契約と金銭の接続。Stripe Connect 決済代行 cat3 2-B はバックログ）
