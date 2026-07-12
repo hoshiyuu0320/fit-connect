@@ -16,6 +16,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import { getUnreadCounts } from '@/lib/supabase/getUnreadCounts';
 import { Toaster } from 'sonner';
+import AppHeader from '@/components/AppHeader';
 
 const mainMenuItems = [
     {
@@ -146,6 +147,9 @@ export default function Sidebar({ children }: { children: React.ReactNode }) {
     };
 
     return (
+        <>
+        <AppHeader />
+        {/* コンテンツは全て fixed 配置（top-14 で AppHeader 分をオフセット）のため、main 自体の padding は不要 */}
         <main className="!pt-0">
             {/* fixed top-14 left-0 right-0 bottom-0 は子要素をスクロールさせないため */}
             <div className="fixed flex h-screen top-14 left-0 right-0 bottom-0">
@@ -187,5 +191,6 @@ export default function Sidebar({ children }: { children: React.ReactNode }) {
                 }}
             />
         </main>
+        </>
     );
 }
