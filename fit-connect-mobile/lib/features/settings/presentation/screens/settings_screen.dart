@@ -10,6 +10,7 @@ import 'package:fit_connect_mobile/core/providers/theme_provider.dart';
 import 'package:fit_connect_mobile/features/auth/data/client_repository.dart';
 import 'package:fit_connect_mobile/features/auth/providers/auth_provider.dart';
 import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
+import 'package:fit_connect_mobile/features/settings/providers/notification_preferences_provider.dart';
 import 'package:fit_connect_mobile/services/storage_service.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -40,6 +41,11 @@ class SettingsScreen extends ConsumerWidget {
 
               // 外観セクション
               _buildAppearanceSection(context, ref),
+
+              const SizedBox(height: 16),
+
+              // 通知設定セクション
+              _buildNotificationSection(context, ref),
 
               const SizedBox(height: 16),
 
@@ -376,6 +382,132 @@ class SettingsScreen extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildNotificationSection(BuildContext context, WidgetRef ref) {
+    final colors = AppColors.of(context);
+    final prefsAsync = ref.watch(notificationPreferencesProvider);
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Text(
+              '通知設定',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: colors.textSecondary,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+          prefsAsync.when(
+            data: (prefs) => Column(
+              children: [
+                _buildNotificationToggle(
+                  context,
+                  ref,
+                  icon: LucideIcons.messageCircle,
+                  title: 'メッセージ受信',
+                  kind: NotificationKind.message,
+                  value: prefs.messageEnabled,
+                ),
+                _buildNotificationToggle(
+                  context,
+                  ref,
+                  icon: LucideIcons.trophy,
+                  title: '目標達成のお知らせ',
+                  kind: NotificationKind.goalAchievement,
+                  value: prefs.goalAchievementEnabled,
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+            loading: () => const Padding(
+              padding: EdgeInsets.all(24),
+              child: Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            ),
+            error: (_, __) => Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Text(
+                '通知設定を読み込めませんでした',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: colors.textSecondary,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNotificationToggle(
+    BuildContext context,
+    WidgetRef ref, {
+    required IconData icon,
+    required String title,
+    required NotificationKind kind,
+    required bool value,
+  }) {
+    final colors = AppColors.of(context);
+
+    return SwitchListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      secondary: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: AppColors.primary100,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          icon,
+          size: 20,
+          color: AppColors.primary500,
+        ),
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          color: colors.textPrimary,
+        ),
+      ),
+      value: value,
+      onChanged: (newValue) async {
+        try {
+          await ref
+              .read(notificationPreferencesProvider.notifier)
+              .setEnabled(kind, newValue);
+        } catch (e) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('通知設定の更新に失敗しました'),
+                backgroundColor: AppColors.rose800,
+              ),
+            );
+          }
+        }
+      },
     );
   }
 
@@ -924,6 +1056,8 @@ Widget previewSettingsScreenStatic() {
               const SizedBox(height: 16),
               _PreviewAppearanceSection(),
               const SizedBox(height: 16),
+              _PreviewNotificationSection(),
+              const SizedBox(height: 16),
               _PreviewSettingsSection(),
             ],
           ),
@@ -1116,6 +1250,70 @@ class _PreviewAppearanceSection extends StatelessWidget {
               onSelectionChanged: (_) {},
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PreviewNotificationSection extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    Widget toggleRow(IconData icon, String title, bool value) {
+      return SwitchListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        secondary: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppColors.primary100,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            icon,
+            size: 20,
+            color: AppColors.primary500,
+          ),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            color: AppColors.slate800,
+          ),
+        ),
+        value: value,
+        onChanged: (_) {
+          // プレビューでは何もしない
+        },
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.slate100),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Text(
+              '通知設定',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: AppColors.slate500,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+          toggleRow(LucideIcons.messageCircle, 'メッセージ受信', true),
+          toggleRow(LucideIcons.trophy, '目標達成のお知らせ', false),
+          const SizedBox(height: 8),
         ],
       ),
     );

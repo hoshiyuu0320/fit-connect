@@ -6,15 +6,17 @@ part of 'ai_features_enabled_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$aiFeaturesEnabledHash() => r'42108248a53aa87cb864f5a4ce2070690dda2fc8';
+String _$aiFeaturesEnabledHash() => r'2810480b3e0afb03675dde0a3d5579d7945a0899';
 
-/// 自身の担当トレーナーがAI機能を利用可能かどうか（実効プラン判定）。
-/// - subscription_plan が 'pro' または 'business' → 利用可
-/// - 'free' でも trial_ends_at が現在より未来（トライアル中・Pro相当） → 利用可
-/// - それ以外・取得失敗・未認証・未紐付け → false（保守的にAI非表示）
+/// 自身の担当トレーナーが解決できるかどうか（AI機能のUIゲート）。
+/// - 担当トレーナーが解決できれば true（Freeプランにも月次クォータ内でAIが
+///   開放されたため、プラン文字列による出し分けは行わない）
+/// - 取得失敗・未認証・未紐付け → false（保守的にAI非表示）
+///
+/// クォータ制御はサーバー側（Edge Function の 429 応答）が実体。
+/// このUIゲートは将来のkill switch（AI機能の全停止）用に残している。
 ///
 /// 参照経路: auth.uid() → clients.client_id → clients.trainer_id
-///           → trainers.subscription_plan / trainers.trial_ends_at
 ///
 /// Copied from [aiFeaturesEnabled].
 @ProviderFor(aiFeaturesEnabled)

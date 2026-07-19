@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { sendNotification } from '../_shared/push.ts'
 
 Deno.serve(async (req) => {
   try {
@@ -271,7 +272,7 @@ async function createWeightRecord(supabase, commonData, tagData) {
       console.error('Error checking goal achievement:', rpcError)
     } else if (isAchieved) {
       console.log('🎉 Goal achieved! Client:', commonData.client_id)
-      await sendGoalAchievementNotification(supabase, commonData.client_id)
+      await sendGoalAchievementNotification(supabase, commonData.client_id, commonData.message_id)
     } else {
       // 達成率を計算してログに出力
       const { data: rate } = await supabase.rpc('calculate_achievement_rate', {
@@ -370,140 +371,11 @@ async function createExerciseRecord(supabase, commonData, tagData) {
 }
 
 /**
- * FCM HTTP v1 APIで通知を送信する
- */
-async function sendFCMNotification(
-  fcmToken: string,
-  title: string,
-  body: string,
-  data: Record<string, string>
-): Promise<void> {
-  // 1. サービスアカウントキーを取得
-  const serviceAccountKeyJson = Deno.env.get('FIREBASE_SERVICE_ACCOUNT_KEY')
-  if (!serviceAccountKeyJson) {
-    console.log('[FCM] FIREBASE_SERVICE_ACCOUNT_KEY not set, skipping notification')
-    return
-  }
-
-  const serviceAccount = JSON.parse(serviceAccountKeyJson)
-  const projectId = serviceAccount.project_id
-
-  // 2. JWT生成（RS256）
-  const now = Math.floor(Date.now() / 1000)
-  const header = { alg: 'RS256', typ: 'JWT' }
-  const payload = {
-    iss: serviceAccount.client_email,
-    scope: 'https://www.googleapis.com/auth/firebase.messaging',
-    aud: 'https://oauth2.googleapis.com/token',
-    iat: now,
-    exp: now + 3600,
-  }
-
-  // Base64URL encode
-  const encode = (obj: unknown) => {
-    const json = JSON.stringify(obj)
-    const bytes = new TextEncoder().encode(json)
-    return btoa(String.fromCharCode(...bytes))
-      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-  }
-
-  const unsignedToken = `${encode(header)}.${encode(payload)}`
-
-  // RS256署名（Deno Web Crypto API）
-  const pemContents = serviceAccount.private_key
-    .replace('-----BEGIN PRIVATE KEY-----', '')
-    .replace('-----END PRIVATE KEY-----', '')
-    .replace(/\n/g, '')
-
-  const binaryDer = Uint8Array.from(atob(pemContents), (c: string) => c.charCodeAt(0))
-
-  const cryptoKey = await crypto.subtle.importKey(
-    'pkcs8',
-    binaryDer,
-    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
-    false,
-    ['sign']
-  )
-
-  const signature = await crypto.subtle.sign(
-    'RSASSA-PKCS1-v1_5',
-    cryptoKey,
-    new TextEncoder().encode(unsignedToken)
-  )
-
-  const signatureBase64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-
-  const jwt = `${unsignedToken}.${signatureBase64}`
-
-  // 3. Google OAuth2 アクセストークン取得
-  const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-      assertion: jwt,
-    }),
-  })
-
-  const tokenData = await tokenResponse.json()
-  if (!tokenData.access_token) {
-    console.error('[FCM] Failed to get access token:', tokenData)
-    return
-  }
-
-  // 4. FCM HTTP v1 APIで通知送信
-  const fcmResponse = await fetch(
-    `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`,
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${tokenData.access_token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        message: {
-          token: fcmToken,
-          notification: { title, body },
-          data,
-          android: {
-            priority: 'high',
-            notification: {
-              channel_id: 'high_importance_channel',
-            },
-          },
-          apns: {
-            payload: {
-              aps: {
-                alert: { title, body },
-                sound: 'default',
-                badge: 1,
-              },
-            },
-          },
-        },
-      }),
-    }
-  )
-
-  const fcmResult = await fcmResponse.json()
-
-  if (!fcmResponse.ok) {
-    console.error('[FCM] Error sending notification:', fcmResult)
-    // UNREGISTERED or NOT_FOUND → トークン無効、DBから削除すべき
-    if (fcmResult?.error?.details?.some((d: any) =>
-      d.errorCode === 'UNREGISTERED' || d.errorCode === 'NOT_FOUND'
-    )) {
-      console.log('[FCM] Token is invalid, should be cleared from DB')
-      return // 呼び出し元でトークンクリアを処理
-    }
-  } else {
-    console.log('[FCM] Notification sent successfully:', fcmResult)
-  }
-}
-
-/**
  * メッセージ受信者にプッシュ通知を送信する
+ *
+ * 実送信は統一ディスパッチャ（_shared/push.ts）に委譲。
+ * 冪等化・通知設定・トークン解決（device_tokens 優先 + fcm_token フォールバック）・
+ * FCM / Web Push 送信・無効トークン掃除・notification_logs 記録はディスパッチャが担う。
  */
 async function sendMessageNotification(
   supabase: any,
@@ -514,26 +386,11 @@ async function sendMessageNotification(
     const receiverType = message.receiver_type // 'client' or 'trainer'
 
     if (!receiverId || !receiverType) {
-      console.log('[FCM] No receiver info, skipping notification')
+      console.log('[push] No receiver info, skipping notification')
       return
     }
 
-    // 受信者のFCMトークンを取得
-    const table = receiverType === 'client' ? 'clients' : 'trainers'
-    const idColumn = receiverType === 'client' ? 'client_id' : 'id'
-
-    const { data: receiver, error } = await supabase
-      .from(table)
-      .select('fcm_token, name')
-      .eq(idColumn, receiverId)
-      .maybeSingle()
-
-    if (error || !receiver?.fcm_token) {
-      console.log('[FCM] No FCM token for receiver:', receiverId)
-      return
-    }
-
-    // 送信者名を取得
+    // 送信者名を取得（通知タイトル用）
     const senderType = message.sender_type // 'client' or 'trainer'
     const senderTable = senderType === 'client' ? 'clients' : 'trainers'
     const senderIdColumn = senderType === 'client' ? 'client_id' : 'id'
@@ -549,43 +406,44 @@ async function sendMessageNotification(
       ? message.content.substring(0, 50) + '...'
       : message.content || ''
 
-    await sendFCMNotification(
-      receiver.fcm_token,
-      `${senderName}からのメッセージ`,
-      bodyText,
-      { type: 'message', messageId: message.id }
-    )
+    await sendNotification({
+      supabaseAdmin: supabase,
+      userId: receiverId,
+      userType: receiverType,
+      kind: 'message',
+      title: `${senderName}からのメッセージ`,
+      body: bodyText,
+      data: { type: 'message', messageId: message.id },
+      dedupKey: `message:${message.id}`,
+    })
   } catch (e) {
-    console.error('[FCM] Error sending message notification:', e)
+    console.error('[push] Error sending message notification:', e)
   }
 }
 
 /**
  * 目標達成通知を送信する
+ *
+ * 実送信は統一ディスパッチャ（_shared/push.ts）に委譲。
+ * dedupKey はメッセージIDベース（同一メッセージの再解析で二重送信しない）。
  */
 async function sendGoalAchievementNotification(
   supabase: any,
-  clientId: string
+  clientId: string,
+  messageId: string
 ): Promise<void> {
   try {
-    const { data: client, error } = await supabase
-      .from('clients')
-      .select('fcm_token, name')
-      .eq('client_id', clientId)
-      .maybeSingle()
-
-    if (error || !client?.fcm_token) {
-      console.log('[FCM] No FCM token for client:', clientId)
-      return
-    }
-
-    await sendFCMNotification(
-      client.fcm_token,
-      '目標達成！🎉',
-      '体重目標を達成しました！おめでとうございます！',
-      { type: 'goal_achievement', clientId }
-    )
+    await sendNotification({
+      supabaseAdmin: supabase,
+      userId: clientId,
+      userType: 'client',
+      kind: 'goal_achievement',
+      title: '目標達成！🎉',
+      body: '体重目標を達成しました！おめでとうございます！',
+      data: { type: 'goal_achievement', clientId },
+      dedupKey: `goal:${messageId}`,
+    })
   } catch (e) {
-    console.error('[FCM] Error sending goal achievement notification:', e)
+    console.error('[push] Error sending goal achievement notification:', e)
   }
 }
