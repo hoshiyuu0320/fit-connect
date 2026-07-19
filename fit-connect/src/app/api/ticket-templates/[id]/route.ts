@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { isPriceYenInput } from '@/lib/payments/validation'
 
 // PUT: テンプレート更新
 export async function PUT(
@@ -10,7 +11,15 @@ export async function PUT(
 
   try {
     const body = await request.json()
-    const { templateName, ticketType, totalSessions, validMonths, isRecurring } = body
+    const { templateName, ticketType, totalSessions, validMonths, isRecurring, priceYen } = body
+
+    // priceYen は任意入力（0以上の整数 or null）
+    if (priceYen !== undefined && !isPriceYenInput(priceYen)) {
+      return NextResponse.json(
+        { error: 'priceYen must be a non-negative integer or null' },
+        { status: 400 }
+      )
+    }
 
     // 更新データを構築（undefined でないフィールドのみ）
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -21,6 +30,7 @@ export async function PUT(
     if (templateName !== undefined) updateData.template_name = templateName
     if (ticketType !== undefined) updateData.ticket_type = ticketType
     if (totalSessions !== undefined) updateData.total_sessions = totalSessions
+    if (priceYen !== undefined) updateData.price_yen = priceYen
     if (validMonths !== undefined) updateData.valid_months = validMonths
     if (isRecurring !== undefined) updateData.is_recurring = isRecurring
 

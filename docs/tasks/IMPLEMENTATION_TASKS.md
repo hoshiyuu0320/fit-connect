@@ -34,7 +34,7 @@
 | 3 | オンボーディングフロー | Mobile | 0% | 🔴 未着手（実装時はカタログ cat2 3-A の設計を使用） |
 | 4 | ランディングページ | Web | 90% | 🟡 4.1〜4.4 + メタタグ・OGP + アナリティクス（GA4）完了（2026/07/12）/ Lighthouse最適化 残 |
 | 5 | セキュリティ・基盤修復【緊急】 | Supabase + Web | 60% | 🟡 5.1・5.2 完了 / 5.3 cron migration 化済み・Vault 登録はユーザー作業待ち（手順書: `2026-07-10-cron-vault-setup.md`）/ 5.4 未着手 |
-| 6 | 収益化・リリース準備（Stripe/法務/アカウント削除/Apple Sign-In） | Web + Mobile + Supabase | 50% | 🟡 6.2 完了（アカウント削除 + Sign in with Apple）/ 6.1 ほぼ完了（法務3ページ + user_consents + signup同意。Mobile側の顧客同意UIのみ残）/ 6.3 Stripe課金コア実装済み（テスト・本番切替はオーナーのStripeセットアップ待ち。手順書: 2026-07-12-stripe-setup-guide.md）/ 6.4〜6.5 未着手 |
+| 6 | 収益化・リリース準備（Stripe/法務/アカウント削除/Apple Sign-In） | Web + Mobile + Supabase | 70% | 🟡 6.2 完了（アカウント削除 + Sign in with Apple）/ 6.1 ほぼ完了（法務3ページ + user_consents + signup同意。Mobile側の顧客同意UIのみ残）/ 6.3 Stripe課金コア実装済み（テスト・本番切替はオーナーのStripeセットアップ待ち。手順書: 2026-07-12-stripe-setup-guide.md）/ 6.4 完了（フェーズ4として実装済み）/ 6.5 支払記録 実装済み（領収書PDF・Stripe Connect は後回し） |
 | 7 | 通知基盤統一（device_tokens + 共通ディスパッチャ） | Supabase + Web + Mobile | 0% | 🔴 未着手 |
 | 8 | 不具合修正・顧客体験の底上げ | Mobile + Web + Supabase | 30% | 🟡 8.1 ワークアウト繰越バグ修正 完了（2026/07/10。拡張の警告通知はフェーズ7待ち）/ 8.2・8.3 未着手 |
 | 9 | トレーナー介入機能（異常検知・トリアージ） | Web + Supabase | 0% | 🔴 未着手 |
@@ -287,6 +287,14 @@
   - [ ] 特商法ページの価格記入（提供開始時）【PR2スコープ】
 - [x] **6.4 LP + 料金ページ**（cat3 3-A = 既存フェーズ4 を包含。フェーズ4のタスクリストで管理）— フェーズ4として実装済み（2026/07/12）
 - [ ] **6.5 支払記録・未払い管理**（cat3 2-A、チケット/月契約と金銭の接続。Stripe Connect 決済代行 cat3 2-B はバックログ）
+  - [x] price_yen 追加（テンプレート/チケット）
+  - [x] payments テーブル + RLS + RLSテスト
+  - [x] 発行時・月契約発行時の支払予定自動生成（issue_recurring_tickets 改修）
+  - [x] /tickets 支払いタブ（未払い一覧・消込）
+  - [x] ダッシュボード売上・未収金カード
+  - [ ] 領収書PDF（拡張1・後回し）
+  - [ ] Stripe Connect 決済代行（cat3 2-B、バックログ）
+  - 補足: overdue は cron を作らず due_date から UI 導出（2026/07/12 設計判断）。PR: feature/payment-records
 
 ---
 

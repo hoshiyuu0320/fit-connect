@@ -34,6 +34,7 @@ export async function GET(request: NextRequest) {
       ticket_type: ticket.ticket_type,
       total_sessions: ticket.total_sessions,
       remaining_sessions: ticket.remaining_sessions,
+      price_yen: ticket.price_yen ?? null,
       valid_from: ticket.valid_from,
       valid_until: ticket.valid_until,
       created_at: ticket.created_at,

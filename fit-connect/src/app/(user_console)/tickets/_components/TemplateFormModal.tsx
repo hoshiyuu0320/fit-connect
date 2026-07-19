@@ -28,6 +28,11 @@ const templateFormSchema = z.object({
   ticket_type: z.string().min(1, '種別を選択してください'),
   total_sessions: z.number({ invalid_type_error: '数値を入力してください' }).min(1, '1回以上を入力してください'),
   valid_months: z.number({ invalid_type_error: '数値を入力してください' }).min(1, '1ヶ月以上を入力してください'),
+  price_yen: z
+    .number({ invalid_type_error: '数値を入力してください' })
+    .int('整数を入力してください')
+    .min(0, '0以上を入力してください')
+    .nullable(),
   is_recurring: z.boolean(),
 })
 
@@ -57,6 +62,7 @@ export function TemplateFormModal({
       ticket_type: '',
       total_sessions: 1,
       valid_months: 1,
+      price_yen: null,
       is_recurring: false,
     },
   })
@@ -69,6 +75,7 @@ export function TemplateFormModal({
         ticket_type: template.ticket_type,
         total_sessions: template.total_sessions,
         valid_months: template.valid_months,
+        price_yen: template.price_yen ?? null,
         is_recurring: template.is_recurring,
       })
     } else {
@@ -77,6 +84,7 @@ export function TemplateFormModal({
         ticket_type: '',
         total_sessions: 1,
         valid_months: 1,
+        price_yen: null,
         is_recurring: false,
       })
     }
@@ -95,6 +103,7 @@ export function TemplateFormModal({
             ticketType: data.ticket_type,
             totalSessions: data.total_sessions,
             validMonths: data.valid_months,
+            priceYen: data.price_yen,
             isRecurring: data.is_recurring,
           }),
         })
@@ -113,6 +122,7 @@ export function TemplateFormModal({
             ticketType: data.ticket_type,
             totalSessions: data.total_sessions,
             validMonths: data.valid_months,
+            priceYen: data.price_yen,
             isRecurring: data.is_recurring,
           }),
         })
@@ -229,6 +239,31 @@ export function TemplateFormModal({
                 </p>
               )}
             </div>
+          </div>
+
+          {/* 価格（円・税込） */}
+          <div className="space-y-2">
+            <Label htmlFor="price_yen">価格（円・税込）</Label>
+            <Input
+              id="price_yen"
+              type="number"
+              min="0"
+              step="1"
+              {...form.register('price_yen', {
+                setValueAs: (v) =>
+                  v === '' || v === null || v === undefined ? null : Number(v),
+              })}
+              placeholder="例: 48000（空欄で未設定）"
+              disabled={submitting}
+            />
+            <p className="text-xs" style={{ color: '#94A3B8' }}>
+              価格を設定すると、発行時に支払予定が自動作成されます
+            </p>
+            {form.formState.errors.price_yen && (
+              <p className="text-sm text-[#DC2626]">
+                {form.formState.errors.price_yen.message}
+              </p>
+            )}
           </div>
 
           {/* 月契約チェックボックス */}

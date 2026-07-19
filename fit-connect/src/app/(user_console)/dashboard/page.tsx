@@ -19,6 +19,8 @@ import { getSessionStats } from '@/lib/supabase/getSessionStats'
 import { getDailyRecordTrend } from '@/lib/supabase/getDailyRecordTrend'
 import { getClientActivityRanking } from '@/lib/supabase/getClientActivityRanking'
 import { getGoalProgress } from '@/lib/supabase/getGoalProgress'
+import { getPaymentSummary } from '@/lib/supabase/getPaymentSummary'
+import type { PaymentSummary } from '@/lib/supabase/getPaymentSummary'
 import { useUserStore } from '@/store/userStore'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { MessagePreviewList } from '@/components/dashboard/MessagePreviewList'
@@ -92,6 +94,29 @@ function TicketIcon() {
   )
 }
 
+function BanknoteIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <rect x="2" y="6" width="20" height="12" rx="2" strokeWidth={2} />
+      <circle cx="12" cy="12" r="2" strokeWidth={2} />
+      <path strokeLinecap="round" strokeWidth={2} d="M6 12h.01M18 12h.01" />
+    </svg>
+  )
+}
+
+function WalletIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M19 7V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-2M21 9H14a2 2 0 00-2 2v2a2 2 0 002 2h7a1 1 0 001-1v-4a1 1 0 00-1-1z"
+      />
+    </svg>
+  )
+}
+
 function DashboardContent() {
   const [loading, setLoading] = useState(true)
   const userName = useUserStore((state) => state.userName)
@@ -102,6 +127,7 @@ function DashboardContent() {
   const [messageCount, setMessageCount] = useState(0)
   const [activeClientCount, setActiveClientCount] = useState(0)
   const [expiringTicketCount, setExpiringTicketCount] = useState(0)
+  const [paymentSummary, setPaymentSummary] = useState<PaymentSummary | null>(null)
 
   // メッセージデータ
   const [recentMessages, setRecentMessages] = useState<RecentMessage[]>([])
@@ -174,6 +200,12 @@ function DashboardContent() {
             setUserName(profile.name)
           }
 
+          // 支払いサマリーは取得失敗（migration未適用など）が他データを巻き込まないよう個別にcatchする
+          const paymentSummaryPromise = getPaymentSummary(user.id).catch((err) => {
+            console.error('支払いサマリー取得エラー:', err)
+            return null
+          })
+
           // KPIデータとアラートデータを並列取得
           const [
             clients,
@@ -219,6 +251,7 @@ function DashboardContent() {
           setDailyTrend(trend)
           setClientRanking(ranking)
           setGoalCategories(goals)
+          setPaymentSummary(await paymentSummaryPromise)
 
           // アラートリストを作成
           const alertList: AlertItemProps[] = []
@@ -315,6 +348,30 @@ function DashboardContent() {
             href="/clients"
           />
         </div>
+
+        {/* 売上カード（取得失敗時は非表示） */}
+        {paymentSummary && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <StatCard
+              icon={<BanknoteIcon />}
+              label="今月の入金"
+              value={`¥${paymentSummary.paidThisMonthYen.toLocaleString('ja-JP')}`}
+              color="teal"
+              href="/tickets"
+            />
+            <StatCard
+              icon={<WalletIcon />}
+              label={
+                paymentSummary.unpaidCount > 0
+                  ? `未収金（${paymentSummary.unpaidCount}件）`
+                  : '未収金'
+              }
+              value={`¥${paymentSummary.unpaidTotalYen.toLocaleString('ja-JP')}`}
+              color={paymentSummary.unpaidTotalYen > 0 ? 'amber' : 'teal'}
+              href="/tickets"
+            />
+          </div>
+        )}
 
         {/* 本日の予定 */}
         <TodaysSchedule sessions={todaysSessions} />

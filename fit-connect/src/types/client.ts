@@ -114,6 +114,7 @@ export type Ticket = {
   ticket_type: string
   total_sessions: number
   remaining_sessions: number
+  price_yen: number | null  // 発行時の価格スナップショット（円）。null = 価格未設定
   valid_from: string
   valid_until: string
   created_at: string
@@ -124,6 +125,7 @@ export type CreateTicketParams = {
   ticketName: string
   ticketType: string
   totalSessions: number
+  priceYen?: number | null
   validFrom: string
   validUntil: string
 }
@@ -134,6 +136,7 @@ export type UpdateTicketParams = {
   ticketType?: string
   totalSessions?: number
   remainingSessions?: number
+  priceYen?: number | null
   validFrom?: string
   validUntil?: string
 }
@@ -145,6 +148,7 @@ export type TicketTemplate = {
   template_name: string
   ticket_type: string
   total_sessions: number
+  price_yen: number | null  // 価格（円）。null = 価格未設定
   valid_months: number
   is_recurring: boolean
   created_at: string
@@ -156,6 +160,7 @@ export type CreateTicketTemplateParams = {
   templateName: string
   ticketType: string
   totalSessions: number
+  priceYen?: number | null
   validMonths: number
   isRecurring: boolean
 }
@@ -165,6 +170,7 @@ export type UpdateTicketTemplateParams = {
   templateName?: string
   ticketType?: string
   totalSessions?: number
+  priceYen?: number | null
   validMonths?: number
   isRecurring?: boolean
 }

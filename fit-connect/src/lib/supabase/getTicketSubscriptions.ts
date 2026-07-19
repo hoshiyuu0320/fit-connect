@@ -28,6 +28,7 @@ export const getTicketSubscriptions = async (trainerId: string): Promise<TicketS
       template_name: sub.ticket_templates.template_name,
       ticket_type: sub.ticket_templates.ticket_type,
       total_sessions: sub.ticket_templates.total_sessions,
+      price_yen: sub.ticket_templates.price_yen ?? null,
       valid_months: sub.ticket_templates.valid_months,
       is_recurring: sub.ticket_templates.is_recurring,
       created_at: sub.ticket_templates.created_at,
