@@ -35,7 +35,7 @@
 | 4 | ランディングページ | Web | 90% | 🟡 4.1〜4.4 + メタタグ・OGP + アナリティクス（GA4）完了（2026/07/12）/ Lighthouse最適化 残 |
 | 5 | セキュリティ・基盤修復【緊急】 | Supabase + Web | 60% | 🟡 5.1・5.2 完了 / 5.3 cron migration 化済み・Vault 登録はユーザー作業待ち（手順書: `2026-07-10-cron-vault-setup.md`）/ 5.4 未着手 |
 | 6 | 収益化・リリース準備（Stripe/法務/アカウント削除/Apple Sign-In） | Web + Mobile + Supabase | 70% | 🟡 6.2 完了（アカウント削除 + Sign in with Apple）/ 6.1 ほぼ完了（法務3ページ + user_consents + signup同意。Mobile側の顧客同意UIのみ残）/ 6.3 Stripe課金コア実装済み（テスト・本番切替はオーナーのStripeセットアップ待ち。手順書: 2026-07-12-stripe-setup-guide.md）/ 6.4 完了（フェーズ4として実装済み）/ 6.5 支払記録 実装済み（領収書PDF・Stripe Connect は後回し） |
-| 7 | 通知基盤統一（device_tokens + 共通ディスパッチャ） | Supabase + Web + Mobile | 0% | 🔴 未着手 |
+| 7 | 通知基盤統一（device_tokens + 共通ディスパッチャ） | Supabase + Web + Mobile | 40% | 🟡 7.1・7.2 完了（2026/07/19）/ 7.3 ディスパッチャ・7.4 未着手 |
 | 8 | 不具合修正・顧客体験の底上げ | Mobile + Web + Supabase | 30% | 🟡 8.1 ワークアウト繰越バグ修正 完了（2026/07/10。拡張の警告通知はフェーズ7待ち）/ 8.2・8.3 未着手 |
 | 9 | トレーナー介入機能（異常検知・トリアージ） | Web + Supabase | 0% | 🔴 未着手 |
 | 10 | リテンション機能（リマインダー・直接記録・ストリーク） | Mobile + Supabase | 0% | 🔴 未着手 |
@@ -306,13 +306,14 @@
 
 ### タスク
 
-- [ ] **7.1 通知配管の棚卸し・修理**（cat6 1-D）
-  - [ ] messages webhook payload の `receiver_type` 有無をリモートで確認（無ければ通知が skip されている）
-  - [ ] 死んでいる `/api/push-notify`（呼び出し元ゼロ確認済み）の廃止判断
-- [ ] **7.2 `device_tokens` テーブル + 移行**（統合判断1）
-  - [ ] `device_tokens` 新設 migration（user_type/platform 対応、UNIQUE(user_id, token)）
-  - [ ] Mobile: `clients.fcm_token` との両書き → 両読み → 新テーブルのみ の3段階移行
-  - [ ] トレーナーのトークン登録経路の新設（現状トレーナー通知は実質不達）
+- [x] **7.1 通知配管の棚卸し・修理**（cat6 1-D）✅ 完了（2026/07/19）
+  - [x] messages webhook payload の `receiver_type` 有無をリモートで確認（無ければ通知が skip されている）
+  - [x] 死んでいる `/api/push-notify`（呼び出し元ゼロ確認済み）の廃止判断
+  - 補足: receiver_type はリモート payload に含まれることを実測確認（2026/07/19）。ただし migrations 側の関数定義にドリフトがあり repair migration 20260719000000 で追認。/api/push-notify は呼び出し元ゼロを全数grepで確定 — 廃止はディスパッチャ完成後（7.3）に実施
+- [x] **7.2 `device_tokens` テーブル + 移行**（統合判断1）✅ 完了（2026/07/19）
+  - [x] `device_tokens` 新設 migration（user_type/platform 対応、UNIQUE(user_id, token)）✅ 完了（migration 20260719000100 + RLSテスト）
+  - [x] Mobile: `clients.fcm_token` との両書き → 両読み → 新テーブルのみ の3段階移行 ✅ stage1（両書き）完了（両読み・新テーブル単独化は 7.3 以降で実施）
+  - [x] トレーナーのトークン登録経路の新設（現状トレーナー通知は実質不達）✅ 完了（Web Push 購読の device_tokens 両書きで到達経路を確保。送信側の切替は 7.3）
 - [ ] **7.3 統一通知ディスパッチャ `_shared/push.ts`**
   - [ ] `parse-message-tags` 内のベタ書き FCM 送信（JWT生成含む）を切り出し
   - [ ] Web Push 送出の統合（`push_subscriptions` → device_tokens(platform='web_push') 移行）
