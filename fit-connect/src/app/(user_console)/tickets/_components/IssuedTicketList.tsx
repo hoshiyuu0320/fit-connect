@@ -101,6 +101,9 @@ export function IssuedTicketList({ tickets, clients, onRefetch }: IssuedTicketLi
               <th className="px-4 py-3 text-left text-[11px] font-semibold text-[#94A3B8] tracking-wider">
                 種別
               </th>
+              <th className="px-4 py-3 text-right text-[11px] font-semibold text-[#94A3B8] tracking-wider">
+                価格
+              </th>
               <th className="px-4 py-3 text-left text-[11px] font-semibold text-[#94A3B8] tracking-wider">
                 残回数
               </th>
@@ -196,6 +199,16 @@ export function IssuedTicketList({ tickets, clients, onRefetch }: IssuedTicketLi
                       {TICKET_TYPE_OPTIONS[ticket.ticket_type as keyof typeof TICKET_TYPE_OPTIONS] ||
                         ticket.ticket_type}
                     </span>
+                  </td>
+
+                  {/* 価格 */}
+                  <td
+                    className="px-4 py-3 text-[13px] text-[#0F172A] text-right tabular-nums"
+                    style={{ borderBottom: isLast ? 'none' : '1px solid #E2E8F0', opacity: isExpired ? 0.5 : 1 }}
+                  >
+                    {ticket.price_yen != null
+                      ? `¥${ticket.price_yen.toLocaleString('ja-JP')}`
+                      : '—'}
                   </td>
 
                   {/* 残回数 + プログレスバー */}

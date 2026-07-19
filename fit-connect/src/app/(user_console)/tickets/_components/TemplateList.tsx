@@ -5,7 +5,7 @@ import type { TicketTemplate } from '@/types/client'
 import { TICKET_TYPE_OPTIONS } from '@/types/client'
 import { TemplateFormModal } from './TemplateFormModal'
 import { DeleteTemplateDialog } from './DeleteTemplateDialog'
-import { LayoutGrid, Clock, Calendar } from 'lucide-react'
+import { LayoutGrid, Clock, Calendar, Banknote } from 'lucide-react'
 
 interface TemplateListProps {
   templates: TicketTemplate[]
@@ -92,8 +92,8 @@ export function TemplateList({ templates, trainerId, onRefetch }: TemplateListPr
                   )}
                 </div>
 
-                {/* 回数/有効期間 */}
-                <div className="flex items-center gap-4">
+                {/* 回数/有効期間/価格 */}
+                <div className="flex items-center gap-4 flex-wrap">
                   <span className="flex items-center gap-1.5 text-sm" style={{ color: '#475569' }}>
                     <Clock size={14} style={{ color: '#94A3B8' }} />
                     {template.total_sessions}回
@@ -102,6 +102,12 @@ export function TemplateList({ templates, trainerId, onRefetch }: TemplateListPr
                     <Calendar size={14} style={{ color: '#94A3B8' }} />
                     {template.valid_months}ヶ月有効
                   </span>
+                  {template.price_yen != null && (
+                    <span className="flex items-center gap-1.5 text-sm tabular-nums" style={{ color: '#475569' }}>
+                      <Banknote size={14} style={{ color: '#94A3B8' }} />
+                      ¥{template.price_yen.toLocaleString('ja-JP')}
+                    </span>
+                  )}
                 </div>
               </div>
 

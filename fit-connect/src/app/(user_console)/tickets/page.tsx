@@ -6,15 +6,18 @@ import { getTicketTemplates } from '@/lib/supabase/getTicketTemplates'
 import { getTicketsByTrainer } from '@/lib/supabase/getTicketsByTrainer'
 import { getTicketSubscriptions } from '@/lib/supabase/getTicketSubscriptions'
 import { getClients } from '@/lib/supabase/getClients'
+import { getPayments } from '@/lib/supabase/getPayments'
 import type { TicketTemplate, TicketWithClient, TicketSubscription, Client } from '@/types/client'
+import type { PaymentWithClient } from '@/types/payment'
 import { TemplateList } from './_components/TemplateList'
 import { IssueTicketSection } from './_components/IssueTicketSection'
 import { IssuedTicketList } from './_components/IssuedTicketList'
 import { SubscriptionList } from './_components/SubscriptionList'
+import { PaymentList } from './_components/PaymentList'
 import { LayoutGrid, Ticket, Hash, AlertTriangle } from 'lucide-react'
 import { TicketsSkeleton } from './_components/TicketsSkeleton'
 
-type ActiveTab = 'templates' | 'issued' | 'subscriptions'
+type ActiveTab = 'templates' | 'issued' | 'subscriptions' | 'payments'
 
 export default function TicketsPage() {
   const [trainerId, setTrainerId] = useState<string>('')
@@ -22,6 +25,8 @@ export default function TicketsPage() {
   const [tickets, setTickets] = useState<TicketWithClient[]>([])
   const [subscriptions, setSubscriptions] = useState<TicketSubscription[]>([])
   const [clients, setClients] = useState<Client[]>([])
+  const [payments, setPayments] = useState<PaymentWithClient[]>([])
+  const [paymentsLoadFailed, setPaymentsLoadFailed] = useState(false)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<ActiveTab>('templates')
 
@@ -32,16 +37,30 @@ export default function TicketsPage() {
         if (!user) return
         setTrainerId(user.id)
 
-        const [templatesData, ticketsData, subscriptionsData, clientsData] = await Promise.all([
+        // payments の取得失敗（migration未適用など）が他タブのロードを巻き込まないよう個別にcatchする
+        const [templatesData, ticketsData, subscriptionsData, clientsData, paymentsResult] = await Promise.all([
           getTicketTemplates(user.id),
           getTicketsByTrainer(user.id),
           getTicketSubscriptions(user.id),
           getClients(user.id),
+          getPayments(user.id).then(
+            (data) => ({ ok: true as const, data }),
+            (error) => {
+              console.error('支払いデータ取得エラー:', error)
+              return { ok: false as const }
+            }
+          ),
         ])
         setTemplates(templatesData)
         setTickets(ticketsData)
         setSubscriptions(subscriptionsData)
         setClients(clientsData)
+        if (paymentsResult.ok) {
+          setPayments(paymentsResult.data)
+          setPaymentsLoadFailed(false)
+        } else {
+          setPaymentsLoadFailed(true)
+        }
       } catch (error) {
         console.error('データ取得エラー:', error)
       } finally {
@@ -79,6 +98,29 @@ export default function TicketsPage() {
     } catch (error) {
       console.error('月契約再取得エラー:', error)
     }
+  }
+
+  const refetchPayments = async () => {
+    if (!trainerId) return
+    try {
+      const paymentsData = await getPayments(trainerId)
+      setPayments(paymentsData)
+      setPaymentsLoadFailed(false)
+    } catch (error) {
+      console.error('支払いデータ再取得エラー:', error)
+      setPaymentsLoadFailed(true)
+    }
+  }
+
+  // チケット発行・編集・削除は支払記録の自動生成・付け替え（ticket_id の SET NULL 等）を伴うため、
+  // payments も並行して再取得する
+  const refetchTicketsAndPayments = async () => {
+    await Promise.all([refetchTickets(), refetchPayments()])
+  }
+
+  // 月契約の作成・削除も支払記録に影響しうる（ticket_subscription_id の SET NULL 等）ため同様に並行再取得
+  const refetchSubscriptionsAndPayments = async () => {
+    await Promise.all([refetchSubscriptions(), refetchPayments()])
   }
 
   // KPI計算
@@ -123,6 +165,7 @@ export default function TicketsPage() {
     { key: 'templates', label: 'テンプレート', count: templates.length },
     { key: 'issued', label: '発行済みチケット', count: tickets.length },
     { key: 'subscriptions', label: '月契約', count: subscriptions.length },
+    { key: 'payments', label: '支払い', count: payments.length },
   ]
 
   if (loading) {
@@ -271,12 +314,12 @@ export default function TicketsPage() {
                 <IssueTicketSection
                   templates={templates}
                   clients={clients}
-                  onIssued={refetchTickets}
+                  onIssued={refetchTicketsAndPayments}
                 />
                 <IssuedTicketList
                   tickets={tickets}
                   clients={clients}
-                  onRefetch={refetchTickets}
+                  onRefetch={refetchTicketsAndPayments}
                 />
               </div>
             )}
@@ -286,7 +329,16 @@ export default function TicketsPage() {
                 subscriptions={subscriptions}
                 templates={templates}
                 clients={clients}
-                onRefetch={refetchSubscriptions}
+                onRefetch={refetchSubscriptionsAndPayments}
+              />
+            )}
+
+            {activeTab === 'payments' && (
+              <PaymentList
+                payments={payments}
+                clients={clients}
+                loadFailed={paymentsLoadFailed}
+                onRefetch={refetchPayments}
               />
             )}
           </div>
