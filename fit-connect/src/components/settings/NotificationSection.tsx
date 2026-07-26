@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
+import { supabase } from '@/lib/supabase'
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
@@ -15,6 +16,25 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return outputArray
 }
 
+type NotificationKind = 'message' | 'goal_achievement'
+
+const NOTIFICATION_KINDS: {
+  kind: NotificationKind
+  label: string
+  description: string
+}[] = [
+  {
+    kind: 'message',
+    label: 'メッセージ受信',
+    description: 'クライアントからメッセージが届いたとき',
+  },
+  {
+    kind: 'goal_achievement',
+    label: '目標達成のお知らせ',
+    description: 'クライアントが目標を達成したとき',
+  },
+]
+
 type NotificationSectionProps = {
   trainerId: string
 }
@@ -24,6 +44,13 @@ export function NotificationSection({ trainerId }: NotificationSectionProps) {
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [loading, setLoading] = useState(false)
   const [supported, setSupported] = useState(true)
+  // 行が無ければ有効（デフォルトON）
+  const [prefs, setPrefs] = useState<Record<NotificationKind, boolean>>({
+    message: true,
+    goal_achievement: true,
+  })
+  const [savingKind, setSavingKind] = useState<NotificationKind | null>(null)
+  const [prefError, setPrefError] = useState<string | null>(null)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -43,6 +70,74 @@ export function NotificationSection({ trainerId }: NotificationSectionProps) {
       })
     })
   }, [])
+
+  // 通知種別ごとの設定を読み込み（RLSにより自分の行のみ取得可能）
+  useEffect(() => {
+    if (!trainerId) return
+    let cancelled = false
+
+    const loadPreferences = async () => {
+      const { data, error } = await supabase
+        .from('notification_preferences')
+        .select('kind, enabled')
+        .eq('user_id', trainerId)
+
+      if (cancelled) return
+
+      if (error) {
+        console.error('通知設定の取得エラー:', error)
+        return
+      }
+
+      if (data && data.length > 0) {
+        setPrefs((prev) => {
+          const next = { ...prev }
+          for (const row of data as { kind: string; enabled: boolean }[]) {
+            if (row.kind === 'message' || row.kind === 'goal_achievement') {
+              next[row.kind] = row.enabled
+            }
+          }
+          return next
+        })
+      }
+    }
+
+    loadPreferences()
+    return () => {
+      cancelled = true
+    }
+  }, [trainerId])
+
+  const handleTogglePref = useCallback(
+    async (kind: NotificationKind) => {
+      if (!trainerId) return
+      const nextValue = !prefs[kind]
+
+      setSavingKind(kind)
+      setPrefError(null)
+      // 楽観的更新
+      setPrefs((prev) => ({ ...prev, [kind]: nextValue }))
+
+      const { error } = await supabase.from('notification_preferences').upsert(
+        {
+          user_id: trainerId,
+          kind,
+          enabled: nextValue,
+        },
+        { onConflict: 'user_id,kind' }
+      )
+
+      if (error) {
+        console.error('通知設定の保存エラー:', error)
+        // ロールバック
+        setPrefs((prev) => ({ ...prev, [kind]: !nextValue }))
+        setPrefError('通知設定の保存に失敗しました。再度お試しください。')
+      }
+
+      setSavingKind(null)
+    },
+    [trainerId, prefs]
+  )
 
   const handleEnable = useCallback(async () => {
     if (!trainerId) return
@@ -184,6 +279,56 @@ export function NotificationSection({ trainerId }: NotificationSectionProps) {
             ? '通知がブラウザの設定でブロックされています。アドレスバー横の鍵アイコンから通知を「許可」に変更してください。'
             : 'クライアントからメッセージが届いた際にブラウザ通知でお知らせします。'}
         </p>
+
+        {/* 通知種別ごとの設定 */}
+        <div className="border-t border-gray-100 pt-4 space-y-3">
+          <p className="text-sm font-medium text-gray-700">通知の種類</p>
+
+          {prefError && (
+            <div className="text-sm px-3 py-2 rounded bg-red-50 text-red-600">
+              {prefError}
+            </div>
+          )}
+
+          <div className={`space-y-3 ${isSubscribed ? '' : 'opacity-50'}`}>
+            {NOTIFICATION_KINDS.map(({ kind, label, description }) => (
+              <div key={kind} className="flex items-center justify-between">
+                <div>
+                  <Label
+                    htmlFor={`notification-${kind}`}
+                    className="text-sm font-normal"
+                  >
+                    {label}
+                  </Label>
+                  <p className="text-xs text-gray-500">{description}</p>
+                </div>
+                <button
+                  id={`notification-${kind}`}
+                  type="button"
+                  role="switch"
+                  aria-checked={prefs[kind]}
+                  disabled={!isSubscribed || savingKind === kind}
+                  onClick={() => handleTogglePref(kind)}
+                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed ${
+                    prefs[kind] ? 'bg-blue-600' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      prefs[kind] ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {!isSubscribed && (
+            <p className="text-xs text-gray-400">
+              プッシュ通知をオンにすると種類ごとの設定を変更できます。
+            </p>
+          )}
+        </div>
       </CardContent>
     </Card>
   )
