@@ -73,7 +73,6 @@ export function CreateNoteModal({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          trainerId,
           clientId,
           title: title.trim(),
           content,

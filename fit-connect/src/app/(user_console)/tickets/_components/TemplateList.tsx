@@ -9,11 +9,10 @@ import { LayoutGrid, Clock, Calendar, Banknote } from 'lucide-react'
 
 interface TemplateListProps {
   templates: TicketTemplate[]
-  trainerId: string
   onRefetch: () => void
 }
 
-export function TemplateList({ templates, trainerId, onRefetch }: TemplateListProps) {
+export function TemplateList({ templates, onRefetch }: TemplateListProps) {
   const [createOpen, setCreateOpen] = useState(false)
   const [editTemplate, setEditTemplate] = useState<TicketTemplate | null>(null)
   const [deleteTemplate, setDeleteTemplate] = useState<TicketTemplate | null>(null)
@@ -185,7 +184,6 @@ export function TemplateList({ templates, trainerId, onRefetch }: TemplateListPr
         open={createOpen}
         onOpenChange={setCreateOpen}
         template={null}
-        trainerId={trainerId}
         onSaved={onRefetch}
       />
 
@@ -193,7 +191,6 @@ export function TemplateList({ templates, trainerId, onRefetch }: TemplateListPr
         open={!!editTemplate}
         onOpenChange={(open) => !open && setEditTemplate(null)}
         template={editTemplate}
-        trainerId={trainerId}
         onSaved={onRefetch}
       />
 

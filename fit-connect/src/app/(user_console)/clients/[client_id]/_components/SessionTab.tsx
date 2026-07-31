@@ -43,7 +43,7 @@ export function SessionTab({ clientId, trainerId }: SessionTabProps) {
 
       try {
         const res = await fetch(
-          `/api/workout-assignments?trainerId=${trainerId}&clientId=${clientId}&weekStart=${start}&weekEnd=${end}&includeHistory=true`
+          `/api/workout-assignments?clientId=${clientId}&weekStart=${start}&weekEnd=${end}&includeHistory=true`
         )
         const result = await res.json()
 

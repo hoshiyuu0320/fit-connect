@@ -44,7 +44,6 @@ type FormData = z.infer<typeof formSchema>
 interface PlanFormModalProps {
   open: boolean
   onClose: () => void
-  trainerId: string
   editingPlan?: WorkoutPlan | null
   onSaved: () => void
 }
@@ -52,7 +51,6 @@ interface PlanFormModalProps {
 export function PlanFormModal({
   open,
   onClose,
-  trainerId,
   editingPlan,
   onSaved,
 }: PlanFormModalProps) {
@@ -109,7 +107,6 @@ export function PlanFormModal({
   const onSubmit = async (data: FormData) => {
     try {
       const payload = {
-        trainerId,
         title: data.title,
         description: data.description || undefined,
         category: data.category,

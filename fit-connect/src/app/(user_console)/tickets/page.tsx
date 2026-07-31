@@ -304,7 +304,6 @@ export default function TicketsPage() {
             {activeTab === 'templates' && (
               <TemplateList
                 templates={templates}
-                trainerId={trainerId}
                 onRefetch={refetchTemplates}
               />
             )}
