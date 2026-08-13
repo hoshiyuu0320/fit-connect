@@ -192,3 +192,14 @@
 - **診断**: 生成物・lock の差分を「npm install の結果」と即断しない。`git diff --numstat origin/develop/<version>:<path> -- <path>` で develop と完全一致しないか確認（完全一致＝漏れ出し）。`git log -S <pkg>` で依存追加コミットが出ても `git merge-base --is-ancestor <commit> HEAD` で現ブランチの先祖か必ず確認する
 - **対処**: 漏れ出しと判断したら `git restore <files>` で破棄してからコミットする
 - **横展開**: pubspec.lock と同根。生成物・ロックファイルはブランチ往復で漏れるものとして、コミット前に develop との差分を必ず確認する
+
+## Supabase Auth の Custom SMTP 導入（Resend）でハマった4点（2026-08-13）
+
+- **背景**: モバイルのログインが `over_email_send_rate_limit` (429) で失敗。Supabase 組み込みメールは全無料プロジェクト共有で **1時間2通**、ダッシュボードから引き上げ不可。制限は**プロジェクト単位**なので `user+1@gmail.com` のエイリアス変更では回避できない。Resend を Custom SMTP として接続し `noreply@fit-connect.app` から送る構成に変更した
+- **落とし穴1: DNS を入れただけでは Resend は Verified にならない**。4レコード（MX/SPF/DKIM/DMARC）が `dig` で正しく引けていても、Resend の Domains 画面で **Verify を明示実行**するまで未検証のまま。この状態で送信すると Resend が SMTP レベルで `550 The domain is not verified` を返し、アプリには `500 unexpected_failure / Error sending confirmation email` として届く。**未検証は API キー作成画面の Domain ドロップダウンにドメインが出ないことでも判別できる**（この兆候を見逃して500まで進めてしまった）
+- **落とし穴2: `signInWithOtp` はユーザーの新旧でテンプレートが変わる**。auth_logs の `mail_type` が既存ユーザー = `magic_link`、**新規ユーザー = `confirmation`**。Magic Link だけ日本語化すると、最も重要な新規オンボーディング導線だけ英語のデフォルトメールが届く。**両方（`magic_link.html` / `confirmation.html`）を用意すること**
+- **落とし穴3: Custom SMTP を有効化しても上限は解放されない**。デフォルトが 2通/時 → **30通/時 に変わるだけ**。Authentication → Rate Limits で別途引き上げが必要（100通/時に設定。Resend 無料枠が 100通/日 なのでそれ以上は無意味）
+- **落とし穴4: Email OTP expiration のデフォルト 86400 秒（24時間）はセキュリティ警告対象**。`get_advisors` の `auth_otp_long_expiry` が「1時間未満を推奨」と検出する。3600 に変更して解消。**メール本文に有効期限を書くならこの値と必ず突き合わせること**（テンプレートに「1時間」と書きながら実態24時間だと嘘になる）
+- **診断の教訓**: SMTP 障害は **auth_logs に Resend からの生の SMTP エラーがそのまま入る**。`query_logs` で `source='auth_logs'` を引けば一発で原因が出るので、設定を推測でいじらない
+- **クリック追跡は必ずオフ**: 有効だとリンクが追跡URLに書き換えられ、企業のメールセキュリティスキャナの事前アクセスでマジックリンクのワンタイムトークンが消費される。Resend では Tracking Subdomain 空欄で無効のまま
+- **設計書**: `docs/superpowers/specs/2026-08-10-supabase-custom-smtp-design.md`（手順・DNS値・ロールバック手順）
