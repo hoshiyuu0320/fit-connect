@@ -56,6 +56,23 @@ double_confirm_changes = false
 enable_confirmations = false
 secure_password_change = false
 
+# マジックリンクメールの日本語テンプレート。
+# 注: この設定が効くのは **ローカル環境のみ**。本番（リモートプロジェクト）へは
+#     Dashboard > Authentication > Emails > Templates > Magic Link に
+#     supabase/templates/magic_link.html の中身を貼り付けて反映する。
+[auth.email.template.magic_link]
+subject = "FIT-CONNECT ログインリンク"
+content_path = "./supabase/templates/magic_link.html"
+
+# 新規ユーザーの signInWithOtp は mail_type = confirmation として送信されるため、
+# こちらも日本語テンプレートを用意する。
+# 注: この設定が効くのは **ローカル環境のみ**。本番（リモートプロジェクト）へは
+#     Dashboard > Authentication > Emails > Templates > Confirm signup に
+#     supabase/templates/confirmation.html の中身を貼り付けて反映する。
+[auth.email.template.confirmation]
+subject = "FIT-CONNECT アカウント登録の確認"
+content_path = "./supabase/templates/confirmation.html"
+
 [auth.sms]
 enable_signup = false
 enable_confirmations = false
