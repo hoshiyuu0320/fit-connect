@@ -212,8 +212,8 @@ class RegistrationNotifier extends _$RegistrationNotifier {
     }
 
     // 注意: ここでcurrentClientProviderをinvalidateしない
-    // invalidateすると_AuthLoadingScreenが再ビルドされ、即座にMainScreenに遷移してしまう
-    // invalidateはRegistrationCompleteScreenの_navigateToHome()で行う
+    // （invalidateすると_AuthLoadingScreenが再ビルドされ、即座にMainScreenに
+    //   遷移してしまう。invalidateはOnboardingFlowScreenのフロー完了時に行う）
   }
 
   /// 状態をクリア

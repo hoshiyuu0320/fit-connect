@@ -17,6 +17,7 @@ export type Client = {
   goal_deadline: string | null
   profile_image_url: string | null
   line_user_id: string | null
+  onboarding_completed_at: string | null  // オンボーディング完了時刻（Mobile側で設定。NULL=未完了）
   created_at: string
 }
 

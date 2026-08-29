@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
 import 'package:fit_connect_mobile/features/health/presentation/screens/health_settings_screen.dart';
@@ -10,6 +11,7 @@ import 'package:fit_connect_mobile/core/providers/theme_provider.dart';
 import 'package:fit_connect_mobile/features/auth/data/client_repository.dart';
 import 'package:fit_connect_mobile/features/auth/providers/auth_provider.dart';
 import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
+import 'package:fit_connect_mobile/features/consent/legal_links.dart';
 import 'package:fit_connect_mobile/features/settings/providers/notification_preferences_provider.dart';
 import 'package:fit_connect_mobile/services/storage_service.dart';
 
@@ -51,6 +53,11 @@ class SettingsScreen extends ConsumerWidget {
 
               // ヘルスケア連携セクション
               _buildHealthSection(context, ref),
+
+              const SizedBox(height: 16),
+
+              // 法的情報セクション
+              _buildLegalSection(context),
 
               const SizedBox(height: 16),
 
@@ -583,6 +590,104 @@ class SettingsScreen extends ConsumerWidget {
       loading: () => const SizedBox.shrink(),
       error: (_, __) => const SizedBox.shrink(),
     );
+  }
+
+  Widget _buildLegalSection(BuildContext context) {
+    final colors = AppColors.of(context);
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // グループヘッダー
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Text(
+              '法的情報',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: colors.textSecondary,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+
+          // 利用規約
+          _buildLegalLinkTile(
+            context,
+            icon: LucideIcons.fileText,
+            title: '利用規約',
+            url: LegalLinks.termsUrl,
+          ),
+
+          // プライバシーポリシー
+          _buildLegalLinkTile(
+            context,
+            icon: LucideIcons.shieldCheck,
+            title: 'プライバシーポリシー',
+            url: LegalLinks.privacyUrl,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLegalLinkTile(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String url,
+  }) {
+    final colors = AppColors.of(context);
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: AppColors.primary100,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          icon,
+          size: 20,
+          color: AppColors.primary500,
+        ),
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          color: colors.textPrimary,
+        ),
+      ),
+      trailing: Icon(
+        LucideIcons.externalLink,
+        size: 20,
+        color: colors.textHint,
+      ),
+      onTap: () => _openLegalUrl(context, url),
+    );
+  }
+
+  /// 法務ページを外部ブラウザで開く
+  Future<void> _openLegalUrl(BuildContext context, String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('リンクを開けませんでした'),
+          backgroundColor: AppColors.rose800,
+        ),
+      );
+    }
   }
 
   Widget _buildSettingsSection(BuildContext context, WidgetRef ref) {

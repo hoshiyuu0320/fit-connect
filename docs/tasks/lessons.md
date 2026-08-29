@@ -203,3 +203,27 @@
 - **診断の教訓**: SMTP 障害は **auth_logs に Resend からの生の SMTP エラーがそのまま入る**。`query_logs` で `source='auth_logs'` を引けば一発で原因が出るので、設定を推測でいじらない
 - **クリック追跡は必ずオフ**: 有効だとリンクが追跡URLに書き換えられ、企業のメールセキュリティスキャナの事前アクセスでマジックリンクのワンタイムトークンが消費される。Resend では Tracking Subdomain 空欄で無効のまま
 - **設計書**: `docs/superpowers/specs/2026-08-10-supabase-custom-smtp-design.md`（手順・DNS値・ロールバック手順）
+
+## GoogleService-Info.plist が Xcode 未登録で Firebase が初期化されない（2026-08-15）
+
+- **症状**: 実機で通知を ON にしても「設定できませんでした」。起動ログに `⚠️ Firebase/通知初期化エラー: [core/not-initialized]`、以降すべての Firebase 呼び出しが `[core/no-app] No Firebase App '[DEFAULT]' has been created`。FCM トークンが取れず `device_tokens` に登録されない
+- **原因**: `ios/Runner/GoogleService-Info.plist` は**ディスク上に存在し git 管理下にもあり BUNDLE_ID も正しい**が、`Runner.xcodeproj/project.pbxproj` に **PBXFileReference も Copy Bundle Resources 登録も一切無い**。よって `.app` に同梱されず、引数無しの `Firebase.initializeApp()`（バンドル内 plist を読む）が失敗する。`develop/1.0.0` を含む全ブランチで同じ状態だった
+- **診断**: 「plist があるか」ではなく **`grep -c "GoogleService-Info" ios/Runner.xcodeproj/project.pbxproj`** で登録有無を見る。0 なら未同梱
+- **対策（採用）**: `lib/firebase_options.dart` を追加し `Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform)` に変更。バンドル同梱に依存しなくなる。`firebase`/`flutterfire` CLI 未インストール＋ブラウザログインが必要だったため、CLI 生成物と同じ構造・同じ値を `GoogleService-Info.plist` と `android/app/google-services.json` から手書きした
+- **二次障害（重要）**: 修正して初めて `NotificationService.initialize()` が実際に走るようになった結果、内部の `getInitialMessage()` が APNs トークン到着を待って解決せず、`await` していた `main()` が `runApp()` に到達せず **iOS シミュレータで画面が真っ白**になった。修正前は `Firebase.initializeApp()` が即例外で `initialize()` 自体が動かず露見していなかった
+- **対策2**: `unawaited(NotificationService.initialize())` に変更。リスナー登録のみで初回フレームに必要な処理は無く、例外は `initialize()` 内で捕捉済み。起動描画をプッシュ通知初期化に依存させない
+- **教訓**: 「初期化が例外で握り潰されている」バグを直すと、それまで実行されていなかった後続コードが初めて走る。**修正後は必ず起動〜描画まで通しで確認する**（ログの成功行だけでなくスクリーンショットまで）
+- **三次障害（実機）**: Firebase が初期化されるようになった実機で、今度は `[firebase_messaging/apns-token-not-set]` が発生し `device_tokens` の行が 0 件のまま。UI は「通知を設定できました」と表示していた
+- **原因3**: iOS の `getToken()` は APNs トークンが FIRMessaging にセットされている必要がある。`requestPermissionAndRegister()` が `requestPermission()` 直後に `saveTokenToSupabase()` → `getToken()` を呼ぶため、APNs 登録の往復完了前に叩いて失敗していた
+- **対策3**: `_waitForApnsToken()`（iOS のみ、`getAPNSToken()` を最大15秒ポーリング）を追加し、`getToken()` の全呼び出し前に挟む。あわせて `saveTokenToSupabase` を `Future<bool>` 化し、`requestPermissionAndRegister` はその結果を返す（登録できていないのに「設定できました」と出さないため）。`app.dart` の `[App] FCMトークン保存完了` も成否で出し分け
+- **教訓2**: **成功ログを信用しない。** `.then((_) => print('完了'))` は、内部で例外を握り潰した失敗時にも「完了」を出す。非同期処理の成否は戻り値で表現し、ログとUIメッセージはその戻り値に従わせる
+- **検証の限界**: iOS シミュレータは APNs トークンを取得できないため、FCM トークン登録は**実機でしか検証できない**。シミュレータで確認できるのは Firebase 初期化と起動描画まで。最終確認は `device_tokens` の行数を SQL で直接見る
+- ~~**未解決**: `develop/1.0.0` と `feature/auth-custom-smtp` の `Runner.entitlements` に `aps-environment` が無い~~ → PR #78（本ブランチ）のマージで develop にも entitlement が入り解消
+
+## 実機で APNs トークンが届かない問題の最終解決（2026-08-29）
+
+- **真因（2段構え）**: ① firebase_messaging 15.2.10 は UIScene + `FlutterImplicitEngineDelegate` 方式のプラグイン登録に未対応で、`UIApplicationDidFinishLaunchingNotification` observer が発火せず `registerForRemoteNotifications` が一度も呼ばれない（flutter/flutter#185048）。② 16.5.0 へ上げても、scene 接続時のセットアップ末尾が `[FIRMessaging messaging].isAutoInitEnabled` でガードされており、Firebase を Dart 側で初期化する本アプリでは scene 接続時点で FIRMessaging が nil → ObjC の nil メッセージングで偽 → 登録スキップ。`didReinitializeFirebaseCore` も空実装で再登録されない
+- **修正**: (a) firebase_messaging ^16.5.0 / firebase_core ^4.13.0 へアップグレード（iOS 最低バージョン 13.0→15.0、Firebase iOS SDK 12.17.0）。(b) `NotificationService.initialize()` 先頭で `setAutoInitEnabled(true)` を毎起動呼ぶ — ネイティブハンドラが `registerForRemoteNotifications` + `ensureAPNSTokenSetting` を発火させる公式 API 経路（プラグイン実装 messagingSetAutoInitEnabled 参照）
+- **検証**: 実機 YH で FCM トークン取得 → `device_tokens`（ios/client）と `clients.fcm_token` に同一トークンが保存されたことを SQL で実測確認
+- **教訓**: プラグインの「自動でやってくれるはず」の初期化は、アプリのライフサイクル構成（UIScene / 新旧 AppDelegate 方式 / Dart側Firebase初期化）次第で丸ごとスキップされうる。ネイティブの前提条件（誰がいつ registerForRemoteNotifications を呼ぶか）をソースで確認する
+- **副次観察**: 起動時に `morningDialogProvider ... disposed during loading` の未処理例外がログに出る（非致命・別件）

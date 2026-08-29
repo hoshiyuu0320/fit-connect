@@ -83,6 +83,24 @@ class HealthSettings extends _$HealthSettings {
     return true;
   }
 
+  /// オンボーディング用: 体重+睡眠の読み取り権限を1回のリクエスト（=権限シート1枚）
+  /// でまとめて要求し、許可されたら master/weight/sleep を一括で有効化する。
+  ///
+  /// 権限シートを連続表示すると iOS が2枚目の present を拒否して
+  /// Future が解決せずハングするため、リクエストは必ず1回にまとめること。
+  Future<bool> enableAllWithSinglePrompt() async {
+    final repo = ref.read(healthRepositoryProvider);
+    final granted = await repo.requestPermission(includeSleep: true);
+    if (!granted) return false;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyEnabled, true);
+    await prefs.setBool(_keyWeightEnabled, true);
+    await prefs.setBool(_keySleepEnabled, true);
+    ref.invalidateSelf();
+    return true;
+  }
+
   /// 朝の目覚めダイアログのON/OFF切替
   Future<void> toggleMorningDialogEnabled(bool value) async {
     final prefs = await SharedPreferences.getInstance();
