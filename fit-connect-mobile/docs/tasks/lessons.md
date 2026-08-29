@@ -55,3 +55,12 @@ feature/healthkit-weight-sync でユーザー画面に HealthKit 由来レコー
 - **silent try/catch は禁物**: `debugPrint` だけで握り潰すと UI が無反応になりデバッグ困難。早期リターン各箇所にログ、INSERT は個別 try/catch で継続しつつ件数集計、最終件数と状態遷移を出力する。
 - **sync 成功時に provider invalidate を忘れない**: `ref.invalidate(weightRecordsProvider)` 等を呼ばないと、DB に入っても画面が古いキャッシュのまま。
 - **DB × デバイス × プラットフォーム SDK × データ提供側仕様** の4層すべてにバグがあり得る。1つ直して終わりと思わず、段階的に検証する。
+
+## Riverpod: autoDispose Provider の `.future` を購読なしで await しない（2026-08-29）
+
+### バグ: morningDialogProvider が起動の度に Unhandled StateError
+
+- 症状: iOS 起動時に毎回 `Unhandled Exception: Bad state: The provider morningDialogProvider ... was disposed during loading state, yet no value could be emitted.` がログに出る（非致命だがノイズ）。
+- 原因: `await ref.read(provider.future)` は**購読を作らない**ため、autoDispose provider が build の await 中に dispose され得る（autoDispose スケジューラ / resume 時の `ref.invalidate` / 登録フロー中の画面破棄）。Riverpod 2.6.1 は dispose 時に `.future` へ StateError を completeError するので、fire-and-forget な呼び出し経路では未処理例外になる。
+- 対策: 読み取りの間だけ `ref.listenManual` で購読を保持し、StateError は catch して「判定不能 = 非表示」に落とす（`morning_dialog_provider.dart` の `readMorningDialogDecision` 参照）。`ProviderSubscription.close()` は冪等なので finally で安全に close できる。keepAlive 化は依存 provider（healthSettings / todaySleepRecord）まで常駐化して挙動が変わるため不採用。
+- 教訓: **autoDispose provider の `.future` を `ref.read` で await するパターンは全箇所要注意**。await 期間の購読保持＋StateError ハンドリングをセットにする。

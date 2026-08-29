@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
@@ -27,6 +29,24 @@ bool shouldShowMorningDialog({
   if (dismissedDate == todayKey) return false;
   if (now.hour < 4 || now.hour >= 12) return false;
   return true;
+}
+
+/// 朝ダイアログ判定を安全に読み取る。
+/// - 読み取り中は listenManual で購読を保持し、autoDispose による途中破棄を防ぐ
+/// - それでも dispose された場合（画面破棄・invalidate 時）や判定不能時は false（表示しない）
+Future<bool> readMorningDialogDecision(WidgetRef ref) async {
+  final sub = ref.listenManual(morningDialogProvider, (_, __) {});
+  try {
+    return await ref.read(morningDialogProvider.future);
+  } on StateError {
+    // dispose during loading: 判定を破棄して非表示扱い
+    return false;
+  } catch (e) {
+    debugPrint('[MorningDialog] 判定読み取りエラー: $e');
+    return false;
+  } finally {
+    sub.close(); // close() は冪等（widget破棄で既にcloseされていても安全）
+  }
 }
 
 /// 朝ダイアログ表示制御 Provider
