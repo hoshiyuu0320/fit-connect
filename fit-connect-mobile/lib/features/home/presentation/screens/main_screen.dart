@@ -80,6 +80,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   List<Widget> get _screens => [
         HomeScreen(
           onNavigateToRecordsTab: _navigateToRecordsTab,
+          onNavigateToMessages: () => setState(() => _currentIndex = 1),
         ),
         const MessageScreen(),
         const WorkoutScreen(),

@@ -7,6 +7,17 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+/// 認証イベントを受けて LoginScreen を閉じる（ルートまで pop する）べきか判定する。
+///
+/// gotrue の `onAuthStateChange` は BehaviorSubject 仕様のため、購読開始時に
+/// 直近のイベント（残存セッションによる initialSession / tokenRefreshed 等）を
+/// 再送する。これに反応すると「セッション残存 + clients 行なし」の状態で
+/// LoginScreen を push した瞬間に自動 pop してしまうため、
+/// 新規サインイン（signedIn）イベントのみを閉じる対象とする。
+bool shouldPopOnAuthEvent(AuthChangeEvent event, Session? session) {
+  return event == AuthChangeEvent.signedIn && session != null;
+}
+
 class LoginScreen extends StatefulWidget {
   /// 登録フローから来た場合はtrue
   final bool isRegistration;
@@ -37,7 +48,7 @@ class _LoginScreenState extends State<LoginScreen> {
     // 認証状態を監視
     _authSubscription =
         Supabase.instance.client.auth.onAuthStateChange.listen((data) {
-      if (data.session != null && mounted) {
+      if (shouldPopOnAuthEvent(data.event, data.session) && mounted) {
         // 認証成功 → スタックをクリアしてルートに戻る
         Navigator.of(context).popUntil((route) => route.isFirst);
       }

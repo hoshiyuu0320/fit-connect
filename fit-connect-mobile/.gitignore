@@ -47,3 +47,4 @@ assets/.env
 
 # FVM Version Cache
 .fvm/third_party/lucide_icons/.dart_tool/
+.fvm/

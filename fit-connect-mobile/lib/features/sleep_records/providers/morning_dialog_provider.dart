@@ -1,5 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
 import 'package:fit_connect_mobile/features/health/providers/health_provider.dart';
 import 'package:fit_connect_mobile/features/sleep_records/data/sleep_date_utils.dart';
 import 'package:fit_connect_mobile/features/sleep_records/providers/sleep_records_provider.dart';
@@ -33,6 +34,11 @@ bool shouldShowMorningDialog({
 class MorningDialog extends _$MorningDialog {
   @override
   Future<bool> build() async {
+    // 多層防御: client 未取得（新規登録フロー中・未ログイン等）は表示しない。
+    // app.dart 側のガードと合わせて、登録フロー画面への誤表示を防ぐ。
+    final clientId = ref.watch(currentClientIdProvider);
+    if (clientId == null) return false;
+
     final settings = await ref.watch(healthSettingsProvider.future);
 
     final today = await ref.watch(todaySleepRecordProvider.future);

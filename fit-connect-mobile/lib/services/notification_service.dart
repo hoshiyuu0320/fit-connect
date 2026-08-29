@@ -11,6 +11,13 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   print('[NotificationService] バックグラウンドメッセージ: ${message.notification?.title}');
 }
 
+/// 通知セットアップの結果
+///
+/// [denied] は OS 権限の拒否、[registrationFailed] は権限は取れたが
+/// トークン登録に失敗（APNs トークン未着・ネットワークエラーなど）。
+/// UI の文言を出し分けるために区別する。
+enum NotificationSetupResult { granted, denied, registrationFailed }
+
 class NotificationService {
   static final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   static final FlutterLocalNotificationsPlugin _localNotifications =
@@ -27,27 +34,49 @@ class NotificationService {
   static void Function(String type, String? id)? onNotificationTap;
 
   /// 初期化
+  ///
+  /// 注意: ここでは OS の通知権限リクエストを行わない（オンボーディングの
+  /// プライミング画面から [requestPermissionAndRegister] を呼ぶ設計）。
+  /// 既に権限が許可済みの場合のみ、従来どおりトークン取得までを実行する
+  /// （既存ユーザーの通知を壊さないため）。
   static Future<void> initialize() async {
     try {
-      // 権限リクエスト
-      final settings = await _messaging.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
+      // APNs 登録要求を明示的に発火させる（iOS 実機で FCM トークンが取れない
+      // 問題の修正）。firebase_messaging 16.x は scene 接続時のネイティブ
+      // セットアップで registerForRemoteNotifications を
+      // `[FIRMessaging messaging].isAutoInitEnabled` でガードしているが、
+      // 本アプリは Firebase を Dart 側で初期化するためその時点では
+      // FIRMessaging が nil で常にスキップされる（flutter/flutter#185048 の亜種）。
+      // setAutoInitEnabled(true) はネイティブ側で
+      // registerForRemoteNotifications + ensureAPNSTokenSetting を呼ぶため、
+      // Firebase 初期化後のここで毎起動時に呼び出して登録を保証する。
+      // （APNs 登録は通知権限が未許可でも可能・冪等）
+      await _messaging.setAutoInitEnabled(true);
+
+      // 現在の権限状態を確認（ダイアログは表示されない）
+      final settings = await _messaging.getNotificationSettings();
+      final isAuthorized =
+          settings.authorizationStatus == AuthorizationStatus.authorized ||
+              settings.authorizationStatus == AuthorizationStatus.provisional;
 
       print('[NotificationService] 通知権限: ${settings.authorizationStatus}');
 
-      // iOS フォアグラウンド通知設定
-      await _messaging.setForegroundNotificationPresentationOptions(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
+      if (isAuthorized) {
+        // iOS フォアグラウンド通知設定
+        await _messaging.setForegroundNotificationPresentationOptions(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
 
-      // FCMトークン取得
-      final token = await _messaging.getToken();
-      print('[NotificationService] FCM Token: $token');
+        // FCMトークン取得（iOS は APNs トークンの到着を待ってから）
+        if (await _waitForApnsToken()) {
+          final token = await _messaging.getToken();
+          print('[NotificationService] FCM Token: $token');
+        } else {
+          print('[NotificationService] APNsトークン未取得のため取得をスキップ');
+        }
+      }
 
       // ローカル通知プラグイン初期化
       await _initializeLocalNotifications();
@@ -77,6 +106,48 @@ class NotificationService {
     }
   }
 
+  /// OS の通知権限をリクエストし、許可された場合はトークン登録まで行う
+  ///
+  /// オンボーディングの通知プライミング画面など、ユーザーに価値を説明した後の
+  /// 明示的なタイミングで呼び出すこと（起動時に自動で呼ばない）。
+  static Future<NotificationSetupResult> requestPermissionAndRegister({
+    required String userId,
+    required String userType,
+  }) async {
+    try {
+      final settings = await _messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+
+      debugPrint(
+          '[NotificationService] 権限リクエスト結果: ${settings.authorizationStatus}');
+
+      final isAuthorized =
+          settings.authorizationStatus == AuthorizationStatus.authorized ||
+              settings.authorizationStatus == AuthorizationStatus.provisional;
+      if (!isAuthorized) return NotificationSetupResult.denied;
+
+      // iOS フォアグラウンド通知設定
+      await _messaging.setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+
+      // 許可された場合のみトークンを登録。
+      // 権限は取れたが登録に失敗した場合（APNs トークン未着など）は
+      // denied と区別して返す（誤って「許可されていません」と表示しないため）
+      return await saveTokenToSupabase(userId, userType)
+          ? NotificationSetupResult.granted
+          : NotificationSetupResult.registrationFailed;
+    } catch (e) {
+      debugPrint('[NotificationService] 権限リクエストエラー: $e');
+      return NotificationSetupResult.registrationFailed;
+    }
+  }
+
   /// ローカル通知プラグイン初期化
   static Future<void> _initializeLocalNotifications() async {
     try {
@@ -94,9 +165,16 @@ class NotificationService {
           ?.createNotificationChannel(androidChannel);
 
       // 初期化設定
+      // iOS: requestXxxPermission はデフォルト true で初期化時に OS の許可
+      // ダイアログが出てしまうため明示的に false にする（権限リクエストは
+      // requestPermissionAndRegister に一本化）
       const initializationSettingsAndroid =
           AndroidInitializationSettings('@mipmap/ic_launcher');
-      const initializationSettingsIOS = DarwinInitializationSettings();
+      const initializationSettingsIOS = DarwinInitializationSettings(
+        requestAlertPermission: false,
+        requestBadgePermission: false,
+        requestSoundPermission: false,
+      );
       const initializationSettings = InitializationSettings(
         android: initializationSettingsAndroid,
         iOS: initializationSettingsIOS,
@@ -271,14 +349,48 @@ class NotificationService {
     }
   }
 
+  /// iOS で FCM トークンを取得する前に APNs トークンの到着を待つ
+  ///
+  /// `getToken()` は APNs トークンが FIRMessaging にセットされていないと
+  /// `[firebase_messaging/apns-token-not-set]` で失敗する。権限を許可した
+  /// 直後は APNs 登録の往復が完了していないため、短時間ポーリングして待つ。
+  ///
+  /// 戻り値: APNs トークンが利用可能になったか（iOS 以外は常に true）。
+  static Future<bool> _waitForApnsToken({
+    Duration timeout = const Duration(seconds: 15),
+  }) async {
+    if (!Platform.isIOS) return true;
+
+    var waited = Duration.zero;
+    var interval = const Duration(milliseconds: 300);
+    while (waited < timeout) {
+      try {
+        if (await _messaging.getAPNSToken() != null) return true;
+      } catch (e) {
+        debugPrint('[NotificationService] APNsトークン取得エラー: $e');
+      }
+      await Future<void>.delayed(interval);
+      waited += interval;
+      if (interval < const Duration(seconds: 2)) interval *= 2;
+    }
+    return false;
+  }
+
   /// FCMトークンをSupabaseに保存
-  static Future<void> saveTokenToSupabase(
+  ///
+  /// 戻り値: 保存まで到達したかどうか。
+  static Future<bool> saveTokenToSupabase(
       String userId, String userType) async {
     try {
+      if (!await _waitForApnsToken()) {
+        print('[NotificationService] APNsトークン未取得のため保存を中止');
+        return false;
+      }
+
       final token = await _messaging.getToken();
       if (token == null) {
         print('[NotificationService] トークン取得失敗');
-        return;
+        return false;
       }
 
       // 現在のユーザー情報を保持（トークンリフレッシュ時に使用）
@@ -304,9 +416,12 @@ class NotificationService {
         print('[NotificationService] トレーナートークン保存: $userId');
       } else {
         print('[NotificationService] 不明なユーザータイプ: $userType');
+        return false;
       }
+      return true;
     } catch (e) {
       print('[NotificationService] トークン保存エラー: $e');
+      return false;
     }
   }
 

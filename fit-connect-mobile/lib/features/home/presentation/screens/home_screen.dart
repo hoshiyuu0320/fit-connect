@@ -8,16 +8,19 @@ import 'package:fit_connect_mobile/features/goals/providers/goal_provider.dart';
 import 'package:fit_connect_mobile/features/weight_records/providers/weight_records_provider.dart';
 import 'package:fit_connect_mobile/features/home/presentation/widgets/goal_card.dart';
 import 'package:fit_connect_mobile/features/home/presentation/widgets/daily_summary_card.dart';
+import 'package:fit_connect_mobile/features/onboarding_flow/presentation/widgets/getting_started_card.dart';
 import 'package:fit_connect_mobile/features/schedules/providers/trainer_schedule_provider.dart';
 import 'package:fit_connect_mobile/features/schedules/presentation/widgets/trainer_status_card.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 class HomeScreen extends ConsumerWidget {
   final void Function(int tabIndex)? onNavigateToRecordsTab;
+  final VoidCallback? onNavigateToMessages;
 
   const HomeScreen({
     super.key,
     this.onNavigateToRecordsTab,
+    this.onNavigateToMessages,
   });
 
   @override
@@ -40,6 +43,15 @@ class HomeScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // はじめの3ステップカード（全達成 or 14日経過 or 手動クローズで非表示）
+              // Records tabs order: 0=サマリ, 1=体重, 2=食事, 3=運動, 4=睡眠, 5=ノート
+              GettingStartedCard(
+                onWeightTap: onNavigateToRecordsTab != null
+                    ? () => onNavigateToRecordsTab!(1)
+                    : null,
+                onMessageTap: onNavigateToMessages,
+              ),
+
               // Greeting
               _buildGreeting(context, now, clientAsync),
 

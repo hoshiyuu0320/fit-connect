@@ -12,6 +12,8 @@ import 'package:fit_connect_mobile/features/auth/presentation/screens/profile_se
 import 'package:fit_connect_mobile/features/auth/presentation/screens/registration_complete_screen.dart';
 import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
 import 'package:fit_connect_mobile/features/auth/providers/registration_provider.dart';
+import 'package:fit_connect_mobile/features/consent/data/consent_repository.dart';
+import 'package:fit_connect_mobile/features/consent/presentation/consent_dialog.dart';
 import 'package:fit_connect_mobile/services/notification_service.dart';
 import 'package:fit_connect_mobile/features/health/providers/health_sync_provider.dart';
 import 'package:fit_connect_mobile/features/health/providers/health_provider.dart';
@@ -77,6 +79,8 @@ class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen>
     with WidgetsBindingObserver {
   bool _tokenSaved = false;
   bool _healthSynced = false;
+  bool _consentChecked = false;
+  bool _staleSessionSignOutRequested = false;
   bool _isMorningDialogOpen = false;
   Timer? _periodicSyncTimer;
   bool _isResumeSyncing = false;
@@ -144,6 +148,20 @@ class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen>
   Future<void> _maybeShowMorningDialog() async {
     if (_isMorningDialogOpen) return;
     if (!mounted) return;
+
+    // 新規登録フロー中は表示しない。
+    // 登録フロー中は OS の権限アラートやアプリ切替で resumed が発火し、
+    // 登録フロー画面の上に root Navigator の showDialog（目覚めダイアログ）が
+    // 被ってしまうため、client 取得済み（＝ホーム表示状態）かつ登録フロー外の
+    // 場合のみ表示する。
+    final client = ref.read(currentClientProvider).valueOrNull;
+    final registrationState = ref.read(registrationNotifierProvider);
+    if (client == null ||
+        registrationState.hasTrainer ||
+        registrationState.isRegistrationComplete) {
+      return;
+    }
+
     final shouldShow = await ref.read(morningDialogProvider.future);
     if (!shouldShow || !mounted || _isMorningDialogOpen) return;
 
@@ -155,6 +173,37 @@ class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen>
     }
   }
 
+  /// 同意ゲート: 現行バージョンの規約・ポリシー・AI解析への同意が
+  /// 記録されていなければ同意ダイアログを表示する。
+  /// 起動セッション中1回だけ判定する（新規登録直後・既存ユーザーの初回起動・
+  /// 規約改定後の再同意はすべてここでカバーされる）。
+  void _checkConsentIfNeeded(String userId) {
+    if (_consentChecked) return;
+    _consentChecked = true;
+
+    // build中にダイアログを開けないため、フレーム描画後に実行
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _runConsentGate(userId);
+    });
+  }
+
+  Future<void> _runConsentGate(String userId) async {
+    if (!mounted) return;
+
+    bool hasConsent;
+    try {
+      hasConsent =
+          await ref.read(consentRepositoryProvider).hasCurrentConsent(userId);
+    } catch (e) {
+      // オフライン等で判定できない場合はゲートせず通す（fail-open）
+      debugPrint('[App] 同意状態の確認に失敗（fail-open）: $e');
+      return;
+    }
+
+    if (hasConsent || !mounted) return;
+    await showConsentDialog(context, userId: userId);
+  }
+
   void _saveTokenIfNeeded(String clientId) {
     if (_tokenSaved) return;
     _tokenSaved = true;
@@ -163,8 +212,8 @@ class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen>
     if (defaultTargetPlatform == TargetPlatform.iOS ||
         defaultTargetPlatform == TargetPlatform.android) {
       // FCMトークンをDBに保存（非同期で実行、UIをブロックしない）
-      NotificationService.saveTokenToSupabase(clientId, 'client').then((_) {
-        print('[App] FCMトークン保存完了');
+      NotificationService.saveTokenToSupabase(clientId, 'client').then((saved) {
+        print(saved ? '[App] FCMトークン保存完了' : '[App] FCMトークン保存失敗');
       }).catchError((e) {
         print('[App] FCMトークン保存エラー: $e');
       });
@@ -178,6 +227,32 @@ class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen>
         // シンプルにMainScreenを表示するだけ（タブ遷移は将来拡張）
       };
     }
+  }
+
+  /// 「セッション有り・clients 行なし・登録フロー外」の残存セッションを
+  /// サインアウトして自己修復する。
+  ///
+  /// この分岐に到達する正当なケース（トレーナーアカウントで Mobile に
+  /// ログインした、削除済みアカウントのセッションが残っている等）では、
+  /// サインアウトして未ログイン状態に戻すのが正しい挙動。放置すると
+  /// 「セッション残存 + clients 行なし」のままウェルカム画面が表示され、
+  /// ログイン画面の挙動不整合など不可解な状態になる。
+  ///
+  /// ビルド中に副作用を起こさないよう post-frame で一度だけ実行する。
+  /// サインアウト完了後は onAuthStateChange 経由で MyApp の StreamBuilder が
+  /// 未ログイン側（WelcomeScreen）を表示する。
+  void _signOutStaleSessionIfNeeded() {
+    if (_staleSessionSignOutRequested) return;
+    _staleSessionSignOutRequested = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // fire-and-forget: 失敗してもUIをブロックしない
+      Supabase.instance.client.auth.signOut().then((_) {
+        debugPrint('[App] clients 行のない残存セッションをサインアウトしました');
+      }).catchError((e) {
+        debugPrint('[App] 残存セッションのサインアウトに失敗: $e');
+      });
+    });
   }
 
   void _syncHealthDataIfNeeded() {
@@ -207,6 +282,8 @@ class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen>
           // FCMトークン保存（MainScreen表示前）
           _saveTokenIfNeeded(client.clientId);
           _syncHealthDataIfNeeded();
+          // 同意ゲート（client_id は auth.uid と同一）
+          _checkConsentIfNeeded(client.clientId);
           // クライアントデータあり → MainScreenへ
           return const MainScreen();
         } else if (registrationState.isRegistrationComplete) {
@@ -216,8 +293,10 @@ class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen>
           // クライアントデータなし＆登録フロー中 → プロフィール設定画面へ
           return const ProfileSetupScreen();
         } else {
-          // クライアントデータなし＆登録フローなし → オンボーディングへ
+          // クライアントデータなし＆登録フローなし
           // （認証済みだがクライアント登録がない状態）
+          // → 残存セッションをサインアウトして未ログイン状態へ自己修復
+          _signOutStaleSessionIfNeeded();
           return const WelcomeScreen();
         }
       },
@@ -249,6 +328,9 @@ class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen>
         if (registrationState.hasTrainer) {
           return const ProfileSetupScreen();
         }
+        // セッション有り・client 取得不能・登録フロー外 → 残存セッションを
+        // サインアウトして未ログイン状態へ自己修復（data 分岐の else と同様）
+        _signOutStaleSessionIfNeeded();
         return const WelcomeScreen();
       },
     );

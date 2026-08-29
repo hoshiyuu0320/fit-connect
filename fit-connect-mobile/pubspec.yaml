@@ -42,8 +42,8 @@ dependencies:
   qr_flutter: ^4.1.0
 
   # Firebase
-  firebase_core: ^3.8.1
-  firebase_messaging: ^15.1.5
+  firebase_core: ^4.13.0
+  firebase_messaging: ^16.5.0
   flutter_local_notifications: ^18.0.1
 
   # 環境変数
@@ -62,6 +62,7 @@ dependencies:
   shared_preferences: ^2.5.4
   flutter_svg: ^2.2.4
   app_settings: ^5.1.1
+  timezone: ^0.10.1
 
 # lucide_icons 0.257.0 は Flutter の IconData final 化に非対応のため、
 # third_party/ にコピーしてパッチした版で上書きする（詳細: third_party/lucide_icons/lib/src/icon_data.dart）

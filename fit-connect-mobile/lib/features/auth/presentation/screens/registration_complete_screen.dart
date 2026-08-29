@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:confetti/confetti.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/features/auth/providers/registration_provider.dart';
-import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
+import 'package:fit_connect_mobile/features/onboarding_flow/presentation/screens/onboarding_flow_screen.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 /// 登録完了画面
@@ -66,17 +66,15 @@ class _RegistrationCompleteScreenState
     super.dispose();
   }
 
-  void _navigateToHome() {
-    // 登録状態をクリア（isRegistrationComplete も false になる）
-    ref.read(registrationNotifierProvider.notifier).clear();
-
-    // currentClientProviderのキャッシュを無効化
-    // これにより、app.dartの_AuthLoadingScreenが再評価され、
-    // client != null なので MainScreen が表示される
-    ref.invalidate(currentClientProvider);
-
-    // Navigatorでの遷移は不要
-    // app.dartの状態変化により自動的にMainScreenが表示される
+  void _startOnboardingFlow() {
+    // オンボーディング後段フロー（通知プライミング・ヘルスケア提案）へ進む。
+    // 登録状態のクリアと currentClientProvider の無効化はフロー完了時に
+    // OnboardingFlowScreen 側で行う（完了後に app.dart が MainScreen を表示）。
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const OnboardingFlowScreen(),
+      ),
+    );
   }
 
   @override
@@ -256,7 +254,7 @@ class _RegistrationCompleteScreenState
 
                   // スタートボタン
                   ElevatedButton(
-                    onPressed: _navigateToHome,
+                    onPressed: _startOnboardingFlow,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: AppColors.primary600,
