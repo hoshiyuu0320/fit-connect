@@ -100,6 +100,8 @@ class MessageRepository {
   }
 
   /// メッセージを送信
+  /// [imageUrls] には message-photos のバケット相対パスを渡す
+  /// （DB カラム `image_urls` に合わせた引数名。表示時に署名URLへ解決する）
   Future<Message> sendMessage({
     required String senderId,
     required String receiverId,

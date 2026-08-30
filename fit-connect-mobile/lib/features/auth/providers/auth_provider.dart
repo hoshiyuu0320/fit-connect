@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' as supabase show User;
 import 'package:fit_connect_mobile/features/auth/data/account_deletion_repository.dart';
 import 'package:fit_connect_mobile/services/supabase_service.dart';
 import 'package:fit_connect_mobile/services/notification_service.dart';
+import 'package:fit_connect_mobile/shared/storage/signed_url_cache.dart';
 
 part 'auth_provider.g.dart';
 
@@ -72,6 +73,8 @@ class AuthNotifier extends _$AuthNotifier {
       }
     }
     await SupabaseService.client.auth.signOut();
+    // 署名URLキャッシュを破棄（別アカウントで再ログインした際に持ち越さない）
+    SignedUrlCache.instance.clear();
   }
 
   /// アカウント削除（App Store Guideline 5.1.1(v) 対応）

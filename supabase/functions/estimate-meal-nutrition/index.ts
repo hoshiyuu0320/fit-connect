@@ -116,6 +116,29 @@ async function callClaude(
 }
 
 /**
+ * image_urls の要素（フルURL or バケット相対パス）から message-photos の
+ * オブジェクトパスを取り出す。
+ * - http(s) 始まり: '/storage/v1/object/(public|sign)/message-photos/' 以降を
+ *   パスとして抽出（クエリ・フラグメントは除去）。message-photos 以外のURLは null
+ * - それ以外: バケット相対パスとみなす（念のためクエリ・フラグメントを除去）
+ *
+ * バケット private 化後は新クライアントがパスを送るが、旧クライアントの
+ * 公開URL・署名URLも受け付けて後方互換を保つ。
+ */
+function extractMessagePhotoPath(value: string): string | null {
+  const trimmed = value.trim()
+  if (trimmed.length === 0) return null
+  if (/^https?:\/\//i.test(trimmed)) {
+    const match = trimmed.match(
+      /\/storage\/v1\/object\/(?:public|sign)\/message-photos\/([^?#]+)/,
+    )
+    return match ? match[1] : null
+  }
+  const path = trimmed.split(/[?#]/)[0]
+  return path.length > 0 ? path : null
+}
+
+/**
  * Claude が ```json ... ``` のコードフェンスや前後のテキストを返してきても
  * 最初の { から最後の } までを抜き出して JSON.parse できる形にする防御層。
  */
@@ -366,12 +389,54 @@ Deno.serve(async (req) => {
       )
     }
 
-    // 6. Claude 呼び出し
+    // 6. 画像の署名URL化（message-photos private 化対応）
+    // Anthropic API は source:{type:'url'} のURLをサーバー側で fetch するため、
+    // service_role で TTL 600秒の署名URLを発行して渡す（推定は30秒タイムアウトなので十分）。
+    // 所有権チェック: 呼び出し元（authUid）のフォルダ配下（{uid}/… / {uid}/ai/…）
+    // 以外のパスは、他人の写真を署名させる悪用を防ぐためスキップする。
+    // 正当なクライアントは常に自フォルダのパスしか送らないため後方互換は壊れない。
+    // パス抽出・所有権・署名に失敗した要素はスキップし、画像指定があったのに1枚も
+    // 残らなければ既存の推定失敗系（ESTIMATION_FAILED）で返す。
+    const signedImageUrls: string[] = (
+      await Promise.all(
+        imageUrls.map(async (value) => {
+          const path = extractMessagePhotoPath(value)
+          if (!path) {
+            console.error('Could not extract message-photos path from image_urls element')
+            return null
+          }
+          if (!path.startsWith(`${authUid}/`)) {
+            console.error('Skipping image_urls element: path not owned by caller')
+            return null
+          }
+          const { data: signed, error: signErr } = await supabase.storage
+            .from('message-photos')
+            .createSignedUrl(path, 600)
+          if (signErr || !signed?.signedUrl) {
+            console.error(`createSignedUrl failed for ${path}:`, signErr)
+            return null
+          }
+          return signed.signedUrl
+        }),
+      )
+    ).filter((u): u is string => u !== null)
+    if (imageUrls.length > 0 && signedImageUrls.length === 0) {
+      await supabase.from('ai_estimation_logs').insert({
+        client_id: authUid,
+        trainer_id: client.trainer_id,
+        function_name: FUNCTION_NAME,
+        status: 'error',
+        error_code: 'ESTIMATION_FAILED',
+      })
+      return errorResponse('ESTIMATION_FAILED', 'Failed to resolve image URLs', 500)
+    }
+
+    // 7. Claude 呼び出し
     let result
     let appName = ''
     let warning: string | null = null
     try {
-      const raw = await callClaude(anthropicKey, meal_type, contentStr, imageUrls, inputKind)
+      const raw = await callClaude(anthropicKey, meal_type, contentStr, signedImageUrls, inputKind)
       result = validateEstimation(raw, inputKind === 'screenshot')
       if (inputKind === 'screenshot') {
         appName = typeof raw.app_name === 'string' && raw.app_name.trim().length > 0
@@ -404,7 +469,7 @@ Deno.serve(async (req) => {
       return errorResponse('EMPTY_RESULT', 'No foods could be identified', 422)
     }
 
-    // 7. 成功ログ
+    // 8. 成功ログ
     await supabase.from('ai_estimation_logs').insert({
       client_id: authUid,
       trainer_id: client.trainer_id,

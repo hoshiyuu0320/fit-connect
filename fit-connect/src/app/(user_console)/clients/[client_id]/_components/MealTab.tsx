@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useMemo, useRef, useCallback } from 'react'
-import Image from 'next/image'
 import { startOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, format, isToday, isYesterday, eachDayOfInterval, isBefore } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { MEAL_TYPE_OPTIONS } from '@/types/client'
 import { ImageModal } from '@/components/message/ImageModal'
+import { StorageImg } from '@/components/common/StorageImg'
 import type { MealRecord } from '@/types/client'
 
 type MealPeriod = 'today' | 'week' | 'month' | '3months' | 'all'
@@ -228,7 +228,13 @@ export function MealTab({ mealRecords }: MealTabProps) {
                       onClick={() => setSelectedImageUrl(meal.images![0])}
                       className="relative w-full aspect-square"
                     >
-                      <Image src={meal.images![0]} alt="" fill className="object-cover" unoptimized />
+                      <StorageImg
+                        value={meal.images![0]}
+                        bucket="message-photos"
+                        alt=""
+                        className="absolute inset-0 w-full h-full object-cover"
+                        fallback={<span className="absolute inset-0 bg-[#F8FAFC]" />}
+                      />
                       {meal.images!.length > 1 && (
                         <span className="absolute bottom-1 right-1 bg-black/60 text-white text-[10px] px-1 rounded">
                           +{meal.images!.length - 1}
@@ -295,12 +301,11 @@ export function MealTab({ mealRecords }: MealTabProps) {
                                   onClick={() => setSelectedImageUrl(url)}
                                   className="relative w-24 h-24 rounded-md overflow-hidden bg-[#F8FAFC] cursor-pointer hover:opacity-80 transition-opacity"
                                 >
-                                  <Image
-                                    src={url}
+                                  <StorageImg
+                                    value={url}
+                                    bucket="message-photos"
                                     alt={`食事画像 ${imgIndex + 1}`}
-                                    fill
-                                    className="object-cover"
-                                    unoptimized
+                                    className="absolute inset-0 w-full h-full object-cover"
                                   />
                                 </button>
                               ))}
@@ -403,7 +408,12 @@ function WeekCalendar({ meals }: { meals: MealRecord[] }) {
                           onClick={() => setSelectedImageUrl(meal.images![0])}
                           className="relative w-full aspect-square rounded overflow-hidden bg-[#F8FAFC] cursor-pointer hover:opacity-80 transition-opacity"
                         >
-                          <Image src={meal.images![0]} alt="" fill className="object-cover" unoptimized />
+                          <StorageImg
+                            value={meal.images![0]}
+                            bucket="message-photos"
+                            alt=""
+                            className="absolute inset-0 w-full h-full object-cover"
+                          />
                           {meal.images!.length > 1 && (
                             <span className="absolute bottom-1 right-1 bg-black/60 text-white text-[10px] font-bold rounded px-1 py-0.5">
                               +{meal.images!.length - 1}
@@ -445,7 +455,12 @@ function WeekCalendar({ meals }: { meals: MealRecord[] }) {
                   onClick={() => setSelectedImageUrl(url)}
                   className="relative flex-1 aspect-square rounded-md overflow-hidden bg-[#F8FAFC] cursor-pointer hover:opacity-80 transition-opacity"
                 >
-                  <Image src={url} alt="" fill className="object-cover" unoptimized />
+                  <StorageImg
+                    value={url}
+                    bucket="message-photos"
+                    alt=""
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
                 </button>
               ))}
             </div>
@@ -597,12 +612,11 @@ function MonthCalendar({ meals, displayMonth, setDisplayMonth }: { meals: MealRe
                             onClick={() => setSelectedImageUrl(url)}
                             className="relative w-24 h-24 rounded-md overflow-hidden bg-[#F8FAFC] cursor-pointer hover:opacity-80 transition-opacity"
                           >
-                            <Image
-                              src={url}
+                            <StorageImg
+                              value={url}
+                              bucket="message-photos"
                               alt={`食事画像 ${imgIndex + 1}`}
-                              fill
-                              className="object-cover"
-                              unoptimized
+                              className="absolute inset-0 w-full h-full object-cover"
                             />
                           </button>
                         ))}

@@ -2,32 +2,43 @@ import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
+import 'package:fit_connect_mobile/shared/widgets/storage_image.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 /// フルスクリーン画像ビューア
+///
+/// DB に保存された Storage 値（バケット相対パス / レガシーURL / 外部URL）と
+/// バケット名を受け取り、内部で署名URLに解決して表示する。
 ///
 /// 使い方:
 /// ```dart
 /// FullScreenImageViewer.show(
 ///   context: context,
-///   imageUrls: ['url1', 'url2'],
+///   values: message.imageUrls!,
+///   bucket: StorageBuckets.messagePhotos,
 ///   initialIndex: 0,
 /// );
 /// ```
 class FullScreenImageViewer extends StatefulWidget {
-  final List<String> imageUrls;
+  /// DB に保存された Storage 値のリスト（バケット相対パス / レガシーURL / 外部URL）
+  final List<String> values;
+
+  /// 値が属するバケット名（StorageBuckets 参照）
+  final String bucket;
   final int initialIndex;
 
   const FullScreenImageViewer({
     super.key,
-    required this.imageUrls,
+    required this.values,
+    required this.bucket,
     this.initialIndex = 0,
   });
 
   /// 便利メソッド: フルスクリーンで画像ビューアを表示
   static void show({
     required BuildContext context,
-    required List<String> imageUrls,
+    required List<String> values,
+    required String bucket,
     int initialIndex = 0,
   }) {
     Navigator.of(context).push(
@@ -36,7 +47,8 @@ class FullScreenImageViewer extends StatefulWidget {
         barrierColor: Colors.black87,
         pageBuilder: (context, animation, secondaryAnimation) {
           return FullScreenImageViewer(
-            imageUrls: imageUrls,
+            values: values,
+            bucket: bucket,
             initialIndex: initialIndex,
           );
         },
@@ -77,7 +89,7 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
           // 画像 PageView（ピンチズーム対応）
           PageView.builder(
             controller: _pageController,
-            itemCount: widget.imageUrls.length,
+            itemCount: widget.values.length,
             onPageChanged: (index) {
               setState(() => _currentIndex = index);
             },
@@ -86,22 +98,14 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
                 minScale: 0.5,
                 maxScale: 4.0,
                 child: Center(
-                  child: Image.network(
-                    widget.imageUrls[index],
+                  child: StorageImage(
+                    value: widget.values[index],
+                    bucket: widget.bucket,
                     fit: BoxFit.contain,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Center(
-                        child: CircularProgressIndicator(
-                          value: loadingProgress.expectedTotalBytes != null
-                              ? loadingProgress.cumulativeBytesLoaded /
-                                  loadingProgress.expectedTotalBytes!
-                              : null,
-                          color: Colors.white,
-                        ),
-                      );
-                    },
-                    errorBuilder: (_, __, ___) => const Center(
+                    placeholder: const Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    ),
+                    errorWidget: const Center(
                       child: Icon(
                         LucideIcons.imageOff,
                         color: Colors.white54,
@@ -128,7 +132,7 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
           ),
 
           // ページインジケーター（複数画像の場合のみ、下部に表示）
-          if (widget.imageUrls.length > 1)
+          if (widget.values.length > 1)
             Positioned(
               bottom: MediaQuery.of(context).padding.bottom + 24,
               left: 0,
@@ -145,7 +149,7 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Text(
-                      '${_currentIndex + 1} / ${widget.imageUrls.length}',
+                      '${_currentIndex + 1} / ${widget.values.length}',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 14,

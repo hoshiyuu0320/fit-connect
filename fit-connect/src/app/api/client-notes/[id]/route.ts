@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { requireTrainer, notFoundResponse, trainerOwnsNote } from '@/lib/api/guards'
+import { extractStoragePath } from '@/lib/supabase/storagePaths'
 
 export async function PUT(
   req: NextRequest,
@@ -85,14 +86,10 @@ export async function DELETE(
   }
 
   // 関連ファイルをStorageから削除
+  // 値は「バケット相対パス（新形式）」「フルURL（レガシー行）」の両対応
   if (note?.file_urls && note.file_urls.length > 0) {
-    const bucketPath = '/storage/v1/object/public/client-notes/'
     const filePaths = note.file_urls
-      .map((url: string) => {
-        const pathIndex = url.indexOf(bucketPath)
-        if (pathIndex === -1) return null
-        return url.substring(pathIndex + bucketPath.length)
-      })
+      .map((url: string) => extractStoragePath(url, 'client-notes'))
       .filter(Boolean) as string[]
 
     if (filePaths.length > 0) {

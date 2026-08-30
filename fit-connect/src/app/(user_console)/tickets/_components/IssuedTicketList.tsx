@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { format } from 'date-fns'
 import { Ticket } from 'lucide-react'
+import { StorageImg } from '@/components/common/StorageImg'
 import type { TicketWithClient, Client } from '@/types/client'
 import { TICKET_TYPE_OPTIONS } from '@/types/client'
 import { EditIssuedTicketModal } from './EditIssuedTicketModal'
@@ -150,15 +151,12 @@ export function IssuedTicketList({ tickets, clients, onRefetch }: IssuedTicketLi
                     style={{ borderBottom: isLast ? 'none' : '1px solid #E2E8F0', opacity: isExpired ? 0.5 : 1 }}
                   >
                     <div className="flex items-center gap-2">
-                      {(() => {
-                        const clientImage = clients.find(c => c.client_id === ticket.client_id)?.profile_image_url
-                        return clientImage ? (
-                          <img
-                            src={clientImage}
-                            alt={ticket.client_name ?? ''}
-                            className="w-7 h-7 rounded-full object-cover flex-shrink-0"
-                          />
-                        ) : (
+                      <StorageImg
+                        value={clients.find(c => c.client_id === ticket.client_id)?.profile_image_url}
+                        bucket="client-avatars"
+                        alt={ticket.client_name ?? ''}
+                        className="w-7 h-7 rounded-full object-cover flex-shrink-0"
+                        fallback={
                           <div
                             className="w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-semibold flex-shrink-0"
                             style={{
@@ -169,8 +167,8 @@ export function IssuedTicketList({ tickets, clients, onRefetch }: IssuedTicketLi
                           >
                             {ticket.client_name?.charAt(0) ?? '?'}
                           </div>
-                        )
-                      })()}
+                        }
+                      />
                       <span>{ticket.client_name}</span>
                     </div>
                   </td>

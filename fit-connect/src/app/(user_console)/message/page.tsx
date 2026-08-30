@@ -111,6 +111,8 @@ function MessageContent() {
         setUploading(hasImages);
 
         try {
+            // uploadMessageImage はバケット相対パスを返す（DB にはパスを保存し、
+            // 表示側の StorageImg / ImageModal が署名URLへ解決する）
             let imageUrls: string[] = [];
             if (hasImages) {
                 imageUrls = await Promise.all(

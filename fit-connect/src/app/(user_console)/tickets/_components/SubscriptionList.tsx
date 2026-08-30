@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { format } from 'date-fns'
 import { Pencil } from 'lucide-react'
+import { StorageImg } from '@/components/common/StorageImg'
 import type { TicketSubscription, TicketTemplate, Client } from '@/types/client'
 import { CreateSubscriptionModal } from './CreateSubscriptionModal'
 import { SubscriptionStatusDialog } from './SubscriptionStatusDialog'
@@ -104,15 +105,12 @@ export function SubscriptionList({ subscriptions, templates, clients, onRefetch 
                   <tr key={sub.id} className="border-b border-[#E2E8F0] hover:bg-[#FAFBFC]">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
-                        {(() => {
-                          const clientImage = clients.find(c => c.client_id === sub.client_id)?.profile_image_url
-                          return clientImage ? (
-                            <img
-                              src={clientImage}
-                              alt={sub.client_name ?? ''}
-                              className="w-7 h-7 rounded-full object-cover flex-shrink-0"
-                            />
-                          ) : (
+                        <StorageImg
+                          value={clients.find(c => c.client_id === sub.client_id)?.profile_image_url}
+                          bucket="client-avatars"
+                          alt={sub.client_name ?? ''}
+                          className="w-7 h-7 rounded-full object-cover flex-shrink-0"
+                          fallback={
                             <div
                               className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-semibold flex-shrink-0 border ${
                                 sub.status === 'cancelled'
@@ -122,8 +120,8 @@ export function SubscriptionList({ subscriptions, templates, clients, onRefetch 
                             >
                               {(sub.client_name ?? '?').charAt(0)}
                             </div>
-                          )
-                        })()}
+                          }
+                        />
                         <span className="text-[13px] font-medium text-[#0F172A]">{sub.client_name ?? '—'}</span>
                       </div>
                     </td>
