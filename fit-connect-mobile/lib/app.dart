@@ -162,7 +162,7 @@ class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen>
       return;
     }
 
-    final shouldShow = await ref.read(morningDialogProvider.future);
+    final shouldShow = await readMorningDialogDecision(ref);
     if (!shouldShow || !mounted || _isMorningDialogOpen) return;
 
     _isMorningDialogOpen = true;
