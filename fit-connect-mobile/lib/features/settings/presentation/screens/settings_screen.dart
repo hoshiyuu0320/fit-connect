@@ -8,12 +8,15 @@ import 'package:fit_connect_mobile/core/theme/app_theme.dart';
 import 'package:fit_connect_mobile/features/health/presentation/screens/health_settings_screen.dart';
 import 'package:fit_connect_mobile/features/health/providers/health_provider.dart';
 import 'package:fit_connect_mobile/core/providers/theme_provider.dart';
+import 'package:fit_connect_mobile/features/app_update/providers/force_update_provider.dart';
 import 'package:fit_connect_mobile/features/auth/data/client_repository.dart';
 import 'package:fit_connect_mobile/features/auth/providers/auth_provider.dart';
 import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
 import 'package:fit_connect_mobile/features/consent/legal_links.dart';
 import 'package:fit_connect_mobile/features/settings/providers/notification_preferences_provider.dart';
 import 'package:fit_connect_mobile/services/storage_service.dart';
+import 'package:fit_connect_mobile/shared/storage/storage_buckets.dart';
+import 'package:fit_connect_mobile/shared/widgets/storage_image.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -64,6 +67,11 @@ class SettingsScreen extends ConsumerWidget {
               // 設定項目セクション
               _buildSettingsSection(context, ref),
 
+              const SizedBox(height: 16),
+
+              // アプリ情報セクション
+              _buildAppInfoSection(context, ref),
+
               const SizedBox(height: 100), // Bottom padding
             ],
           ),
@@ -113,16 +121,26 @@ class SettingsScreen extends ConsumerWidget {
                     CircleAvatar(
                       radius: 40,
                       backgroundColor: AppColors.primary100,
-                      backgroundImage: client.profileImageUrl != null
-                          ? NetworkImage(client.profileImageUrl!)
-                          : null,
-                      child: client.profileImageUrl == null
-                          ? const Icon(
+                      child: client.profileImageUrl != null
+                          ? ClipOval(
+                              child: StorageImage(
+                                value: client.profileImageUrl,
+                                bucket: StorageBuckets.clientAvatars,
+                                width: 80,
+                                height: 80,
+                                fit: BoxFit.cover,
+                                errorWidget: const Icon(
+                                  LucideIcons.user,
+                                  size: 40,
+                                  color: AppColors.primary500,
+                                ),
+                              ),
+                            )
+                          : const Icon(
                               LucideIcons.user,
                               size: 40,
                               color: AppColors.primary500,
-                            )
-                          : null,
+                            ),
                     ),
                     // カメラアイコンオーバーレイ
                     Positioned(
@@ -780,6 +798,68 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
+  Widget _buildAppInfoSection(BuildContext context, WidgetRef ref) {
+    final colors = AppColors.of(context);
+    final packageInfo = ref.watch(packageInfoProvider);
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // グループヘッダー
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Text(
+              'アプリ情報',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: colors.textSecondary,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+
+          // アプリバージョン（package_info_plus 由来。取得中・失敗時は「-」）
+          ListTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primary100,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                LucideIcons.info,
+                size: 20,
+                color: AppColors.primary500,
+              ),
+            ),
+            title: Text(
+              'バージョン',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: colors.textPrimary,
+              ),
+            ),
+            trailing: Text(
+              packageInfo.valueOrNull?.version ?? '-',
+              style: TextStyle(
+                fontSize: 14,
+                color: colors.textSecondary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showEditNameDialog(
     BuildContext context,
     WidgetRef ref,
@@ -889,17 +969,17 @@ class SettingsScreen extends ConsumerWidget {
     }
 
     try {
-      // 画像をアップロード
-      final imageUrl = await StorageService.uploadProfileImage(file, clientId);
+      // 画像をアップロード（戻り値はバケット相対パス）
+      final imagePath = await StorageService.uploadProfileImage(file, clientId);
 
-      if (imageUrl == null) {
+      if (imagePath == null) {
         throw Exception('画像のアップロードに失敗しました');
       }
 
-      // DBを更新
+      // DBを更新（profile_image_url にはパスを保存する）
       await ref.read(clientRepositoryProvider).updateProfileImageUrl(
             clientId,
-            imageUrl,
+            imagePath,
           );
 
       // Providerをinvalidateして再取得

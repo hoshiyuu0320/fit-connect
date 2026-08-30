@@ -227,3 +227,31 @@
 - **検証**: 実機 YH で FCM トークン取得 → `device_tokens`（ios/client）と `clients.fcm_token` に同一トークンが保存されたことを SQL で実測確認
 - **教訓**: プラグインの「自動でやってくれるはず」の初期化は、アプリのライフサイクル構成（UIScene / 新旧 AppDelegate 方式 / Dart側Firebase初期化）次第で丸ごとスキップされうる。ネイティブの前提条件（誰がいつ registerForRemoteNotifications を呼ぶか）をソースで確認する
 - **副次観察**: 起動時に `morningDialogProvider ... disposed during loading` の未処理例外がログに出る（非致命・別件）
+
+## Storage private化（フェーズ8.2、2026-08-30）で踏んだ罠
+
+### storage.objects ポリシーのサブクエリ内で無修飾 `name` が内側テーブルに解決される（実バグ・RLSテストが検出）
+
+- **症状**: `message_photos_select_participants` の「担当トレーナー閲覧」「クライアントがWebフォルダ閲覧」分岐が一切マッチせず、本人の自フォルダ以外が見えない
+- **原因**: ポリシー式の `EXISTS (SELECT 1 FROM public.clients c WHERE … (storage.foldername(name))[1] …)` で、無修飾の `name` が**外側の storage.objects.name ではなく clients.name に解決**される（SQLのスコープ規則どおり。`pg_get_expr` で確認すると `storage.foldername(c.name)` になっていた）。カタログ 2026-07-08 の下書きSQLにも同じ潜在バグがある
+- **対策**: サブクエリ内では必ず `objects.name` と修飾する。**RLS ポリシーは書いたら必ず `pg_get_expr(polqual, polrelid)` で実際の解決結果を目視**し、supabase/tests/ の実クエリテストを通す（構文パーサ検証では検出不能）
+- **関連**: `supabase/migrations/20260829000000_storage_private_and_policies.sql` / `supabase/tests/storage_policies_rls_test.sql`
+
+### React hooks 入り共有モジュールをサーバー(API Route)から import すると next build だけが落ちる
+
+- **症状**: `tsc --noEmit` / vitest / lint は全て通るのに `next build` が「You're importing a component that needs useState」で失敗
+- **原因**: 純関数（パス抽出）と `useStorageUrl` フックを1ファイル（storagePaths.ts）に同居させ、純関数を API Route から import したため、サーバーバンドルに react hooks が混入
+- **対策**: サーバーからも使う純関数と、クライアント専用（フック・ブラウザクライアント依存）を**最初からファイル分離**する（storagePaths.ts = 純関数 / signedStorageUrls.ts = 'use client'）。**tsc/vitest が通っても next build までがWebの検証セット**
+- **横展開**: 「Web/Mobile共通セマンティクスのヘルパー」を作るときは、Web側は server/client 境界も設計に含める
+
+### CocoaPods は非対話シェルで LANG 未設定だと Encoding::CompatibilityError で落ちる
+
+- **症状**: `pod install --repo-update` が `Unicode Normalization not appropriate for ASCII-8BIT` で失敗（エラーの手前に「terminal encoding UTF-8にせよ」の警告）
+- **対策**: `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 pod install …` で実行。新プラグイン追加（今回 package_info_plus）で pod の specs 更新が要る時は `--repo-update` も付ける
+
+### その他（このセッションの環境メモ）
+
+- `supabase start` を Docker Desktop 起動直後に走らせるとハングすることがある（CPU時間ほぼゼロで待ち続ける）。kill → 再実行で正常にイメージ pull が始まる
+- 旧モノレポ移行前の `supabase_*_fit-connect-mobile` コンテナが Docker 再起動で自動復活しポートを塞ぐ。`docker stop $(docker ps -q --filter name=fit-connect-mobile)` で停止してから `supabase start`
+- claude-in-chrome の接続先 Chrome が**別デバイス**のことがある（localhost:3000 が ERR で LAN IP `http://192.168.1.15:3000` なら届く、が判別サイン）。ただし別オリジンには auth セッションが無い点に注意
+- normalize 系のデータ migration は「リモート実測 → 変換regexのシミュレーション → ローカル db reset → リモート push 後の残存件数SQL検証」の順で安全に適用できた（今回: http残存 0 件・外部URL 2 件保全を実測確認）

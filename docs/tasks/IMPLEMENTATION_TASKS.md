@@ -3,7 +3,7 @@
 **作成日**: 2026年3月29日
 **バージョン**: 2.0
 **進捗状況**: フェーズ1 完了 / フェーズ2 2.1〜2.5 完了（2.4 任意項目のみバックログ）/ フェーズ3〜10 未着手
-**最終更新**: 2026年7月19日 - フェーズ7.3 完了（統一ディスパッチャ・notification_preferences・通知設定UI・/api/push-notify 削除）。各タスクの詳細設計は `docs/tasks/2026-07-08-solution-catalog.md`、共通基盤の設計決定は `docs/tasks/2026-07-10-integration-decisions.md` を参照
+**最終更新**: 2026年8月30日 - フェーズ8.2 完了（Storage 4バケット private 化 + 署名URL + 強制アップデート機構 + AI画像 orphan cleanup。リモート適用済み）。各タスクの詳細設計は `docs/tasks/2026-07-08-solution-catalog.md`、共通基盤の設計決定は `docs/tasks/2026-07-10-integration-decisions.md` を参照
 
 > **2026-04-26 モノレポ化完了**: 旧 `fit-connect-mobile` リポジトリを `git subtree` で取り込み、単一 git リポジトリで Web/Mobile 両方を管理する構成に移行。詳細は `docs/tasks/2026-04-26-monorepo-migration.md`。
 
@@ -36,7 +36,7 @@
 | 5 | セキュリティ・基盤修復【緊急】 | Supabase + Web | 75% | 🟡 5.1・5.2・5.5 完了 / 5.3 cron migration 化済み・Vault 登録はユーザー作業待ち（手順書: `2026-07-10-cron-vault-setup.md`）/ 5.4 未着手 |
 | 6 | 収益化・リリース準備（Stripe/法務/アカウント削除/Apple Sign-In） | Web + Mobile + Supabase | 70% | 🟡 6.2 完了（アカウント削除 + Sign in with Apple）/ 6.1 完了（法務3ページ + user_consents + signup同意。Mobile側の顧客同意UIはフェーズ3の同意ダイアログとして実装済み 2026/07/19）/ 6.3 Stripe課金コア実装済み（テスト・本番切替はオーナーのStripeセットアップ待ち。手順書: 2026-07-12-stripe-setup-guide.md）/ 6.4 完了（フェーズ4として実装済み）/ 6.5 支払記録 実装済み（領収書PDF・Stripe Connect は後回し） |
 | 7 | 通知基盤統一（device_tokens + 共通ディスパッチャ） | Supabase + Web + Mobile | 100% | 🟢 7.1〜7.4 完了（7.4 通知権限プライミングはフェーズ3の 3.2 として実装。2026/07/19） |
-| 8 | 不具合修正・顧客体験の底上げ | Mobile + Web + Supabase | 30% | 🟡 8.1 ワークアウト繰越バグ修正 完了（2026/07/10。拡張の警告通知はフェーズ7待ち）/ 8.2・8.3 未着手 |
+| 8 | 不具合修正・顧客体験の底上げ | Mobile + Web + Supabase | 70% | 🟡 8.1 完了（2026/07/10）/ 8.2 Storage private化+署名URL+強制アップデート+orphan cleanup 完了（2026/08/30、リモート適用済み）/ 8.3 未着手 |
 | 9 | トレーナー介入機能（異常検知・トリアージ） | Web + Supabase | 0% | 🔴 未着手 |
 | 10 | リテンション機能（リマインダー・直接記録・ストリーク） | Mobile + Supabase | 0% | 🔴 未着手 |
 
@@ -344,11 +344,15 @@
     - 根本原因は表示範囲の非対称（リスケ先は+30日先まで選べるが画面は期限切れ/今日/今週の3窓のみ描画）。Mobileワークアウト画面に「今後の予定」セクション（今日+1〜+30日のpending一覧、日付変更可）を追加し、リスケ時に status を pending へ復帰（auto-skip cronとのレース対策）、成功時スナックバー表示
     - original_date カラム追加・Web側修正は調査の結果不要と判断
   - [ ] （拡張）スキップ前警告通知（cat2 8-B、フェーズ7完了後）
-- [ ] **8.2 Storage private 化 + 署名URL**（cat7 2-A、4フェーズ段階移行）
-  - [ ] URL/パス両対応ヘルパー（Web/Mobile 共通方針）→ 新規はパス保存 → バケット private 化 → 既存データ正規化
-  - [ ] message-photos の INSERT ポリシー修正（他人フォルダへのアップロード可を封鎖）
-  - [ ] 強制アップデート機構の導入（バージョンチェック + 更新ダイアログ。この移行の前提）
-  - [ ] AI 画像 orphan cleanup（cat7 8-B 即時削除 → 8-A dry-run → 定期削除）
+- [x] **8.2 Storage private 化 + 署名URL**（cat7 2-A）✅ 実装完了・リモート適用済み（2026-08-30、PR: feature/storage-private-signed-urls。設計: `2026-08-29-storage-private-plan.md`）
+  - [x] URL/パス両対応ヘルパー（Web: `storagePaths.ts`(純関数) + `signedStorageUrls.ts`('use client') / Mobile: `shared/storage/` + `StorageImage`）→ 新規はパス保存 → **4バケット全て private 化** → 既存データ正規化（migration `20260829000200`。リモートで http 残存 0 件・Google 外部URL 2 件保全を実測確認）
+  - [x] message-photos の INSERT ポリシー修正（自フォルダ限定）+ client-notes の全ポリシー再編（authenticated 全員が全フォルダ読み書き削除できた重大不備を当事者限定に）+ profile-images の DELETE 新設（migration `20260829000000`）
+    - 注: ポリシーのサブクエリ内 `name` は必ず `objects.name` と修飾（clients.name に誤解決する実バグを RLS テスト `storage_policies_rls_test.sql` が検出・修正済み。lessons.md 参照）
+  - [x] 強制アップデート機構（`app_config` 単一行テーブル + `lib/features/app_update/` + `AppUpdateGate`。fail-open 3秒タイムアウト。設定画面にバージョン表示追加。package_info_plus 導入）
+  - [x] AI 画像 orphan cleanup（8-B: AI推定フローのキャンセル/戻る/dispose で未送信画像を即時削除・送信済みガード付き / 8-A: `find_orphan_ai_images()` + Edge Function `cleanup-ai-images`(dry_run 対応) + pg_cron 日次ジョブを **inactive 登録**。リモート dry-run 相当の SQL 検証で orphan 24件中5件のみ検出=誤検知なし）
+  - [x] `estimate-meal-nutrition` を URL/パス両対応 + service_role 署名URL(600s)で Anthropic へ渡す方式に改修（private 化で AI 推定が壊れる問題の対処）。両 Edge Function デプロイ済み
+  - [ ] （残・オーナー作業）cleanup-ai-images cron の有効化判断（Vault 登録が前提: `2026-07-10-cron-vault-setup.md`）/ App Store 公開後に `app_config.ios_store_url` 設定
+  - [ ] （残・QA）ログイン後の対話 QA（Web: メッセージ/食事/カルテ画像表示、Mobile: 同+AI推定フロー）は認証が必要なため未実施。ヘッドレス検証済み: 全テスト(Web 112/Mobile 111)・next build・db reset・RLS テスト4本・シミュレータ起動確認
 - [ ] **8.3 Mobile セッション表示 + 前日リマインダー**（cat4 課題2・3。フェーズ7の最初の消費者）
   - [ ] ホームに次回セッションカード + セッション一覧画面
   - [ ] セッション前日リマインダー（pg_cron + ディスパッチャ、notification_logs で冪等化）

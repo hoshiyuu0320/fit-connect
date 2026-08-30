@@ -1,5 +1,8 @@
+'use client'
+
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
+import { useStorageUrl } from '@/lib/supabase/signedStorageUrls'
 import type { Client } from '@/types/client'
 
 type ProfileAvatarProps = {
@@ -21,6 +24,9 @@ const genderColors = {
 }
 
 export function ProfileAvatar({ client, size = 'md', className }: ProfileAvatarProps) {
+  // 値はパス or フルURL（レガシー）の両対応。署名URLへ解決してから表示する
+  const avatarUrl = useStorageUrl(client.profile_image_url, 'client-avatars')
+
   // 名前からイニシャルを取得（最大2文字）
   const getInitials = (name: string): string => {
     if (!name) return '?'
@@ -30,11 +36,11 @@ export function ProfileAvatar({ client, size = 'md', className }: ProfileAvatarP
   const initials = getInitials(client.name)
   const bgColor = genderColors[client.gender]
 
-  if (client.profile_image_url) {
+  if (avatarUrl) {
     return (
       <div className={cn('relative rounded-full overflow-hidden', sizeClasses[size], className)}>
         <Image
-          src={client.profile_image_url}
+          src={avatarUrl}
           alt={client.name}
           fill
           className="object-cover"

@@ -4,7 +4,11 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:fit_connect_mobile/features/client_notes/models/client_note_model.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
+import 'package:fit_connect_mobile/shared/storage/signed_url_cache.dart';
+import 'package:fit_connect_mobile/shared/storage/storage_buckets.dart';
+import 'package:fit_connect_mobile/shared/storage/storage_value_resolver.dart';
 import 'package:fit_connect_mobile/shared/widgets/full_screen_image_viewer.dart';
+import 'package:fit_connect_mobile/shared/widgets/storage_image.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 /// カルテ詳細画面（読み取り専用）
@@ -18,30 +22,38 @@ class ClientNoteDetailScreen extends StatelessWidget {
     this.trainerName,
   });
 
-  // ファイル種別判定ロジック
-  bool _isImage(String url) {
-    final lower = url.toLowerCase();
+  /// 判定用: 値（`パス#元ファイル名` 形式 or レガシーURL）からパス部分を取り出す
+  String _pathOf(String value) =>
+      resolveStorageValue(value, StorageBuckets.clientNotes).path ?? value;
+
+  // ファイル種別判定ロジック（フラグメント・クエリ除去後のパスで判定）
+  bool _isImage(String value) {
+    final lower = _pathOf(value).toLowerCase();
     return lower.endsWith('.jpg') ||
         lower.endsWith('.jpeg') ||
         lower.endsWith('.png') ||
         lower.endsWith('.webp');
   }
 
-  bool _isPdf(String url) {
-    return url.toLowerCase().endsWith('.pdf');
+  bool _isPdf(String value) {
+    return _pathOf(value).toLowerCase().endsWith('.pdf');
   }
 
-  String _getFileName(String url) {
-    final uri = Uri.parse(url);
+  String _getFileName(String value) {
+    final resolved = resolveStorageValue(value, StorageBuckets.clientNotes);
     // フラグメント部分に元のファイル名がある場合はそれを使用
-    if (uri.fragment.isNotEmpty) {
-      return Uri.decodeComponent(uri.fragment);
+    final fragment = resolved.decodedFragment;
+    if (fragment != null && fragment.isNotEmpty) {
+      return fragment;
     }
-    return uri.pathSegments.last;
+    return _pathOf(value).split('/').last;
   }
 
-  // PDFファイルを開く
-  Future<void> _openPdf(String url) async {
+  // PDFファイルを開く（署名URLに解決してから外部アプリで起動）
+  Future<void> _openPdf(String value) async {
+    final url = await SignedUrlCache.instance
+        .resolveUrl(value, StorageBuckets.clientNotes);
+    if (url == null) return;
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -222,37 +234,33 @@ class ClientNoteDetailScreen extends StatelessWidget {
                               final imageIndex = imageUrls.indexOf(url);
                               FullScreenImageViewer.show(
                                 context: context,
-                                imageUrls: imageUrls,
+                                values: imageUrls,
+                                bucket: StorageBuckets.clientNotes,
                                 initialIndex: imageIndex,
                               );
                             },
-                            child: ClipRRect(
+                            child: StorageImage(
+                              value: url,
+                              bucket: StorageBuckets.clientNotes,
+                              height: 200,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
                               borderRadius: BorderRadius.circular(12),
-                              child: Image.network(
-                                url,
+                              placeholder: Container(
                                 height: 200,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                                loadingBuilder:
-                                    (context, child, loadingProgress) {
-                                  if (loadingProgress == null) return child;
-                                  return Container(
-                                    height: 200,
-                                    color: colors.border,
-                                    child: const Center(
-                                      child: CircularProgressIndicator(),
-                                    ),
-                                  );
-                                },
-                                errorBuilder: (_, __, ___) => Container(
-                                  height: 200,
-                                  color: colors.border,
-                                  child: Center(
-                                    child: Icon(
-                                      LucideIcons.imageOff,
-                                      color: colors.textHint,
-                                      size: 48,
-                                    ),
+                                color: colors.border,
+                                child: const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              ),
+                              errorWidget: Container(
+                                height: 200,
+                                color: colors.border,
+                                child: Center(
+                                  child: Icon(
+                                    LucideIcons.imageOff,
+                                    color: colors.textHint,
+                                    size: 48,
                                   ),
                                 ),
                               ),

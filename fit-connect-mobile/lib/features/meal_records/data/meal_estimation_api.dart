@@ -28,10 +28,13 @@ class MealEstimationException implements Exception {
 }
 
 class MealEstimationApi {
+  /// [imagePaths] は message-photos のバケット相対パス。
+  /// Edge Function 側が service_role で署名して Anthropic に渡す
+  /// （body のキーは後方互換のため `image_urls` のまま。レガシー URL も受け付ける）。
   static Future<MealEstimationResult> estimate({
     required String mealType, // 'breakfast' | 'lunch' | 'dinner' | 'snack'
     required String content,
-    List<String> imageUrls = const [],
+    List<String> imagePaths = const [],
     String inputKind = 'photo', // 'photo' | 'screenshot'
   }) async {
     try {
@@ -40,7 +43,7 @@ class MealEstimationApi {
         body: {
           'meal_type': mealType,
           'content': content,
-          if (imageUrls.isNotEmpty) 'image_urls': imageUrls,
+          if (imagePaths.isNotEmpty) 'image_urls': imagePaths,
           'input_kind': inputKind,
         },
       ).timeout(const Duration(seconds: 45));

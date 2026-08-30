@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { User } from 'lucide-react'
+import { StorageImg } from '@/components/common/StorageImg'
 import { PURPOSE_OPTIONS, GENDER_OPTIONS } from '@/types/client'
 
 interface ChatHeaderProps {
@@ -44,17 +45,17 @@ export function ChatHeader({ client }: ChatHeaderProps) {
   return (
     <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-[#E2E8F0] bg-white">
       <div className="flex items-center gap-3">
-        {client.profile_image_url ? (
-          <img
-            src={client.profile_image_url}
-            alt={client.name}
-            className="w-9 h-9 rounded-full object-cover"
-          />
-        ) : (
-          <div className="w-9 h-9 rounded-full bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-center text-sm font-bold text-[#64748B]">
-            {initial}
-          </div>
-        )}
+        <StorageImg
+          value={client.profile_image_url}
+          bucket="client-avatars"
+          alt={client.name}
+          className="w-9 h-9 rounded-full object-cover"
+          fallback={
+            <div className="w-9 h-9 rounded-full bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-center text-sm font-bold text-[#64748B]">
+              {initial}
+            </div>
+          }
+        />
         <div>
           <p className="font-semibold text-[#0F172A] text-sm leading-tight">{client.name}</p>
           {subText && (

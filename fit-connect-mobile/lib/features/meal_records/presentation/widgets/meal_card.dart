@@ -3,7 +3,9 @@ import 'package:flutter/widget_previews.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
 import 'package:fit_connect_mobile/features/meal_records/models/meal_record_model.dart';
+import 'package:fit_connect_mobile/shared/storage/storage_buckets.dart';
 import 'package:fit_connect_mobile/shared/widgets/full_screen_image_viewer.dart';
+import 'package:fit_connect_mobile/shared/widgets/storage_image.dart';
 import 'package:intl/intl.dart';
 
 class MealCard extends StatefulWidget {
@@ -71,14 +73,16 @@ class _MealCardState extends State<MealCard> {
                               onTap: () {
                                 FullScreenImageViewer.show(
                                   context: context,
-                                  imageUrls: record.images!,
+                                  values: record.images!,
+                                  bucket: StorageBuckets.messagePhotos,
                                   initialIndex: index,
                                 );
                               },
-                              child: Image.network(
-                                record.images![index],
+                              child: StorageImage(
+                                value: record.images![index],
+                                bucket: StorageBuckets.messagePhotos,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Center(
+                                errorWidget: Center(
                                   child: Text(icon,
                                       style: const TextStyle(fontSize: 32)),
                                 ),

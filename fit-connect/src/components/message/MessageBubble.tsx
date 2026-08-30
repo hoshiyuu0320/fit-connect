@@ -4,6 +4,7 @@ import { useRef } from 'react'
 import { ReplyQuote } from '@/components/message/ReplyQuote'
 import { RecordCard } from '@/components/message/RecordCard'
 import { parseRecordMessage } from '@/components/message/recordCardParser'
+import { StorageImg } from '@/components/common/StorageImg'
 import type { Message } from '@/types/client'
 
 interface MessageBubbleProps {
@@ -49,17 +50,18 @@ export function MessageBubble({
 
   const clientAvatar = (
     <div className="flex-shrink-0">
-      {clientProfileImageUrl ? (
-        <img
-          src={clientProfileImageUrl}
-          alt={clientName}
-          className="w-8 h-8 rounded-full object-cover"
-        />
-      ) : (
-        <div className="w-8 h-8 rounded-full bg-[#E2E8F0] flex items-center justify-center text-xs font-bold text-[#64748B]">
-          {avatarInitial}
-        </div>
-      )}
+      {/* 値はパス or フルURL（レガシー）の両対応。署名URL解決は StorageImg に委譲 */}
+      <StorageImg
+        value={clientProfileImageUrl}
+        bucket="client-avatars"
+        alt={clientName}
+        className="w-8 h-8 rounded-full object-cover"
+        fallback={
+          <div className="w-8 h-8 rounded-full bg-[#E2E8F0] flex items-center justify-center text-xs font-bold text-[#64748B]">
+            {avatarInitial}
+          </div>
+        }
+      />
     </div>
   )
 
@@ -202,10 +204,14 @@ export function MessageBubble({
                       onClick={() => onImageClick(url)}
                       className="block"
                     >
-                      <img
-                        src={url}
+                      <StorageImg
+                        value={url}
+                        bucket="message-photos"
                         alt={`添付画像 ${imgIndex + 1}`}
                         className="w-24 h-24 object-cover rounded-sm border border-black/5 cursor-pointer hover:opacity-80 transition-opacity"
+                        fallback={
+                          <div className="w-24 h-24 rounded-sm border border-black/5 bg-[#F8FAFC]" />
+                        }
                       />
                     </button>
                   ))}

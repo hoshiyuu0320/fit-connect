@@ -7,7 +7,7 @@ part of 'registration_provider.dart';
 // **************************************************************************
 
 String _$registrationNotifierHash() =>
-    r'ba1f336a2737ac74e5b4868851cf83e0f77b12bb';
+    r'c7c0ab75f17041acb75970c4e8ccf2eb8a83f396';
 
 /// 登録フロー中の状態を管理するProvider
 /// keepAlive: true で画面遷移時も状態を保持

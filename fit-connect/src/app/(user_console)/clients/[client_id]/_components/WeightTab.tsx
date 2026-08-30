@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import Image from 'next/image'
 import { format } from 'date-fns'
 import { WeightChart } from '@/components/clients/WeightChart'
 import { ImageModal } from '@/components/message/ImageModal'
+import { StorageImg } from '@/components/common/StorageImg'
 import type { WeightRecord, MealRecord, ExerciseRecord } from '@/types/client'
 import {
   type BmrFormula,
@@ -393,12 +393,12 @@ export function WeightTab({
                         onClick={() => setSelectedImageUrl(url)}
                         className="relative w-14 h-14 rounded-md overflow-hidden border border-[#E2E8F0] hover:opacity-80 transition-opacity"
                       >
-                        <Image
-                          src={url}
+                        <StorageImg
+                          value={url}
+                          bucket="message-photos"
                           alt={`体重記録画像 ${imgIndex + 1}`}
-                          fill
-                          className="object-cover"
-                          unoptimized
+                          className="absolute inset-0 w-full h-full object-cover"
+                          fallback={<span className="absolute inset-0 bg-[#F8FAFC]" />}
                         />
                       </button>
                     ))}
