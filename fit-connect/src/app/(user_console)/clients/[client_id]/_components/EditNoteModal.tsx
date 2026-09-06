@@ -10,6 +10,8 @@ import {
 } from '@/components/ui/dialog'
 import { uploadNoteFile } from '@/lib/supabase/uploadNoteFile'
 import { deleteNoteFile } from '@/lib/supabase/deleteNoteFile'
+import { StorageImg } from '@/components/common/StorageImg'
+import { noteFileName, isNoteFilePdf } from '@/lib/supabase/storagePaths'
 import type { ClientNote } from '@/types/client'
 
 interface EditNoteModalProps {
@@ -68,22 +70,6 @@ export function EditNoteModal({
 
   const removeNewFile = (index: number) => {
     setNewFiles((prev) => prev.filter((_, i) => i !== index))
-  }
-
-  const getFileName = (url: string) => {
-    // ハッシュフラグメントに元のファイル名がある場合はそちらを使用
-    const hashIndex = url.indexOf('#')
-    if (hashIndex !== -1) {
-      return decodeURIComponent(url.substring(hashIndex + 1))
-    }
-    // フォールバック: パスから抽出
-    const decoded = decodeURIComponent(url.split('/').pop() || '')
-    const match = decoded.match(/^\d+_(.+)$/)
-    return match ? match[1] : decoded
-  }
-
-  const isPdf = (url: string) => {
-    return url.toLowerCase().endsWith('.pdf')
   }
 
   const handleSubmit = async () => {
@@ -220,17 +206,21 @@ export function EditNoteModal({
                     className="flex items-center justify-between p-2 bg-gray-50 rounded-md"
                   >
                     <div className="flex items-center space-x-2 min-w-0">
-                      {isPdf(url) ? (
+                      {isNoteFilePdf(url) ? (
                         <span className="text-red-500 text-lg flex-shrink-0">PDF</span>
                       ) : (
-                        <img
-                          src={url}
+                        <StorageImg
+                          value={url}
+                          bucket="client-notes"
                           alt="添付ファイル"
                           className="w-10 h-10 object-cover rounded flex-shrink-0"
+                          fallback={
+                            <span className="w-10 h-10 rounded bg-gray-200 flex-shrink-0" />
+                          }
                         />
                       )}
                       <span className="text-sm text-gray-700 truncate">
-                        {getFileName(url)}
+                        {noteFileName(url)}
                       </span>
                     </div>
                     <button

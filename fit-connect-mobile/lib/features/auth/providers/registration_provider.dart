@@ -192,19 +192,20 @@ class RegistrationNotifier extends _$RegistrationNotifier {
     }
 
     // プロフィール画像をアップロード（選択されている場合）
+    // profile_image_url には client-avatars のバケット相対パスを保存する（表示時に署名URLへ解決）
     if (state.profileImageFile != null) {
-      final imageUrl = await StorageService.uploadProfileImage(
+      final imagePath = await StorageService.uploadProfileImage(
         state.profileImageFile!,
         userId,
       );
-      if (imageUrl != null) {
+      if (imagePath != null) {
         await SupabaseService.client
             .from('clients')
-            .update({'profile_image_url': imageUrl}).eq('client_id', userId);
+            .update({'profile_image_url': imagePath}).eq('client_id', userId);
       }
     }
 
-    // Google アバターURLの保存（ローカル画像が未選択の場合のみ）
+    // Google アバターURLの保存（ローカル画像が未選択の場合のみ、外部URLをそのまま保存）
     if (state.profileImageFile == null && state.googleAvatarUrl != null) {
       await SupabaseService.client
           .from('clients')

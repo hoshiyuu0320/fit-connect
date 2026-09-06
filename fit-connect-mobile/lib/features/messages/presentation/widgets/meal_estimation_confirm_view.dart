@@ -1,9 +1,10 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
 import 'package:fit_connect_mobile/features/meal_records/models/meal_estimation_result.dart';
+import 'package:fit_connect_mobile/shared/storage/storage_buckets.dart';
+import 'package:fit_connect_mobile/shared/widgets/storage_image.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 /// AI推定結果を確認するビュー。
@@ -16,9 +17,9 @@ class MealEstimationConfirmView extends StatefulWidget {
   final VoidCallback onSend;
   final bool isSending;
 
-  /// AI 推定に使った画像の Storage 公開 URL（confirm phase では読み取り専用）。
-  /// 空リストならサムネイル領域を描画しない。
-  final List<String> imageUrls;
+  /// AI 推定に使った画像の Storage 値（message-photos のバケット相対パス。
+  /// confirm phase では読み取り専用）。空リストならサムネイル領域を描画しない。
+  final List<String> imageValues;
 
   /// スクショ取り込み時の検出アプリ名（'unknown' や null のときラベル非表示）。
   final String? appName;
@@ -35,7 +36,7 @@ class MealEstimationConfirmView extends StatefulWidget {
     required this.onBack,
     required this.onSend,
     this.isSending = false,
-    this.imageUrls = const [],
+    this.imageValues = const [],
     this.appName,
     this.warning,
   });
@@ -163,28 +164,27 @@ class _MealEstimationConfirmViewState extends State<MealEstimationConfirmView> {
         ],
 
         // Image thumbnails (read-only)
-        if (widget.imageUrls.isNotEmpty) ...[
+        if (widget.imageValues.isNotEmpty) ...[
           const SizedBox(height: 8),
           SizedBox(
             height: 64,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              itemCount: widget.imageUrls.length,
+              itemCount: widget.imageValues.length,
               separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (context, i) => ClipRRect(
+              // cacheKey=bucket/path は StorageImage 内部で付与される
+              itemBuilder: (context, i) => StorageImage(
+                value: widget.imageValues[i],
+                bucket: StorageBuckets.messagePhotos,
+                width: 64,
+                height: 64,
+                fit: BoxFit.cover,
                 borderRadius: BorderRadius.circular(6),
-                child: CachedNetworkImage(
-                  imageUrl: widget.imageUrls[i],
+                errorWidget: Container(
                   width: 64,
                   height: 64,
-                  fit: BoxFit.cover,
-                  placeholder: (_, __) => Container(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  ),
-                  errorWidget: (_, __, ___) => Container(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    child: const Icon(Icons.broken_image_outlined, size: 24),
-                  ),
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  child: const Icon(Icons.broken_image_outlined, size: 24),
                 ),
               ),
             ),
@@ -385,7 +385,8 @@ Widget previewMealEstimationConfirmViewWithImages() {
               child: MealEstimationConfirmView(
                 estimation: estimation,
                 totals: estimation.totals,
-                imageUrls: const [
+                // 外部 URL は署名なしでそのまま表示される（プレビュー用）
+                imageValues: const [
                   'https://placehold.jp/64x64.png',
                   'https://placehold.jp/64x64.png',
                 ],

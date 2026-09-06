@@ -10,6 +10,7 @@ import 'package:fit_connect_mobile/features/home/presentation/screens/main_scree
 import 'package:fit_connect_mobile/features/auth/presentation/screens/welcome_screen.dart';
 import 'package:fit_connect_mobile/features/auth/presentation/screens/profile_setup_screen.dart';
 import 'package:fit_connect_mobile/features/auth/presentation/screens/registration_complete_screen.dart';
+import 'package:fit_connect_mobile/features/app_update/presentation/app_update_gate.dart';
 import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
 import 'package:fit_connect_mobile/features/auth/providers/registration_provider.dart';
 import 'package:fit_connect_mobile/features/consent/data/consent_repository.dart';
@@ -19,6 +20,7 @@ import 'package:fit_connect_mobile/features/health/providers/health_sync_provide
 import 'package:fit_connect_mobile/features/health/providers/health_provider.dart';
 import 'package:fit_connect_mobile/features/sleep_records/providers/morning_dialog_provider.dart';
 import 'package:fit_connect_mobile/features/sleep_records/presentation/widgets/morning_wakeup_dialog.dart';
+import 'package:fit_connect_mobile/shared/storage/signed_url_cache.dart';
 
 class MyApp extends ConsumerWidget {
   const MyApp({super.key});
@@ -31,21 +33,25 @@ class MyApp extends ConsumerWidget {
       darkTheme: AppTheme.darkTheme,
       themeMode: ref.watch(themeModeNotifierProvider),
       debugShowCheckedModeBanner: false,
-      home: StreamBuilder<AuthState>(
-        stream: Supabase.instance.client.auth.onAuthStateChange,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const _LoadingScreen();
-          }
-          final session = snapshot.data?.session;
-          if (session != null) {
-            // ログイン済み: クライアントデータの確認
-            return const _AuthLoadingScreen();
-          } else {
-            // 未ログイン: オンボーディング画面へ
-            return const WelcomeScreen();
-          }
-        },
+      // 強制アップデートゲート: 未ログイン（WelcomeScreen）にも効かせるため
+      // 認証分岐の StreamBuilder より上位でラップする
+      home: AppUpdateGate(
+        child: StreamBuilder<AuthState>(
+          stream: Supabase.instance.client.auth.onAuthStateChange,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const _LoadingScreen();
+            }
+            final session = snapshot.data?.session;
+            if (session != null) {
+              // ログイン済み: クライアントデータの確認
+              return const _AuthLoadingScreen();
+            } else {
+              // 未ログイン: オンボーディング画面へ
+              return const WelcomeScreen();
+            }
+          },
+        ),
       ),
     );
   }
@@ -248,6 +254,7 @@ class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // fire-and-forget: 失敗してもUIをブロックしない
       Supabase.instance.client.auth.signOut().then((_) {
+        SignedUrlCache.instance.clear(); // 署名URLキャッシュも破棄
         debugPrint('[App] clients 行のない残存セッションをサインアウトしました');
       }).catchError((e) {
         debugPrint('[App] 残存セッションのサインアウトに失敗: $e');

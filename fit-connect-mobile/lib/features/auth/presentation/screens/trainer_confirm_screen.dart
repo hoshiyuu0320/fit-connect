@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/features/auth/providers/registration_provider.dart';
 import 'package:fit_connect_mobile/features/auth/presentation/screens/login_screen.dart';
+import 'package:fit_connect_mobile/shared/storage/storage_buckets.dart';
+import 'package:fit_connect_mobile/shared/widgets/storage_image.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 class TrainerConfirmScreen extends ConsumerWidget {
@@ -57,15 +58,18 @@ class TrainerConfirmScreen extends ConsumerWidget {
                   ),
                   child: ClipOval(
                     child: registrationState.trainerImageUrl != null
-                        ? CachedNetworkImage(
-                            imageUrl: registrationState.trainerImageUrl!,
+                        ? StorageImage(
+                            value: registrationState.trainerImageUrl,
+                            bucket: StorageBuckets.profileImages,
+                            width: 120,
+                            height: 120,
                             fit: BoxFit.cover,
-                            placeholder: (context, url) => const Center(
+                            placeholder: const Center(
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
                               ),
                             ),
-                            errorWidget: (context, url, error) => Icon(
+                            errorWidget: Icon(
                               LucideIcons.user,
                               size: 48,
                               color: colors.textHint,

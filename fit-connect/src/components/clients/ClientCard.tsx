@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { Check, MinusCircle, MessageCircle, FileText, Calendar } from 'lucide-react'
+import { useStorageUrl } from '@/lib/supabase/signedStorageUrls'
 import type { Client } from '@/types/client'
 import { GENDER_OPTIONS, PURPOSE_OPTIONS } from '@/types/client'
 import type { ClientMetrics } from '@/lib/supabase/getClientListMetrics'
@@ -36,6 +37,9 @@ const genderAvatarStyles = {
 
 export function ClientCard({ client, workoutStatus, metrics }: ClientCardProps) {
   const router = useRouter()
+
+  // 値はパス or フルURL（レガシー）の両対応。署名URLへ解決してから表示する
+  const avatarUrl = useStorageUrl(client.profile_image_url, 'client-avatars')
 
   const handleClick = () => {
     router.push(`/clients/${client.client_id}`)
@@ -96,13 +100,14 @@ export function ClientCard({ client, workoutStatus, metrics }: ClientCardProps) 
       <div className="flex items-start gap-3.5 mb-3.5">
         {/* アバター */}
         <div className="flex-shrink-0 w-11 h-11 rounded-md overflow-hidden">
-          {client.profile_image_url ? (
+          {avatarUrl ? (
             <Image
-              src={client.profile_image_url}
+              src={avatarUrl}
               alt={client.name}
               width={44}
               height={44}
               className="w-full h-full object-cover rounded-md"
+              unoptimized
             />
           ) : (
             <div

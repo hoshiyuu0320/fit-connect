@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
@@ -25,12 +26,13 @@ class StructuredTagForm extends StatelessWidget {
   final VoidCallback? onPickImage;
   final Function(int)? onRemoveImage;
 
-  /// PFC込みで送信。preUploadedUrls は AI 推定時に upload 済みの画像 URL（再 upload 回避用）。
+  /// PFC込みで送信。preUploadedPaths は AI 推定時に upload 済みの画像の
+  /// バケット相対パス（再 upload 回避用）。
   /// null の場合は AI推定なしで `onCompose` のみ実行
   final Future<void> Function(
     String composedText,
     MealEstimationResult estimation,
-    List<String> preUploadedUrls,
+    List<String> preUploadedPaths,
   )? onSendWithEstimation;
 
   const StructuredTagForm({
@@ -300,12 +302,13 @@ class MealTagForm extends ConsumerStatefulWidget {
   final VoidCallback? onPickImage;
   final Function(int)? onRemoveImage;
 
-  /// PFC込みで送信。preUploadedUrls は AI 推定時に upload 済みの画像 URL（再 upload 回避用）。
+  /// PFC込みで送信。preUploadedPaths は AI 推定時に upload 済みの画像の
+  /// バケット相対パス（再 upload 回避用）。
   /// null の場合は AI推定なしで `onCompose` のみ実行
   final Future<void> Function(
     String composedText,
     MealEstimationResult estimation,
-    List<String> preUploadedUrls,
+    List<String> preUploadedPaths,
   )? onSendWithEstimation;
 
   /// Preview/テスト用に screenshot モードで初期表示する（本番の通常導線では未指定）。
@@ -337,9 +340,19 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
   late _MealInputMode _inputMode;
   // 注: エラーメッセージはスナックバーで表示するだけなので state には持たない
 
-  /// 「戻る」→「挿入」再試行時の再 upload を防ぐため、File と Storage URL の対応を保持。
-  /// 確認シートの「送信」時にこの値を `onSendWithEstimation` の preUploadedUrls として渡す。
-  final Map<File, String> _fileToUrlMap = {};
+  /// AI推定フロー中の再 upload を防ぐため、File と Storage のバケット相対パスの対応を保持。
+  /// 確認シートの「送信」時にこの値を `onSendWithEstimation` の preUploadedPaths として渡す。
+  /// キャンセル・戻る・dispose 時には未送信分を Storage から削除する（orphan 8-B）。
+  final Map<File, String> _fileToPathMap = {};
+
+  /// 送信（メッセージ挿入）に使われたパス。挿入済み画像の誤削除防止のため、
+  /// [_cleanupUnsentAiImages] はここに含まれるパスを絶対に削除しない。
+  final Set<String> _sentPaths = {};
+
+  /// AI推定フローの実行世代。キャンセル・戻る・dispose・再実行でインクリメントし、
+  /// 旧実行が await 再開後に状態を触る（二重推定・ローディング巻き戻し・
+  /// _fileToPathMap 上書きによる orphan）のを無効化する。
+  int _estimateGeneration = 0;
 
   static const _mealTypes = ['朝食', '昼食', '夕食', '間食'];
 
@@ -366,8 +379,28 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
 
   @override
   void dispose() {
+    // フォーム破棄時、進行中の AI 推定実行を無効化し、
+    // upload 済みで未送信の AI 画像を削除する（orphan 8-B）
+    _estimateGeneration++;
+    _cleanupUnsentAiImages();
     _contentController.dispose();
     super.dispose();
+  }
+
+  /// upload 済みだが送信（メッセージ挿入）に使われていない AI 画像を
+  /// fire-and-forget で Storage から削除する（orphan 8-B）。
+  /// 送信済み（[_sentPaths]）のパスは削除しない。削除失敗は無視する
+  /// （8-A の定期クリーンアップが回収する）。
+  void _cleanupUnsentAiImages() {
+    final targets = _fileToPathMap.values
+        .where((path) => !_sentPaths.contains(path))
+        .toList();
+    _fileToPathMap.removeWhere((_, path) => !_sentPaths.contains(path));
+    for (final path in targets) {
+      unawaited(
+        StorageService.deleteByPath(StorageService.bucketName, path),
+      );
+    }
   }
 
   bool get _isValid => _contentController.text.trim().isNotEmpty || widget.hasImages;
@@ -399,6 +432,10 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
   Future<void> _handleEstimate() async {
     if (!_isValid) return;
 
+    // 本実行の世代を捕捉。キャンセル後の即再タップ等で世代が進んだら、
+    // この実行は以降の await 再開時に何もせず打ち切る
+    final gen = ++_estimateGeneration;
+
     // screenshot モードは画像必須
     if (_inputMode == _MealInputMode.screenshot && !widget.hasImages) return;
 
@@ -419,7 +456,7 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
     } catch (_) {
       aiEnabled = false;
     }
-    if (!mounted) return;
+    if (!mounted || gen != _estimateGeneration) return;
 
     if (!aiEnabled) {
       widget.onCompose(_composedText);
@@ -431,12 +468,22 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
     });
 
     try {
-      // 1. 未 upload の画像のみ upload する（既存 URL は再利用）
-      final imageUrls = await _ensureImagesUploaded();
-      if (!mounted || _phase != _MealFormPhase.loading) return;
+      // 1. 未 upload の画像のみ upload する（既存パスは再利用）
+      final imagePaths = await _ensureImagesUploaded(gen);
+      if (!mounted || gen != _estimateGeneration) {
+        // 旧実行（キャンセル・再実行・破棄済み）。今 upload した分は
+        // _ensureImagesUploaded 側で削除済みなので何もしない
+        // （_cleanupUnsentAiImages を呼ぶと新実行の upload 済みパスを消してしまう）
+        return;
+      }
+      if (_phase != _MealFormPhase.loading) {
+        // upload 中にキャンセル・破棄された場合、今 upload した分は不要なので削除
+        _cleanupUnsentAiImages();
+        return;
+      }
 
       // 全画像 upload に失敗した場合
-      if (widget.selectedImages.isNotEmpty && imageUrls.isEmpty) {
+      if (widget.selectedImages.isNotEmpty && imagePaths.isEmpty) {
         setState(() => _phase = _MealFormPhase.input);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -452,22 +499,32 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
         return;
       }
 
-      // 2. AI 推定
+      // 2. AI 推定（画像はバケット相対パスで渡し、Edge Function 側で署名して利用する）
       final result = await MealEstimationApi.estimate(
         mealType: _mealTypeToEnum(_selectedMealType),
         content: _contentController.text.trim(),
-        imageUrls: imageUrls,
+        imagePaths: imagePaths,
         inputKind: _inputMode == _MealInputMode.screenshot ? 'screenshot' : 'photo',
       );
-      // ユーザーがローディング中にキャンセルした場合は確認画面に進めない
-      if (!mounted || _phase != _MealFormPhase.loading) return;
+      // ユーザーがローディング中にキャンセルした場合・旧実行の場合は確認画面に進めない
+      if (!mounted ||
+          gen != _estimateGeneration ||
+          _phase != _MealFormPhase.loading) {
+        return;
+      }
       setState(() {
         _estimation = result;
         _editableTotals = result.totals;
         _phase = _MealFormPhase.confirm;
       });
     } on MealEstimationException catch (e) {
-      if (!mounted) return;
+      // 旧実行の失敗が現在のローディングを input に巻き戻して
+      // 新実行の結果を破棄しないよう、世代・フェーズをガード
+      if (!mounted ||
+          gen != _estimateGeneration ||
+          _phase != _MealFormPhase.loading) {
+        return;
+      }
       final msg = _humanError(e);
       setState(() {
         _phase = _MealFormPhase.input;
@@ -486,33 +543,55 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
     }
   }
 
-  /// 未 upload の選択画像のみを Storage にアップロードし、最終的な URL リストを返す。
-  /// 「戻る」→「挿入」再試行時、既に `_fileToUrlMap` に存在する File は再 upload しない。
-  /// 部分失敗（一部の File だけ upload 失敗）した場合、成功した URL のみで推定を継続する。
-  Future<List<String>> _ensureImagesUploaded() async {
+  /// 未 upload の選択画像のみを Storage にアップロードし、バケット相対パスのリストを返す。
+  /// 同一フロー内の再試行時、既に `_fileToPathMap` に存在する File は再 upload しない。
+  /// 部分失敗（一部の File だけ upload 失敗）した場合、成功したパスのみで推定を継続する。
+  /// [gen] は呼び出し元 `_handleEstimate` の実行世代。upload 完了時に世代が進んでいたら
+  /// `_fileToPathMap` を上書きせず（新実行のパスを orphan 化させないため）、
+  /// 今 upload した分を即削除して空リストを返す。
+  Future<List<String>> _ensureImagesUploaded(int gen) async {
     if (widget.selectedImages.isEmpty) return const [];
     final userId = SupabaseService.client.auth.currentUser?.id;
     if (userId == null) return const [];
 
-    // 削除された File に対応するエントリを map から取り除く（orphan は許容）
-    _fileToUrlMap.removeWhere((file, _) => !widget.selectedImages.contains(file));
+    // 選択から外された File の upload 済み画像は Storage からも削除する（orphan 8-B）
+    _fileToPathMap.removeWhere((file, path) {
+      if (widget.selectedImages.contains(file)) return false;
+      if (!_sentPaths.contains(path)) {
+        unawaited(
+          StorageService.deleteByPath(StorageService.bucketName, path),
+        );
+      }
+      return true;
+    });
 
     // 未 upload の File を抽出
     final pending = widget.selectedImages
-        .where((f) => !_fileToUrlMap.containsKey(f))
+        .where((f) => !_fileToPathMap.containsKey(f))
         .toList();
 
     if (pending.isNotEmpty) {
       final results = await StorageService.uploadAiImages(pending, userId);
+      // upload 中に世代が進んだ（キャンセル・再実行・破棄）場合、マップへ書くと
+      // 新実行の upload 済みパスを上書きして orphan を生むため、
+      // 今 upload した分をその場で削除して打ち切る
+      if (gen != _estimateGeneration) {
+        for (final path in results.whereType<String>()) {
+          unawaited(
+            StorageService.deleteByPath(StorageService.bucketName, path),
+          );
+        }
+        return const [];
+      }
       for (var i = 0; i < pending.length; i++) {
-        final url = results[i];
-        if (url != null) _fileToUrlMap[pending[i]] = url;
+        final path = results[i];
+        if (path != null) _fileToPathMap[pending[i]] = path;
       }
     }
 
-    // selectedImages の順序で URL を返す（upload 失敗した File は除外）
+    // selectedImages の順序でパスを返す（upload 失敗した File は除外）
     return widget.selectedImages
-        .map((f) => _fileToUrlMap[f])
+        .map((f) => _fileToPathMap[f])
         .whereType<String>()
         .toList();
   }
@@ -560,11 +639,15 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
       totals: _editableTotals!,
       appName: _estimation!.appName,
     );
-    // selectedImages の順序を保ちつつ upload 済み URL を抽出
+    // selectedImages の順序を保ちつつ upload 済みパスを抽出
     final preUploaded = widget.selectedImages
-        .map((f) => _fileToUrlMap[f])
+        .map((f) => _fileToPathMap[f])
         .whereType<String>()
         .toList();
+    // 送信に使うパスは呼び出し前に「送信済み」としてマークする。
+    // 挿入済み画像の誤削除防止を最優先とし、送信が失敗して orphan になった場合は
+    // 8-A の定期クリーンアップに委ねる
+    _sentPaths.addAll(preUploaded);
     try {
       await widget.onSendWithEstimation?.call(
         _composedText,
@@ -889,7 +972,7 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
             ),
             const Spacer(),
             GestureDetector(
-              onTap: () => setState(() => _phase = _MealFormPhase.input),
+              onTap: _handleCancelLoading,
               child: Text('キャンセル', style: TextStyle(fontSize: 13, color: colors.textSecondary)),
             ),
           ],
@@ -901,20 +984,37 @@ class _MealTagFormState extends ConsumerState<MealTagForm> {
     );
   }
 
+  /// AI推定ローディングのキャンセル。進行中の実行を世代インクリメントで無効化して
+  /// 入力フェーズに戻し、upload 済みで未送信の AI 画像を削除する（orphan 8-B）。
+  /// upload がまだ完了していない場合は `_ensureImagesUploaded` 側の
+  /// 世代チェック後のクリーンアップが削除を引き継ぐ。
+  void _handleCancelLoading() {
+    _estimateGeneration++;
+    _cleanupUnsentAiImages();
+    setState(() => _phase = _MealFormPhase.input);
+  }
+
   Widget _buildConfirmState(AppColorsExtension colors) {
     return MealEstimationConfirmView(
       estimation: _estimation!,
       totals: _editableTotals!,
-      imageUrls: widget.selectedImages
-          .map((f) => _fileToUrlMap[f])
+      imageValues: widget.selectedImages
+          .map((f) => _fileToPathMap[f])
           .whereType<String>()
           .toList(),
       onTotalsChanged: (t) => setState(() => _editableTotals = t),
-      onBack: () => setState(() {
-        _phase = _MealFormPhase.input;
-        _estimation = null;
-        _editableTotals = null;
-      }),
+      onBack: () {
+        // 確認シートから戻る場合、進行中の実行を無効化した上で
+        // upload 済みの AI 画像は破棄する（orphan 8-B）。
+        // 再度 AI 推定する場合は再 upload される
+        _estimateGeneration++;
+        _cleanupUnsentAiImages();
+        setState(() {
+          _phase = _MealFormPhase.input;
+          _estimation = null;
+          _editableTotals = null;
+        });
+      },
       onSend: _handleSendWithEstimation,
       isSending: _isSending,
       appName: _estimation!.appName,

@@ -17,6 +17,8 @@ import 'package:fit_connect_mobile/features/subscription/providers/ai_features_e
 import 'package:fit_connect_mobile/features/messages/utils/message_tag_parser.dart';
 import 'package:fit_connect_mobile/features/messages/utils/message_filter.dart';
 import 'package:fit_connect_mobile/features/messages/providers/message_filter_provider.dart';
+import 'package:fit_connect_mobile/shared/storage/storage_buckets.dart';
+import 'package:fit_connect_mobile/shared/widgets/storage_image.dart';
 
 class MessageScreen extends ConsumerStatefulWidget {
   const MessageScreen({super.key});
@@ -360,12 +362,13 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
                   ),
                   child: profileImageUrl != null
                       ? ClipOval(
-                          child: Image.network(
-                            profileImageUrl,
+                          child: StorageImage(
+                            value: profileImageUrl,
+                            bucket: StorageBuckets.profileImages,
                             width: 40,
                             height: 40,
                             fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
+                            errorWidget:
                                 Icon(LucideIcons.user, color: colors.textHint),
                           ),
                         )

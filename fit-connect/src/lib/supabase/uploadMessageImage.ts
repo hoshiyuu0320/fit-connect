@@ -3,6 +3,10 @@ import { supabase } from '@/lib/supabase'
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic']
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 
+/**
+ * メッセージ画像を message-photos バケットへアップロードする。
+ * 戻り値はバケット相対パス（DB にはパスを保存し、表示時に署名URLへ解決する）。
+ */
 export async function uploadMessageImage(
   file: File,
   trainerId: string,
@@ -30,9 +34,6 @@ export async function uploadMessageImage(
     throw error
   }
 
-  const { data: { publicUrl } } = supabase.storage
-    .from('message-photos')
-    .getPublicUrl(path)
-
-  return publicUrl
+  // バケット相対パスを返す（フルURLは保存しない）
+  return path
 }
