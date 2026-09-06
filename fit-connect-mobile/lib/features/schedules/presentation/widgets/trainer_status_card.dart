@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
+import 'package:fit_connect_mobile/shared/storage/storage_buckets.dart';
+import 'package:fit_connect_mobile/shared/widgets/storage_image.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 class TrainerStatusCard extends StatelessWidget {
@@ -67,16 +69,20 @@ class TrainerStatusCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: colors.surfaceDim,
                   shape: BoxShape.circle,
-                  image: profileImageUrl != null
-                      ? DecorationImage(
-                          image: NetworkImage(profileImageUrl!),
-                          fit: BoxFit.cover,
-                        )
-                      : null,
                 ),
-                child: profileImageUrl == null
-                    ? Icon(LucideIcons.user, color: colors.textHint, size: 24)
-                    : null,
+                child: profileImageUrl != null
+                    ? ClipOval(
+                        child: StorageImage(
+                          value: profileImageUrl,
+                          bucket: StorageBuckets.profileImages,
+                          width: 48,
+                          height: 48,
+                          fit: BoxFit.cover,
+                          errorWidget: Icon(LucideIcons.user,
+                              color: colors.textHint, size: 24),
+                        ),
+                      )
+                    : Icon(LucideIcons.user, color: colors.textHint, size: 24),
               ),
               Positioned(
                 bottom: 0,

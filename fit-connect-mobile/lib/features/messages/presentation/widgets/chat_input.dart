@@ -12,6 +12,9 @@ import 'package:fit_connect_mobile/services/storage_service.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 class ChatInput extends StatefulWidget {
+  /// メッセージ送信コールバック。
+  /// imageUrls には message-photos のバケット相対パスを渡す
+  /// （DB カラム `messages.image_urls` に合わせた引数名。表示時に署名URLへ解決する）
   final Future<void> Function(
       String text,
       List<String>? imageUrls,
@@ -241,7 +244,7 @@ class _ChatInputState extends State<ChatInput> {
     });
   }
 
-  /// 選択中の画像があればアップロードして URLs を返す。
+  /// 選択中の画像があればアップロードしてバケット相対パスのリストを返す。
   /// - 画像が1枚も選択されていない場合は空のリスト（`const []`）を返す。
   /// - アップロード失敗 / userId 不在等の異常時は null を返す（呼び出し側は早期 return すべし）。
   Future<List<String>?> _uploadImagesIfAny() async {
@@ -263,11 +266,11 @@ class _ChatInputState extends State<ChatInput> {
     });
 
     try {
-      final urls = await StorageService.uploadImages(
+      final paths = await StorageService.uploadImages(
         _selectedImages,
         widget.userId!,
       );
-      if (urls.isEmpty && _selectedImages.isNotEmpty) {
+      if (paths.isEmpty && _selectedImages.isNotEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -281,7 +284,7 @@ class _ChatInputState extends State<ChatInput> {
         });
         return null;
       }
-      return urls;
+      return paths;
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -355,11 +358,11 @@ class _ChatInputState extends State<ChatInput> {
   Future<void> _handleSendWithEstimation(
     String composedText,
     MealEstimationResult estimation,
-    List<String> preUploadedUrls,
+    List<String> preUploadedPaths,
   ) async {
     // AI 推定フェーズで既に upload 済みなら再 upload しない（二重 upload 防止）。
-    // _selectedImages が空なら preUploadedUrls も空のまま、上流の検証で挿入は防がれている。
-    final List<String> imageUrls = preUploadedUrls;
+    // _selectedImages が空なら preUploadedPaths も空のまま、上流の検証で挿入は防がれている。
+    final List<String> imageUrls = preUploadedPaths;
 
     final appName = estimation.appName;
     final String mealSource;

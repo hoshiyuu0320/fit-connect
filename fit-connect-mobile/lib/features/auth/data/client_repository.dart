@@ -44,7 +44,9 @@ class ClientRepository {
     }
   }
 
-  /// プロフィール画像URLを更新
+  /// プロフィール画像を更新
+  /// [imageUrl] には client-avatars のバケット相対パスを渡す
+  /// （Google 等の外部URLはそのまま保存。表示時に署名URLへ解決する）
   Future<void> updateProfileImageUrl(String clientId, String? imageUrl) async {
     try {
       await _supabase.from('clients').update({

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:fit_connect_mobile/services/supabase_service.dart';
+import 'package:fit_connect_mobile/shared/storage/storage_buckets.dart';
 import 'package:uuid/uuid.dart';
 
 /// 画像のアップロードとストレージ管理を行うサービス
@@ -10,9 +11,9 @@ class StorageService {
   static final ImagePicker _picker = ImagePicker();
   static const _uuid = Uuid();
 
-  /// バケット名
-  static const String bucketName = 'message-photos';
-  static const String avatarBucketName = 'client-avatars';
+  /// バケット名（定義の実体は StorageBuckets。既存呼び出し互換のため別名で公開）
+  static const String bucketName = StorageBuckets.messagePhotos;
+  static const String avatarBucketName = StorageBuckets.clientAvatars;
 
   /// 画像の最大サイズ
   static const double maxWidth = 1920;
@@ -70,7 +71,7 @@ class StorageService {
   /// 画像をSupabase Storageにアップロード
   /// [file] - アップロードする画像ファイル
   /// [userId] - ユーザーID（フォルダ分けに使用）
-  /// 戻り値: アップロードされた画像の公開URL
+  /// 戻り値: バケット相対パス（表示時は署名URLに解決する）
   static Future<String?> uploadImage(File file, String userId) async {
     try {
       final fileName = '${_uuid.v4()}.jpg';
@@ -80,13 +81,8 @@ class StorageService {
           .from(bucketName)
           .upload(filePath, file);
 
-      // 公開URLを取得
-      final publicUrl = SupabaseService.client.storage
-          .from(bucketName)
-          .getPublicUrl(filePath);
-
-      debugPrint('[StorageService] Uploaded: $publicUrl');
-      return publicUrl;
+      debugPrint('[StorageService] Uploaded: $filePath');
+      return filePath;
     } catch (e) {
       debugPrint('[StorageService] uploadImage error: $e');
       return null;
@@ -96,24 +92,25 @@ class StorageService {
   /// 複数の画像をアップロード
   /// [files] - アップロードする画像ファイルのリスト
   /// [userId] - ユーザーID
-  /// 戻り値: アップロードされた画像の公開URLリスト
+  /// 戻り値: アップロードされた画像のバケット相対パスのリスト
   static Future<List<String>> uploadImages(
       List<File> files, String userId) async {
-    final List<String> urls = [];
+    final List<String> paths = [];
 
     for (final file in files) {
-      final url = await uploadImage(file, userId);
-      if (url != null) {
-        urls.add(url);
+      final path = await uploadImage(file, userId);
+      if (path != null) {
+        paths.add(path);
       }
     }
 
-    return urls;
+    return paths;
   }
 
   /// AI 推定で利用する画像を Supabase Storage にアップロード（プレフィックス分離）
   /// パス形式: `${userId}/ai/${uuid}.jpg`
   /// orphan 識別のため、通常のメッセージ画像 (`${userId}/${uuid}.jpg`) とフォルダで分離する。
+  /// 戻り値: バケット相対パス
   static Future<String?> uploadAiImage(File file, String userId) async {
     try {
       final filePath = aiImagePath(userId, _uuid.v4());
@@ -121,11 +118,8 @@ class StorageService {
           .from(bucketName)
           .upload(filePath, file)
           .timeout(const Duration(seconds: 30));
-      final publicUrl = SupabaseService.client.storage
-          .from(bucketName)
-          .getPublicUrl(filePath);
-      debugPrint('[StorageService] AI uploaded: $publicUrl');
-      return publicUrl;
+      debugPrint('[StorageService] AI uploaded: $filePath');
+      return filePath;
     } catch (e) {
       debugPrint('[StorageService] uploadAiImage error: $e');
       return null;
@@ -140,26 +134,17 @@ class StorageService {
     return Future.wait(files.map((f) => uploadAiImage(f, userId)));
   }
 
-  /// 画像を削除
-  /// [url] - 削除する画像の公開URL
-  static Future<bool> deleteImage(String url) async {
+  /// パス指定で Storage 上のファイルを削除
+  /// [bucket] - バケット名
+  /// [path] - バケット相対パス
+  static Future<bool> deleteByPath(String bucket, String path) async {
     try {
-      // URLからパスを抽出
-      final uri = Uri.parse(url);
-      final pathSegments = uri.pathSegments;
+      await SupabaseService.client.storage.from(bucket).remove([path]);
 
-      // /storage/v1/object/public/bucket-name/path の形式
-      final bucketIndex = pathSegments.indexOf(bucketName);
-      if (bucketIndex == -1) return false;
-
-      final filePath = pathSegments.sublist(bucketIndex + 1).join('/');
-
-      await SupabaseService.client.storage.from(bucketName).remove([filePath]);
-
-      debugPrint('[StorageService] Deleted: $filePath');
+      debugPrint('[StorageService] Deleted: $bucket/$path');
       return true;
     } catch (e) {
-      debugPrint('[StorageService] deleteImage error: $e');
+      debugPrint('[StorageService] deleteByPath error: $e');
       return false;
     }
   }
@@ -167,52 +152,65 @@ class StorageService {
   /// プロフィール画像をアップロード
   /// [file] - アップロードする画像ファイル
   /// [userId] - ユーザーID
-  /// 戻り値: アップロードされた画像の公開URL
+  /// 戻り値: バケット相対パス
+  ///
+  /// パスは `{userId}/avatar_{timestamp}.jpg`。ファイル名を毎回変えることで
+  /// cacheKey（=パス）ベースの画像キャッシュが正しく更新される
+  /// （旧 `avatar.jpg` 固定 + `?t=` キャッシュバスター方式は廃止）。
   static Future<String?> uploadProfileImage(File file, String userId) async {
     try {
-      // プロフィール画像は avatar.jpg 固定（上書き更新）
-      final filePath = '$userId/avatar.jpg';
-
-      // 既存の画像を削除（エラーは無視）
-      try {
-        await SupabaseService.client.storage
-            .from(avatarBucketName)
-            .remove([filePath]);
-      } catch (_) {
-        // 既存ファイルがない場合は無視
-      }
+      final fileName = 'avatar_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final filePath = '$userId/$fileName';
 
       // 新しい画像をアップロード
       await SupabaseService.client.storage
           .from(avatarBucketName)
           .upload(filePath, file);
 
-      // 公開URLを取得（キャッシュバスティング用にタイムスタンプ追加）
-      final publicUrl = SupabaseService.client.storage
-          .from(avatarBucketName)
-          .getPublicUrl(filePath);
+      // 旧 avatar ファイルをベストエフォート削除（失敗しても新画像の利用には影響しない）
+      try {
+        final entries = await SupabaseService.client.storage
+            .from(avatarBucketName)
+            .list(path: userId);
+        final oldPaths = entries
+            .where((e) => e.name.startsWith('avatar') && e.name != fileName)
+            .map((e) => '$userId/${e.name}')
+            .toList();
+        if (oldPaths.isNotEmpty) {
+          await SupabaseService.client.storage
+              .from(avatarBucketName)
+              .remove(oldPaths);
+        }
+      } catch (e) {
+        debugPrint('[StorageService] old avatar cleanup skipped: $e');
+      }
 
-      final urlWithTimestamp =
-          '$publicUrl?t=${DateTime.now().millisecondsSinceEpoch}';
-
-      debugPrint('[StorageService] Profile image uploaded: $urlWithTimestamp');
-      return urlWithTimestamp;
+      debugPrint('[StorageService] Profile image uploaded: $filePath');
+      return filePath;
     } catch (e) {
       debugPrint('[StorageService] uploadProfileImage error: $e');
       return null;
     }
   }
 
-  /// プロフィール画像を削除
+  /// プロフィール画像を削除（自フォルダの avatar 系ファイルを一括削除）
   /// [userId] - ユーザーID
   static Future<bool> deleteProfileImage(String userId) async {
     try {
-      final filePath = '$userId/avatar.jpg';
-      await SupabaseService.client.storage
+      final entries = await SupabaseService.client.storage
           .from(avatarBucketName)
-          .remove([filePath]);
+          .list(path: userId);
+      final targets = entries
+          .where((e) => e.name.startsWith('avatar'))
+          .map((e) => '$userId/${e.name}')
+          .toList();
+      if (targets.isNotEmpty) {
+        await SupabaseService.client.storage
+            .from(avatarBucketName)
+            .remove(targets);
+      }
 
-      debugPrint('[StorageService] Profile image deleted: $filePath');
+      debugPrint('[StorageService] Profile image deleted: $targets');
       return true;
     } catch (e) {
       debugPrint('[StorageService] deleteProfileImage error: $e');

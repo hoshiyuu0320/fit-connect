@@ -3,7 +3,9 @@ import 'package:flutter/widget_previews.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
 import 'package:fit_connect_mobile/features/messages/presentation/widgets/reply_quote.dart';
+import 'package:fit_connect_mobile/shared/storage/storage_buckets.dart';
 import 'package:fit_connect_mobile/shared/widgets/full_screen_image_viewer.dart';
+import 'package:fit_connect_mobile/shared/widgets/storage_image.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 class MessageBubble extends StatelessWidget {
@@ -142,15 +144,14 @@ class MessageBubble extends StatelessWidget {
                 ),
                 child: trainerProfileImageUrl != null
                     ? ClipOval(
-                        child: Image.network(
-                          trainerProfileImageUrl!,
+                        child: StorageImage(
+                          value: trainerProfileImageUrl,
+                          bucket: StorageBuckets.profileImages,
                           width: 32,
                           height: 32,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Icon(
-                              LucideIcons.user,
-                              size: 18,
-                              color: colors.textHint),
+                          errorWidget: Icon(LucideIcons.user,
+                              size: 18, color: colors.textHint),
                         ),
                       )
                     : Icon(LucideIcons.user, size: 18, color: colors.textHint),
@@ -226,18 +227,18 @@ class MessageBubble extends StatelessWidget {
                                   onTap: () {
                                     FullScreenImageViewer.show(
                                       context: context,
-                                      imageUrls: images!,
+                                      values: images!,
+                                      bucket: StorageBuckets.messagePhotos,
                                       initialIndex: index,
                                     );
                                   },
-                                  child: ClipRRect(
+                                  child: StorageImage(
+                                    value: images![index],
+                                    bucket: StorageBuckets.messagePhotos,
+                                    width: 100,
+                                    height: 100,
+                                    fit: BoxFit.cover,
                                     borderRadius: BorderRadius.circular(8),
-                                    child: Image.network(
-                                      images![index],
-                                      width: 100,
-                                      height: 100,
-                                      fit: BoxFit.cover,
-                                    ),
                                   ),
                                 );
                               },
