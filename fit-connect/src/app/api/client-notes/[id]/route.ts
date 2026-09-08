@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
-import { requireTrainer, notFoundResponse, trainerOwnsNote } from '@/lib/api/guards'
+import {
+  requireTrainer,
+  notFoundResponse,
+  trainerOwnsNote,
+  trainerOwnsSession,
+} from '@/lib/api/guards'
 import { extractStoragePath } from '@/lib/supabase/storagePaths'
 
 export async function PUT(
@@ -13,13 +18,19 @@ export async function PUT(
 
   const { id } = await params
   const body = await req.json()
-  const { title, content, fileUrls, isShared, sessionNumber } = body
+  const { title, content, fileUrls, isShared, sessionId } = body
 
   if (!id) {
     return NextResponse.json({ error: 'Missing note ID' }, { status: 400 })
   }
 
   if (!(await trainerOwnsNote(trainerId, id))) {
+    return notFoundResponse()
+  }
+
+  // 対象セッションは任意。指定された場合のみ所有検証を通す（リクエスト由来の値は信用しない）
+  const linkedSessionId = typeof sessionId === 'string' && sessionId ? sessionId : null
+  if (linkedSessionId && !(await trainerOwnsSession(trainerId, linkedSessionId))) {
     return notFoundResponse()
   }
 
@@ -30,7 +41,7 @@ export async function PUT(
   if (title !== undefined) updateData.title = title
   if (content !== undefined) updateData.content = content
   if (fileUrls !== undefined) updateData.file_urls = fileUrls
-  if (sessionNumber !== undefined) updateData.session_number = sessionNumber
+  if (sessionId !== undefined) updateData.session_id = linkedSessionId
   if (isShared !== undefined) {
     updateData.is_shared = isShared
     if (isShared) {
@@ -49,6 +60,10 @@ export async function PUT(
 
   if (error) {
     console.error('カルテ更新エラー:', error)
+    // 別顧客・別トレーナーのセッション指定は DB トリガーが弾く（通常フローでは起きない）
+    if (error.message === 'NOTE_SESSION_MISMATCH') {
+      return NextResponse.json({ error: 'NOTE_SESSION_MISMATCH' }, { status: 400 })
+    }
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 

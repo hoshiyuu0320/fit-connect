@@ -12,6 +12,14 @@ import { uploadNoteFile } from '@/lib/supabase/uploadNoteFile'
 import { deleteNoteFile } from '@/lib/supabase/deleteNoteFile'
 import { StorageImg } from '@/components/common/StorageImg'
 import { noteFileName, isNoteFilePdf } from '@/lib/supabase/storagePaths'
+import {
+  formatSessionOptionLabel,
+  initialNoteLinkSelection,
+  selectNoteLinkSession,
+  EMPTY_SESSION_SELECTION_FIELD,
+  type SessionSelectionField,
+} from '@/lib/sessions/noteLinkOptions'
+import type { ClientSessionOption } from '@/lib/supabase/getClientSessions'
 import type { ClientNote } from '@/types/client'
 
 interface EditNoteModalProps {
@@ -20,6 +28,7 @@ interface EditNoteModalProps {
   note: ClientNote | null
   trainerId: string
   clientId: string
+  sessions: ClientSessionOption[]  // 「対象セッション」の選択肢（新しい順）
   onUpdated: () => void
 }
 
@@ -29,10 +38,11 @@ export function EditNoteModal({
   note,
   trainerId,
   clientId,
+  sessions,
   onUpdated,
 }: EditNoteModalProps) {
   const [title, setTitle] = useState('')
-  const [sessionNumber, setSessionNumber] = useState<string>('')
+  const [link, setLink] = useState<SessionSelectionField>(EMPTY_SESSION_SELECTION_FIELD)
   const [content, setContent] = useState('')
   const [isShared, setIsShared] = useState(false)
   const [existingFileUrls, setExistingFileUrls] = useState<string[]>([])
@@ -44,7 +54,8 @@ export function EditNoteModal({
   useEffect(() => {
     if (note) {
       setTitle(note.title)
-      setSessionNumber(note.session_number?.toString() || '')
+      // 保存済みの紐づけは初期表示では勝手に書き換えない
+      setLink(initialNoteLinkSelection(note))
       setContent(note.content)
       setIsShared(note.is_shared)
       setExistingFileUrls(note.file_urls || [])
@@ -52,6 +63,12 @@ export function EditNoteModal({
       setRemovedFileUrls([])
     }
   }, [note])
+
+  const handleSessionIdChange = (value: string) => {
+    setLink(selectNoteLinkSession(value))
+  }
+
+  const sessionId = link.value
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -102,7 +119,7 @@ export function EditNoteModal({
           content,
           fileUrls,
           isShared,
-          sessionNumber: sessionNumber ? parseInt(sessionNumber, 10) : null,
+          sessionId: sessionId || null,
         }),
       })
 
@@ -142,19 +159,32 @@ export function EditNoteModal({
             />
           </div>
 
-          {/* セッション番号 */}
+          {/* 対象セッション（任意） */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              セッション番号
+              対象セッション
             </label>
-            <input
-              type="number"
-              value={sessionNumber}
-              onChange={(e) => setSessionNumber(e.target.value)}
-              min="1"
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            <select
+              value={sessionId}
+              onChange={(e) => handleSessionIdChange(e.target.value)}
+              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               disabled={submitting}
-            />
+            >
+              <option value="">紐づけない</option>
+              {/*
+                既に紐づいているセッションが選択肢に無い場合（取得失敗など）の受け皿。
+                これが無いと select の表示だけ「紐づけない」に見えて実際は紐づいたままになり、
+                解除したつもりが解除されない不整合が起きる。
+              */}
+              {sessionId && !sessions.some((s) => s.id === sessionId) && (
+                <option value={sessionId}>現在紐づいているセッション</option>
+              )}
+              {sessions.map((session) => (
+                <option key={session.id} value={session.id}>
+                  {formatSessionOptionLabel(session)}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* 内容 */}

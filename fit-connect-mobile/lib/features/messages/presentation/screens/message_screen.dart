@@ -21,7 +21,19 @@ import 'package:fit_connect_mobile/shared/storage/storage_buckets.dart';
 import 'package:fit_connect_mobile/shared/widgets/storage_image.dart';
 
 class MessageScreen extends ConsumerStatefulWidget {
-  const MessageScreen({super.key});
+  /// 外部から流し込む定型文（セッションの「変更を相談」など）。
+  /// そのまま ChatInput へ透過する
+  final String? initialDraft;
+
+  /// 定型文を入力欄へ反映し終えたときに呼ばれる。
+  /// 呼び出し側（MainScreen）はここで draft を破棄し、再注入を防ぐ
+  final VoidCallback? onDraftConsumed;
+
+  const MessageScreen({
+    super.key,
+    this.initialDraft,
+    this.onDraftConsumed,
+  });
 
   @override
   ConsumerState<MessageScreen> createState() => _MessageScreenState();
@@ -324,6 +336,8 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
               editingMessageId: _editingMessageId,
               editingMessageContent: _editingMessageContent,
               onCancelEdit: _clearEditTarget,
+              initialDraft: widget.initialDraft,
+              onDraftConsumed: widget.onDraftConsumed,
             ),
           ],
         ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:fit_connect_mobile/features/client_notes/models/client_note_model.dart';
+import 'package:fit_connect_mobile/features/client_notes/presentation/widgets/linked_session_line.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
 import 'package:fit_connect_mobile/shared/storage/signed_url_cache.dart';
@@ -11,7 +12,11 @@ import 'package:fit_connect_mobile/shared/widgets/full_screen_image_viewer.dart'
 import 'package:fit_connect_mobile/shared/widgets/storage_image.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-/// カルテ詳細画面（読み取り専用）
+/// カルテ詳細画面（読み取り専用）。
+///
+/// 紐づくセッションがあるノートは、ヘッダーの先頭に**セッション日時（+種別）**を出す
+/// （廃止した「第N回セッション」の代わり）。紐づけの無いノートは従来どおり
+/// タイトルから始まる（作成日のみ）。
 class ClientNoteDetailScreen extends StatelessWidget {
   final ClientNote note;
   final String? trainerName;
@@ -71,6 +76,9 @@ class ClientNoteDetailScreen extends StatelessWidget {
     // 画像URLリストを抽出（FullScreenImageViewer用）
     final imageUrls = note.fileUrls.where(_isImage).toList();
 
+    // embed（または親セッションからの補完）で取れた場合だけ入る
+    final session = note.session;
+
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
@@ -86,27 +94,30 @@ class ClientNoteDetailScreen extends StatelessWidget {
             // ============================================
             // ヘッダーカード
             // ============================================
+            // 淡青カード。ダークでは濃青に切り替わるので、上のテーマ追従の文字色
+            // （textPrimary / textSecondary / textHint）がそのまま両モードで読める
             Container(
               margin: const EdgeInsets.all(16),
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: AppColors.primary50,
+                color: colors.primaryTint,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // セッション番号
-                  if (note.sessionNumber != null)
-                    Text(
-                      '第${note.sessionNumber}回セッション',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primary600,
-                      ),
+                  // 紐づくセッション（日時 + 種別）。
+                  // 単票で前後の文脈が無いので年は常に付ける。
+                  // 淡青カード上なので、日時の色はカード用の強調色にする
+                  if (session != null) ...[
+                    LinkedSessionLine(
+                      session: session,
+                      now: DateTime.now(),
+                      includeYear: true,
+                      color: colors.primaryTintForeground,
                     ),
-                  if (note.sessionNumber != null) const SizedBox(height: 8),
+                    const SizedBox(height: 8),
+                  ],
 
                   // タイトル
                   Text(
@@ -389,9 +400,9 @@ class ClientNoteDetailScreen extends StatelessWidget {
 // Previews
 // ============================================
 
-@Preview(name: 'NoteDetail - With Files')
-Widget previewClientNoteDetailWithFiles() {
-  final dummyNote = ClientNote(
+/// プレビュー用ダミー（紐づけあり・添付あり）。ライト/ダーク両プレビューで共有
+ClientNote _previewNoteWithLinkedSession() {
+  return ClientNote(
     id: '1',
     clientId: 'client-1',
     trainerId: 'trainer-1',
@@ -405,21 +416,42 @@ Widget previewClientNoteDetailWithFiles() {
     ],
     isShared: true,
     sharedAt: DateTime.now(),
-    sessionNumber: 1,
+    sessionId: 'session-1',
+    // 紐づけあり: ヘッダー先頭にセッション日時（年付き）+ 種別が出る
+    session: LinkedSession(
+      sessionDate: DateTime.now().subtract(const Duration(hours: 3)),
+      sessionType: 'パーソナルトレーニング',
+    ),
     createdAt: DateTime.now(),
     updatedAt: DateTime.now(),
   );
+}
 
+@Preview(name: 'NoteDetail - With Files (Linked Session)')
+Widget previewClientNoteDetailWithFiles() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: ClientNoteDetailScreen(
-      note: dummyNote,
+      note: _previewNoteWithLinkedSession(),
       trainerName: '山田太郎',
     ),
   );
 }
 
-@Preview(name: 'NoteDetail - Text Only')
+/// ダークモード: ヘッダーの淡青カードが濃青に切り替わり、
+/// セッション日時・タイトル・トレーナー名・日付が読めることを確認する
+@Preview(name: 'NoteDetail - With Files (Linked Session, Dark)')
+Widget previewClientNoteDetailWithFilesDark() {
+  return MaterialApp(
+    theme: AppTheme.darkTheme,
+    home: ClientNoteDetailScreen(
+      note: _previewNoteWithLinkedSession(),
+      trainerName: '山田太郎',
+    ),
+  );
+}
+
+@Preview(name: 'NoteDetail - Text Only (No Linked Session)')
 Widget previewClientNoteDetailTextOnly() {
   final dummyNote = ClientNote(
     id: '2',
@@ -431,7 +463,7 @@ Widget previewClientNoteDetailTextOnly() {
     fileUrls: [],
     isShared: true,
     sharedAt: DateTime.now(),
-    sessionNumber: 5,
+    // 紐づけ無し: 従来どおりタイトルから始まる
     createdAt: DateTime.now(),
     updatedAt: DateTime.now(),
   );

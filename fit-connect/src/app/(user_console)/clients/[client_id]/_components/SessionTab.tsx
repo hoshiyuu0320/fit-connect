@@ -9,6 +9,10 @@ import { SetInputRow } from './SetInputRow'
 import { SupersetBadge } from './SupersetBadge'
 import { SessionTimerBar } from './SessionTimerBar'
 import { SessionSummaryModal } from './SessionSummaryModal'
+import { CreateNoteModal } from '@/components/notes/CreateNoteModal'
+import { useClientSessionOptions } from '@/hooks/useClientSessionOptions'
+import { completeSession } from '@/lib/supabase/completeSession'
+import { pickSessionForAssignment } from '@/lib/sessions/noteLinkOptions'
 
 type SessionTabProps = {
   clientId: string
@@ -28,6 +32,21 @@ export function SessionTab({ clientId, trainerId }: SessionTabProps) {
   const [clientFeedback, setClientFeedback] = useState('')
   const [savingSummary, setSavingSummary] = useState(false)
   const [saveToast, setSaveToast] = useState<string | null>(null)
+
+  // カルテ作成モーダル関連（「完了として保存」→ カルテ導線 / 完了バナーの「カルテを書く」）
+  const {
+    sessions: sessionOptions,
+    status: sessionOptionsStatus,
+    refetch: refetchSessionOptions,
+  } = useClientSessionOptions(clientId)
+  const [noteModalOpen, setNoteModalOpen] = useState(false)
+  // カルテの対象となる課題。対象セッションは選択肢が届くたびに再計算する
+  // （完了直後は refetch 中で選択肢が古いことがあるため、確定値を state に持たない）
+  const [noteAssignment, setNoteAssignment] = useState<WorkoutAssignment | null>(null)
+  const [noteInitialContent, setNoteInitialContent] = useState('')
+  const noteInitialSessionId = noteAssignment
+    ? pickSessionForAssignment(sessionOptions, noteAssignment)
+    : null
 
   // 日付リスト（当日 -3 〜 +3）
   const dateRange = Array.from({ length: 7 }, (_, i) =>
@@ -226,12 +245,21 @@ export function SessionTab({ clientId, trainerId }: SessionTabProps) {
     }
   }
 
+  // カルテ作成モーダルを開く（対象セッションはこの課題から決める。本文はトレーナーノートを初期値にする）
+  const openNoteModal = (assignment: WorkoutAssignment) => {
+    // 完了したばかりのセッションが選択肢に入るよう、開く前に選択肢を取り直す
+    refetchSessionOptions()
+    setNoteAssignment(assignment)
+    setNoteInitialContent(assignment.trainer_note ?? '')
+    setNoteModalOpen(true)
+  }
+
   // サマリー保存
   const handleSaveSummary = async () => {
     if (!summaryAssignment) return
     setSavingSummary(true)
     try {
-      await fetch(`/api/workout-assignments/${summaryAssignment.id}`, {
+      const res = await fetch(`/api/workout-assignments/${summaryAssignment.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -240,19 +268,32 @@ export function SessionTab({ clientId, trainerId }: SessionTabProps) {
           status: 'completed',
         }),
       })
+      if (!res.ok) {
+        throw new Error(`サマリーの保存に失敗しました (${res.status})`)
+      }
+      const savedAssignment: WorkoutAssignment = {
+        ...summaryAssignment,
+        trainer_note: trainerNote,
+        client_feedback: clientFeedback,
+        status: 'completed' as const,
+      }
       setAllAssignments((prev) =>
-        prev.map((a) =>
-          a.id === summaryAssignment.id
-            ? {
-                ...a,
-                trainer_note: trainerNote,
-                client_feedback: clientFeedback,
-                status: 'completed' as const,
-              }
-            : a
-        )
+        prev.map((a) => (a.id === summaryAssignment.id ? { ...a, ...savedAssignment } : a))
       )
+
+      // スケジュール上のセッションも完了にする（チケット消化を含む）。
+      // 既に完了済みなら completeSession 側で何もしないため、再保存しても二重消化しない。
+      // 失敗してもカルテ導線は止めない
+      if (savedAssignment.session_id) {
+        try {
+          await completeSession(savedAssignment.session_id)
+        } catch (error) {
+          console.error('セッション完了エラー:', error)
+        }
+      }
+
       setSummaryOpen(false)
+      openNoteModal(savedAssignment)
     } catch (error) {
       console.error('サマリー保存エラー:', error)
     } finally {
@@ -378,6 +419,7 @@ export function SessionTab({ clientId, trainerId }: SessionTabProps) {
                       finishedAt={assignment.finished_at}
                       onStart={() => handleTimerStart(assignment.id)}
                       onFinish={() => handleTimerFinish(assignment.id)}
+                      onWriteNote={() => openNoteModal(assignment)}
                     />
                   </div>
                 )}
@@ -550,6 +592,20 @@ export function SessionTab({ clientId, trainerId }: SessionTabProps) {
           saving={savingSummary}
         />
       )}
+
+      {/* カルテ作成モーダル（「完了として保存」直後 / 完了バナーの「カルテを書く」） */}
+      <CreateNoteModal
+        open={noteModalOpen}
+        onOpenChange={setNoteModalOpen}
+        clientId={clientId}
+        trainerId={trainerId}
+        sessions={sessionOptions}
+        sessionsStatus={sessionOptionsStatus}
+        initialSessionId={noteInitialSessionId}
+        initialContent={noteInitialContent}
+        // この画面にカルテ一覧は無い。「カルテ作成済み」ラベルを次回に追随させるため選択肢だけ取り直す
+        onCreated={refetchSessionOptions}
+      />
 
       {/* 保存完了トースト */}
       {saveToast && (

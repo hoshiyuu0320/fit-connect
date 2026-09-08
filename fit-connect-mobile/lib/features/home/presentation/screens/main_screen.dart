@@ -28,6 +28,10 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   int _recordsTabIndex = 0;
   bool _initialized = false;
 
+  /// メッセージ画面の入力欄へ流し込む定型文。
+  /// ChatInput が反映し終えたら null に戻す（再ビルドでの再注入を防ぐ）
+  String? _messageDraft;
+
   /// 最後にホーム遷移トリガで sync を発火した時刻（連打防止）
   DateTime? _lastHomeTriggerSyncAt;
 
@@ -44,6 +48,15 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     setState(() {
       _currentIndex = 3;
       _recordsTabIndex = tabIndex;
+    });
+  }
+
+  /// セッションの「変更を相談」からメッセージタブへ遷移する。
+  /// draft が空文字の場合は定型文なしでメッセージ画面を開くだけ
+  void _navigateToMessagesWithDraft(String draft) {
+    setState(() {
+      _currentIndex = 1;
+      _messageDraft = draft.isEmpty ? null : draft;
     });
   }
 
@@ -81,8 +94,13 @@ class _MainScreenState extends ConsumerState<MainScreen> {
         HomeScreen(
           onNavigateToRecordsTab: _navigateToRecordsTab,
           onNavigateToMessages: () => setState(() => _currentIndex = 1),
+          onConsultAboutSession: _navigateToMessagesWithDraft,
         ),
-        const MessageScreen(),
+        MessageScreen(
+          initialDraft: _messageDraft,
+          // 反映済みの定型文は破棄し、再ビルドのたびに再注入されないようにする
+          onDraftConsumed: () => setState(() => _messageDraft = null),
+        ),
         const WorkoutScreen(),
         RecordsScreen(
           initialTabIndex: _recordsTabIndex,

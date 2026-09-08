@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -9,12 +9,32 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { uploadNoteFile } from '@/lib/supabase/uploadNoteFile'
+import {
+  formatSessionOptionLabel,
+  seedNoteLinkSession,
+  selectNoteLinkSession,
+  EMPTY_SESSION_SELECTION_FIELD,
+  type SessionSelectionField,
+} from '@/lib/sessions/noteLinkOptions'
+import type { ClientSessionOptionsStatus } from '@/hooks/useClientSessionOptions'
+import type { ClientSessionOption } from '@/lib/supabase/getClientSessions'
+
+/** 読み込み中プレースホルダの value（実在の session_id と衝突しない値） */
+const LOADING_OPTION_VALUE = '__loading'
 
 interface CreateNoteModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   clientId: string
   trainerId: string
+  sessions: ClientSessionOption[]  // 「対象セッション」の選択肢（新しい順）
+  // 選択肢の取得状態。読み込み中・失敗を黙って「紐づけない」に見せないために使う
+  sessionsStatus?: ClientSessionOptionsStatus
+  // 開いたときに選択済みにするセッション（カルテタブ: 直近の完了セッション / セッション詳細: そのセッション）
+  initialSessionId?: string | null
+  // 開いたときに本文へ流し込む初期値（ワークアウト実施画面: サマリーのトレーナーノート）。
+  // 本文が空のときだけ反映する（書きかけがあれば上書きしない）
+  initialContent?: string
   onCreated: () => void
 }
 
@@ -23,19 +43,86 @@ export function CreateNoteModal({
   onOpenChange,
   clientId,
   trainerId,
+  sessions,
+  sessionsStatus = 'ready',
+  initialSessionId,
+  initialContent,
   onCreated,
 }: CreateNoteModalProps) {
   const [title, setTitle] = useState('')
-  const [sessionNumber, setSessionNumber] = useState<string>('')
+  const [link, setLink] = useState<SessionSelectionField>(EMPTY_SESSION_SELECTION_FIELD)
   const [content, setContent] = useState('')
   const [isShared, setIsShared] = useState(false)
   const [files, setFiles] = useState<File[]>([])
   const [submitting, setSubmitting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  // 反映済みの initialSessionId（null は未反映）。閉じたらクリアして次に開いたとき再度反映する
+  const [seededKey, setSeededKey] = useState<string | null>(null)
+  // initialContent を反映済みか。閉じたら戻して次に開いたとき再度反映する
+  const [contentSeeded, setContentSeeded] = useState(false)
+
+  // 開くたびに初期選択を反映する（別のセッションから開き直したとき前回の選択が残らないように）。
+  // ただしトレーナーが既に対象セッションを選び直していれば seedNoteLinkSession 側で何もしない
+  // （モーダルはアンマウントされないため、キャンセル→開き直しで明示的な選択が巻き戻らないように）
+  useEffect(() => {
+    if (!open) {
+      setSeededKey(null)
+      return
+    }
+
+    const key = initialSessionId ?? ''
+    if (seededKey === key) return
+
+    // 指定されたセッションが選択肢に見当たらないうちは保留する
+    // （sessions は非同期に届くため、揃うまで選択肢に無く反映できない）
+    if (key && !sessions.some((session) => session.id === key)) return
+
+    setSeededKey(key)
+    setLink((prev) => seedNoteLinkSession(prev, key, sessions))
+  }, [open, initialSessionId, sessions, seededKey])
+
+  // 開いたときに本文の初期値を1回だけ反映する。
+  // 本文が空のときだけ流し込み、書きかけ（キャンセル→開き直しで残っている本文）は上書きしない
+  // （対象セッションの「触っていないときだけシード」と同じ規律）
+  useEffect(() => {
+    if (!open) {
+      setContentSeeded(false)
+      return
+    }
+    if (contentSeeded) return
+
+    setContentSeeded(true)
+    if (initialContent) {
+      setContent((prev) => (prev.trim() ? prev : initialContent))
+    }
+  }, [open, initialContent, contentSeeded])
+
+  const handleSessionIdChange = (value: string) => {
+    if (value === LOADING_OPTION_VALUE) return
+    setLink(selectNoteLinkSession(value))
+  }
+
+  const sessionId = link.value
+
+  const sessionsLoading = sessionsStatus === 'loading'
+  const sessionsFailed = sessionsStatus === 'error'
+  // プレースホルダに差し替えるのは初回取得中だけ
+  // （カルテ更新後の再取得では既存の選択肢と選択状態を保つ）
+  const showSessionsLoading = sessionsLoading && sessions.length === 0
+
+  // 開くときに指定された対象セッションをまだ反映できていない（取得中・取得失敗）状態。
+  // 意図した紐づけが落ちたまま「紐づけなし」で保存されないよう作成を止める。
+  // トレーナーが自分で選び直した後なら、その意思を優先するので未反映扱いにしない
+  const blockedBySession =
+    !!initialSessionId &&
+    link.source !== 'manual' &&
+    !sessions.some((session) => session.id === initialSessionId)
 
   const resetForm = () => {
     setTitle('')
-    setSessionNumber('')
+    setLink(EMPTY_SESSION_SELECTION_FIELD)
+    setSeededKey(null)
+    setContentSeeded(false)
     setContent('')
     setIsShared(false)
     setFiles([])
@@ -56,7 +143,7 @@ export function CreateNoteModal({
   }
 
   const handleSubmit = async () => {
-    if (!title.trim()) return
+    if (!title.trim() || blockedBySession) return
 
     setSubmitting(true)
     try {
@@ -78,7 +165,7 @@ export function CreateNoteModal({
           content,
           fileUrls,
           isShared,
-          sessionNumber: sessionNumber ? parseInt(sessionNumber, 10) : null,
+          sessionId: sessionId || null,
         }),
       })
 
@@ -120,20 +207,42 @@ export function CreateNoteModal({
             />
           </div>
 
-          {/* セッション番号 */}
+          {/* 対象セッション（任意） */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              セッション番号
+              対象セッション
             </label>
-            <input
-              type="number"
-              value={sessionNumber}
-              onChange={(e) => setSessionNumber(e.target.value)}
-              placeholder="例: 12"
-              min="1"
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={submitting}
-            />
+            <select
+              value={showSessionsLoading ? LOADING_OPTION_VALUE : sessionId}
+              onChange={(e) => handleSessionIdChange(e.target.value)}
+              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
+              disabled={submitting || showSessionsLoading}
+            >
+              {/* 読み込み中は「紐づけない」が選ばれているように見せない */}
+              {showSessionsLoading ? (
+                <option value={LOADING_OPTION_VALUE}>読み込み中...</option>
+              ) : (
+                <option value="">紐づけない</option>
+              )}
+              {sessions.map((session) => (
+                <option key={session.id} value={session.id}>
+                  {formatSessionOptionLabel(session)}
+                </option>
+              ))}
+            </select>
+            {sessionsFailed ? (
+              <p className="text-xs text-red-600 mt-1">
+                セッション一覧を取得できませんでした。時間をおいて開き直してください。
+              </p>
+            ) : blockedBySession && sessionsLoading ? (
+              <p className="text-xs text-gray-500 mt-1">
+                対象セッションを読み込んでいます...
+              </p>
+            ) : blockedBySession ? (
+              <p className="text-xs text-red-600 mt-1">
+                対象セッションを反映できませんでした。開き直すか、対象セッションを選び直してください。
+              </p>
+            ) : null}
           </div>
 
           {/* 内容 */}
@@ -241,7 +350,7 @@ export function CreateNoteModal({
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={!title.trim() || submitting}
+            disabled={!title.trim() || submitting || blockedBySession}
             className="px-4 py-2 text-sm text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? '作成中...' : '作成'}

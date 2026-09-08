@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -14,8 +14,9 @@ import { createSession } from '@/lib/supabase/createSession';
 import { updateSession } from '@/lib/supabase/updateSession';
 import { deleteSession } from '@/lib/supabase/deleteSession';
 import { getTickets } from '@/lib/supabase/getTickets';
-import { updateTicket } from '@/lib/supabase/updateTicket';
+import { consumeTicketSession } from '@/lib/supabase/completeSession';
 import { Session } from '@/lib/supabase/getSessions';
+import { isNoteLinkableSession } from '@/lib/sessions/noteLinkOptions';
 import { supabase } from '@/lib/supabase';
 import { Ticket } from '@/types/client';
 import { SESSION_TYPE_OPTIONS } from '@/types/session';
@@ -53,6 +54,11 @@ interface SessionModalProps {
     selectedDate?: Date;
     session?: Session | null;
     onSuccess: () => void;
+    /**
+     * カルテ作成へ進む（親がこのモーダルを閉じてカルテ作成モーダルを開く）
+     * 「カルテを書く」押下時と、保存でステータスが「完了」に変わった直後に呼ばれる
+     */
+    onWriteNote?: (session: Session) => void;
 }
 
 // フォーカス時のティール系スタイルを適用するためのヘルパー
@@ -68,7 +74,7 @@ const tealFocusHandlers = {
     },
 };
 
-export default function SessionModal({ isOpen, onClose, selectedDate, session, onSuccess }: SessionModalProps) {
+export default function SessionModal({ isOpen, onClose, selectedDate, session, onSuccess, onWriteNote }: SessionModalProps) {
     const [userId, setUserId] = useState<string | null>(null);
     const [clients, setClients] = useState<{ client_id: string; name: string }[]>([]);
     const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -88,7 +94,11 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
     const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
     const [isRecurrenceDeleteOpen, setIsRecurrenceDeleteOpen] = useState(false);
 
-    const { register, handleSubmit, setValue, reset, watch, formState: { errors } } = useForm<SessionFormValues>({
+    // 「カルテを書く」から保存したとき、保存後にカルテ作成へ進むためのフラグ
+    // （onSubmit は通常の保存と共用なので、経路の違いを ref で伝える）
+    const openNoteAfterSaveRef = useRef(false);
+
+    const { register, handleSubmit, setValue, reset, watch, formState: { errors, isDirty } } = useForm<SessionFormValues>({
         resolver: zodResolver(sessionSchema),
         defaultValues: {
             duration_minutes: 60,
@@ -99,6 +109,11 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
     const selectedClientId = watch('client_id');
     const selectedSessionType = watch('session_type');
     const isTrainingType = selectedSessionType === 'パーソナルトレーニング' || selectedSessionType === '有酸素トレーニング';
+
+    // 「カルテを書く」導線は既存セッションの編集時のみ表示する。
+    // 対象は保存済みの内容がカルテ対象範囲（完了、または過去日時かつ非キャンセル）に合致する場合のみ
+    // （フォーム上の未保存の変更では判定しない。カルテ側の選択肢に出てこないセッションを開かせないため）
+    const canWriteNote = !!session && !!onWriteNote && isNoteLinkableSession(session);
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -161,28 +176,29 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
         if (isOpen) {
             if (session) {
                 const date = new Date(session.session_date);
-                setValue('client_id', session.client_id);
                 const localYear = date.getFullYear();
                 const localMonth = String(date.getMonth() + 1).padStart(2, '0');
                 const localDay = String(date.getDate()).padStart(2, '0');
-                setValue('session_date', `${localYear}-${localMonth}-${localDay}`);
-                setValue('session_time', date.toTimeString().slice(0, 5));
-                setValue('duration_minutes', session.duration_minutes);
 
                 // session_type の初期値: SESSION_TYPE_OPTIONS に含まれない値は 'other' として扱う
                 const knownValues = SESSION_TYPE_OPTIONS.map(o => o.value);
                 const sessionTypeValue = session.session_type || '';
-                if (sessionTypeValue && !knownValues.includes(sessionTypeValue as typeof SESSION_TYPE_OPTIONS[number]['value'])) {
-                    setValue('session_type', 'other');
-                    setCustomSessionType(sessionTypeValue);
-                } else {
-                    setValue('session_type', sessionTypeValue);
-                    setCustomSessionType('');
-                }
+                const isCustomSessionType =
+                    !!sessionTypeValue && !knownValues.includes(sessionTypeValue as typeof SESSION_TYPE_OPTIONS[number]['value']);
+                setCustomSessionType(isCustomSessionType ? sessionTypeValue : '');
 
-                setValue('memo', session.memo || '');
-                setValue('status', session.status);
-                setValue('ticket_id', session.ticket_id || undefined);
+                // reset で defaultValues ごと保存済みの内容にする
+                // （isDirty を「未保存の変更があるか」として使うため。setValue だと既定値と比較されてしまう）
+                reset({
+                    client_id: session.client_id,
+                    session_date: `${localYear}-${localMonth}-${localDay}`,
+                    session_time: date.toTimeString().slice(0, 5),
+                    duration_minutes: session.duration_minutes,
+                    session_type: isCustomSessionType ? 'other' : sessionTypeValue,
+                    memo: session.memo || '',
+                    status: session.status,
+                    ticket_id: session.ticket_id || undefined,
+                });
 
                 // workout_assignments から初期プランを設定
                 const planId = session.workout_assignments?.[0]?.plan?.id ?? null;
@@ -216,31 +232,36 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
                 setCustomSessionType('');
             }
         }
-    }, [isOpen, session, selectedDate, setValue, reset]);
+    }, [isOpen, session, selectedDate, reset]);
 
     const onSubmit = async (data: SessionFormValues) => {
         if (!userId) return;
         setIsLoading(true);
+        // 「カルテを書く」経由かは保存前に確定させ、フラグは必ず戻す
+        // （保存に失敗しても次回の通常保存に持ち越さないため）
+        const openNoteAfterSave = openNoteAfterSaveRef.current;
+        openNoteAfterSaveRef.current = false;
         try {
             const dateTime = new Date(`${data.session_date}T${data.session_time}`);
 
             // 'other' の場合はカスタムテキストを session_type として保存
             const resolvedSessionType = data.session_type === 'other' ? customSessionType : data.session_type;
 
-            // チケット消化ロジック
             // ステータスが「完了」になり、かつ以前は「完了」でなかった場合（新規作成含む）
-            if (data.status === 'completed' && data.ticket_id) {
-                const shouldConsume = !session || session.status !== 'completed';
-                if (shouldConsume) {
-                    const ticket = tickets.find(t => t.id === data.ticket_id);
-                    if (ticket && ticket.remaining_sessions > 0) {
-                        await updateTicket({
-                            id: ticket.id,
-                            remaining_sessions: ticket.remaining_sessions - 1
-                        });
-                    }
-                }
+            // チケット消化と「完了 → カルテ入力」導線の両方でこの判定を使う
+            const becameCompleted = data.status === 'completed' && (!session || session.status !== 'completed');
+
+            // チケット消化ロジック（1回分の減算は consumeTicketSession に集約）
+            // 残回数は保存時点の DB の値を読む
+            // （以前はモーダルを開いたときに取得した tickets 配列の残数を見ていたため、
+            //   開いたまま別画面で消化された場合に古い値から減算していた）
+            if (becameCompleted && data.ticket_id) {
+                await consumeTicketSession(data.ticket_id);
             }
+
+            // 保存後のセッション（カルテ作成モーダルに選択済みで渡す）
+            // 繰り返し作成は複数生まれて1件に決められないため null のまま
+            let savedSession: Session | null = null;
 
             if (session) {
                 await updateSession({
@@ -252,6 +273,16 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
                     memo: data.memo,
                     ticket_id: data.ticket_id,
                 });
+                // updateSession は未指定のフィールドを更新しないので、保存前の値で補う
+                savedSession = {
+                    ...session,
+                    session_date: dateTime.toISOString(),
+                    duration_minutes: data.duration_minutes,
+                    status: data.status,
+                    session_type: resolvedSessionType ?? session.session_type,
+                    memo: data.memo ?? session.memo,
+                    ticket_id: data.ticket_id ?? session.ticket_id,
+                };
             } else if (isRecurring) {
                 await createRecurringSessions({
                     trainer_id: userId,
@@ -278,6 +309,18 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
                     memo: data.memo,
                     ticket_id: data.ticket_id,
                 });
+                // 戻り値（DB の行。id 付き）を優先し、足りないフィールドは入力値で補う
+                savedSession = {
+                    trainer_id: userId,
+                    client_id: data.client_id,
+                    session_date: dateTime.toISOString(),
+                    duration_minutes: data.duration_minutes,
+                    status: data.status,
+                    session_type: resolvedSessionType ?? null,
+                    memo: data.memo ?? null,
+                    ticket_id: data.ticket_id ?? null,
+                    ...createdSession,
+                };
 
                 // ワークアウトプランが選択されている場合はアサインメントを作成
                 if (selectedPlanId && createdSession?.id) {
@@ -294,12 +337,34 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
                 }
             }
             onSuccess();
-            onClose();
+
+            // 「完了」に変わった直後、または「カルテを書く」から保存した場合は、
+            // 閉じる代わりにそのセッションを選択済みでカルテ作成へ進む（流れのまま記録を書けるように）。
+            // 保存後の内容がカルテ対象外（キャンセル等）になっていれば通常どおり閉じる
+            const shouldOpenNote = becameCompleted || openNoteAfterSave;
+            if (shouldOpenNote && onWriteNote && savedSession && isNoteLinkableSession(savedSession)) {
+                onWriteNote(savedSession);
+            } else {
+                onClose();
+            }
         } catch (error) {
             console.error('Failed to save session', error);
         } finally {
             setIsLoading(false);
         }
+    };
+
+    // 「カルテを書く」: 未保存の変更があれば先に保存し、その保存後にカルテ作成へ進む
+    // （編集途中の内容を黙って捨てない）。変更が無ければ保存済みのセッションでそのまま開く
+    const handleWriteNoteClick = () => {
+        if (!session || !onWriteNote) return;
+        if (!isDirty) {
+            onWriteNote(session);
+            return;
+        }
+        openNoteAfterSaveRef.current = true;
+        // バリデーションで弾かれると onSubmit に入らないので、ここでフラグを戻す
+        handleSubmit(onSubmit, () => { openNoteAfterSaveRef.current = false; })();
     };
 
     const handleDelete = async () => {
@@ -354,7 +419,7 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
                         <div className="space-y-2">
                             <Label htmlFor="client" className="text-sm font-medium text-[#0F172A]">顧客</Label>
                             <Select
-                                onValueChange={(value) => setValue('client_id', value)}
+                                onValueChange={(value) => setValue('client_id', value, { shouldDirty: true })}
                                 defaultValue={session?.client_id}
                                 disabled={!!session}
                             >
@@ -375,7 +440,7 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
                         <div className="space-y-2">
                             <Label htmlFor="ticket" className="text-sm font-medium text-[#0F172A]">使用チケット</Label>
                             <Select
-                                onValueChange={(value) => setValue('ticket_id', value === 'none' ? undefined : value)}
+                                onValueChange={(value) => setValue('ticket_id', value === 'none' ? undefined : value, { shouldDirty: true })}
                                 defaultValue={session?.ticket_id || undefined}
                                 disabled={!selectedClientId}
                             >
@@ -433,7 +498,7 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
                             <div className="space-y-2">
                                 <Label htmlFor="status" className="text-sm font-medium text-[#0F172A]">ステータス</Label>
                                 <Select
-                                    onValueChange={(value: 'scheduled' | 'confirmed' | 'completed' | 'cancelled') => setValue('status', value)}
+                                    onValueChange={(value: 'scheduled' | 'confirmed' | 'completed' | 'cancelled') => setValue('status', value, { shouldDirty: true })}
                                     defaultValue={session?.status || 'scheduled'}
                                 >
                                     <SelectTrigger className="border-[#E2E8F0] rounded-md text-[#0F172A] focus:ring-0 focus:border-[#14B8A6]">
@@ -453,7 +518,7 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
                             <Label htmlFor="type" className="text-sm font-medium text-[#0F172A]">セッション種別</Label>
                             <Select
                                 onValueChange={(value) => {
-                                    setValue('session_type', value);
+                                    setValue('session_type', value, { shouldDirty: true });
                                     if (value !== 'other') setCustomSessionType('');
                                     if (value !== 'パーソナルトレーニング' && value !== '有酸素トレーニング') {
                                         setSelectedPlanId(null);
@@ -502,7 +567,7 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
                                         if (planId) {
                                             const plan = workoutPlans.find(p => p.id === planId);
                                             if (plan?.estimated_minutes) {
-                                                setValue('duration_minutes', plan.estimated_minutes);
+                                                setValue('duration_minutes', plan.estimated_minutes, { shouldDirty: true });
                                             }
                                         }
                                     }}
@@ -645,7 +710,7 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
                         </div>
 
                         <DialogFooter className="border-t border-[#E2E8F0] pt-4">
-                            <div className="flex justify-between space-x-2 w-full">
+                            <div className="flex flex-wrap justify-between gap-2 w-full">
                                 {session ? (
                                     <button
                                         type="button"
@@ -664,7 +729,17 @@ export default function SessionModal({ isOpen, onClose, selectedDate, session, o
                                 ) : (
                                     <div></div>
                                 )}
-                                <div className="flex gap-2">
+                                <div className="flex gap-2 ml-auto">
+                                    {canWriteNote && (
+                                        <button
+                                            type="button"
+                                            onClick={handleWriteNoteClick}
+                                            disabled={isLoading}
+                                            className="inline-flex items-center justify-center text-sm font-medium rounded-md px-4 py-2 border border-[#CCFBF1] bg-[#F0FDFA] text-[#14B8A6] hover:bg-[#CCFBF1] transition-colors disabled:pointer-events-none disabled:opacity-50"
+                                        >
+                                            カルテを書く
+                                        </button>
+                                    )}
                                     <button
                                         type="button"
                                         onClick={onClose}

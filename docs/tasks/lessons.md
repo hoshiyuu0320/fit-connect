@@ -255,3 +255,39 @@
 - 旧モノレポ移行前の `supabase_*_fit-connect-mobile` コンテナが Docker 再起動で自動復活しポートを塞ぐ。`docker stop $(docker ps -q --filter name=fit-connect-mobile)` で停止してから `supabase start`
 - claude-in-chrome の接続先 Chrome が**別デバイス**のことがある（localhost:3000 が ERR で LAN IP `http://192.168.1.15:3000` なら届く、が判別サイン）。ただし別オリジンには auth セッションが無い点に注意
 - normalize 系のデータ migration は「リモート実測 → 変換regexのシミュレーション → ローカル db reset → リモート push 後の残存件数SQL検証」の順で安全に適用できた（今回: http残存 0 件・外部URL 2 件保全を実測確認）
+
+## セッション表示とカルテ連携（フェーズ8.3①、2026-09-06〜10）で得た知見
+
+### カタログの RLS ポリシー案は実スキーマで裏取りしてから使う
+
+- **症状になりかけた**: `2026-07-08-solution-catalog.md` cat4 課題2 の案 `client_id IN (SELECT id FROM clients WHERE client_id = auth.uid())` は、`clients` に `id` 列が無く（PK は `client_id` で auth.uid() と同一）実行時エラーになる
+- **対策**: 既存の同種ポリシー（`weight_records` / `sleep_records` の顧客用は `client_id = auth.uid()`）と `\d` の実スキーマで確認してから書く。カタログは設計意図の参考であって SQL の正本ではない
+
+### RLS テストの anon ケースは「クレーム付き anon」も入れないと偽陰性になる
+
+- **症状**: `sessions_client_select`（`TO authenticated`）のテストで、anon ケースを「JWT クレームを空にしてから `SET LOCAL ROLE anon`」で書くと `auth.uid()` が NULL になるだけで 0 行になり、**ポリシーから `TO authenticated` を外してもテストが通る**
+- **対策**: anon ケースは (d-1) クレーム無し と (d-2) **顧客 UUID のクレームを入れたまま anon に切替** の2本立てにし、(d-2) が role 限定を直接検証する。修正後に実際に role 限定を外して (d-2) だけ FAIL することを確認（負のコントロール）
+- **副次の罠**: `SET LOCAL request.jwt.claims` はトランザクション内に残るため、先行ケースのクレームを消さずに anon へ切り替えると `TO PUBLIC` の既存ポリシーが通ってしまう
+
+### 導出値を非正規化して保存すると必ずドリフトする
+
+- **症状**: 「何回目のセッションか」を対象セッション集合から算出して `client_notes.session_number` に自動保存する設計にしたところ、過去セッションを後からキャンセルすると以降の番号が繰り上がり、保存済みカルテの番号と衝突しうる（レビューで CONFIRMED）
+- **判断**: 参照は `session_id` に一本化し、番号は**列ごと廃止**して表示は `sessions.session_date` から導出（オーナー判断: 「番号は何のために入れていたか分からない。日付が目立てばよい」）
+- **教訓**: 「自動で入る値」を DB に書くなら、その値が後から変わらないことを保証できる場合に限る。導出できるものは保存せず表示時に導出する
+
+### 選択肢の非同期取得と「意図した紐づけ」は別に扱う
+
+- **症状**: 「カルテを書く」でカルテ作成を開いたのに、対象セッションの選択肢取得が失敗・未完了だと `session_id = null` のまま無言で保存され、紐づけ忘れ防止という機能の目的が黙って無効化された
+- **対策**: (1) 装飾用データ（「カルテ作成済み」ラベル用の別クエリ）の失敗で選択肢本体を落とさない (2) 取得中・失敗を UI に出す (3) `initialSessionId` を指定して開いたのに反映できていない間は保存をブロック。「意図した紐づけが落ちたまま保存できない」を要件として明文化する
+
+### 2箇所から同じ状態遷移を起こすなら UPDATE 自体に条件を付ける
+
+- **症状**: セッション完了（＋チケット消化）をスケジュール画面とワークアウト実施画面の両方から起こせるようにした際、「読んでから書く」ガードだと同時実行でチケットを二重消化しうる
+- **対策**: `update({status:'completed'}).eq('id', id).neq('status','completed').select().maybeSingle()` のように**未完了の行だけを更新する条件付き UPDATE** にし、行が返ったときだけ消化へ進む。DB 側で必ず片方しか通らないので、アプリ側の読み取りタイミングに依存しない
+
+### 固定の明色背景にテーマ追従の文字色を載せるとダークモードで消える
+
+- **症状**: カルテ詳細ヘッダー（`AppColors.primary50` 固定背景 + `colors.textPrimary`）がダークモードで白文字が淡青に溶けて読めない。全画面を洗い出すと既存コードにも同型が4箇所（同意ダイアログの AI 枠、ログインのメール送信カード、ヘルスケア同期エラー行、週間ミニカレンダーの完了セル）
+- **対策**: 背景を `AppColorsExtension` のテーマ追従トークンにする（`primaryTint` = light primary50 / dark blue900、`primaryTintForeground` = light primary600 / dark primary200 を追加。既存 `accentIndigo` と同じ流儀で fields / constructor / light / dark / copyWith / lerp の6箇所に漏れなく）。**背景と文字のどちらか片方だけテーマ追従**にしない。`@Preview` にダークモード版を並べて目視できるようにする
+- 残り4箇所は別タスク化済み（2026-09-08）
+

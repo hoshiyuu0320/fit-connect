@@ -28,6 +28,14 @@ class ChatInput extends StatefulWidget {
   final String? editingMessageContent;
   final VoidCallback? onCancelEdit;
 
+  /// 外部から流し込む定型文（セッションの「変更を相談」など）。
+  /// 編集モードと同時に渡された場合は編集モードを優先する
+  final String? initialDraft;
+
+  /// 定型文を入力欄へ反映し終えたタイミングで呼ばれる。
+  /// 呼び出し側はここで draft を破棄し、再ビルドでの再注入を防ぐ
+  final VoidCallback? onDraftConsumed;
+
   const ChatInput({
     super.key,
     required this.onSend,
@@ -38,6 +46,8 @@ class ChatInput extends StatefulWidget {
     this.editingMessageId,
     this.editingMessageContent,
     this.onCancelEdit,
+    this.initialDraft,
+    this.onDraftConsumed,
   });
 
   @override
@@ -67,6 +77,9 @@ class _ChatInputState extends State<ChatInput> {
           TextPosition(offset: _controller.text.length),
         );
       });
+    } else {
+      // 編集モードでなければ定型文を流し込む
+      _applyInitialDraft();
     }
   }
 
@@ -87,6 +100,29 @@ class _ChatInputState extends State<ChatInput> {
     if (oldWidget.editingMessageId != null && widget.editingMessageId == null) {
       _controller.clear();
     }
+    // 定型文が新しく渡された場合（null → 値、または別の文面に変化）
+    if (widget.initialDraft != oldWidget.initialDraft) {
+      _applyInitialDraft();
+    }
+  }
+
+  /// 定型文を入力欄へ流し込む。
+  /// 編集モード中は編集内容を壊さないよう何もしない（編集モードが優先）
+  void _applyInitialDraft() {
+    final draft = widget.initialDraft;
+    if (draft == null || draft.isEmpty) return;
+    if (widget.editingMessageId != null) return;
+
+    _controller.text = draft;
+    // 次フレームでカーソルを末尾に移動。
+    // 消費通知も同じタイミングで行う（build 中の setState を避けるため）
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _controller.selection = TextSelection.fromPosition(
+        TextPosition(offset: _controller.text.length),
+      );
+      widget.onDraftConsumed?.call();
+    });
   }
 
   @override
@@ -814,6 +850,29 @@ Widget previewChatInputEdit() {
               editingMessageId: 'msg-456',
               editingMessageContent: '今日のトレーニングは30分のランニングと腹筋100回をやりました！',
               onCancelEdit: () {},
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+@Preview(name: 'ChatInput - With Draft')
+Widget previewChatInputWithDraft() {
+  // セッションの「変更を相談」から定型文が流し込まれた直後の状態
+  return MaterialApp(
+    theme: AppTheme.lightTheme,
+    home: Scaffold(
+      body: SafeArea(
+        child: Column(
+          children: [
+            const Spacer(),
+            ChatInput(
+              onSend: (text, images, replyTo, metadata) async {},
+              userId: 'user-123',
+              initialDraft: '9月10日(水) 18:00 のセッションについて相談です。',
+              onDraftConsumed: () {},
             ),
           ],
         ),

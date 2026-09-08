@@ -221,7 +221,7 @@ export type ClientNote = {
   file_urls: string[]  // client-notes バケットの `パス#元ファイル名` 形式（レガシー行はフルURL共存）
   is_shared: boolean
   shared_at: string | null
-  session_number: number | null
+  session_id: string | null  // 紐づくセッション（sessions.id）。任意
   created_at: string
   updated_at: string
 }
@@ -234,7 +234,7 @@ export type CreateClientNoteParams = {
   content: string
   fileUrls?: string[]  // client-notes バケットの `パス#元ファイル名` 形式
   isShared?: boolean
-  sessionNumber?: number | null
+  sessionId?: string | null  // 紐づくセッション（sessions.id）。未指定・null で紐づけなし
 }
 
 // カルテ更新パラメータ
@@ -244,7 +244,7 @@ export type UpdateClientNoteParams = {
   content?: string
   fileUrls?: string[]  // client-notes バケットの `パス#元ファイル名` 形式（レガシー行はフルURL共存）
   isShared?: boolean
-  sessionNumber?: number | null
+  sessionId?: string | null  // 紐づくセッション（sessions.id）。null で紐づけ解除
 }
 
 // ================================================
