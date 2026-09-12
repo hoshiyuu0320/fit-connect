@@ -11,6 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { supabase } from '@/lib/supabase';
 import { getSessions, Session } from '@/lib/supabase/getSessions';
 import { updateSession } from '@/lib/supabase/updateSession';
+import { useClientSessionOptions } from '@/hooks/useClientSessionOptions';
+import { CreateNoteModal } from '@/components/notes/CreateNoteModal';
 import { ClientSelector } from '@/components/workout/ClientSelector';
 import { TemplatePanel } from '@/components/workout/TemplatePanel';
 import TicketSelectModal from '@/components/workout/TicketSelectModal';
@@ -81,6 +83,9 @@ export default function CalendarView() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [draggedSession, setDraggedSession] = useState<Session | null>(null);
+
+    // 「カルテを書く」導線（セッション詳細 → カルテ作成モーダル）
+    const [noteSession, setNoteSession] = useState<Session | null>(null);
 
     // 追加 state
     const [trainerId, setTrainerId] = useState('');
@@ -176,6 +181,23 @@ export default function CalendarView() {
     useEffect(() => {
         fetchAssignments();
     }, [fetchAssignments]);
+
+    // カルテ作成モーダルの「対象セッション」選択肢（開いたクライアントの分だけ取得）
+    const {
+        sessions: noteSessionOptions,
+        status: noteSessionOptionsStatus,
+    } = useClientSessionOptions(noteSession?.client_id ?? null);
+
+    // セッション詳細 →「カルテを書く」／保存で「完了」に変わった直後：
+    // 詳細モーダルを閉じ、そのセッションを選択済みでカルテ作成モーダルを開く
+    const handleWriteNote = (session: Session) => {
+        setIsModalOpen(false);
+        setNoteSession(session);
+    };
+
+    const closeNoteModal = () => {
+        setNoteSession(null);
+    };
 
     const navigateDate = (direction: 'prev' | 'next' | 'today') => {
         if (direction === 'today') {
@@ -839,7 +861,22 @@ export default function CalendarView() {
                     selectedDate={selectedDate}
                     session={selectedSession}
                     onSuccess={fetchSessions}
+                    onWriteNote={handleWriteNote}
                 />
+
+                {/* カルテ作成モーダル（カレンダーから離れずにその場で書く） */}
+                {noteSession && trainerId && (
+                    <CreateNoteModal
+                        open
+                        onOpenChange={(open) => { if (!open) closeNoteModal(); }}
+                        clientId={noteSession.client_id}
+                        trainerId={trainerId}
+                        sessions={noteSessionOptions}
+                        sessionsStatus={noteSessionOptionsStatus}
+                        initialSessionId={noteSession.id}
+                        onCreated={closeNoteModal}
+                    />
+                )}
 
                 {/* TicketSelectModal */}
                 {selectedClientId && pendingDrop && (

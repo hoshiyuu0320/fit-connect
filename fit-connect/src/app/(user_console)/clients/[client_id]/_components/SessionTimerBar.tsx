@@ -7,6 +7,8 @@ type SessionTimerBarProps = {
   finishedAt: string | null
   onStart: () => void
   onFinish: () => void
+  // 完了バナーの副次アクション「カルテを書く」。未指定なら表示しない
+  onWriteNote?: () => void
 }
 
 function formatElapsed(totalSeconds: number): string {
@@ -25,6 +27,7 @@ export function SessionTimerBar({
   finishedAt,
   onStart,
   onFinish,
+  onWriteNote,
 }: SessionTimerBarProps) {
   const [elapsed, setElapsed] = useState(0)
 
@@ -82,9 +85,21 @@ export function SessionTimerBar({
             {formatElapsed(duration)}
           </span>
         </div>
-        <span className="text-xs text-[#94A3B8] px-2 py-1 bg-[#DCFCE7] rounded-md">
-          終了済み
-        </span>
+        <div className="flex items-center gap-3">
+          {/* サマリーを閉じたあとでもカルテ作成へ進めるようにする（控えめなテキストボタン） */}
+          {onWriteNote && (
+            <button
+              type="button"
+              onClick={onWriteNote}
+              className="text-xs font-medium text-[#14B8A6] hover:text-[#0D9488] transition-colors"
+            >
+              カルテを書く
+            </button>
+          )}
+          <span className="text-xs text-[#94A3B8] px-2 py-1 bg-[#DCFCE7] rounded-md">
+            終了済み
+          </span>
+        </div>
       </div>
     )
   }

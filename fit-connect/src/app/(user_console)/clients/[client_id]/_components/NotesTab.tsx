@@ -2,11 +2,13 @@
 
 import { useState } from 'react'
 import { format } from 'date-fns'
+import { ja } from 'date-fns/locale'
 import { StorageImg } from '@/components/common/StorageImg'
+import { CreateNoteModal } from '@/components/notes/CreateNoteModal'
+import { useClientSessionOptions } from '@/hooks/useClientSessionOptions'
 import { getSignedStorageUrl } from '@/lib/supabase/signedStorageUrls'
 import { noteFileName, isNoteFilePdf } from '@/lib/supabase/storagePaths'
 import type { ClientNote } from '@/types/client'
-import { CreateNoteModal } from './CreateNoteModal'
 import { EditNoteModal } from './EditNoteModal'
 import { DeleteNoteDialog } from './DeleteNoteDialog'
 
@@ -14,14 +16,42 @@ interface NotesTabProps {
   notes: ClientNote[]
   clientId: string
   trainerId: string
+  // カルテ作成モーダルを開くときに選択済みにするセッション（未指定なら直近の完了セッション）
+  initialSessionId?: string | null
   onRefetch: () => void
 }
 
-export function NotesTab({ notes, clientId, trainerId, onRefetch }: NotesTabProps) {
+export function NotesTab({
+  notes,
+  clientId,
+  trainerId,
+  initialSessionId,
+  onRefetch,
+}: NotesTabProps) {
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [editNote, setEditNote] = useState<ClientNote | null>(null)
   const [deleteNote, setDeleteNote] = useState<ClientNote | null>(null)
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
+
+  // 「対象セッション」の選択肢と、カルテに紐づくセッションの表示に使う
+  const {
+    sessions,
+    status: sessionsStatus,
+    refetch: refetchSessions,
+  } = useClientSessionOptions(clientId)
+
+  const sessionById = new Map(sessions.map((session) => [session.id, session]))
+
+  // カルテタブ起点では直近の完了セッションを初期選択にする（sessions は新しい順）
+  const createInitialSessionId = initialSessionId ?? sessions[0]?.id ?? null
+
+  // カルテを増減すると選択肢の「（カルテ作成済み）」の前提が変わるため、
+  // ノートの再取得と一緒に選択肢も取り直す
+  // （放置すると同じセッションに2枚目を無警告で作れてしまう／削除後もラベルが残る）
+  const refetchAll = () => {
+    onRefetch()
+    refetchSessions()
+  }
 
   return (
     <div className="space-y-4">
@@ -39,128 +69,142 @@ export function NotesTab({ notes, clientId, trainerId, onRefetch }: NotesTabProp
       {/* カルテ一覧 */}
       {notes.length > 0 ? (
         <div className="space-y-3">
-          {notes.map((note) => (
-            <div
-              key={note.id}
-              className="bg-white border border-[#E2E8F0] rounded-md overflow-hidden"
-            >
-              <div className="flex">
-                {/* 左アクセントバー + セッション番号 */}
-                <div className="w-10 bg-[#F0FDFA] border-r border-[#CCFBF1] flex flex-col items-center justify-start pt-4 flex-shrink-0">
-                  {note.session_number != null && (
-                    <>
-                      <span className="text-[10px] text-[#94A3B8]">#</span>
-                      <span className="text-sm font-bold text-[#14B8A6]">{note.session_number}</span>
-                    </>
-                  )}
-                </div>
+          {notes.map((note) => {
+            const linkedSession = note.session_id ? sessionById.get(note.session_id) : undefined
+            return (
+              <div
+                key={note.id}
+                className="bg-white border border-[#E2E8F0] rounded-md overflow-hidden"
+              >
+                <div className="flex">
+                  {/* 左アクセントバー */}
+                  <div className="w-10 bg-[#F0FDFA] border-r border-[#CCFBF1] flex-shrink-0" />
 
-                {/* メインコンテンツ */}
-                <div className="flex-1 p-4 min-w-0">
-                  {/* ヘッダー行 */}
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="min-w-0 mr-3">
-                      <h4 className="font-semibold text-sm text-[#0F172A]">{note.title}</h4>
-                      <p className="text-[11px] text-[#94A3B8] mt-0.5">
-                        {format(new Date(note.created_at), 'yyyy/MM/dd HH:mm')}
-                        {note.updated_at !== note.created_at && (
-                          <span className="ml-1">(編集済み)</span>
+                  {/* メインコンテンツ */}
+                  <div className="flex-1 p-4 min-w-0">
+                    {/* ヘッダー行 */}
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="min-w-0 mr-3">
+                        {/*
+                          紐づくセッションがあればその日時（+種別）を主行にし、タイトルはその下。
+                          未紐づけ（または選択肢に無い）ならタイトルが主行
+                        */}
+                        {linkedSession ? (
+                          <>
+                            <p className="flex items-baseline gap-2 flex-wrap text-sm font-semibold text-[#14B8A6]">
+                              {format(new Date(linkedSession.session_date), 'yyyy/MM/dd(E) HH:mm', { locale: ja })}
+                              {linkedSession.session_type && (
+                                <span className="text-xs font-medium text-[#64748B]">
+                                  {linkedSession.session_type}
+                                </span>
+                              )}
+                            </p>
+                            <h4 className="text-sm font-medium text-[#0F172A] mt-0.5">{note.title}</h4>
+                          </>
+                        ) : (
+                          <h4 className="font-semibold text-sm text-[#0F172A]">{note.title}</h4>
                         )}
+                        <p className="text-[11px] text-[#94A3B8] mt-0.5">
+                          {format(new Date(note.created_at), 'yyyy/MM/dd HH:mm')}
+                          {note.updated_at !== note.created_at && (
+                            <span className="ml-1">(編集済み)</span>
+                          )}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {/* 共有ステータス */}
+                        {note.is_shared ? (
+                          <span className="flex items-center gap-1 text-[11px] text-[#16A34A]">
+                            <svg
+                              width="11"
+                              height="11"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                              <polyline points="16 6 12 2 8 6" />
+                              <line x1="12" y1="2" x2="12" y2="15" />
+                            </svg>
+                            共有中
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-[11px] text-[#94A3B8]">
+                            <svg
+                              width="11"
+                              height="11"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                            </svg>
+                            非公開
+                          </span>
+                        )}
+                        {/* 編集・削除ボタン */}
+                        <button
+                          onClick={() => setEditNote(note)}
+                          className="text-xs text-[#94A3B8] hover:text-[#14B8A6] transition-colors px-2 py-1"
+                        >
+                          編集
+                        </button>
+                        <button
+                          onClick={() => setDeleteNote(note)}
+                          className="text-xs text-[#94A3B8] hover:text-[#DC2626] transition-colors px-2 py-1"
+                        >
+                          削除
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* コンテンツ */}
+                    {note.content && (
+                      <p className="text-sm text-[#0F172A] whitespace-pre-wrap mb-3 leading-relaxed">
+                        {note.content}
                       </p>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      {/* 共有ステータス */}
-                      {note.is_shared ? (
-                        <span className="flex items-center gap-1 text-[11px] text-[#16A34A]">
-                          <svg
-                            width="11"
-                            height="11"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-                            <polyline points="16 6 12 2 8 6" />
-                            <line x1="12" y1="2" x2="12" y2="15" />
-                          </svg>
-                          共有中
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1 text-[11px] text-[#94A3B8]">
-                          <svg
-                            width="11"
-                            height="11"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                          </svg>
-                          非公開
-                        </span>
-                      )}
-                      {/* 編集・削除ボタン */}
-                      <button
-                        onClick={() => setEditNote(note)}
-                        className="text-xs text-[#94A3B8] hover:text-[#14B8A6] transition-colors px-2 py-1"
-                      >
-                        編集
-                      </button>
-                      <button
-                        onClick={() => setDeleteNote(note)}
-                        className="text-xs text-[#94A3B8] hover:text-[#DC2626] transition-colors px-2 py-1"
-                      >
-                        削除
-                      </button>
-                    </div>
-                  </div>
+                    )}
 
-                  {/* コンテンツ */}
-                  {note.content && (
-                    <p className="text-sm text-[#0F172A] whitespace-pre-wrap mb-3 leading-relaxed">
-                      {note.content}
-                    </p>
-                  )}
-
-                  {/* 添付ファイルサムネイルグリッド */}
-                  {note.file_urls && note.file_urls.length > 0 && (
-                    <div className="flex gap-2 flex-wrap">
-                      {note.file_urls.map((url, i) => {
-                        if (isNoteFilePdf(url)) {
+                    {/* 添付ファイルサムネイルグリッド */}
+                    {note.file_urls && note.file_urls.length > 0 && (
+                      <div className="flex gap-2 flex-wrap">
+                        {note.file_urls.map((url, i) => {
+                          if (isNoteFilePdf(url)) {
+                            return (
+                              <NotePdfLink key={i} value={url} fileName={noteFileName(url)} />
+                            )
+                          }
                           return (
-                            <NotePdfLink key={i} value={url} fileName={noteFileName(url)} />
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => setLightboxUrl(url)}
+                              className="relative w-14 h-14 rounded-md overflow-hidden border border-[#E2E8F0] hover:border-[#14B8A6] hover:opacity-80 transition-all"
+                            >
+                              <StorageImg
+                                value={url}
+                                bucket="client-notes"
+                                alt={`添付画像 ${i + 1}`}
+                                className="absolute inset-0 w-full h-full object-cover"
+                                fallback={<span className="absolute inset-0 bg-[#F8FAFC]" />}
+                              />
+                            </button>
                           )
-                        }
-                        return (
-                          <button
-                            key={i}
-                            type="button"
-                            onClick={() => setLightboxUrl(url)}
-                            className="relative w-14 h-14 rounded-md overflow-hidden border border-[#E2E8F0] hover:border-[#14B8A6] hover:opacity-80 transition-all"
-                          >
-                            <StorageImg
-                              value={url}
-                              bucket="client-notes"
-                              alt={`添付画像 ${i + 1}`}
-                              className="absolute inset-0 w-full h-full object-cover"
-                              fallback={<span className="absolute inset-0 bg-[#F8FAFC]" />}
-                            />
-                          </button>
-                        )
-                      })}
-                    </div>
-                  )}
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       ) : (
         <div className="flex items-center justify-center h-48 bg-white border border-[#E2E8F0] rounded-md">
@@ -205,7 +249,10 @@ export function NotesTab({ notes, clientId, trainerId, onRefetch }: NotesTabProp
         onOpenChange={setCreateModalOpen}
         clientId={clientId}
         trainerId={trainerId}
-        onCreated={onRefetch}
+        sessions={sessions}
+        sessionsStatus={sessionsStatus}
+        initialSessionId={createInitialSessionId}
+        onCreated={refetchAll}
       />
 
       <EditNoteModal
@@ -214,14 +261,15 @@ export function NotesTab({ notes, clientId, trainerId, onRefetch }: NotesTabProp
         note={editNote}
         trainerId={trainerId}
         clientId={clientId}
-        onUpdated={onRefetch}
+        sessions={sessions}
+        onUpdated={refetchAll}
       />
 
       <DeleteNoteDialog
         open={!!deleteNote}
         onOpenChange={(open) => !open && setDeleteNote(null)}
         note={deleteNote}
-        onDeleted={onRefetch}
+        onDeleted={refetchAll}
       />
     </div>
   )

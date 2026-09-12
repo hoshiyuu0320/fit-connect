@@ -3,7 +3,7 @@
 **作成日**: 2026年3月29日
 **バージョン**: 2.0
 **進捗状況**: フェーズ1 完了 / フェーズ2 2.1〜2.5 完了（2.4 任意項目のみバックログ）/ フェーズ3〜10 未着手
-**最終更新**: 2026年8月30日 - フェーズ8.2 完了（Storage 4バケット private 化 + 署名URL + 強制アップデート機構 + AI画像 orphan cleanup。リモート適用済み）。各タスクの詳細設計は `docs/tasks/2026-07-08-solution-catalog.md`、共通基盤の設計決定は `docs/tasks/2026-07-10-integration-decisions.md` を参照
+**最終更新**: 2026年9月10日 - フェーズ8.3① 完了（Mobile セッション表示 + セッション⇔カルテ連携 + トレーナー側の紐づけ導線。リモート適用済み・QA 完了）。8.3② 前日リマインダーは Vault 登録待ち。各タスクの詳細設計は `docs/tasks/2026-07-08-solution-catalog.md`、共通基盤の設計決定は `docs/tasks/2026-07-10-integration-decisions.md` を参照
 
 > **2026-04-26 モノレポ化完了**: 旧 `fit-connect-mobile` リポジトリを `git subtree` で取り込み、単一 git リポジトリで Web/Mobile 両方を管理する構成に移行。詳細は `docs/tasks/2026-04-26-monorepo-migration.md`。
 
@@ -36,7 +36,7 @@
 | 5 | セキュリティ・基盤修復【緊急】 | Supabase + Web | 75% | 🟡 5.1・5.2・5.5 完了 / 5.3 cron migration 化済み・Vault 登録はユーザー作業待ち（手順書: `2026-07-10-cron-vault-setup.md`）/ 5.4 未着手 |
 | 6 | 収益化・リリース準備（Stripe/法務/アカウント削除/Apple Sign-In） | Web + Mobile + Supabase | 70% | 🟡 6.2 完了（アカウント削除 + Sign in with Apple）/ 6.1 完了（法務3ページ + user_consents + signup同意。Mobile側の顧客同意UIはフェーズ3の同意ダイアログとして実装済み 2026/07/19）/ 6.3 Stripe課金コア実装済み（テスト・本番切替はオーナーのStripeセットアップ待ち。手順書: 2026-07-12-stripe-setup-guide.md）/ 6.4 完了（フェーズ4として実装済み）/ 6.5 支払記録 実装済み（領収書PDF・Stripe Connect は後回し） |
 | 7 | 通知基盤統一（device_tokens + 共通ディスパッチャ） | Supabase + Web + Mobile | 100% | 🟢 7.1〜7.4 完了（7.4 通知権限プライミングはフェーズ3の 3.2 として実装。2026/07/19） |
-| 8 | 不具合修正・顧客体験の底上げ | Mobile + Web + Supabase | 70% | 🟡 8.1 完了（2026/07/10）/ 8.2 Storage private化+署名URL+強制アップデート+orphan cleanup 完了（2026/08/30、リモート適用済み）/ 8.3 未着手 |
+| 8 | 不具合修正・顧客体験の底上げ | Mobile + Web + Supabase | 85% | 🟡 8.1 完了（2026/07/10）/ 8.2 Storage private化+署名URL+強制アップデート+orphan cleanup 完了（2026/08/30、リモート適用済み）/ 8.3 ①セッション表示 完了（2026/09/06）・②前日リマインダーは Vault 登録待ち |
 | 9 | トレーナー介入機能（異常検知・トリアージ） | Web + Supabase | 0% | 🔴 未着手 |
 | 10 | リテンション機能（リマインダー・直接記録・ストリーク） | Mobile + Supabase | 0% | 🔴 未着手 |
 
@@ -354,8 +354,19 @@
   - [ ] （残・オーナー作業）cleanup-ai-images cron の有効化判断（Vault 登録が前提: `2026-07-10-cron-vault-setup.md`）/ App Store 公開後に `app_config.ios_store_url` 設定
   - [x] （QA）ログイン後の対話 QA — **オーナーが実機で確認済み・問題なし**（2026-08-30。起動/画像表示/新規アップロード/AI推定/オフライン復帰）。ヘッドレス検証: 全テスト(Web 122/Mobile 111)・next build・db reset・RLS テスト4本・シミュレータ起動確認
 - [ ] **8.3 Mobile セッション表示 + 前日リマインダー**（cat4 課題2・3。フェーズ7の最初の消費者）
-  - [ ] ホームに次回セッションカード + セッション一覧画面
-  - [ ] セッション前日リマインダー（pg_cron + ディスパッチャ、notification_logs で冪等化）
+  - **スコープ分割（2026-09-06 オーナー決定）**: ①セッション表示を先行、②前日リマインダーは Vault シークレット未登録で本番発火しないため別 PR。設計: `2026-09-06-mobile-session-display-plan.md`
+  - [x] ①ホームに次回セッションカード + セッション一覧画面（2026-09-06、PR: feature/mobile-session-display）
+    - [x] `sessions` に顧客用 SELECT ポリシー追加（migration `20260906000000`、`USING (client_id = auth.uid())`）+ RLS テスト新設（本人のみ可視・他人不可・トレーナー回帰・anon 0行・顧客の書込拒否の5ケース）。リモート適用済み
+      - 注: カタログ cat4 課題2 L813 のポリシー案 `SELECT id FROM clients` は **`clients` に `id` カラムが無く誤り**（正準は `client_id = auth.uid()`）
+    - [x] Mobile `lib/features/sessions/` 新設（SessionModel + 日本語ステータスラベル（未知値フォールバック付き）/ Repository（今後・過去）/ @riverpod プロバイダ4本）
+    - [x] `NextSessionCard`（データあり・当日強調・予定なし・ローディング・エラー+リトライの5状態。ホームの TrainerStatusCard 直後に挿入）+ `SessionsScreen`（今後/過去のセグメント切替）+ `SessionStatusBadge`
+    - [x] 「変更を相談」→ メッセージ画面へ定型文付き遷移（既存 `editingMessageContent` の注入パターンを踏襲。消費後に draft を null に戻し再注入を防止）
+    - [x] セッション⇔ノート連携: `client_notes.session_id` 新設（FK + 整合性トリガー）。過去セッションの行から共有ノートへ遷移（「ノート」チップ + chevron、ノート無しはタップ不可）
+    - [x] トレーナー側の紐づけ導線（Web）: セッション「完了」保存 → そのままカルテ作成へ / セッション詳細の「カルテを書く」/ ノート作成・編集の「対象セッション」セレクト（完了・過去のみ、紐づき済みは「（カルテ作成済み）」表示）
+    - [x] `session_number`（手入力の通し番号）は廃止（本番0件・自動採番は序数ドリフトが避けられないため）。カルテ一覧・詳細ではセッション日時を主行に表示
+    - [x] ワークアウト実施画面（セッション中タブ）からの導線: 「完了として保存」→ 紐づく `sessions` も完了に更新（チケット消化を `completeSession()` に集約、条件付き UPDATE で二重消化を防止）→ カルテ作成をそのセッション選択済み・本文にトレーナーノートを流し込んで開く。完了バナーにも「カルテを書く」
+  - [ ] ②セッション前日リマインダー（pg_cron + ディスパッチャ、notification_logs で冪等化）→ **Vault 登録（オーナー作業）待ち**。`vault.secrets` が空のため cron から Edge Function を叩けない（手順書: `2026-07-10-cron-vault-setup.md`）
+  - [x] （QA）ログイン後の対話 QA — **オーナーが Web・実機で確認済み・問題なし**（2026-09-10。セッション完了→カルテ作成→Mobile 過去タブからノート閲覧、ダークモード表示含む）
 
 ---
 

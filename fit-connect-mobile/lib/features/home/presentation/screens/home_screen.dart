@@ -11,16 +11,22 @@ import 'package:fit_connect_mobile/features/home/presentation/widgets/daily_summ
 import 'package:fit_connect_mobile/features/onboarding_flow/presentation/widgets/getting_started_card.dart';
 import 'package:fit_connect_mobile/features/schedules/providers/trainer_schedule_provider.dart';
 import 'package:fit_connect_mobile/features/schedules/presentation/widgets/trainer_status_card.dart';
+import 'package:fit_connect_mobile/features/sessions/presentation/widgets/next_session_card.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 class HomeScreen extends ConsumerWidget {
   final void Function(int tabIndex)? onNavigateToRecordsTab;
   final VoidCallback? onNavigateToMessages;
 
+  /// セッションについてトレーナーへ相談する導線。
+  /// draft はメッセージ入力欄へ流し込む定型文（空文字なら定型文なし）
+  final void Function(String draft)? onConsultAboutSession;
+
   const HomeScreen({
     super.key,
     this.onNavigateToRecordsTab,
     this.onNavigateToMessages,
+    this.onConsultAboutSession,
   });
 
   @override
@@ -72,6 +78,13 @@ class HomeScreen extends ConsumerWidget {
                 isOnline: isTrainerOnline,
                 profileImageUrl: trainerProfile.valueOrNull?.profileImageUrl,
                 lastSeenAt: trainerPresence.lastSeenAt,
+              ),
+
+              const SizedBox(height: 16),
+
+              // Next Session Card
+              NextSessionCard(
+                onConsult: onConsultAboutSession,
               ),
 
               const SizedBox(height: 16),

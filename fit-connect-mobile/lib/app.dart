@@ -18,6 +18,7 @@ import 'package:fit_connect_mobile/features/consent/presentation/consent_dialog.
 import 'package:fit_connect_mobile/services/notification_service.dart';
 import 'package:fit_connect_mobile/features/health/providers/health_sync_provider.dart';
 import 'package:fit_connect_mobile/features/health/providers/health_provider.dart';
+import 'package:fit_connect_mobile/features/sessions/providers/sessions_provider.dart';
 import 'package:fit_connect_mobile/features/sleep_records/providers/morning_dialog_provider.dart';
 import 'package:fit_connect_mobile/features/sleep_records/presentation/widgets/morning_wakeup_dialog.dart';
 import 'package:fit_connect_mobile/shared/storage/signed_url_cache.dart';
@@ -114,6 +115,9 @@ class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen>
     if (state == AppLifecycleState.resumed) {
       // resumed 時はSleep同期完了を待たずに即時再判定（同期は別途バックグラウンド継続）
       ref.invalidate(morningDialogProvider);
+      // 「今日/明日」表示や今後/過去の仕分けが古くならないよう取り直す
+      ref.invalidate(upcomingSessionsProvider);
+      ref.invalidate(pastSessionsProvider);
       _maybeShowMorningDialog();
       _maybeRunResumeSync();
     }

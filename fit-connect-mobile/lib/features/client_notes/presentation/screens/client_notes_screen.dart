@@ -86,11 +86,15 @@ class ClientNotesScreen extends ConsumerWidget {
               return _buildEmptyState(colors);
             }
 
+            // セッション日時の年付与判定用。行ごとに引き直すと日跨ぎで
+            // 年表示が食い違うため、ここで1回だけ取得して各カードに配る
+            final now = DateTime.now();
+
             return ListView(
               padding: const EdgeInsets.all(16),
               children: [
                 // サマリーカード
-                _buildSummaryCard(notes.length),
+                _buildSummaryCard(colors, notes.length),
 
                 const SizedBox(height: 16),
 
@@ -100,6 +104,7 @@ class ClientNotesScreen extends ConsumerWidget {
                     padding: const EdgeInsets.only(bottom: 12),
                     child: NoteCard(
                       note: note,
+                      now: now,
                       onTap: () {
                         Navigator.push(
                           context,
@@ -122,12 +127,16 @@ class ClientNotesScreen extends ConsumerWidget {
     );
   }
 
-  /// サマリーカード
-  Widget _buildSummaryCard(int noteCount) {
+  /// サマリーカード（淡青）。
+  ///
+  /// 背景はテーマ追従の primaryTint（ダークでは濃青）。アイコンチップは固定の
+  /// primary100 ではなく半透明の primary600 オーバーレイにして、どちらの背景にも馴染ませる。
+  /// アイコンと見出しは淡青カード用の強調色（primaryTintForeground）
+  Widget _buildSummaryCard(AppColorsExtension colors, int noteCount) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.primary50,
+        color: colors.primaryTint,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -137,12 +146,12 @@ class ClientNotesScreen extends ConsumerWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: AppColors.primary100,
+              color: AppColors.primary600.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(
+            child: Icon(
               LucideIcons.userCheck,
-              color: AppColors.primary600,
+              color: colors.primaryTintForeground,
               size: 20,
             ),
           ),
@@ -154,10 +163,10 @@ class ClientNotesScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'トレーナーより',
                   style: TextStyle(
-                    color: AppColors.primary600,
+                    color: colors.primaryTintForeground,
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                   ),
@@ -223,6 +232,7 @@ class _PreviewNotesListWithData extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     final dummyNotes = [
       ClientNote(
         id: '1',
@@ -233,7 +243,12 @@ class _PreviewNotesListWithData extends StatelessWidget {
         fileUrls: ['https://example.com/file1.jpg'],
         isShared: true,
         sharedAt: DateTime.now(),
-        sessionNumber: 1,
+        sessionId: 'session-1',
+        // 紐づけあり: セッション日時 + 種別が先頭行に出る
+        session: LinkedSession(
+          sessionDate: DateTime(2026, 2, 15, 10, 0),
+          sessionType: 'パーソナルトレーニング',
+        ),
         createdAt: DateTime(2026, 2, 15, 14, 30),
         updatedAt: DateTime(2026, 2, 15, 14, 30),
       ),
@@ -246,7 +261,7 @@ class _PreviewNotesListWithData extends StatelessWidget {
         fileUrls: [],
         isShared: true,
         sharedAt: DateTime.now(),
-        sessionNumber: 2,
+        // 紐づけ無し: 従来どおりタイトルから始まる
         createdAt: DateTime(2026, 2, 10, 10, 15),
         updatedAt: DateTime(2026, 2, 10, 10, 15),
       ),
@@ -262,7 +277,11 @@ class _PreviewNotesListWithData extends StatelessWidget {
         ],
         isShared: true,
         sharedAt: DateTime.now(),
-        sessionNumber: 3,
+        sessionId: 'session-3',
+        // 紐づけあり（種別なし）: 日時だけが出る
+        session: LinkedSession(
+          sessionDate: DateTime(2026, 2, 5, 9, 30),
+        ),
         createdAt: DateTime(2026, 2, 5, 16, 45),
         updatedAt: DateTime(2026, 2, 5, 16, 45),
       ),
@@ -273,11 +292,11 @@ class _PreviewNotesListWithData extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // サマリーカード
+            // サマリーカード（本体 _buildSummaryCard と同じ配色）
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.primary50,
+                color: colors.primaryTint,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Row(
@@ -286,30 +305,30 @@ class _PreviewNotesListWithData extends StatelessWidget {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: AppColors.primary100,
+                      color: AppColors.primary600.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       LucideIcons.userCheck,
-                      color: AppColors.primary600,
+                      color: colors.primaryTintForeground,
                       size: 20,
                     ),
                   ),
                   const SizedBox(width: 12),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'トレーナーより',
                           style: TextStyle(
-                            color: AppColors.primary600,
+                            color: colors.primaryTintForeground,
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        SizedBox(height: 4),
-                        Text(
+                        const SizedBox(height: 4),
+                        const Text(
                           '共有されたカルテ: 3件',
                           style: TextStyle(
                             color: AppColors.primary400,
@@ -331,6 +350,7 @@ class _PreviewNotesListWithData extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 12),
                 child: NoteCard(
                   note: note,
+                  now: DateTime(2026, 2, 20),
                   onTap: () {},
                 ),
               );
@@ -390,6 +410,16 @@ class _PreviewNotesListEmpty extends StatelessWidget {
 Widget previewClientNotesScreenWithData() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
+    home: const _PreviewNotesListWithData(),
+  );
+}
+
+/// ダークモード: サマリーカードの淡青が濃青に切り替わり、
+/// アイコン・見出し・件数が読めることを確認する
+@Preview(name: 'ClientNotesScreen - With Data (Dark)')
+Widget previewClientNotesScreenWithDataDark() {
+  return MaterialApp(
+    theme: AppTheme.darkTheme,
     home: const _PreviewNotesListWithData(),
   );
 }

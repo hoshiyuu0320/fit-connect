@@ -2,16 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:fit_connect_mobile/features/client_notes/models/client_note_model.dart';
+import 'package:fit_connect_mobile/features/client_notes/presentation/widgets/linked_session_line.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
 
+/// カルテ一覧の1件。
+///
+/// 紐づくセッションがあるノートは、廃止した `#N` の代わりに
+/// **セッション日時（+種別）を先頭行**に出して「どのセッションのノートか」を示す。
+/// 紐づけの無いノートは従来どおりタイトルから始まる（作成日のみ）。
 class NoteCard extends StatelessWidget {
   final ClientNote note;
+
+  /// セッション日時の年付与判定に使う現在時刻。
+  /// 一覧側で1回だけ取得したものを渡す（行ごとに引き直すと日跨ぎで年表示が食い違う）
+  final DateTime now;
+
   final VoidCallback? onTap;
 
   const NoteCard({
     super.key,
     required this.note,
+    required this.now,
     this.onTap,
   });
 
@@ -20,6 +32,8 @@ class NoteCard extends StatelessWidget {
     final colors = AppColors.of(context);
     final fileCount = note.fileUrls.length;
     final hasFiles = fileCount > 0;
+    // embed で取れた場合だけ入る（sessionId の有無では判定しない）
+    final session = note.session;
 
     return GestureDetector(
       onTap: onTap,
@@ -39,33 +53,22 @@ class NoteCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Session number + Title
-            Row(
-              children: [
-                if (note.sessionNumber != null) ...[
-                  Text(
-                    '#${note.sessionNumber}',
-                    style: const TextStyle(
-                      color: AppColors.primary600,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-                Expanded(
-                  child: Text(
-                    note.title,
-                    style: TextStyle(
-                      color: colors.textPrimary,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
+            // Linked session (date + type) — 紐づけがあるノートだけ
+            if (session != null) ...[
+              LinkedSessionLine(session: session, now: now),
+              const SizedBox(height: 8),
+            ],
+
+            // Title
+            Text(
+              note.title,
+              style: TextStyle(
+                color: colors.textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
 
             const SizedBox(height: 8),
@@ -152,8 +155,8 @@ class NoteCard extends StatelessWidget {
 // Previews
 // ============================================
 
-@Preview(name: 'NoteCard - With Session Number')
-Widget previewNoteCardWithSessionNumber() {
+@Preview(name: 'NoteCard - With Linked Session')
+Widget previewNoteCardWithLinkedSession() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
@@ -172,10 +175,16 @@ Widget previewNoteCardWithSessionNumber() {
                 'https://example.com/file2.jpg',
               ],
               isShared: true,
-              sessionNumber: 12,
-              createdAt: DateTime(2026, 2, 10, 14, 30),
-              updatedAt: DateTime(2026, 2, 10, 14, 30),
+              sessionId: 'session_1',
+              // 紐づくセッションの日時が先頭行に出る（今年なら年なし）
+              session: LinkedSession(
+                sessionDate: DateTime(2026, 2, 10, 18, 0),
+                sessionType: 'パーソナルトレーニング',
+              ),
+              createdAt: DateTime(2026, 2, 10, 20, 30),
+              updatedAt: DateTime(2026, 2, 10, 20, 30),
             ),
+            now: DateTime(2026, 2, 15),
             onTap: () {},
           ),
         ),
@@ -184,8 +193,8 @@ Widget previewNoteCardWithSessionNumber() {
   );
 }
 
-@Preview(name: 'NoteCard - Without Files')
-Widget previewNoteCardWithoutFiles() {
+@Preview(name: 'NoteCard - Without Linked Session')
+Widget previewNoteCardWithoutLinkedSession() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: Scaffold(
@@ -193,6 +202,7 @@ Widget previewNoteCardWithoutFiles() {
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: NoteCard(
+            // 紐づけ無し: 従来どおりタイトルから始まり作成日のみ
             note: ClientNote(
               id: '2',
               clientId: 'client_1',
@@ -200,11 +210,11 @@ Widget previewNoteCardWithoutFiles() {
               title: '食事指導メモ',
               content: 'タンパク質の摂取量を増やすよう指導。1日あたり体重1kgあたり2gを目標に。',
               fileUrls: [],
-              isShared: false,
-              sessionNumber: 8,
+              isShared: true,
               createdAt: DateTime(2026, 2, 5, 10, 15),
               updatedAt: DateTime(2026, 2, 5, 10, 15),
             ),
+            now: DateTime(2026, 2, 15),
             onTap: () {},
           ),
         ),
@@ -235,10 +245,16 @@ Widget previewNoteCardLongContent() {
                 'https://example.com/chart2.jpg',
               ],
               isShared: true,
-              sessionNumber: null,
-              createdAt: DateTime(2026, 2, 15, 16, 45),
-              updatedAt: DateTime(2026, 2, 15, 16, 45),
+              sessionId: 'session_3',
+              // 去年のセッション: 年付きで表示される
+              session: LinkedSession(
+                sessionDate: DateTime(2025, 12, 20, 11, 0),
+                sessionType: 'other',
+              ),
+              createdAt: DateTime(2025, 12, 20, 16, 45),
+              updatedAt: DateTime(2025, 12, 20, 16, 45),
             ),
+            now: DateTime(2026, 2, 15),
             onTap: () {},
           ),
         ),
