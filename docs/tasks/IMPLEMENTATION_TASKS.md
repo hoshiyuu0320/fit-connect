@@ -33,7 +33,7 @@
 | 2 | LLM カロリー計算 | Mobile + Supabase | 90% | 🟢 2.1〜2.5 完了（スクショ取り込み含む）/ 2.4任意項目のみバックログ |
 | 3 | オンボーディングフロー | Mobile | 90% | 🟡 3.1〜3.4 完了（cat2 3-A: 同意ダイアログ・通知権限プライミング・後段フロー・はじめの3ステップカード。2026/07/19、PR: feature/mobile-onboarding）/ コーチマーク・PageView式アプリ紹介の拡張のみ残 |
 | 4 | ランディングページ | Web | 90% | 🟡 4.1〜4.4 + メタタグ・OGP + アナリティクス（GA4）完了（2026/07/12）/ Lighthouse最適化 残 |
-| 5 | セキュリティ・基盤修復【緊急】 | Supabase + Web | 75% | 🟡 5.1・5.2・5.5 完了 / 5.3 cron migration 化済み・Vault 登録はユーザー作業待ち（手順書: `2026-07-10-cron-vault-setup.md`）/ 5.4 未着手 |
+| 5 | セキュリティ・基盤修復【緊急】 | Supabase + Web | 75% | 🟡 5.1・5.2・5.5 完了 / 5.3 cron migration 化済み・cron 認証を新 secret キー（apikey）方式へ移行（2026-09-12）・Vault 登録済み・2関数デプロイ + migration リモート適用済み・本番 dry run 200 確認済み / `auto-skip-workouts`・`cleanup-ai-images` とも有効化済み（2026-09-12）（手順書: `2026-07-10-cron-vault-setup.md`）/ 5.4 未着手 |
 | 6 | 収益化・リリース準備（Stripe/法務/アカウント削除/Apple Sign-In） | Web + Mobile + Supabase | 70% | 🟡 6.2 完了（アカウント削除 + Sign in with Apple）/ 6.1 完了（法務3ページ + user_consents + signup同意。Mobile側の顧客同意UIはフェーズ3の同意ダイアログとして実装済み 2026/07/19）/ 6.3 Stripe課金コア実装済み（テスト・本番切替はオーナーのStripeセットアップ待ち。手順書: 2026-07-12-stripe-setup-guide.md）/ 6.4 完了（フェーズ4として実装済み）/ 6.5 支払記録 実装済み（領収書PDF・Stripe Connect は後回し） |
 | 7 | 通知基盤統一（device_tokens + 共通ディスパッチャ） | Supabase + Web + Mobile | 100% | 🟢 7.1〜7.4 完了（7.4 通知権限プライミングはフェーズ3の 3.2 として実装。2026/07/19） |
 | 8 | 不具合修正・顧客体験の底上げ | Mobile + Web + Supabase | 85% | 🟡 8.1 完了（2026/07/10）/ 8.2 Storage private化+署名URL+強制アップデート+orphan cleanup 完了（2026/08/30、リモート適用済み）/ 8.3 ①セッション表示 完了（2026/09/06）・②前日リマインダーは Vault 登録待ち |
@@ -242,7 +242,14 @@
   - 2026-07-10 完了（PR #63）。実際のドリフトは上記に加え workout 系全域（workout_plans / workout_exercises / workout_assignments / workout_assignment_exercises）・tickets 系・Seed.sql にまで及んでいたため、修復 migration 3本（`20260710010000`〜`010002`）で追認
   - 空DBからの `supabase db reset` が通ることを確認し復旧済み
 - [ ] **5.3 pg_cron の migration 化**（cat7 5-A、〜1日）
-  - [ ] Vault に `project_url` / `service_role_key` を登録（手順を docs に記録）→ **ユーザー作業待ち**（手順書: `docs/tasks/2026-07-10-cron-vault-setup.md`）
+  - [x] Vault に `project_url` / `service_role_key` を登録（手順書: `docs/tasks/2026-07-10-cron-vault-setup.md`）✅ ユーザー登録済み（2026-09-12、URL一致・旧形式JWTキーであることを確認）
+    - ⚠️ 2026-09-12 本番 dry run で 401: 関数の `Authorization === Bearer ${SUPABASE_SERVICE_ROLE_KEY}` 文字列比較が、Vault の旧 service_role キー（プロジェクト作成時の正規JWT）と一致しなかった（本番の関数に入っている値が別物）
+  - [x] cron → Edge Function の認証を新 secret キーへ移行（2026-09-12、ブランチ `fix/auto-skip-session-plans`）
+    - `_shared/service_auth.ts` 新設: `apikey` ヘッダーを `SUPABASE_SECRET_KEYS`（+ローカルの `SUPABASE_SECRET_KEY`）と定数時間比較。互換で旧 Bearer service_role も許可（旧キー廃止の2026年末に削除）。`auto-skip-workouts` / `cleanup-ai-images` に適用し、config.toml で両者 `verify_jwt = false`
+    - migration `20260912000000_cron_use_secret_key.sql`: 2ジョブの command の headers だけを `apikey: Vault secret_key` に書き換え（schedule / active は据え置き・冪等）
+    - ローカル検証: 認証マトリクス12ケース（新方式200 / 1文字違い・anon・Bearer secret・認証なし 401 / 旧Bearer互換200）＋ cron の command をそのまま実行して pg_net→関数→DB更新まで 200
+  - [x] Vault に `secret_key`（新 secret キー `default`）を登録 ✅ ユーザー登録済み（2026-09-12、`sb_secret_` 形式を確認）
+  - [x] 2関数をデプロイ（verify_jwt=false）+ migration `20260912000000` をリモート適用（2026-09-12）。本番 dry run（pg_net + Vault secret_key の apikey）で2本とも 200
   - [x] `auto-skip-workouts` の cron を pg_cron + pg_net で migration 化（2026-07-10、`20260710020000_codify_cron_jobs.sql`）
   - [ ] `cron.job_run_details` の失敗監視ジョブの設計（フェーズ7の通知ディスパッチャ完成後に配線）
   - 発見事項（2026-07-10 リモートDB実測）:
@@ -343,6 +350,13 @@
   - [x] リスケ時にプランが消える問題の設計整理（履歴保持 + 表示修正）✅ 完了（2026/07/10）
     - 根本原因は表示範囲の非対称（リスケ先は+30日先まで選べるが画面は期限切れ/今日/今週の3窓のみ描画）。Mobileワークアウト画面に「今後の予定」セクション（今日+1〜+30日のpending一覧、日付変更可）を追加し、リスケ時に status を pending へ復帰（auto-skip cronとのレース対策）、成功時スナックバー表示
     - original_date カラム追加・Web側修正は調査の結果不要と判断
+  - [x] `auto-skip-workouts` の対象を self_guided プランに限定 + dry_run 対応（2026-09-12、ブランチ `fix/auto-skip-session-plans`）
+    - 有効化前のリモート実測で、自動スキップ候補28件のうち19件が session 型（トレーナーが Web で記録するもの）だと判明。旧実装は plan_type で絞っておらず、未記録のセッションまで3日で skipped にしてしまうため修正
+    - `workout_plans!inner(plan_type)` で候補を select → 100件ずつ update（`status='pending'` と `assigned_date < cutoff` を再確認し、select〜update 間の完了・日付変更を上書きしない）。body `{"dry_run": true}` で候補一覧のみ返す（省略時は実行＝cron の `{}` と互換）
+    - ローカル検証済み（self/session × pending/completed/partial × 過去/境界/未来の7ケース、認証なし401、dry_run 無変更、空body・不正JSON・再実行の冪等性）
+  - [x] 修正版をリモートにデプロイ → 本番 dry run で候補が self_guided のみであることを確認（2026-09-12: 候補9件すべて self_guided・assigned_date 2026-03-01〜03-21。session 型19件は対象外）
+  - [x] cron `auto-skip-workouts` を有効化 ✅ オーナーが有効化（2026-09-12）。初回実行は 2026-09-13 03:00 JST（上記9件が skipped になる見込み）
+  - [x] cron `cleanup-ai-images`（8.2）も有効化 ✅ オーナーが有効化（2026-09-12）。初回実行は 2026-09-13 04:00 JST（本番 dry run の削除候補は5件）
   - [ ] （拡張）スキップ前警告通知（cat2 8-B、フェーズ7完了後）
 - [x] **8.2 Storage private 化 + 署名URL**（cat7 2-A）✅ 実装完了・リモート適用済み（2026-08-30、PR: feature/storage-private-signed-urls。設計: `2026-08-29-storage-private-plan.md`）
   - [x] URL/パス両対応ヘルパー（Web: `storagePaths.ts`(純関数) + `signedStorageUrls.ts`('use client') / Mobile: `shared/storage/` + `StorageImage`）→ 新規はパス保存 → **4バケット全て private 化** → 既存データ正規化（migration `20260829000200`。リモートで http 残存 0 件・Google 外部URL 2 件保全を実測確認）

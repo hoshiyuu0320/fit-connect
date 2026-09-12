@@ -1,10 +1,12 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { isServiceRequest } from "../_shared/service_auth.ts";
 
 // message-photos の {uid}/ai/ 配下で、messages.image_urls / meal_records.images の
 // どちらからも参照されていない孤児画像（AI推定のキャンセル・離脱で残ったもの）を削除する。
 // 参照判定は migration の SQL 関数 find_orphan_ai_images(cutoff interval) に委譲。
-// 呼び出しは pg_cron（service_role Bearer）または手動実行を想定。
+// 呼び出しは pg_cron（secret キーを apikey ヘッダーで）または手動実行を想定。
+// 認証は _shared/service_auth.ts で行う（config.toml で verify_jwt = false）。
 // body: { dry_run?: boolean } — 省略時 true（削除せず候補一覧のみ返す）。
 
 const BUCKET = "message-photos";
@@ -12,11 +14,10 @@ const BUCKET = "message-photos";
 const REMOVE_BATCH_SIZE = 100;
 
 Deno.serve(async (req: Request) => {
-  const authHeader = req.headers.get("Authorization");
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-  if (authHeader !== `Bearer ${serviceRoleKey}`) {
+  if (!isServiceRequest(req)) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { "Content-Type": "application/json" },
