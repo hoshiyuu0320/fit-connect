@@ -138,7 +138,7 @@ class _DayCell extends StatelessWidget {
 
     if (status == 'completed') {
       return _CellStyle(
-        backgroundColor: AppColors.emerald50,
+        backgroundColor: colors.successTint,
         icon: LucideIcons.checkCircle2,
         iconColor: AppColors.emerald500,
       );
@@ -633,6 +633,24 @@ Widget previewWeeklyMiniCalendar() {
 
   return MaterialApp(
     theme: AppTheme.lightTheme,
+    home: Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: WeeklyMiniCalendar(weeklyData: weeklyData),
+        ),
+      ),
+    ),
+  );
+}
+
+/// ダークモード: 完了セルの淡緑背景が濃緑に切り替わり、曜日・日付が読めることを確認する
+@Preview(name: 'WeeklyMiniCalendar - With Data (Dark)')
+Widget previewWeeklyMiniCalendarDark() {
+  final weeklyData = _buildPreviewWeeklyData();
+
+  return MaterialApp(
+    theme: AppTheme.darkTheme,
     home: Scaffold(
       body: SafeArea(
         child: Padding(

@@ -3,6 +3,7 @@ import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/features/auth/data/auth_repository.dart';
+import 'package:fit_connect_mobile/features/auth/presentation/widgets/email_sent_card.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -239,49 +240,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 48),
 
                         if (_isEmailSent) ...[
-                          Container(
-                            padding: const EdgeInsets.all(24),
-                            decoration: BoxDecoration(
-                              color: AppColors.emerald50,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: AppColors.emerald100),
-                            ),
-                            child: Column(
-                              children: [
-                                const Icon(
-                                  LucideIcons.mailCheck,
-                                  size: 48,
-                                  color: AppColors.success,
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'メールを確認してください',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: colors.textPrimary,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  '認証リンクを送信しました:\n${_emailController.text}',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: colors.textSecondary,
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'メール内のリンクをタップして\n認証を完了してください',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: colors.textSecondary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                          EmailSentCard(email: _emailController.text),
                           const SizedBox(height: 24),
                           TextButton(
                             onPressed: () =>

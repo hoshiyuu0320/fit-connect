@@ -106,6 +106,8 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     required this.calendarEmpty,
     required this.primaryTint,
     required this.primaryTintForeground,
+    required this.successTint,
+    required this.dangerTint,
     required this.sleepStageDeep,
     required this.sleepStageLight,
     required this.sleepStageRem,
@@ -134,6 +136,11 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
   final Color primaryTint;
   final Color primaryTintForeground;
 
+  // Success / Danger tint（淡緑・淡赤カード）。primaryTint と同じくダークでは濃色に切り替わる。
+  // 上に載せる文字は colors.text* のままで両モード読める想定。
+  final Color successTint;
+  final Color dangerTint;
+
   // Sleep stage colors
   final Color sleepStageDeep;
   final Color sleepStageLight;
@@ -156,6 +163,8 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     calendarEmpty: Color(0xFFE2E8F0), // slate200
     primaryTint: Color(0xFFEFF6FF), // primary50
     primaryTintForeground: Color(0xFF2563EB), // primary600
+    successTint: Color(0xFFECFDF5), // emerald50
+    dangerTint: Color(0xFFFFE4E6), // rose100
     sleepStageDeep: Color(0xFF4338CA), // indigo-700
     sleepStageLight: Color(0xFF818CF8), // indigo-400
     sleepStageRem: Color(0xFF60A5FA), // primary-400
@@ -178,6 +187,8 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     calendarEmpty: Color(0xFF334155), // slate700
     primaryTint: Color(0xFF1E3A8A), // blue900
     primaryTintForeground: Color(0xFFBFDBFE), // primary200
+    successTint: Color(0xFF064E3B), // emerald900
+    dangerTint: Color(0xFF881337), // rose900
     sleepStageDeep: Color(0xFF6366F1),
     sleepStageLight: Color(0xFF818CF8),
     sleepStageRem: Color(0xFF60A5FA),
@@ -204,6 +215,8 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     Color? calendarEmpty,
     Color? primaryTint,
     Color? primaryTintForeground,
+    Color? successTint,
+    Color? dangerTint,
     Color? sleepStageDeep,
     Color? sleepStageLight,
     Color? sleepStageRem,
@@ -226,6 +239,8 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
       primaryTint: primaryTint ?? this.primaryTint,
       primaryTintForeground:
           primaryTintForeground ?? this.primaryTintForeground,
+      successTint: successTint ?? this.successTint,
+      dangerTint: dangerTint ?? this.dangerTint,
       sleepStageDeep: sleepStageDeep ?? this.sleepStageDeep,
       sleepStageLight: sleepStageLight ?? this.sleepStageLight,
       sleepStageRem: sleepStageRem ?? this.sleepStageRem,
@@ -254,6 +269,8 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
       primaryTint: Color.lerp(primaryTint, other.primaryTint, t)!,
       primaryTintForeground:
           Color.lerp(primaryTintForeground, other.primaryTintForeground, t)!,
+      successTint: Color.lerp(successTint, other.successTint, t)!,
+      dangerTint: Color.lerp(dangerTint, other.dangerTint, t)!,
       sleepStageDeep:
           Color.lerp(sleepStageDeep, other.sleepStageDeep, t)!,
       sleepStageLight:

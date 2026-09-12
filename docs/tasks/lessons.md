@@ -289,5 +289,7 @@
 
 - **症状**: カルテ詳細ヘッダー（`AppColors.primary50` 固定背景 + `colors.textPrimary`）がダークモードで白文字が淡青に溶けて読めない。全画面を洗い出すと既存コードにも同型が4箇所（同意ダイアログの AI 枠、ログインのメール送信カード、ヘルスケア同期エラー行、週間ミニカレンダーの完了セル）
 - **対策**: 背景を `AppColorsExtension` のテーマ追従トークンにする（`primaryTint` = light primary50 / dark blue900、`primaryTintForeground` = light primary600 / dark primary200 を追加。既存 `accentIndigo` と同じ流儀で fields / constructor / light / dark / copyWith / lerp の6箇所に漏れなく）。**背景と文字のどちらか片方だけテーマ追従**にしない。`@Preview` にダークモード版を並べて目視できるようにする
+- **追補（2026-09-12, feature/dark-mode-tint-fixes）**: 残り4箇所（同意ダイアログ AI 枠 / ログインのメール送信カード / ヘルスケア同期エラー行 / 週間ミニカレンダー完了セル）+ MealSummaryCard を修正。緑系・赤系にも同じ流儀で `successTint`（light emerald50 / dark emerald900）・`dangerTint`（light rose100 / dark rose900）を追加。固定の `AppColors.emerald50` / `rose100` は「文字も固定色」の箇所（ステータスバッジ等）が使うので残す
+- **枠線も忘れない**: 背景だけテーマ追従にしても、固定の `*100` 枠線（emerald100 / primary100）がダークでは白っぽいリングとして残る。枠線は半透明アクセントオーバーレイ（`AppColors.success.withValues(alpha: 0.3)` 等。既存の `error.withValues(alpha: 0.3)` と同じ）にして両背景に馴染ませる。プレビュー不可の画面（Supabase.instance に触る LoginScreen 等）はカードを別 Widget に切り出して `@Preview` とテストを付ける
 - 残り4箇所は別タスク化済み（2026-09-08）
 

@@ -229,31 +229,33 @@ class ConsentAiNoticeBox extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
 
+    // 淡青枠。ダークでは濃青に切り替わるので、テーマ追従の文字色がそのまま両モードで読める
+    // 枠線は固定の primary100 ではなく半透明の primary600 オーバーレイにして、どちらの背景にも馴染ませる
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.primary50.withValues(alpha: 0.6),
+        color: colors.primaryTint.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.primary100),
+        border: Border.all(color: AppColors.primary600.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
               Icon(
                 LucideIcons.sparkles,
                 size: 16,
-                color: AppColors.primary600,
+                color: colors.primaryTintForeground,
               ),
-              SizedBox(width: 6),
+              const SizedBox(width: 6),
               Text(
                 'AI解析について',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.primary700,
+                  color: colors.primaryTintForeground,
                 ),
               ),
             ],
@@ -293,12 +295,41 @@ Widget previewConsentDialogInitial() {
   );
 }
 
+/// ダークモード: AI解析枠が濃青に切り替わり、見出し・本文が読めることを確認する
+@Preview(name: 'ConsentDialog - 初期状態（未チェック, Dark）')
+Widget previewConsentDialogInitialDark() {
+  return ProviderScope(
+    child: MaterialApp(
+      theme: AppTheme.darkTheme,
+      home: const Scaffold(
+        body: Center(
+          child: ConsentDialog(userId: 'preview-user'),
+        ),
+      ),
+    ),
+  );
+}
+
 @Preview(name: 'ConsentAiNoticeBox - 単体')
 Widget previewConsentAiNoticeBox() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
     home: const Scaffold(
       backgroundColor: AppColors.background,
+      body: Padding(
+        padding: EdgeInsets.all(24),
+        child: Center(child: ConsentAiNoticeBox()),
+      ),
+    ),
+  );
+}
+
+/// ダークモード: AI解析枠が濃青に切り替わり、見出し・本文が読めることを確認する
+@Preview(name: 'ConsentAiNoticeBox - 単体（Dark）')
+Widget previewConsentAiNoticeBoxDark() {
+  return MaterialApp(
+    theme: AppTheme.darkTheme,
+    home: const Scaffold(
       body: Padding(
         padding: EdgeInsets.all(24),
         child: Center(child: ConsentAiNoticeBox()),
