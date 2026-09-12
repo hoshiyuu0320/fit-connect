@@ -293,3 +293,10 @@
 - **枠線も忘れない**: 背景だけテーマ追従にしても、固定の `*100` 枠線（emerald100 / primary100）がダークでは白っぽいリングとして残る。枠線は半透明アクセントオーバーレイ（`AppColors.success.withValues(alpha: 0.3)` 等。既存の `error.withValues(alpha: 0.3)` と同じ）にして両背景に馴染ませる。プレビュー不可の画面（Supabase.instance に触る LoginScreen 等）はカードを別 Widget に切り出して `@Preview` とテストを付ける
 - 残り4箇所は別タスク化済み（2026-09-08）
 
+
+### Edge Function の認証を `SUPABASE_SERVICE_ROLE_KEY` との文字列一致で書くと本番で通らない（2026-09-12）
+
+- **症状**: cron（pg_net）から Vault の旧 service_role キーを `Authorization: Bearer` で送ると、`auto-skip-workouts` が本番だけ 401。Vault のキーはプロジェクト作成時の正規 JWT（role=service_role・ref一致・前後空白なし）で、ローカルでは通っていた。`cleanup-ai-images` も同じ書き方で同様に通らない状態だった
+- **原因**: 関数が `authHeader === \`Bearer ${SUPABASE_SERVICE_ROLE_KEY}\`` の文字列一致で判定しており、新 API キー（publishable/secret）を作成済みの本番プロジェクトでは関数に入っている値が Dashboard の旧キーと一致しなかった
+- **対策**: Supabase 公式の新キー移行ガイドどおり、cron / pg_net は新 secret キーを **`apikey` ヘッダー**で送り（Bearer で送ると JWT として弾かれる）、関数は `verify_jwt = false` にして `SUPABASE_SECRET_KEYS` と照合する（`_shared/service_auth.ts`）
+- **教訓**: サーバー間呼び出しの認証は**本番で実際に一度呼んで確かめるまで**動くと思わない。副作用のない `dry_run` を関数に持たせておくと、cron 有効化前に本番で安全に通しテストできる（今回それで有効化前に発見できた）
