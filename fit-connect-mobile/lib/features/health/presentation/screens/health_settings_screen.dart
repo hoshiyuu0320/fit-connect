@@ -444,7 +444,7 @@ class HealthSettingsScreen extends ConsumerWidget {
 
           // Error detail row (only on error)
           if (hasError && settings.lastSyncError != null)
-            _buildSyncErrorRow(settings.lastSyncError!, colors),
+            HealthSyncErrorRow(message: settings.lastSyncError!),
 
           // Manual sync button
           Padding(
@@ -550,14 +550,39 @@ class HealthSettingsScreen extends ConsumerWidget {
     return timeText;
   }
 
-  Widget _buildSyncErrorRow(String message, AppColorsExtension colors) {
+  String _formatLastSync(DateTime? lastSync) {
+    if (lastSync == null) return '未同期';
+    final diff = DateTime.now().difference(lastSync);
+    if (diff.inMinutes < 1) return 'たった今';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}分前';
+    if (diff.inHours < 24) return '${diff.inHours}時間前';
+    if (diff.inDays < 7) return '${diff.inDays}日前';
+    // 1週間以上は日付表記
+    final m = lastSync.month;
+    final d = lastSync.day;
+    final hh = lastSync.hour.toString().padLeft(2, '0');
+    final mm = lastSync.minute.toString().padLeft(2, '0');
+    return '$m月$d日 $hh:$mm';
+  }
+}
+
+/// ヘルスケア同期エラー行（「同期エラー: …」）。
+/// 背景はテーマ追従の dangerTint（ダークでは濃赤）なので、テーマ追従の文字色がそのまま両モードで読める。
+class HealthSyncErrorRow extends StatelessWidget {
+  const HealthSyncErrorRow({super.key, required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       child: Container(
         padding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: AppColors.rose100,
+          color: colors.dangerTint,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
         ),
@@ -583,21 +608,6 @@ class HealthSettingsScreen extends ConsumerWidget {
         ),
       ),
     );
-  }
-
-  String _formatLastSync(DateTime? lastSync) {
-    if (lastSync == null) return '未同期';
-    final diff = DateTime.now().difference(lastSync);
-    if (diff.inMinutes < 1) return 'たった今';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}分前';
-    if (diff.inHours < 24) return '${diff.inHours}時間前';
-    if (diff.inDays < 7) return '${diff.inDays}日前';
-    // 1週間以上は日付表記
-    final m = lastSync.month;
-    final d = lastSync.day;
-    final hh = lastSync.hour.toString().padLeft(2, '0');
-    final mm = lastSync.minute.toString().padLeft(2, '0');
-    return '$m月$d日 $hh:$mm';
   }
 }
 
@@ -892,40 +902,7 @@ class _PreviewHealthSettings extends StatelessWidget {
             trailing: trailing,
           ),
           if (hasError && errorMessage != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppColors.rose100,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: AppColors.error.withValues(alpha: 0.3),
-                  ),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Icon(
-                      LucideIcons.alertTriangle,
-                      size: 16,
-                      color: AppColors.warning,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        '同期エラー: $errorMessage',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: colors.textSecondary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            HealthSyncErrorRow(message: errorMessage!),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: SizedBox(
@@ -977,6 +954,23 @@ Widget previewHealthSettingsDisconnected() {
 Widget previewHealthSettingsSyncError() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
+    home: const Scaffold(
+      body: SafeArea(
+        child: _PreviewHealthSettings(
+          isConnected: true,
+          syncStatus: HealthSyncStatus.error,
+          errorMessage: 'HealthKitへのアクセスが拒否されました',
+        ),
+      ),
+    ),
+  );
+}
+
+/// ダークモード: 同期エラー行の淡赤背景が濃赤に切り替わり、エラー文が読めることを確認する
+@Preview(name: 'HealthSettingsScreen - Sync Error (Dark)')
+Widget previewHealthSettingsSyncErrorDark() {
+  return MaterialApp(
+    theme: AppTheme.darkTheme,
     home: const Scaffold(
       body: SafeArea(
         child: _PreviewHealthSettings(
