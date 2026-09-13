@@ -322,3 +322,34 @@
 
 - `push.ts` の kind ユニオン / `notification_preferences.kind` の CHECK 制約 / Mobile の `NotificationKind` enum（+State・switch）/ Web の種別一覧（トレーナー宛なら）。**CHECK 拡張 migration を先にリモート適用しないと、Mobile のトグル保存が check_violation で失敗する**
 
+## SECURITY DEFINER 関数の権限是正（フェーズ5.6、2026-09-13）で得た知見
+
+### 関数の EXECUTE は「anon から剥がす」だけでは閉じない
+- PostgreSQL は関数作成時に **PUBLIC へ EXECUTE を既定で付ける**。加えて Supabase のプラットフォーム既定（postgres が public に作る関数への default privileges）で anon / authenticated / service_role にも付く（20251230131753 はそれを記録しただけで、fresh DB では同じ `ALTER DEFAULT PRIVILEGES` で再現される）。anon は PUBLIC のメンバーなので、`REVOKE ... FROM anon` だけでは PUBLIC 経由で実行できてしまう。**SECURITY DEFINER 関数を作ったら `REVOKE ALL ... FROM PUBLIC` と `FROM anon` を必ずセットで書く**
+- `CREATE OR REPLACE FUNCTION` は既存の ACL を保持する。REVOKE を書かない限り、関数を作り直しても権限は1ミリも変わらない
+- テストでは `has_function_privilege('anon', ...)` に加えて **`proacl IS NOT NULL`（NULL = 既定権限 = PUBLIC に EXECUTE）と `aclexplode(proacl)` の `grantee = 0`（PUBLIC）** を検査する
+- 関連: `supabase/migrations/20260913000500_capture_remote_definer_functions.sql` / `supabase/migrations/20260913000510_harden_definer_functions.sql` / `supabase/tests/definer_functions_privileges_test.sql`
+
+### 是正の前にリモートの実定義を取る（repo の定義は古いことがある）
+- `calculate_achievement_rate` は repo（20251230131753）より新しい本体（開始体重 NULL 時に最古の体重記録へフォールバック）が**リモートにだけ**あった。`mark_messages_as_read` はリモートにしか存在しなかった（2026-02-08 に migration を経ずに作成）
+- repo の定義を土台に `CREATE OR REPLACE` すると、権限の是正と同時に**本番ロジックを巻き戻す**。先に「一言一句の追認 migration（リモート no-op）」→「是正 migration」の2本に分けた。追認の一致は `prosrc` の md5 で確認する（行末空白も含めて一致させる。エディタの自動トリムに注意）
+- dump から owner の push までの間にリモートが変わると、追認・是正の `CREATE OR REPLACE` がそれを黙って巻き戻す。**両 migration の先頭に `md5(prosrc)` のドリフトガード**を置き、想定外の本体なら `REMOTE_DRIFT_SINCE_CAPTURE` で push ごと中断させる（fresh DB 用に repo の旧本体の md5 も許容値に入れる）
+- MCP（execute_sql）が無いセッションでも、`supabase db dump --linked --schema public`（読み取り専用トランザクションの pg_dump）でリモートの関数定義と GRANT は取れる。`supabase migration list --linked` でリモートの適用履歴も見られる。ただし **cron.job の中身は dump に出ない**（CLI の一時ログインロールでは cron スキーマのデータが取れない）
+
+### `SET search_path = ''` は関数内で発火するトリガーにも効く
+- 関数の SET 句は実行中ずっと有効なので、関数の DML が発火させるトリガー関数（search_path 未設定のもの）も空の search_path で動く。**是正前に、DML 先テーブルのトリガー関数本文が無修飾参照を含まないか確認する**（今回は `update_updated_at_column()` が `NOW()` のみで安全、`on_message_update` は `UPDATE OF content` なので read_at 更新では発火しない）
+
+### DEFINER 関数の本文チェックで「auth.uid() が NULL なら許可」にしない
+- service_role キーの JWT は sub を持たないため、Edge Function を通すために「uid NULL は許可」と書きがちだが、それだと **sub の無い authenticated クレーム**も通る。許可するのは `auth.jwt() ->> 'role' = 'service_role'` と、`auth.jwt() IS NULL`（JWT クレーム自体が無い直接 DB 接続 = postgres / cron）だけにした。比較は `IS DISTINCT FROM` で NULL を拒否側に倒す（`p_client_id` が NULL のときの素通り防止も同じ）
+- 実際の anon キー / publishable キーの要求は `{"role":"anon"}`（sub 無し）を持つので本文チェックでも拒否されるが、本文はあくまで第2層。**クレーム無しの anon セッションや、本人のクレームを持った anon は本文上「直接 DB 接続」「本人」として通ってしまう**ため、テストは (a) クレーム無し anon と (b) クレーム付き anon で GRANT 層を単独で検証する（上の RLS テストの教訓の関数版）。拒否の種類は `SQLERRM`（本文 = `ACHIEVEMENT_RATE_FORBIDDEN` / GRANT 層 = `permission denied for function ...`）まで見分ける。負の対照6本（anon へ GRANT / 本文チェック除去 / PUBLIC へ GRANT / search_path=public / authenticated へ GRANT / service_role へ GRANT）で、それぞれ狙ったケースだけが FAIL することを確認した
+- PostgREST 経由では 42501 は anon（公開キー・publishable キー）→ **401**、authenticated / service_role → **403** になる
+
+### cron ジョブの実行ロールを EXECUTE 剥奪で壊さないためのガード
+- `cron.job` には RLS（`username = CURRENT_USER`）があり、postgres が全ジョブを見られるのは BYPASSRLS を持つからにすぎない。migration 内のガードは「ジョブが見えない」を黙って skip せず WARNING にし、実行ロールが EXECUTE を失う場合は例外で migration 全体を中断させる
+- postgres では `cron.job.username` を変更できない（superuser 必要）。ガードの負の対照は「オーナーから EXECUTE を剥がす」で代替した
+
+### 共有ローカルスタックを使えないときは隔離スタックで検証する
+- 他セッションが共有 DB（`supabase_db_fit-connect`）で migration 検証中だったため、scratch の git worktree で `config.toml` の `project_id` とポート（5532x）だけを変え、studio / inbucket / realtime / edge_runtime を無効化した隔離スタックを `supabase start` → 検証 → `supabase stop --no-backup` した。repo の config.toml は触らない
+- `supabase start` が CPU ほぼ 0 のまま進まない場合、既定版の PostgREST イメージの pull で止まっていることがある。`supabase/.temp/rest-version` に**リモートと同じ版（v12.2.3、ローカルにキャッシュ済み）**を置くと pull 不要になり、API 検証も本番と同じ PostgREST で行える
+- **migration のタイムスタンプはリモート適用履歴と一緒に動く標的**。当初は「リモート適用済みの 000300」と「保留中の 000400」の間（000310 / 000320）に置いたが、作業中にオーナーが 000400 をリモートへ適用し、そのままでは `--include-all` が必要になった（`db push --dry-run` が「Remote migration versions not found」で検出）→ 000500 / 000510 に振り直した。**引き渡し直前に `supabase migration list --linked` と `db push --dry-run` を取り直し、リモートの最新より後ろに並んでいることを確認する**。並行ブランチ（feature/client-alerts の 20260914*）が先に入った場合も同じ確認が要る
+
