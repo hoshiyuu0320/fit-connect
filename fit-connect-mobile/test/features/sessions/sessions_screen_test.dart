@@ -41,7 +41,7 @@ SessionModel _makeSession({
   );
 }
 
-/// embed（`client_notes(...)`）で一緒に返ってくるノート1件。
+/// セッションに紐づけて返ってくるノート1件（SessionRepository が client_notes から差し込む）。
 /// 顧客のクエリにはRLSで共有ノートしか入ってこないが、未共有が混ざっても
 /// 導線が出ないことを確かめたいので isShared を渡せるようにしてある。
 ClientNote _makeNote({
