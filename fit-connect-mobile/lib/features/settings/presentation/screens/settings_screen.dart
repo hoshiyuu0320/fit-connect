@@ -455,6 +455,15 @@ class SettingsScreen extends ConsumerWidget {
                   kind: NotificationKind.goalAchievement,
                   value: prefs.goalAchievementEnabled,
                 ),
+                _buildNotificationToggle(
+                  context,
+                  ref,
+                  icon: LucideIcons.calendarClock,
+                  title: 'セッションリマインダー',
+                  subtitle: '前日の夜にお知らせします',
+                  kind: NotificationKind.sessionReminder,
+                  value: prefs.sessionReminderEnabled,
+                ),
                 const SizedBox(height: 8),
               ],
             ),
@@ -489,6 +498,7 @@ class SettingsScreen extends ConsumerWidget {
     WidgetRef ref, {
     required IconData icon,
     required String title,
+    String? subtitle,
     required NotificationKind kind,
     required bool value,
   }) {
@@ -516,6 +526,12 @@ class SettingsScreen extends ConsumerWidget {
           color: colors.textPrimary,
         ),
       ),
+      subtitle: subtitle != null
+          ? Text(
+              subtitle,
+              style: TextStyle(fontSize: 13, color: colors.textSecondary),
+            )
+          : null,
       value: value,
       onChanged: (newValue) async {
         try {
@@ -1444,7 +1460,8 @@ class _PreviewAppearanceSection extends StatelessWidget {
 class _PreviewNotificationSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    Widget toggleRow(IconData icon, String title, bool value) {
+    Widget toggleRow(IconData icon, String title, bool value,
+        {String? subtitle}) {
       return SwitchListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         secondary: Container(
@@ -1467,6 +1484,13 @@ class _PreviewNotificationSection extends StatelessWidget {
             color: AppColors.slate800,
           ),
         ),
+        subtitle: subtitle != null
+            ? Text(
+                subtitle,
+                style:
+                    const TextStyle(fontSize: 13, color: AppColors.slate500),
+              )
+            : null,
         value: value,
         onChanged: (_) {
           // プレビューでは何もしない
@@ -1498,6 +1522,8 @@ class _PreviewNotificationSection extends StatelessWidget {
           ),
           toggleRow(LucideIcons.messageCircle, 'メッセージ受信', true),
           toggleRow(LucideIcons.trophy, '目標達成のお知らせ', false),
+          toggleRow(LucideIcons.calendarClock, 'セッションリマインダー', true,
+              subtitle: '前日の夜にお知らせします'),
           const SizedBox(height: 8),
         ],
       ),

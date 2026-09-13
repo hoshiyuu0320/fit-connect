@@ -3,7 +3,7 @@
 **作成日**: 2026年3月29日
 **バージョン**: 2.0
 **進捗状況**: フェーズ1 完了 / フェーズ2 2.1〜2.5 完了（2.4 任意項目のみバックログ）/ フェーズ3〜10 未着手
-**最終更新**: 2026年9月12日 - ダークモード固定淡色背景の残件修正（feature/dark-mode-tint-fixes、PR 作成済み）。2026年9月10日 - フェーズ8.3① 完了（Mobile セッション表示 + セッション⇔カルテ連携 + トレーナー側の紐づけ導線。リモート適用済み・QA 完了）。8.3② 前日リマインダーは Vault 登録待ち。各タスクの詳細設計は `docs/tasks/2026-07-08-solution-catalog.md`、共通基盤の設計決定は `docs/tasks/2026-07-10-integration-decisions.md` を参照
+**最終更新**: 2026年9月12日 - フェーズ8.3② 完了（セッション前日リマインダー: SQL 抽出関数 + Edge Function + cron（inactive 登録）+ Mobile 通知トグル。リモート適用済み・cron 有効化はオーナー判断）。同日ダークモード残件修正（#83）・cron 認証の secret キー移行（#84）。2026年9月10日 - フェーズ8.3① 完了（Mobile セッション表示 + セッション⇔カルテ連携 + トレーナー側の紐づけ導線。リモート適用済み・QA 完了）。各タスクの詳細設計は `docs/tasks/2026-07-08-solution-catalog.md`、共通基盤の設計決定は `docs/tasks/2026-07-10-integration-decisions.md` を参照
 
 > **2026-04-26 モノレポ化完了**: 旧 `fit-connect-mobile` リポジトリを `git subtree` で取り込み、単一 git リポジトリで Web/Mobile 両方を管理する構成に移行。詳細は `docs/tasks/2026-04-26-monorepo-migration.md`。
 
@@ -36,7 +36,7 @@
 | 5 | セキュリティ・基盤修復【緊急】 | Supabase + Web | 75% | 🟡 5.1・5.2・5.5 完了 / 5.3 cron migration 化済み・cron 認証を新 secret キー（apikey）方式へ移行（2026-09-12）・Vault 登録済み・2関数デプロイ + migration リモート適用済み・本番 dry run 200 確認済み / `auto-skip-workouts`・`cleanup-ai-images` とも有効化済み（2026-09-12）（手順書: `2026-07-10-cron-vault-setup.md`）/ 5.4 未着手 |
 | 6 | 収益化・リリース準備（Stripe/法務/アカウント削除/Apple Sign-In） | Web + Mobile + Supabase | 70% | 🟡 6.2 完了（アカウント削除 + Sign in with Apple）/ 6.1 完了（法務3ページ + user_consents + signup同意。Mobile側の顧客同意UIはフェーズ3の同意ダイアログとして実装済み 2026/07/19）/ 6.3 Stripe課金コア実装済み（テスト・本番切替はオーナーのStripeセットアップ待ち。手順書: 2026-07-12-stripe-setup-guide.md）/ 6.4 完了（フェーズ4として実装済み）/ 6.5 支払記録 実装済み（領収書PDF・Stripe Connect は後回し） |
 | 7 | 通知基盤統一（device_tokens + 共通ディスパッチャ） | Supabase + Web + Mobile | 100% | 🟢 7.1〜7.4 完了（7.4 通知権限プライミングはフェーズ3の 3.2 として実装。2026/07/19） |
-| 8 | 不具合修正・顧客体験の底上げ | Mobile + Web + Supabase | 85% | 🟡 8.1 完了（2026/07/10）/ 8.2 Storage private化+署名URL+強制アップデート+orphan cleanup 完了（2026/08/30、リモート適用済み）/ 8.3 ①セッション表示 完了（2026/09/06）・②前日リマインダーは Vault 登録待ち |
+| 8 | 不具合修正・顧客体験の底上げ | Mobile + Web + Supabase | 95% | 🟡 8.1 完了（2026/07/10）/ 8.2 Storage private化+署名URL+強制アップデート+orphan cleanup 完了（2026/08/30、リモート適用済み）/ 8.3 ①セッション表示 完了（2026/09/06）・②前日リマインダー 完了（2026/09/12、cron 有効化はオーナー判断） |
 | 9 | トレーナー介入機能（異常検知・トリアージ） | Web + Supabase | 0% | 🔴 未着手 |
 | 10 | リテンション機能（リマインダー・直接記録・ストリーク） | Mobile + Supabase | 0% | 🔴 未着手 |
 
@@ -379,7 +379,14 @@
     - [x] トレーナー側の紐づけ導線（Web）: セッション「完了」保存 → そのままカルテ作成へ / セッション詳細の「カルテを書く」/ ノート作成・編集の「対象セッション」セレクト（完了・過去のみ、紐づき済みは「（カルテ作成済み）」表示）
     - [x] `session_number`（手入力の通し番号）は廃止（本番0件・自動採番は序数ドリフトが避けられないため）。カルテ一覧・詳細ではセッション日時を主行に表示
     - [x] ワークアウト実施画面（セッション中タブ）からの導線: 「完了として保存」→ 紐づく `sessions` も完了に更新（チケット消化を `completeSession()` に集約、条件付き UPDATE で二重消化を防止）→ カルテ作成をそのセッション選択済み・本文にトレーナーノートを流し込んで開く。完了バナーにも「カルテを書く」
-  - [ ] ②セッション前日リマインダー（pg_cron + ディスパッチャ、notification_logs で冪等化）→ **Vault 登録（オーナー作業）待ち**。`vault.secrets` が空のため cron から Edge Function を叩けない（手順書: `2026-07-10-cron-vault-setup.md`）
+  - [x] ②セッション前日リマインダー（2026-09-12、PR: feature/session-reminder。設計: `2026-09-12-session-reminder-plan.md`）
+    - [x] MVP = 前日 20:00 JST に顧客へ push（cron `send-session-reminders` `0 11 * * *`、#84 の `apikey` 認証方式）。2時間前・トレーナー朝サマリ・時刻設定は拡張
+    - [x] 対象抽出は SQL 関数 `find_sessions_for_reminder(target_date)`（SECURITY DEFINER・service_role 限定）。JST 暦日を範囲比較で判定し `idx_sessions_session_date` を使用。UTC 日付判定だと壊れる境界を SQL テストで固定
+    - [x] 冪等化は `notification_logs.dedup_key = session_reminder:<session_id>:<対象日>`（統合判断どおり `sessions` に列を足さない。別日へのリスケは再送、同日内の時刻変更は再送しない）
+    - [x] 通知種別 `session_reminder` を新設（`notification_preferences` CHECK 拡張 + `push.ts` 型 + Mobile の通知設定センターにトグル）。Web は変更なし（顧客宛のため）
+    - [x] Edge Function は dry_run 省略時に送らない（push を伴うため安全側）。migration 20260913000000 + Function をリモート適用済み
+    - [ ] （残・オーナー作業）リモートで dry run → cron 有効化（手順書 `2026-07-10-cron-vault-setup.md` §3）。現時点の候補は0件（明日のセッション無し）
+    - 注: 通知タップでホームタブへ強制遷移しない（`onNotificationTap` は空実装のまま）。ホームの次回セッションカードは resume 時に再取得されるため MVP では省略
   - [x] （QA）ログイン後の対話 QA — **オーナーが Web・実機で確認済み・問題なし**（2026-09-10。セッション完了→カルテ作成→Mobile 過去タブからノート閲覧、ダークモード表示含む）
   - [x] （追補）ダークモード固定淡色背景の残件修正 — PR #82 で直したノート詳細ヘッダーと同型の残り4箇所（同意ダイアログ AI 枠 / ログインのメール送信カード / ヘルスケア同期エラー行 / 週間ミニカレンダー完了セル）+ MealSummaryCard。`successTint` / `dangerTint` を AppColorsExtension に追加、固定 `*100` 枠線も半透明オーバーレイ化、各対象に Dark プレビュー + ライト/ダーク背景色テスト追加（2026-09-12、ブランチ feature/dark-mode-tint-fixes、PR 作成済み・develop/1.0.0 向け）
 

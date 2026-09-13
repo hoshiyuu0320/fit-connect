@@ -25,7 +25,7 @@ export interface SendArgs {
   supabaseAdmin: SupabaseClient
   userId: string
   userType: 'client' | 'trainer'
-  kind: 'message' | 'goal_achievement'
+  kind: 'message' | 'goal_achievement' | 'session_reminder'
   title: string
   body: string
   /** FCM data ペイロード（値は文字列のみ）。Web Push では JSON ペイロードに含める */
