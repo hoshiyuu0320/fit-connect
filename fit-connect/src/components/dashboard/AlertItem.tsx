@@ -1,7 +1,8 @@
 import React from 'react'
 import Link from 'next/link'
 
-export type AlertType = 'inactive' | 'ticket_expiring' | 'workout_undone'
+// チケット・プランの表示用（顧客の記録の途切れ・体重の変化は types/alert.ts の ClientAlertType で「今日の対応」に出す）
+export type AlertType = 'ticket_expiring' | 'workout_undone'
 
 export type AlertItemProps = {
   type: AlertType

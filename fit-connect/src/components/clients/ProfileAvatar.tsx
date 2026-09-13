@@ -6,7 +6,8 @@ import { useStorageUrl } from '@/lib/supabase/signedStorageUrls'
 import type { Client } from '@/types/client'
 
 type ProfileAvatarProps = {
-  client: Pick<Client, 'name' | 'gender' | 'profile_image_url'>
+  // gender を渡さない呼び出し元（「今日の対応」など）は中立色のイニシャルになる
+  client: Pick<Client, 'name' | 'profile_image_url'> & { gender?: Client['gender'] }
   size?: 'sm' | 'md' | 'lg'
   className?: string
 }
@@ -23,6 +24,9 @@ const genderColors = {
   other: 'bg-yellow-500',
 }
 
+// 性別を渡さないときの色。赤・黄を重要度の表示に使う画面で、アバターの色と紛れないようにする
+const neutralColors = 'bg-[#F1F5F9] text-[#475569]'
+
 export function ProfileAvatar({ client, size = 'md', className }: ProfileAvatarProps) {
   // 値はパス or フルURL（レガシー）の両対応。署名URLへ解決してから表示する
   const avatarUrl = useStorageUrl(client.profile_image_url, 'client-avatars')
@@ -34,7 +38,7 @@ export function ProfileAvatar({ client, size = 'md', className }: ProfileAvatarP
   }
 
   const initials = getInitials(client.name)
-  const bgColor = genderColors[client.gender]
+  const bgColor = client.gender ? genderColors[client.gender] : neutralColors
 
   if (avatarUrl) {
     return (

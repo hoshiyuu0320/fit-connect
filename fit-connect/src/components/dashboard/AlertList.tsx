@@ -24,7 +24,7 @@ export function AlertList({ alerts }: AlertListProps) {
       <div className="bg-white rounded-md border border-[#E2E8F0] p-6">
         <h2 className="text-lg font-bold text-[#0F172A] mb-4 flex items-center space-x-2">
           <span className="text-[#94A3B8]"><BellAlertIcon /></span>
-          <span>対応が必要</span>
+          <span>チケット・プラン</span>
         </h2>
         <div className="text-center py-8">
           <div className="w-12 h-12 mx-auto mb-3 rounded-md bg-emerald-50 flex items-center justify-center">
@@ -32,8 +32,8 @@ export function AlertList({ alerts }: AlertListProps) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <p className="text-[#475569] font-medium">対応が必要な項目はありません</p>
-          <p className="text-sm text-[#94A3B8] mt-1">すべての顧客が順調です！</p>
+          <p className="text-[#475569] font-medium">期限が近いチケット・未実施のプランはありません</p>
+          <p className="text-sm text-[#94A3B8] mt-1">顧客の記録の確認は「今日の対応」に表示されます</p>
         </div>
       </div>
     )
@@ -49,7 +49,7 @@ export function AlertList({ alerts }: AlertListProps) {
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-[#0F172A] flex items-center space-x-2">
             <span className="text-[#94A3B8]"><BellAlertIcon /></span>
-            <span>対応が必要</span>
+            <span>チケット・プラン</span>
           </h2>
           <span className="text-xs font-semibold text-red-600 bg-red-50 border border-red-200 px-2.5 py-1 rounded">
             {alerts.length}件
@@ -64,7 +64,7 @@ export function AlertList({ alerts }: AlertListProps) {
       {hasMore && (
         <div className="p-4 bg-[#F8FAFC] text-center rounded-b-md">
           <p className="text-sm text-[#475569]">
-            他 {alerts.length - 5} 件のアラートがあります
+            他 {alerts.length - 5} 件あります
           </p>
         </div>
       )}
