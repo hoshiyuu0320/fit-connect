@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { getUnreadCounts } from '@/lib/supabase/getUnreadCounts';
+import { triageBadgeLabel } from '@/lib/triage/triageLabels';
+import { useTriageBadgeStore } from '@/store/triageBadgeStore';
 import { Toaster } from 'sonner';
 import AppHeader from '@/components/AppHeader';
 
@@ -57,10 +59,39 @@ const settingsMenuItem = {
     icon: Settings,
 };
 
+/** ナビ項目のバッジ（0 のときは出さない） */
+type NavBadge = {
+    count: number;
+    /** 読み上げ用の名前（例:「今日の対応 3人」） */
+    label: string;
+    /** 背景色・文字色のクラス */
+    colorClassName: string;
+};
+
+// バッジはアクセント色（red / amber は重要度の表示だけに使う）
+const ACCENT_BADGE_COLOR = 'bg-[#14B8A6] text-white';
+
 export default function Sidebar({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const router = useRouter();
     const [totalUnread, setTotalUnread] = useState(0);
+    const triageCount = useTriageBadgeStore((state) => state.count);
+    const refreshTriageBadge = useTriageBadgeStore((state) => state.refresh);
+
+    // 「今日の対応」のバッジ: 表示時と画面を移るたびに数え直す
+    // （検知は1日1回なので Realtime は使わない。操作の後は TriageSection が数え直す）
+    useEffect(() => {
+        void refreshTriageBadge();
+    }, [pathname, refreshTriageBadge]);
+
+    // タブに戻ったときも数え直す（朝の検知の後、開きっぱなしのタブに反映する）
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') void refreshTriageBadge();
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }, [refreshTriageBadge]);
 
     // 未読数取得 + Realtime購読
     useEffect(() => {
@@ -116,7 +147,21 @@ export default function Sidebar({ children }: { children: React.ReactNode }) {
         };
     }, []);
 
-    const renderNavItem = (item: typeof mainMenuItems[number] | typeof settingsMenuItem, showBadge = false) => {
+    // 項目ごとのバッジ（値・読み上げ・色）
+    const navBadges: Record<string, NavBadge> = {
+        '/dashboard': {
+            count: triageCount,
+            label: triageBadgeLabel(triageCount),
+            colorClassName: ACCENT_BADGE_COLOR,
+        },
+        '/message': {
+            count: totalUnread,
+            label: `未読 ${totalUnread}件`,
+            colorClassName: ACCENT_BADGE_COLOR,
+        },
+    };
+
+    const renderNavItem = (item: typeof mainMenuItems[number] | typeof settingsMenuItem, badge?: NavBadge) => {
         const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
         const Icon = item.icon;
 
@@ -135,9 +180,14 @@ export default function Sidebar({ children }: { children: React.ReactNode }) {
             >
                 <div className="relative">
                     <Icon size={20} strokeWidth={1.75} />
-                    {showBadge && totalUnread > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-[#14B8A6] text-white text-[9px] font-bold rounded-full min-w-[16px] h-[16px] flex items-center justify-center px-0.5 leading-none">
-                            {totalUnread > 99 ? '99+' : totalUnread}
+                    {badge && badge.count > 0 && (
+                        // 数字だけでは何の数か伝わらないので、読み上げには label を使う
+                        <span
+                            role="img"
+                            aria-label={badge.label}
+                            className={`absolute -top-1 -right-1 ${badge.colorClassName} text-[9px] font-bold rounded-full min-w-[16px] h-[16px] flex items-center justify-center px-0.5 leading-none`}
+                        >
+                            {badge.count > 99 ? '99+' : badge.count}
                         </span>
                     )}
                 </div>
@@ -167,7 +217,7 @@ export default function Sidebar({ children }: { children: React.ReactNode }) {
                     {/* メインナビゲーション */}
                     <nav className="flex flex-col items-center gap-1 py-3 flex-1">
                         {mainMenuItems.map((item) =>
-                            renderNavItem(item, item.href === '/message')
+                            renderNavItem(item, navBadges[item.href])
                         )}
                     </nav>
 
@@ -184,6 +234,8 @@ export default function Sidebar({ children }: { children: React.ReactNode }) {
             </div>
             <Toaster
                 position="top-right"
+                // 読み上げの名前（Alt+T でトーストに移り、「元に戻す」をキーボードで押せる）
+                containerAriaLabel="通知"
                 toastOptions={{
                     style: {
                         fontFamily: "'Noto Sans JP', 'Plus Jakarta Sans', sans-serif",

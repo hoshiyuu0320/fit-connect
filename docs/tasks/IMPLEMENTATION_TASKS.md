@@ -37,7 +37,7 @@
 | 6 | 収益化・リリース準備（Stripe/法務/アカウント削除/Apple Sign-In） | Web + Mobile + Supabase | 70% | 🟡 6.2 完了（アカウント削除 + Sign in with Apple）/ 6.1 完了（法務3ページ + user_consents + signup同意。Mobile側の顧客同意UIはフェーズ3の同意ダイアログとして実装済み 2026/07/19）/ 6.3 Stripe課金コア実装済み（テスト・本番切替はオーナーのStripeセットアップ待ち。手順書: 2026-07-12-stripe-setup-guide.md）/ 6.4 完了（フェーズ4として実装済み）/ 6.5 支払記録 実装済み（領収書PDF・Stripe Connect は後回し） |
 | 7 | 通知基盤統一（device_tokens + 共通ディスパッチャ） | Supabase + Web + Mobile | 100% | 🟢 7.1〜7.4 完了（7.4 通知権限プライミングはフェーズ3の 3.2 として実装。2026/07/19） |
 | 8 | 不具合修正・顧客体験の底上げ | Mobile + Web + Supabase | 95% | 🟡 8.1 完了（2026/07/10）/ 8.2 Storage private化+署名URL+強制アップデート+orphan cleanup 完了（2026/08/30、リモート適用済み）/ 8.3 ①セッション表示 完了（2026/09/06）・②前日リマインダー 完了（2026/09/12、cron 有効化 2026/09/13）/ 8.4 cron 再試行 + sessions.memo 非公開化 実装中（2026/09/13） |
-| 9 | トレーナー介入機能（異常検知・トリアージ） | Web + Supabase | 0% | 🔴 未着手 |
+| 9 | トレーナー介入機能（異常検知・トリアージ） | Web + Supabase | 10% | 🟡 計画確定（2026/09/13、`2026-09-13-trainer-intervention-plan.md`）/ 9.1 PR1 実装中（ブランチ `feature/client-alerts`）/ 9.2 は PR1 マージ後 |
 | 10 | リテンション機能（リマインダー・直接記録・ストリーク） | Mobile + Supabase | 0% | 🔴 未着手 |
 
 > フェーズ5〜10 の出典: `docs/tasks/2026-07-08-solution-catalog.md`（施策詳細）/ `docs/tasks/2026-07-10-integration-decisions.md`（共通基盤の設計決定。**カタログと矛盾する場合はこちらが優先**）。「cat〇 △-△」はカタログ内の施策番号。
@@ -387,6 +387,8 @@
     - [x] 通知種別 `session_reminder` を新設（`notification_preferences` CHECK 拡張 + `push.ts` 型 + Mobile の通知設定センターにトグル）。Web は変更なし（顧客宛のため）
     - [x] Edge Function は dry_run 省略時に送らない（push を伴うため安全側）。migration 20260913000000 + Function をリモート適用済み
     - [x] リモートで dry run → cron 有効化 ✅ オーナーが実施（2026-09-13、#85 マージ済み）。dry run の候補は1件（9/14 のセッション）。初回の本送信は 2026-09-13 20:00 JST
+    - 初回の本送信（2026-09-13 20:00 JST）: 関数は正常に動いた（対象抽出の RPC が1回目に 504 → 8.4 の再試行で成功）が、**push は FCM が `401 Invalid APNs credential`（THIRD_PARTY_AUTH_ERROR）で拒否し未達**（notification_logs は failed / sent=0/1）。メッセージ通知も含め、FCM→APNs の配信は本番で一度も成功していない（sent 0件）
+    - [ ] **（オーナー作業）Firebase Console に APNs 認証キー（.p8）を登録**: Apple Developer の Keys で APNs を有効にしたキーを作成 → Firebase Console > プロジェクトの設定 > Cloud Messaging > Apple アプリの構成（`com.fitconnect.fitConnectMobile`）に .p8・Key ID・Team ID を登録。登録後、Web からメッセージを送って実機に届くこと・notification_logs が sent になることを確認
     - 注: 通知タップでホームタブへ強制遷移しない（`onNotificationTap` は空実装のまま）。ホームの次回セッションカードは resume 時に再取得されるため MVP では省略
   - [x] （QA）ログイン後の対話 QA — **オーナーが Web・実機で確認済み・問題なし**（2026-09-10。セッション完了→カルテ作成→Mobile 過去タブからノート閲覧、ダークモード表示含む）
   - [x] （追補）ダークモード固定淡色背景の残件修正 — PR #82 で直したノート詳細ヘッダーと同型の残り4箇所（同意ダイアログ AI 枠 / ログインのメール送信カード / ヘルスケア同期エラー行 / 週間ミニカレンダー完了セル）+ MealSummaryCard。`successTint` / `dangerTint` を AppColorsExtension に追加、固定 `*100` 枠線も半透明オーバーレイ化、各対象に Dark プレビュー + ライト/ダーク背景色テスト追加（2026-09-12、ブランチ feature/dark-mode-tint-fixes、PR 作成済み・develop/1.0.0 向け）
@@ -405,10 +407,12 @@
 **目的**: 「データが見られる」から「見に行くきっかけがある」へ。トレーナー価値の核
 **詳細設計**: カタログ cat1 1-A / 2-A / 規模: 合計 2〜3週
 **前提**: フェーズ7（通知基盤）完了
+**実装計画（確定版）**: `docs/tasks/2026-09-13-trainer-intervention-plan.md`（2026-09-13）。PR1 = 9.1 MVP（`feature/client-alerts`）→ PR2 = 9.2 MVP（`feature/daily-triage`）
+**オーナー決定（2026-09-13）**: ① 記録開始前は登録から2週間以内だけ出し、それ以外とアプリ未登録は人数だけ ② データが届いた日は日付だけ見せ、プライバシーポリシーに1文足す ③ cron 失敗監視ジョブはトレーナー向け push と一緒に作る ④ 9.2 の消し込み（返信不要）は入れない。トレーナー向け push は VAPID（オーナー保留）待ちのため Phase 9 では送らない
 
 ### タスク
 
-- [ ] **9.1 異常検知エンジン**（cat1 1-A: 日次バッチ + `alerts` テーブル）
+- [ ] **9.1 異常検知エンジン**（cat1 1-A: 日次バッチ + `alerts` テーブル）— PR1 実装中（2026-09-13〜）
   - [ ] 検知ルール: 体重急変・記録途絶・睡眠悪化・カロリー超過（閾値はトレーナー設定可能に）
   - [ ] HealthKit 同期ラグの誤検知対策: 途絶判定を「最終アプリ起動」と分離（横断レビュー1-7節）
   - [ ] トレーナーへの通知はディスパッチャ経由（実効経路が LINE/トレーナーモード導入前なら Web 内バッジ中心）

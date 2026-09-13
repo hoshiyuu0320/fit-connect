@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { getTrainerDetail } from '@/lib/supabase/getTrainerDetail'
 import { useUserStore } from '@/store/userStore'
+import { useTriageBadgeStore } from '@/store/triageBadgeStore'
 import { ProfileSection } from '@/components/settings/ProfileSection'
 import { ScheduleSection } from '@/components/settings/ScheduleSection'
 import { NotificationSection } from '@/components/settings/NotificationSection'
@@ -73,6 +74,8 @@ export default function SettingsPage() {
   const handleLogout = async () => {
     await supabase.auth.signOut()
     useUserStore.getState().clearUser()
+    // クライアント側の遷移ではストアが残るので、次にログインしたアカウントに前の「今日の対応」の人数を出さない
+    useTriageBadgeStore.getState().reset()
     router.push('/login')
   }
 

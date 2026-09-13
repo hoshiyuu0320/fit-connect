@@ -330,6 +330,13 @@
 - **原因**: pg_net の `net.http_post` はリクエストを積んだ時点で戻るので、cron の成否は「投げたか」だけ。結果は `net._http_response`（保持は既定6時間）と Edge Function ログ（`function_edge_logs` / `function_logs`）にしか残らない。さらに auto-skip / cleanup の cron は pg_net 既定の5秒タイムアウトのままで、遅い応答は `timed_out` になり中身を確認できなかった
 - **対策**: 3つの cron 関数の DB / Storage 呼び出しに、一時障害（status 0・5xx・例外）に限った再試行を入れ、cron の HTTP タイムアウトを60秒に揃えた（push 送信は二重送信を避けるため再試行しない）
 - **教訓**: cron を有効化したら、**初回実行の後に Edge Function ログで status を確認する**。副作用の結果（skipped 件数・残った候補数）を SQL で数えるのが一番確実（auto-skip はこれで9件 skipped を確認できた）
+- **その後（同日 20:00 JST）**: send-session-reminders の初回本送信でも、対象抽出の RPC が1回目に 504 を受けたが、再試行で成功した（ログに `[retry] ... attempt 1/3 failed (status=504 ...)`）。04:00 と 20:00 のどちらも毎時0分ちょうどの呼び出しで起きている
+
+### 「トークンが登録できた」は「通知が届く」ではない — FCM→APNs は実送信で確かめる
+
+- 2026-08-29 の APNs 対応では、実機の FCM トークンが `device_tokens` に保存されることまでを確認して完了扱いにしていた。9/13 のリマインダー初回送信で、FCM が `401 Invalid APNs credential`（THIRD_PARTY_AUTH_ERROR）を返し、**本番の push は一度も届いていなかった**ことが分かった（notification_logs に sent が0件）
+- 原因は Firebase Console 側の APNs 認証キー（.p8）の未登録または不正。コードでは直せない
+- **教訓**: 通知の検証は「トークン保存」ではなく「実機に届く + notification_logs が sent」まで行う。notification_logs の status 別件数（sent が0のままか）を定期的に見るだけで、配信経路の断絶に気づける
 
 ### 行単位 RLS は全列を見せる — 他ロールに SELECT を開けたテーブルの内輪の列は漏れる
 
@@ -337,4 +344,27 @@
 - RLS が決めるのは行の可否だけで、列は GRANT 単位。トレーナーと顧客はどちらも `authenticated` なので、列の GRANT でも分けられない
 - **対策**: 顧客用ポリシーを DROP し、返す列を許可リストで固定した SECURITY DEFINER 関数 `get_my_sessions` 経由に切り替えた。SECURITY DEFINER ビューは、自動更新可能ビュー経由で書き込みが RLS をすり抜ける危険と、Supabase Advisor の `security_definer_view` エラーがあるため採らなかった
 - **教訓**: 他ロールに SELECT を開けるポリシーを足すときは、行ではなく**「このテーブルの全列を相手に見せてよいか」**で判断する。内輪の列があるなら、列を絞った関数経由にするか別テーブルに分ける
+
+## 異常検知エンジン（フェーズ9 PR1、2026-09-13）で得た知見
+
+### 行単位 RLS の WITH CHECK は他の列を守らない — 利用者が書ける値は「敵対的な入力」として扱う
+
+- `clients_update_own` は `client_id = auth.uid()` しか見ないので、顧客は自分の行の `created_at` や `trainer_id` まで書き換えられる。messages の INSERT / UPDATE も `sender_id` / `receiver_id` しか見ず、`read_at`・`created_at`・`receiver_type` を自由に書ける（リモートの pg_policies で確認。修正は別タスク）
+- レビューで実害が2つ見つかった: (1) 顧客が `created_at = '-infinity'` にするだけで、全トレーナー分の検知バッチが日付計算の 22008 で毎日落ちる (2) 担当関係の無い誰かが既読（read_at）を偽造して、他人の顧客の「最終到着日」を動かし、アラートを出したり消したりできる
+- **対策**: 検知側で `isfinite()` の絞り込みと、snapshot から消えた顧客の行を ineligible で閉じる処理を入れた。既読は「今の担当トレーナーが送った分」だけを数える
+- **教訓**: SECURITY DEFINER の一括処理は、**利用者が書ける列の値が1件でも想定外だと全員分が止まる**。DEFINER から読む列は「誰が書けるか」を pg_policies で確かめ、書けるなら値の範囲と出どころ（送信者など）で絞る
+
+### 条件の違う複数の UPDATE で状態遷移するなら、先に FOR UPDATE で対象行をロックする
+
+- 検知の本実行は、継続中のアラートを「再浮上」「open のまま昇格」「値だけ更新」の3本の条件付き UPDATE で更新する。その間にトレーナーの「対応済み」（API の条件付き UPDATE）が挟まると、昇格したときの再浮上が失われる
+- 遷移の前に `SELECT ... FROM alerts WHERE resolved_at IS NULL FOR UPDATE` を取り、API の UPDATE を本実行のコミットまで待たせた
+
+### SQL を直接呼ぶ cron と HTTP 経由の cron では、失敗の見え方が違う
+
+- `detect-client-alerts` は pg_cron から SQL 関数を直接呼ぶので、例外は `cron.job_run_details` に failed で残る（HTTP 経由の cron は投げた時点で succeeded になる。8.4 の教訓）。push しない処理に Edge Function を挟む理由は無い
+
+### 睡眠の upsert と `set_updated_at` トリガーへの依存
+
+- 「アプリからデータが届いた日」は、Mobile の睡眠 upsert が同期のたびに約30行の `updated_at` を更新することにも頼っている。weight / sleep を一括 UPDATE する migration を流すと全員が「今日同期した」ように見え、休眠中の顧客が監視対象に戻って「記録なし」が大量に出る。流すときはトリガーを一時的に無効にするか、前後で検知を止める
+- 兼務アカウント（トレーナーでもあり、別トレーナーの顧客でもある）の痕跡は、`sender_type` / `receiver_type` で分けないと混ざる
 
