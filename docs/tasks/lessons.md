@@ -300,3 +300,25 @@
 - **原因**: 関数が `authHeader === \`Bearer ${SUPABASE_SERVICE_ROLE_KEY}\`` の文字列一致で判定しており、新 API キー（publishable/secret）を作成済みの本番プロジェクトでは関数に入っている値が Dashboard の旧キーと一致しなかった
 - **対策**: Supabase 公式の新キー移行ガイドどおり、cron / pg_net は新 secret キーを **`apikey` ヘッダー**で送り（Bearer で送ると JWT として弾かれる）、関数は `verify_jwt = false` にして `SUPABASE_SECRET_KEYS` と照合する（`_shared/service_auth.ts`）
 - **教訓**: サーバー間呼び出しの認証は**本番で実際に一度呼んで確かめるまで**動くと思わない。副作用のない `dry_run` を関数に持たせておくと、cron 有効化前に本番で安全に通しテストできる（今回それで有効化前に発見できた）
+
+## セッション前日リマインダー（フェーズ8.3②、2026-09-12）で得た知見
+
+### JST の「暦日」判定は範囲比較で書く（索引と正しさの両方のため）
+
+- `(session_date AT TIME ZONE 'Asia/Tokyo')::date = target_date` は正しいが `idx_sessions_session_date` が効かない。`session_date >= target_date::timestamp AT TIME ZONE 'Asia/Tokyo' AND session_date < (target_date + 1)::timestamp AT TIME ZONE 'Asia/Tokyo'` の範囲比較にする（EXPLAIN で Bitmap Index Scan を確認）
+- `CURRENT_DATE` や Edge 側の `toISOString().split('T')[0]` は UTC 日付なので、JST 0:00〜8:59 のセッションを「前日」に誤分類する。**UTC 日付で判定すると壊れる時刻（JST 0:30 = UTC 前日 15:30）を SQL テストの境界ケースに必ず入れる**。誤実装に差し替えてテストが落ちること（判別力）まで確認した
+- 関連: `supabase/migrations/20260913000000_session_reminder.sql` / `supabase/tests/session_reminder_test.sql`
+
+### 通知の dedup_key には「いつの通知か」を含める
+
+- `notification_logs.dedup_key` は UNIQUE で、設定 OFF や quiet hours で skip した場合も行が残るため**同一キーの再送は永久に不可**。セッション ID だけをキーにすると別日へリスケされても再送されない
+- `session_reminder:<session_id>:<対象日>` のように対象日を含め、「別日へのリスケは再送・同日内の時刻変更は再送しない」を仕様として明文化した
+
+### push を伴う cron 起動 Function は dry_run 省略時に送らない
+
+- 既存は `auto-skip-workouts`（省略時=実行）と `cleanup-ai-images`（省略時=dry run）で既定が不統一だった。実顧客に通知が飛ぶ関数は**省略時 dry run**にし、cron の body で `{"dry_run": false}` を明示する。手動実行・検証時の事故を防げる
+
+### 通知種別の追加は4箇所を同時に
+
+- `push.ts` の kind ユニオン / `notification_preferences.kind` の CHECK 制約 / Mobile の `NotificationKind` enum（+State・switch）/ Web の種別一覧（トレーナー宛なら）。**CHECK 拡張 migration を先にリモート適用しないと、Mobile のトグル保存が check_violation で失敗する**
+

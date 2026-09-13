@@ -6,7 +6,8 @@ part 'notification_preferences_provider.g.dart';
 /// 通知種別（notification_preferences.kind に対応）
 enum NotificationKind {
   message('message'),
-  goalAchievement('goal_achievement');
+  goalAchievement('goal_achievement'),
+  sessionReminder('session_reminder');
 
   const NotificationKind(this.value);
 
@@ -20,10 +21,12 @@ enum NotificationKind {
 class NotificationPreferencesState {
   final bool messageEnabled;
   final bool goalAchievementEnabled;
+  final bool sessionReminderEnabled;
 
   const NotificationPreferencesState({
     this.messageEnabled = true,
     this.goalAchievementEnabled = true,
+    this.sessionReminderEnabled = true,
   });
 
   bool isEnabled(NotificationKind kind) {
@@ -32,17 +35,22 @@ class NotificationPreferencesState {
         return messageEnabled;
       case NotificationKind.goalAchievement:
         return goalAchievementEnabled;
+      case NotificationKind.sessionReminder:
+        return sessionReminderEnabled;
     }
   }
 
   NotificationPreferencesState copyWith({
     bool? messageEnabled,
     bool? goalAchievementEnabled,
+    bool? sessionReminderEnabled,
   }) =>
       NotificationPreferencesState(
         messageEnabled: messageEnabled ?? this.messageEnabled,
         goalAchievementEnabled:
             goalAchievementEnabled ?? this.goalAchievementEnabled,
+        sessionReminderEnabled:
+            sessionReminderEnabled ?? this.sessionReminderEnabled,
       );
 }
 
@@ -71,6 +79,8 @@ class NotificationPreferences extends _$NotificationPreferences {
           prefs = prefs.copyWith(messageEnabled: enabled);
         case 'goal_achievement':
           prefs = prefs.copyWith(goalAchievementEnabled: enabled);
+        case 'session_reminder':
+          prefs = prefs.copyWith(sessionReminderEnabled: enabled);
       }
     }
     return prefs;
@@ -98,6 +108,8 @@ class NotificationPreferences extends _$NotificationPreferences {
         state = AsyncData(current.copyWith(messageEnabled: enabled));
       case NotificationKind.goalAchievement:
         state = AsyncData(current.copyWith(goalAchievementEnabled: enabled));
+      case NotificationKind.sessionReminder:
+        state = AsyncData(current.copyWith(sessionReminderEnabled: enabled));
     }
   }
 }

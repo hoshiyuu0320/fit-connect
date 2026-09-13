@@ -8,7 +8,8 @@
  */
 
 const SECONDS_PER_DAY = 24 * 60 * 60
-const JST_OFFSET_MS = 9 * 60 * 60 * 1000
+/** JST(+9h) のオフセット（ミリ秒）。session_reminder_format.ts とも共有する */
+export const JST_OFFSET_MS = 9 * 60 * 60 * 1000
 
 /**
  * 'HH:MM' / 'HH:MM:SS' 形式の時刻文字列を「0時からの経過秒数」に変換する。
