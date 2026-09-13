@@ -11,10 +11,21 @@
  *
  * 呼び出し元の処理（タグ解析・レコード作成等）を絶対に失敗させないため、
  * この関数は例外を外に投げない（内部で捕捉して console.error + status='failed' 記録）。
+ *
+ * 一時障害（5xx / 通信失敗）の扱い:
+ *   - 冪等な読み取り（notification_preferences / device_tokens / clients・trainers.fcm_token）だけを
+ *     _shared/retry.ts で再試行する。ログ行の upsert・status 更新・FCM / Web Push の送信は包まない
+ *     （upsert は反映済みかどうか区別できず、送信の再送は二重送信になり得るため）。
+ *     再試行の待機は失敗したときだけ掛かる（webhook の parse-message-tags も同じ）
+ *   - 再試行しても宛先を読めなかった場合は、端末未登録（skipped / no_tokens）と区別して
+ *     status='failed' / detail='resolve_error' で記録する。この行は何も送っていないので、
+ *     同じ dedup_key で再度呼ばれたとき（cron の手動再実行など）は行を取り直して送り直す
+ *     （reclaimUnsentLog）。送信済み・skipped など他の行は従来どおり重複としてスキップする
  */
 
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { isWithinQuietHours, jstSecondsOfDay } from './quiet_hours.ts'
+import { type RetryOptions, withRetry } from './retry.ts'
 
 // ============================================================
 // 公開API
@@ -32,16 +43,34 @@ export interface SendArgs {
   data?: Record<string, string>
   /** 冪等キー（例: `message:${messageId}` / `goal:${messageId}`） */
   dedupKey: string
+  /**
+   * 読み取りの再試行の締切（Date.now() 基準の epoch ms。_shared/retry.ts の deadline）。
+   * cron（send-session-reminders）が関数全体を pg_net のタイムアウト内に収めるために渡す。
+   * 省略時は締切なし
+   */
+  retryDeadline?: number
 }
+
+/**
+ * 宛先解決（device_tokens / fcm_token の読み取り）に失敗して何も送らなかった行の detail。
+ * status='failed' とこの detail の組の行だけが、同じ dedup_key の再呼び出しで送り直しの対象になる
+ */
+export const RESOLVE_ERROR_DETAIL = 'resolve_error'
 
 export async function sendNotification(args: SendArgs): Promise<void> {
   const { supabaseAdmin, userId, userType, kind, title, body, dedupKey } = args
   const data = args.data ?? {}
+  // 冪等な読み取り用の再試行設定（ラベルの dedup_key は通知の特定用。秘密情報は含まない）
+  const readRetry = (label: string): RetryOptions => ({
+    label: `push ${label} (${dedupKey})`,
+    deadline: args.retryDeadline,
+  })
 
   try {
     // --------------------------------------------------------
     // 1. 冪等化: dedup_key の UNIQUE 制約 + ON CONFLICT DO NOTHING。
     //    挿入できなければ処理済み（webhook リトライ等）とみなして即 return。
+    //    ただし宛先解決の失敗で何も送らなかった行（failed / resolve_error）は取り直して送り直す。
     // --------------------------------------------------------
     const { data: inserted, error: insertError } = await supabaseAdmin
       .from('notification_logs')
@@ -55,8 +84,11 @@ export async function sendNotification(args: SendArgs): Promise<void> {
       // ログ挿入失敗で通知自体を止めない（冪等性は失われるが通知欠落より軽微）
       console.error('[push] Failed to insert notification log:', insertError)
     } else if (!inserted || inserted.length === 0) {
-      console.log('[push] Duplicate dedup_key, skipping:', dedupKey)
-      return
+      if (!(await reclaimUnsentLog(supabaseAdmin, dedupKey, title, body))) {
+        console.log('[push] Duplicate dedup_key, skipping:', dedupKey)
+        return
+      }
+      console.log('[push] Resending notification that failed before sending (resolve_error):', dedupKey)
     }
 
     const finalize = (status: LogStatus, detail: string) =>
@@ -64,13 +96,19 @@ export async function sendNotification(args: SendArgs): Promise<void> {
 
     // --------------------------------------------------------
     // 2. notification_preferences: 行が無ければ有効（デフォルトON）
+    //    select は postgrest-js の内部再試行を切り、再試行を withRetry に一本化する（retry.ts 参照）
     // --------------------------------------------------------
-    const { data: pref, error: prefError } = await supabaseAdmin
-      .from('notification_preferences')
-      .select('enabled, quiet_hours_start, quiet_hours_end')
-      .eq('user_id', userId)
-      .eq('kind', kind)
-      .maybeSingle()
+    const { data: pref, error: prefError } = await withRetry(
+      () =>
+        supabaseAdmin
+          .from('notification_preferences')
+          .select('enabled, quiet_hours_start, quiet_hours_end')
+          .eq('user_id', userId)
+          .eq('kind', kind)
+          .maybeSingle()
+          .retry(false),
+      readRetry('notification_preferences select'),
+    )
 
     if (prefError) {
       // 設定取得失敗は「有効」扱いで続行（安全側 = 通知を落とさない）
@@ -93,8 +131,16 @@ export async function sendNotification(args: SendArgs): Promise<void> {
     // --------------------------------------------------------
     // 3. 宛先解決: device_tokens 優先、0件なら fcm_token フォールバック（stage2 両読み）
     // --------------------------------------------------------
-    const targets = await resolveTargets(supabaseAdmin, userId, userType)
+    const resolved = await resolveTargets(supabaseAdmin, userId, userType, readRetry)
 
+    if (!resolved.ok) {
+      // 読み取りの失敗で宛先の有無を判断できなかった。端末未登録（no_tokens）とは区別して failed で記録し、
+      // 同じ dedup_key の再呼び出しで送り直せるようにする（reclaimUnsentLog）
+      await finalize('failed', RESOLVE_ERROR_DETAIL)
+      return
+    }
+
+    const targets = resolved.targets
     if (targets.length === 0) {
       await finalize('skipped', 'no_tokens')
       return
@@ -222,8 +268,45 @@ async function updateLog(
 }
 
 /**
+ * dedup_key の行が既にあるとき、それが「宛先解決に失敗して何も送っていない行」
+ * （status='failed' かつ detail=RESOLVE_ERROR_DETAIL）なら pending に戻して取り直す。取り直せたら true。
+ *
+ * - 条件付き UPDATE なので、同じキーで同時に呼ばれても取り直せるのは1つだけ（残りは重複としてスキップ）
+ * - 送信済み・partial・設定による skipped・送信を試みた failed の行は条件に合わず、従来どおり重複扱い
+ * - 取り直しに失敗したら二重送信を避ける側に倒して重複扱いにする（UPDATE なので再試行もしない。
+ *   失敗扱いの試行が反映済みだと、再試行では 0 行になり pending のまま残るため）
+ */
+async function reclaimUnsentLog(
+  supabaseAdmin: SupabaseClient,
+  dedupKey: string,
+  title: string,
+  body: string,
+): Promise<boolean> {
+  const { data, error } = await supabaseAdmin
+    .from('notification_logs')
+    .update({ status: 'pending', detail: null, title, body })
+    .eq('dedup_key', dedupKey)
+    .eq('status', 'failed')
+    .eq('detail', RESOLVE_ERROR_DETAIL)
+    .select('id')
+  if (error) {
+    console.error('[push] Failed to reclaim notification log:', error)
+    return false
+  }
+  return (data?.length ?? 0) > 0
+}
+
+/** 宛先解決の結果。読み取りに失敗して宛先の有無を判断できなかったときは ok: false */
+type ResolveResult = { ok: true; targets: PushTarget[] } | { ok: false }
+
+/**
  * 宛先トークンを解決する。
  * device_tokens の全行を優先し、0件のときのみ clients/trainers.fcm_token を読む。
+ * どちらの読み取りも一時障害は再試行し（readRetry）、それでも読めなかった場合は
+ * 「端末なし」と区別して ok: false を返す:
+ *   - device_tokens が読めず、fcm_token も空 → ok: false（device_tokens に端末があるかもしれない）
+ *   - device_tokens が読めず、fcm_token はある → そのトークンへ送る（通知を落とさない側に倒す）
+ *   - fcm_token が読めない → ok: false
  *
  * NOTE: fcm_token フォールバックは stage2（両読み）期間の暫定措置。
  *       stage3（device_tokens 単独）移行時にフォールバック部分ごと削除する。
@@ -233,51 +316,68 @@ async function resolveTargets(
   supabaseAdmin: SupabaseClient,
   userId: string,
   userType: 'client' | 'trainer',
-): Promise<PushTarget[]> {
-  const { data: rows, error } = await supabaseAdmin
-    .from('device_tokens')
-    .select('id, platform, token, web_push_p256dh, web_push_auth')
-    .eq('user_id', userId)
+  readRetry: (label: string) => RetryOptions,
+): Promise<ResolveResult> {
+  const { data: rows, error } = await withRetry(
+    () =>
+      supabaseAdmin
+        .from('device_tokens')
+        .select('id, platform, token, web_push_p256dh, web_push_auth')
+        .eq('user_id', userId)
+        .retry(false),
+    readRetry('device_tokens select'),
+  )
 
   if (error) {
     console.error('[push] Failed to fetch device_tokens:', error)
   } else if (rows && rows.length > 0) {
-    return rows.map((row) => ({
-      deviceTokenId: row.id,
-      platform: row.platform,
-      token: row.token,
-      webPushP256dh: row.web_push_p256dh,
-      webPushAuth: row.web_push_auth,
-    }))
+    return {
+      ok: true,
+      targets: rows.map((row) => ({
+        deviceTokenId: row.id,
+        platform: row.platform,
+        token: row.token,
+        webPushP256dh: row.web_push_p256dh,
+        webPushAuth: row.web_push_auth,
+      })),
+    }
   }
 
   // stage2 フォールバック: 旧 fcm_token 単一カラム
   const table = userType === 'client' ? 'clients' : 'trainers'
   const idColumn = userType === 'client' ? 'client_id' : 'id'
 
-  const { data: legacy, error: legacyError } = await supabaseAdmin
-    .from(table)
-    .select('fcm_token')
-    .eq(idColumn, userId)
-    .maybeSingle()
+  const { data: legacy, error: legacyError } = await withRetry(
+    () =>
+      supabaseAdmin
+        .from(table)
+        .select('fcm_token')
+        .eq(idColumn, userId)
+        .maybeSingle()
+        .retry(false),
+    readRetry(`${table}.fcm_token select`),
+  )
 
   if (legacyError) {
     console.error(`[push] Failed to fetch legacy fcm_token from ${table}:`, legacyError)
-    return []
+    return { ok: false }
   }
   if (!legacy?.fcm_token) {
-    return []
+    return error ? { ok: false } : { ok: true, targets: [] }
   }
 
-  return [
-    {
-      deviceTokenId: null, // フォールバック由来の目印（掃除時は該当カラムを null 更新）
-      platform: 'ios',
-      token: legacy.fcm_token,
-      webPushP256dh: null,
-      webPushAuth: null,
-    },
-  ]
+  return {
+    ok: true,
+    targets: [
+      {
+        deviceTokenId: null, // フォールバック由来の目印（掃除時は該当カラムを null 更新）
+        platform: 'ios',
+        token: legacy.fcm_token,
+        webPushP256dh: null,
+        webPushAuth: null,
+      },
+    ],
+  }
 }
 
 /**

@@ -23,7 +23,7 @@ SessionModel makeSession({
   );
 }
 
-/// embed で返ってくるノート1件を組み立てるヘルパー
+/// セッションに紐づけて返ってくるノート1件を組み立てるヘルパー
 ClientNote makeNote({
   required String id,
   required bool isShared,
@@ -324,7 +324,7 @@ void main() {
         session.sharedNote?.sessionId,
         '00000000-0000-0000-0000-000000000001',
       );
-      // 逆向きの sessions(...) は embed しないので生の受け皿は null のまま
+      // セッション側にぶら下げたノートには sessions が入らないので生の受け皿は null のまま
       expect(session.notes.single.session, isNull);
     });
 
@@ -433,7 +433,7 @@ void main() {
       expect(session.hasSharedNote, isTrue);
     });
 
-    // sessions → client_notes の embed には逆向きの sessions(...) が入らないため、
+    // セッション側にぶら下げたノートには sessions（日時・種別）が入らないため、
     // 親セッションの日時・種別を補ってから返す（カルテ詳細のヘッダー表示用）
     test('ノートの session には親セッションの日時・種別が補われる', () {
       final session = SessionModel(

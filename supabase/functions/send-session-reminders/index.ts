@@ -2,7 +2,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isServiceRequest } from "../_shared/service_auth.ts";
-import { sendNotification } from "../_shared/push.ts";
+import { RESOLVE_ERROR_DETAIL, sendNotification } from "../_shared/push.ts";
+import { CRON_RETRY_BUDGET_MS, withRetry } from "../_shared/retry.ts";
 import {
   formatJstDate,
   formatSessionReminderBody,
@@ -25,9 +26,16 @@ import {
 // 返却（dry run）: { status, dryRun: true, targetDate, candidateCount, candidates }
 // 返却（本送信）: 上記 + outcome: { sent, partial, skipped, failed, duplicate }
 //   - sent / partial / skipped / failed: 今回の呼び出しで作られた notification_logs 行の status 別件数
-//     （failed には送信前の例外で行が作られなかった分も含む）
-//   - duplicate: 呼び出し前から同じ dedup_key の行があった件数（= 送信済みとしてスキップされた分）
+//     （failed には送信前の例外で行が作られなかった分と、宛先を読み取れなかった分（detail resolve_error。
+//       端末未登録の skipped / no_tokens とは別）も含む）
+//   - duplicate: 呼び出し前から同じ dedup_key の行があった件数（= 送信済みとしてスキップされた分）。
+//     ただし前回の宛先解決の失敗で何も送れなかった行（status failed / detail resolve_error）は
+//     push.ts が取り直して送り直すので duplicate に含めず、今回の結果（sent 等）として数える
 //   - targetDate は常に YYYY-MM-DD（候補 0 件でも body 指定を正規化した値。dry run で省略時は JST の明日を自前計算）
+// 候補抽出の RPC と notification_logs の読み取りは一時障害（5xx / 通信失敗）のとき _shared/retry.ts で再試行する
+// （push.ts 内の宛先解決などの読み取りも同様）。再試行はリクエスト受付から CRON_RETRY_BUDGET_MS までで打ち切り、
+// pg_net のタイムアウト（60 秒）内に応答を返す。
+// push 送信（sendNotification）は二重送信になり得るため再試行で包まない（冪等性は dedup_key に任せる）。
 // supabase-js は push.ts が要求する esm.sh 版の SupabaseClient 型に合わせて esm.sh から import する
 // （jsr 版の createClient を渡すと型不一致になり得る）。
 
@@ -53,6 +61,7 @@ interface ReminderRow {
 interface LogRow {
   dedup_key: string;
   status: string;
+  detail: string | null;
 }
 
 function jsonResponse(status: number, payload: unknown): Response {
@@ -63,18 +72,31 @@ function jsonResponse(status: number, payload: unknown): Response {
 }
 
 /**
- * 指定した dedup_key 群に一致する notification_logs 行（dedup_key / status）を返す。
+ * 指定した dedup_key 群に一致する notification_logs 行（dedup_key / status / detail）を返す。
  * 候補が多くても URL 長が伸びすぎないよう LOG_QUERY_CHUNK 件ずつに分けて問い合わせる。
- * 取得に失敗したら例外（呼び出し元で 500 にする）。
+ * 一時障害はチャンクごとに再試行し、それでも取得に失敗したら例外（呼び出し元で 500 にする）。
  */
-async function fetchReminderLogs(supabase: SupabaseClient, dedupKeys: string[]): Promise<LogRow[]> {
+async function fetchReminderLogs(
+  supabase: SupabaseClient,
+  dedupKeys: string[],
+  retryDeadline: number
+): Promise<LogRow[]> {
   const logs: LogRow[] = [];
   for (let i = 0; i < dedupKeys.length; i += LOG_QUERY_CHUNK) {
     const chunk = dedupKeys.slice(i, i + LOG_QUERY_CHUNK);
-    const { data, error } = await supabase
-      .from("notification_logs")
-      .select("dedup_key, status")
-      .in("dedup_key", chunk);
+    // postgrest-js の内部再試行は切り、再試行を withRetry に一本化する（_shared/retry.ts 参照）
+    const { data, error } = await withRetry(
+      () =>
+        supabase
+          .from("notification_logs")
+          .select("dedup_key, status, detail")
+          .in("dedup_key", chunk)
+          .retry(false),
+      {
+        label: `send-session-reminders notification_logs select chunk ${i / LOG_QUERY_CHUNK + 1}`,
+        deadline: retryDeadline,
+      }
+    );
     if (error) {
       throw new Error(`notification_logs select failed: ${error.message}`);
     }
@@ -84,6 +106,8 @@ async function fetchReminderLogs(supabase: SupabaseClient, dedupKeys: string[]):
 }
 
 Deno.serve(async (req: Request) => {
+  // 再試行の締切（受付から CRON_RETRY_BUDGET_MS。以降の DB 読み取りの再試行はすべてこれで打ち切る）
+  const retryDeadline = Date.now() + CRON_RETRY_BUDGET_MS;
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
@@ -117,9 +141,13 @@ Deno.serve(async (req: Request) => {
 
   // 対象候補の抽出（scheduled / confirmed かつ session_date が対象日の JST 暦日内）。
   // 未指定（dry run のみ）は引数なしで呼び、SQL 側の既定 = JST の明日に任せる
-  const { data, error } = await supabase.rpc(
-    "find_sessions_for_reminder",
-    targetDateArg === undefined ? {} : { target_date: targetDateArg }
+  const { data, error } = await withRetry(
+    () =>
+      supabase.rpc(
+        "find_sessions_for_reminder",
+        targetDateArg === undefined ? {} : { target_date: targetDateArg }
+      ),
+    { label: "send-session-reminders rpc find_sessions_for_reminder", deadline: retryDeadline }
   );
 
   if (error) {
@@ -150,12 +178,16 @@ Deno.serve(async (req: Request) => {
   }
 
   // 今回の dedup_key 群。呼び出し前から行があるもの（= 前回実行分）は sendNotification 内で
-  // dedup スキップされるため、送信前に控えておき集計で duplicate として分ける
+  // dedup スキップされるため、送信前に控えておき集計で duplicate として分ける。
+  // 宛先解決の失敗で何も送れなかった行（failed / resolve_error）は sendNotification が取り直して
+  // 送り直すので duplicate にしない（今回の結果として数える）
   const dedupKeyOf = (row: ReminderRow) => `session_reminder:${row.session_id}:${row.target_date}`;
   const dedupKeys = rows.map(dedupKeyOf);
+  const isResendable = (log: LogRow) => log.status === "failed" && log.detail === RESOLVE_ERROR_DETAIL;
   let duplicateKeys: Set<string>;
   try {
-    duplicateKeys = new Set((await fetchReminderLogs(supabase, dedupKeys)).map((l) => l.dedup_key));
+    const existing = await fetchReminderLogs(supabase, dedupKeys, retryDeadline);
+    duplicateKeys = new Set(existing.filter((l) => !isResendable(l)).map((l) => l.dedup_key));
   } catch (e) {
     // まだ何も送っていないので安全に中断できる（再実行すればよい）
     console.error("[session-reminder] Failed to read existing notification_logs:", e);
@@ -168,6 +200,7 @@ Deno.serve(async (req: Request) => {
   // 本文整形など呼び出し前の例外で1件が失敗しても残りは続行する
   // （失敗分は notification_logs に行が残らないので dispatchErrors で数え、
   //   同じ target_date で手動再実行すれば送り直せる）。
+  // sendNotification は withRetry で包まない（再送は二重送信になり得る。冪等性は dedup_key に任せる）。
   let dispatchErrors = 0;
   for (const row of rows) {
     try {
@@ -181,6 +214,7 @@ Deno.serve(async (req: Request) => {
         // Mobile のタップ処理が読むキー名（type / id）に合わせる。値は文字列のみ
         data: { type: "session_reminder", id: row.session_id },
         dedupKey: dedupKeyOf(row),
+        retryDeadline,
       });
     } catch (e) {
       console.error(`[session-reminder] Failed to dispatch (session ${row.session_id}):`, e);
@@ -192,7 +226,7 @@ Deno.serve(async (req: Request) => {
   // 前回実行分の行は status が前回の結果なので今回の件数には含めない
   let logs: LogRow[];
   try {
-    logs = await fetchReminderLogs(supabase, dedupKeys);
+    logs = await fetchReminderLogs(supabase, dedupKeys, retryDeadline);
   } catch (e) {
     // 送信自体は済んでいる（結果は notification_logs に残っている）。集計だけ返せなかったことを 500 で伝える
     console.error("[session-reminder] Notifications dispatched but failed to read notification_logs:", e);

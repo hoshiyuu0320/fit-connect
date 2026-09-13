@@ -76,7 +76,7 @@ class ClientNoteDetailScreen extends StatelessWidget {
     // 画像URLリストを抽出（FullScreenImageViewer用）
     final imageUrls = note.fileUrls.where(_isImage).toList();
 
-    // embed（または親セッションからの補完）で取れた場合だけ入る
+    // get_my_sessions（または親セッションからの補完）で取れた場合だけ入る
     final session = note.session;
 
     return Scaffold(

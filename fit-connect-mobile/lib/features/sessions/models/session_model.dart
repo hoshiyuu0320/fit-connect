@@ -64,8 +64,9 @@ class SessionModel {
   @JsonKey(name: 'session_type')
   final String? sessionType;
 
-  // ※ sessions.memo はトレーナーが自分用に書く内輪メモで顧客UIには出さないため、
-  //   モデルにも持たない（SessionRepository の列指定でも取得していない）。
+  // ※ sessions.memo はトレーナーが自分用に書く内輪メモで顧客に見せないため、
+  //   モデルにも持たない（顧客は get_my_sessions 経由でしか sessions を読めず、
+  //   その戻り列にも memo は含まれない。SessionRepository 参照）。
 
   @JsonKey(name: 'ticket_id')
   final String? ticketId;
@@ -74,13 +75,15 @@ class SessionModel {
   @JsonKey(name: 'recurrence_group_id')
   final String? recurrenceGroupId;
 
-  /// 紐づくノート（`client_notes.session_id → sessions.id` のFKを使った
-  /// PostgREST の embed で一緒に取ってくる）。
+  /// 紐づくノート（JSON `client_notes` キーの受け皿）。
   ///
+  /// SessionRepository が client_notes を session_id でまとめて別クエリで取り、
+  /// 該当セッションの行に差し込む（顧客は sessions を get_my_sessions 経由でしか
+  /// 読めないので、PostgREST の embed は使えない）。
   /// 顧客向けRLS（clients_select_shared_notes）が
   /// `is_shared = true AND client_id = auth.uid()` なので、顧客のクエリには
   /// 共有済みノートしか入ってこない（未共有ノートの存在も漏れない）。
-  /// embed しない経路で取得した場合は空のまま。
+  /// 差し込まない経路で取得した場合は空のまま。
   @JsonKey(name: 'client_notes')
   final List<ClientNote> notes;
 
@@ -158,10 +161,10 @@ class SessionModel {
 
   /// 顧客に見せてよい共有済みノートだけを新しい順で返す。
   ///
-  /// RLSにより embed には共有ノートしか返らないが、「未共有ノートの存在を
+  /// RLSにより共有ノートしか返らないが、「未共有ノートの存在を
   /// 顧客に匂わせない」ことが要件なので、クライアント側でも is_shared を通す。
   ///
-  /// sessions → client_notes の embed には逆向きの `sessions(...)` が入らないため、
+  /// セッション側にぶら下げたノートには `sessions`（日時・種別）が入らないため、
   /// 各ノートの ClientNote.session には親であるこのセッションを補って返す
   /// （カルテ詳細のヘッダーがカルテ一覧から開いたときと同じ日時・種別を出せるように）
   List<ClientNote> get sharedNotes => notes

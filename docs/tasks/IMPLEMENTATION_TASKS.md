@@ -3,7 +3,7 @@
 **作成日**: 2026年3月29日
 **バージョン**: 2.0
 **進捗状況**: フェーズ1 完了 / フェーズ2 2.1〜2.5 完了（2.4 任意項目のみバックログ）/ フェーズ3〜10 未着手
-**最終更新**: 2026年9月12日 - フェーズ8.3② 完了（セッション前日リマインダー: SQL 抽出関数 + Edge Function + cron（inactive 登録）+ Mobile 通知トグル。リモート適用済み・cron 有効化はオーナー判断）。同日ダークモード残件修正（#83）・cron 認証の secret キー移行（#84）。2026年9月10日 - フェーズ8.3① 完了（Mobile セッション表示 + セッション⇔カルテ連携 + トレーナー側の紐づけ導線。リモート適用済み・QA 完了）。各タスクの詳細設計は `docs/tasks/2026-07-08-solution-catalog.md`、共通基盤の設計決定は `docs/tasks/2026-07-10-integration-decisions.md` を参照
+**最終更新**: 2026年9月13日 - `send-session-reminders` cron をオーナーが有効化（#85 マージ）。cron 初回実行を確認（auto-skip は9件 skipped で正常 / cleanup-ai-images は RPC の一時的な 504 で失敗）→ 8.4 cron の再試行 + sessions.memo の顧客非公開化に着手（ブランチ `fix/cron-retry-session-memo`）。2026年9月12日 - フェーズ8.3② 完了（セッション前日リマインダー: SQL 抽出関数 + Edge Function + cron（inactive 登録）+ Mobile 通知トグル。リモート適用済み・cron 有効化はオーナー判断）。同日ダークモード残件修正（#83）・cron 認証の secret キー移行（#84）。2026年9月10日 - フェーズ8.3① 完了（Mobile セッション表示 + セッション⇔カルテ連携 + トレーナー側の紐づけ導線。リモート適用済み・QA 完了）。各タスクの詳細設計は `docs/tasks/2026-07-08-solution-catalog.md`、共通基盤の設計決定は `docs/tasks/2026-07-10-integration-decisions.md` を参照
 
 > **2026-04-26 モノレポ化完了**: 旧 `fit-connect-mobile` リポジトリを `git subtree` で取り込み、単一 git リポジトリで Web/Mobile 両方を管理する構成に移行。詳細は `docs/tasks/2026-04-26-monorepo-migration.md`。
 
@@ -33,10 +33,10 @@
 | 2 | LLM カロリー計算 | Mobile + Supabase | 90% | 🟢 2.1〜2.5 完了（スクショ取り込み含む）/ 2.4任意項目のみバックログ |
 | 3 | オンボーディングフロー | Mobile | 90% | 🟡 3.1〜3.4 完了（cat2 3-A: 同意ダイアログ・通知権限プライミング・後段フロー・はじめの3ステップカード。2026/07/19、PR: feature/mobile-onboarding）/ コーチマーク・PageView式アプリ紹介の拡張のみ残 |
 | 4 | ランディングページ | Web | 90% | 🟡 4.1〜4.4 + メタタグ・OGP + アナリティクス（GA4）完了（2026/07/12）/ Lighthouse最適化 残 |
-| 5 | セキュリティ・基盤修復【緊急】 | Supabase + Web | 75% | 🟡 5.1・5.2・5.5 完了 / 5.3 cron migration 化済み・cron 認証を新 secret キー（apikey）方式へ移行（2026-09-12）・Vault 登録済み・2関数デプロイ + migration リモート適用済み・本番 dry run 200 確認済み / `auto-skip-workouts`・`cleanup-ai-images` とも有効化済み（2026-09-12）（手順書: `2026-07-10-cron-vault-setup.md`）/ 5.4 未着手 |
+| 5 | セキュリティ・基盤修復【緊急】 | Supabase + Web | 75% | 🟡 5.1・5.2・5.5 完了 / 5.3 cron migration 化済み・cron 認証を新 secret キー（apikey）方式へ移行（2026-09-12）・Vault 登録済み・2関数デプロイ + migration リモート適用済み・本番 dry run 200 確認済み / `auto-skip-workouts`・`cleanup-ai-images` とも有効化済み（2026-09-12）・`send-session-reminders` も有効化済み（2026-09-13）（手順書: `2026-07-10-cron-vault-setup.md`）/ 5.4 未着手 |
 | 6 | 収益化・リリース準備（Stripe/法務/アカウント削除/Apple Sign-In） | Web + Mobile + Supabase | 70% | 🟡 6.2 完了（アカウント削除 + Sign in with Apple）/ 6.1 完了（法務3ページ + user_consents + signup同意。Mobile側の顧客同意UIはフェーズ3の同意ダイアログとして実装済み 2026/07/19）/ 6.3 Stripe課金コア実装済み（テスト・本番切替はオーナーのStripeセットアップ待ち。手順書: 2026-07-12-stripe-setup-guide.md）/ 6.4 完了（フェーズ4として実装済み）/ 6.5 支払記録 実装済み（領収書PDF・Stripe Connect は後回し） |
 | 7 | 通知基盤統一（device_tokens + 共通ディスパッチャ） | Supabase + Web + Mobile | 100% | 🟢 7.1〜7.4 完了（7.4 通知権限プライミングはフェーズ3の 3.2 として実装。2026/07/19） |
-| 8 | 不具合修正・顧客体験の底上げ | Mobile + Web + Supabase | 95% | 🟡 8.1 完了（2026/07/10）/ 8.2 Storage private化+署名URL+強制アップデート+orphan cleanup 完了（2026/08/30、リモート適用済み）/ 8.3 ①セッション表示 完了（2026/09/06）・②前日リマインダー 完了（2026/09/12、cron 有効化はオーナー判断） |
+| 8 | 不具合修正・顧客体験の底上げ | Mobile + Web + Supabase | 95% | 🟡 8.1 完了（2026/07/10）/ 8.2 Storage private化+署名URL+強制アップデート+orphan cleanup 完了（2026/08/30、リモート適用済み）/ 8.3 ①セッション表示 完了（2026/09/06）・②前日リマインダー 完了（2026/09/12、cron 有効化 2026/09/13）/ 8.4 cron 再試行 + sessions.memo 非公開化 実装中（2026/09/13） |
 | 9 | トレーナー介入機能（異常検知・トリアージ） | Web + Supabase | 0% | 🔴 未着手 |
 | 10 | リテンション機能（リマインダー・直接記録・ストリーク） | Mobile + Supabase | 0% | 🔴 未着手 |
 
@@ -355,8 +355,8 @@
     - `workout_plans!inner(plan_type)` で候補を select → 100件ずつ update（`status='pending'` と `assigned_date < cutoff` を再確認し、select〜update 間の完了・日付変更を上書きしない）。body `{"dry_run": true}` で候補一覧のみ返す（省略時は実行＝cron の `{}` と互換）
     - ローカル検証済み（self/session × pending/completed/partial × 過去/境界/未来の7ケース、認証なし401、dry_run 無変更、空body・不正JSON・再実行の冪等性）
   - [x] 修正版をリモートにデプロイ → 本番 dry run で候補が self_guided のみであることを確認（2026-09-12: 候補9件すべて self_guided・assigned_date 2026-03-01〜03-21。session 型19件は対象外）
-  - [x] cron `auto-skip-workouts` を有効化 ✅ オーナーが有効化（2026-09-12）。初回実行は 2026-09-13 03:00 JST（上記9件が skipped になる見込み）
-  - [x] cron `cleanup-ai-images`（8.2）も有効化 ✅ オーナーが有効化（2026-09-12）。初回実行は 2026-09-13 04:00 JST（本番 dry run の削除候補は5件）
+  - [x] cron `auto-skip-workouts` を有効化 ✅ オーナーが有効化（2026-09-12）。初回実行（2026-09-13 03:00 JST）で見込みどおり9件が skipped、対象の残りは0件を確認
+  - [x] cron `cleanup-ai-images`（8.2）も有効化 ✅ オーナーが有効化（2026-09-12）。初回実行（2026-09-13 04:00 JST）は関数内の RPC が PostgREST の一時的な 504 で失敗し、削除0件・候補5件が残った（→ 8.4 で再試行を追加）
   - [ ] （拡張）スキップ前警告通知（cat2 8-B、フェーズ7完了後）
 - [x] **8.2 Storage private 化 + 署名URL**（cat7 2-A）✅ 実装完了・リモート適用済み（2026-08-30、PR: feature/storage-private-signed-urls。設計: `2026-08-29-storage-private-plan.md`）
   - [x] URL/パス両対応ヘルパー（Web: `storagePaths.ts`(純関数) + `signedStorageUrls.ts`('use client') / Mobile: `shared/storage/` + `StorageImage`）→ 新規はパス保存 → **4バケット全て private 化** → 既存データ正規化（migration `20260829000200`。リモートで http 残存 0 件・Google 外部URL 2 件保全を実測確認）
@@ -365,9 +365,10 @@
   - [x] 強制アップデート機構（`app_config` 単一行テーブル + `lib/features/app_update/` + `AppUpdateGate`。fail-open 3秒タイムアウト。設定画面にバージョン表示追加。package_info_plus 導入）
   - [x] AI 画像 orphan cleanup（8-B: AI推定フローのキャンセル/戻る/dispose で未送信画像を即時削除・送信済みガード付き / 8-A: `find_orphan_ai_images()` + Edge Function `cleanup-ai-images`(dry_run 対応) + pg_cron 日次ジョブを **inactive 登録**。リモート dry-run 相当の SQL 検証で orphan 24件中5件のみ検出=誤検知なし）
   - [x] `estimate-meal-nutrition` を URL/パス両対応 + service_role 署名URL(600s)で Anthropic へ渡す方式に改修（private 化で AI 推定が壊れる問題の対処）。両 Edge Function デプロイ済み
-  - [ ] （残・オーナー作業）cleanup-ai-images cron の有効化判断（Vault 登録が前提: `2026-07-10-cron-vault-setup.md`）/ App Store 公開後に `app_config.ios_store_url` 設定
+  - [x] cleanup-ai-images cron の有効化 ✅ オーナーが有効化（2026-09-12）
+  - [ ] （残・オーナー作業）App Store 公開後に `app_config.ios_store_url` 設定
   - [x] （QA）ログイン後の対話 QA — **オーナーが実機で確認済み・問題なし**（2026-08-30。起動/画像表示/新規アップロード/AI推定/オフライン復帰）。ヘッドレス検証: 全テスト(Web 122/Mobile 111)・next build・db reset・RLS テスト4本・シミュレータ起動確認
-- [ ] **8.3 Mobile セッション表示 + 前日リマインダー**（cat4 課題2・3。フェーズ7の最初の消費者）
+- [x] **8.3 Mobile セッション表示 + 前日リマインダー**（cat4 課題2・3。フェーズ7の最初の消費者）✅ 完了（2026-09-13 cron 有効化）
   - **スコープ分割（2026-09-06 オーナー決定）**: ①セッション表示を先行、②前日リマインダーは Vault シークレット未登録で本番発火しないため別 PR。設計: `2026-09-06-mobile-session-display-plan.md`
   - [x] ①ホームに次回セッションカード + セッション一覧画面（2026-09-06、PR: feature/mobile-session-display）
     - [x] `sessions` に顧客用 SELECT ポリシー追加（migration `20260906000000`、`USING (client_id = auth.uid())`）+ RLS テスト新設（本人のみ可視・他人不可・トレーナー回帰・anon 0行・顧客の書込拒否の5ケース）。リモート適用済み
@@ -385,10 +386,17 @@
     - [x] 冪等化は `notification_logs.dedup_key = session_reminder:<session_id>:<対象日>`（統合判断どおり `sessions` に列を足さない。別日へのリスケは再送、同日内の時刻変更は再送しない）
     - [x] 通知種別 `session_reminder` を新設（`notification_preferences` CHECK 拡張 + `push.ts` 型 + Mobile の通知設定センターにトグル）。Web は変更なし（顧客宛のため）
     - [x] Edge Function は dry_run 省略時に送らない（push を伴うため安全側）。migration 20260913000000 + Function をリモート適用済み
-    - [ ] （残・オーナー作業）リモートで dry run → cron 有効化（手順書 `2026-07-10-cron-vault-setup.md` §3）。現時点の候補は0件（明日のセッション無し）
+    - [x] リモートで dry run → cron 有効化 ✅ オーナーが実施（2026-09-13、#85 マージ済み）。dry run の候補は1件（9/14 のセッション）。初回の本送信は 2026-09-13 20:00 JST
     - 注: 通知タップでホームタブへ強制遷移しない（`onNotificationTap` は空実装のまま）。ホームの次回セッションカードは resume 時に再取得されるため MVP では省略
   - [x] （QA）ログイン後の対話 QA — **オーナーが Web・実機で確認済み・問題なし**（2026-09-10。セッション完了→カルテ作成→Mobile 過去タブからノート閲覧、ダークモード表示含む）
   - [x] （追補）ダークモード固定淡色背景の残件修正 — PR #82 で直したノート詳細ヘッダーと同型の残り4箇所（同意ダイアログ AI 枠 / ログインのメール送信カード / ヘルスケア同期エラー行 / 週間ミニカレンダー完了セル）+ MealSummaryCard。`successTint` / `dangerTint` を AppColorsExtension に追加、固定 `*100` 枠線も半透明オーバーレイ化、各対象に Dark プレビュー + ライト/ダーク背景色テスト追加（2026-09-12、ブランチ feature/dark-mode-tint-fixes、PR 作成済み・develop/1.0.0 向け）
+- [ ] **8.4 運用補強: cron の再試行 + sessions.memo の顧客非公開化**（2026-09-13 着手、ブランチ `fix/cron-retry-session-memo`。オーナー決定: 両方とも次の PR に同梱）
+  - [x] cron 3関数（auto-skip-workouts / cleanup-ai-images / send-session-reminders）の DB・Storage 呼び出しに一時障害（status 0・5xx・例外）限定の再試行（`_shared/retry.ts`。最大3回、1秒→3秒、受付から40秒で打ち切り。GET は postgrest-js 内部の再試行を切って一本化）。push 送信は二重送信を避けるため対象外。**3関数ともリモートにデプロイ済み（2026-09-13）**
+    - 発端: cleanup-ai-images の初回実行が RPC の 504（PostgREST の一時障害。SQL は 6.5ms）で失敗したが、cron の記録は succeeded のままで気づけなかった（lessons.md 参照）
+    - ディスパッチャ `push.ts` も、宛先の読み取り（通知設定・device_tokens・fcm_token）だけ再試行。それでも読めなかったときは端末未登録（skipped / no_tokens）と区別して `failed / resolve_error` で記録し、同じ dedup_key で再度呼ばれたら送り直す（何も送っていない行だけ。条件付き UPDATE で1回に限る）。parse-message-tags は push.ts を同梱しているので、マージ後に再デプロイする
+  - [ ] auto-skip-workouts / cleanup-ai-images の cron HTTP タイムアウトを60秒に（migration `20260913000200`。pg_net 既定5秒では再試行込みの応答が timed_out になり結果を確認できない）— リモート未適用
+  - [ ] `sessions.memo`（トレーナーの内輪メモ）が顧客から API 経由で読めた問題の解消（本番の memo 記入は0件の段階で対処）: 返す列を許可リストで固定した SECURITY DEFINER 関数 `get_my_sessions`（migration `20260913000300`）+ 顧客用 SELECT ポリシー `sessions_client_select` の DROP（`20260913000400`）。Mobile のセッション一覧・共有ノートの取得を関数 + 別クエリの突き合わせに変更
+    - **リモート適用の順序**: ① 000300 だけ適用（関数の追加のみで旧アプリは壊れない）→ ② 新しい Mobile ビルドを実機に入れて確認 → ③ 000400 を適用。000400 を先に当てると旧ビルドのセッション一覧が黙って空になる。`supabase db push` は未適用分を全部流すので、000300 だけ当てるときは 000400 を一時的に退避する
 
 ---
 
