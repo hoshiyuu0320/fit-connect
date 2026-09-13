@@ -32,7 +32,7 @@ class NoteCard extends StatelessWidget {
     final colors = AppColors.of(context);
     final fileCount = note.fileUrls.length;
     final hasFiles = fileCount > 0;
-    // embed で取れた場合だけ入る（sessionId の有無では判定しない）
+    // get_my_sessions で取れた場合だけ入る（sessionId の有無では判定しない）
     final session = note.session;
 
     return GestureDetector(

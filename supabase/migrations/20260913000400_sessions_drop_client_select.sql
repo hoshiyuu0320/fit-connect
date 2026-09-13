@@ -1,0 +1,38 @@
+-- =============================================================================
+-- Migration: sessions_drop_client_select
+-- sessions.memo の顧客非公開化（フェーズ8.4）その2: 顧客用 SELECT ポリシー
+-- sessions_client_select（20260906000000）を撤去する
+--
+-- 仕様出典: docs/tasks/IMPLEMENTATION_TASKS.md 8.4 / docs/tasks/lessons.md（2026-09-13）
+--
+-- 背景:
+--   sessions_client_select（TO authenticated USING client_id = auth.uid()）は行単位の制御で
+--   列を絞れず、顧客は PostgREST を直接叩けば（例: GET /rest/v1/sessions?select=memo）
+--   トレーナーの内輪メモ memo まで読めた。オーナー決定で memo は顧客から見えなくする。
+--   顧客の読み取りは 20260913000300 で追加した get_my_sessions()（memo を返さない
+--   SECURITY DEFINER 関数）に一本化し、テーブルを直接読む経路を本 migration で無くす。
+--   経緯と方式の比較（ビューではなく関数にした理由など）は 20260913000300 のヘッダー参照
+--
+-- 適用順（必ず守る）:
+--   ① 20260913000300（get_my_sessions の追加）をリモートへ適用
+--   ② get_my_sessions を使う Mobile ビルドを行き渡らせる
+--   ③ 本 migration を適用
+--   本 migration を適用すると、旧 Mobile ビルド（sessions を直接読む）はエラーにならずに
+--   セッション一覧・ホームの次回セッションカードが空になり、共有ノートの見出しから日時が消える。
+--   ①より先に適用しないこと。②〜③の間は memo が顧客から読める状態が続くため、
+--   ③は②の直後に適用すること（2026-09-13 時点で本番の memo 記入は 0 件）
+--
+-- 影響範囲（2026-09-13 ローカル実測）:
+--   - これで顧客（authenticated）の sessions 直 SELECT は、トレーナー用
+--     （auth.uid() = trainer_id）にしか当たらず常に 0 行になる
+--   - トレーナー用4本（"Trainers can view/insert/update/delete their own sessions"）と
+--     GRANT には一切触れない（Web 側の挙動は変わらない）
+--   - sessions を参照する他の関数 enforce_client_note_session_consistency() /
+--     find_sessions_for_reminder(date) / get_my_sessions() はいずれも SECURITY DEFINER のため影響なし。
+--     sessions を参照する他テーブルの RLS ポリシー・ビューは無い
+--   - 検証: supabase/tests/sessions_rls_test.sql（ケース(a) と (g)）
+--
+-- 冪等性: IF EXISTS 付きのため、何度実行しても（ポリシーが既に無くても）同じ状態に収束する
+-- =============================================================================
+
+DROP POLICY IF EXISTS "sessions_client_select" ON public.sessions;

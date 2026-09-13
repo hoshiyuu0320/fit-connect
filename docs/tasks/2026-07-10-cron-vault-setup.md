@@ -197,8 +197,8 @@ select cron.alter_job((select jobid from cron.job where jobname='send-session-re
 select * from cron.job;
 ```
 
-- `issue-recurring-tickets`（既存）/ `auto-skip-workouts` / `cleanup-ai-images`（2026-09-12 有効化済み）は active = true、
-  `send-session-reminders` は有効化前は active = false、の計4本が見えること
+- `issue-recurring-tickets`（既存）/ `auto-skip-workouts` / `cleanup-ai-images`（2026-09-12 有効化済み）/
+  `send-session-reminders`（2026-09-13 有効化済み）の計4本が active = true で見えること
 - `cleanup-ai-images` の有効化・dry run も §2 と同じ要領（関数名を差し替える。こちらは body を省略すると dry run）
 
 ### 実行履歴の確認（有効化後）
@@ -221,10 +221,19 @@ limit 10;
 
   - `status_code = 200` かつ `timed_out = false` であること。`timed_out = true` は pg_net 側のタイムアウト
     （関数は走り続けるので送信自体は止まらないが、結果 JSON は取れない）。`error_msg` は接続・URL 解決の失敗
+  - 3ジョブとも pg_net のタイムアウトは60秒（`auto-skip-workouts` / `cleanup-ai-images` は migration
+    `20260913000200` で既定5秒から延長。関数内の一時障害の再試行を含めて応答を待てるようにするため）
   - 保持期間は `pg_net.ttl`（既定 6 時間）のため、cron 実行（JST 20:00）から時間を置かずに確認すること
-  - Dashboard → **Edge Functions → 該当関数 → Logs** も合わせて確認すること
+  - Dashboard → **Edge Functions → 該当関数 → Logs** も合わせて確認すること。6時間を過ぎて `net._http_response`
+    が消えた後は、このログ（`POST | 500 | …/functions/v1/<関数名>` のような行）が唯一の手掛かりになる
+  - 一番確実なのは**副作用を SQL で数える**こと（例: `cleanup-ai-images` なら
+    `select count(*) from public.find_orphan_ai_images();` が実行後に0件になっているか）。
+    2026-09-13 の初回実行では、cron は succeeded なのに関数は RPC の一時的な 504 で500終了しており、
+    これで発見した（lessons.md 参照）
 - `send-session-reminders` の送信結果（送信 / skipped / failed とその理由）は
-  `notification_logs`（`kind = 'session_reminder'`）の `status` / `detail` で確認する:
+  `notification_logs`（`kind = 'session_reminder'`）の `status` / `detail` で確認する。
+  `status = 'failed'` かつ `detail = 'resolve_error'` は「宛先（端末）を読み取れず何も送っていない」行で、
+  §3 の手動本送信を同じ `target_date` で再実行すると送り直される（送信済み・skipped の行は再実行しても送られない）:
 
 ```sql
 select created_at, user_id, status, detail, dedup_key

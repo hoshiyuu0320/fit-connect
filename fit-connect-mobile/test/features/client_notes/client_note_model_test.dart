@@ -32,7 +32,7 @@ void main() {
       expect(note.createdAt.toUtc(), DateTime.utc(2026, 9, 10, 11));
     });
 
-    // `client_notes.session_id → sessions.id` の embed（sessions(session_date, session_type)）
+    // ClientNoteRepository が get_my_sessions の結果を `sessions` キーで差し込んだ形
     test('embed された sessions を LinkedSession として読む', () {
       final json = makeNoteJson()
         ..['sessions'] = {

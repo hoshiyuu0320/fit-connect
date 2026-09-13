@@ -322,3 +322,19 @@
 
 - `push.ts` の kind ユニオン / `notification_preferences.kind` の CHECK 制約 / Mobile の `NotificationKind` enum（+State・switch）/ Web の種別一覧（トレーナー宛なら）。**CHECK 拡張 migration を先にリモート適用しないと、Mobile のトグル保存が check_violation で失敗する**
 
+## cron 本番初回実行と sessions.memo の露出（2026-09-13）で得た知見
+
+### cron の「succeeded」は HTTP の成否ではない — 初回実行の後は関数ログで status を見る
+
+- **症状**: `cleanup-ai-images` の初回（2026-09-13 04:00 JST）は `cron.job_run_details` では succeeded だったが、実際は Edge Function 内の `rpc('find_orphan_ai_images')` が PostgREST から 504 Gateway Timeout（約7秒待ち）を受けて 500 終了し、削除候補5件が残っていた。SQL 自体は 6.5ms、PostgREST 側にログなし＝一時障害
+- **原因**: pg_net の `net.http_post` はリクエストを積んだ時点で戻るので、cron の成否は「投げたか」だけ。結果は `net._http_response`（保持は既定6時間）と Edge Function ログ（`function_edge_logs` / `function_logs`）にしか残らない。さらに auto-skip / cleanup の cron は pg_net 既定の5秒タイムアウトのままで、遅い応答は `timed_out` になり中身を確認できなかった
+- **対策**: 3つの cron 関数の DB / Storage 呼び出しに、一時障害（status 0・5xx・例外）に限った再試行を入れ、cron の HTTP タイムアウトを60秒に揃えた（push 送信は二重送信を避けるため再試行しない）
+- **教訓**: cron を有効化したら、**初回実行の後に Edge Function ログで status を確認する**。副作用の結果（skipped 件数・残った候補数）を SQL で数えるのが一番確実（auto-skip はこれで9件 skipped を確認できた）
+
+### 行単位 RLS は全列を見せる — 他ロールに SELECT を開けたテーブルの内輪の列は漏れる
+
+- フェーズ8.3①で `sessions` に顧客用 SELECT ポリシーを足した結果、アプリが取得・表示していなくても、顧客は API 経由でトレーナーの内輪メモ `memo` を読める状態だった（本番の記入が0件のうちに発見）
+- RLS が決めるのは行の可否だけで、列は GRANT 単位。トレーナーと顧客はどちらも `authenticated` なので、列の GRANT でも分けられない
+- **対策**: 顧客用ポリシーを DROP し、返す列を許可リストで固定した SECURITY DEFINER 関数 `get_my_sessions` 経由に切り替えた。SECURITY DEFINER ビューは、自動更新可能ビュー経由で書き込みが RLS をすり抜ける危険と、Supabase Advisor の `security_definer_view` エラーがあるため採らなかった
+- **教訓**: 他ロールに SELECT を開けるポリシーを足すときは、行ではなく**「このテーブルの全列を相手に見せてよいか」**で判断する。内輪の列があるなら、列を絞った関数経由にするか別テーブルに分ける
+
