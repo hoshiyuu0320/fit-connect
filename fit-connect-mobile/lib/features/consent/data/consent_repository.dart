@@ -15,7 +15,7 @@ class ConsentRepository {
   /// 現行の規約・ポリシーのバージョン。
   /// Web側 fit-connect/src/lib/supabase/saveUserConsents.ts の CONSENT_VERSION と
   /// 必ず一致させること（規約改定時は両方を更新する）。
-  static const consentVersion = '2026-07-12';
+  static const consentVersion = '2026-09-22';
 
   /// 同意が必要なドキュメント一覧（user_consents.document の値）
   static const requiredDocuments = ['terms', 'privacy', 'ai_processing'];

@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
     //   (a) clients 行 DELETE
     //       → weight/meal/exercise/sleep_records・sessions・tickets・
     //         ticket_subscriptions・workout_assignments(+assignment_exercises)・
-    //         client_notes・ai_estimation_logs が ON DELETE CASCADE で消える
+    //         client_notes・ai_estimation_logs・alerts が ON DELETE CASCADE で消える
     //   (b) messages DELETE
     //       → messages には sender_id/receiver_id の FK が無く CASCADE されないため明示削除。
     //         かつ *_records.message_id → messages(id) の FK は NO ACTION なので、
