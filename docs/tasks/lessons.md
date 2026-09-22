@@ -515,3 +515,13 @@
 - `auth.uid()` を直接書き、coalesce を「最後の返信」を求めるサブクエリの中に移すと、`(sender_id, created_at DESC)` / `(receiver_id, created_at DESC)` の範囲走査と逆順 LIMIT 1 になり 1.3ms（結果の差分 0 行）
 - **教訓**: RLS ポリシーでは `(SELECT auth.uid())` で包むのが定石だが、関数本体のクエリでは逆効果になることがある。SQL 関数を書いたら、**本番と同じロール・JWT クレーム**で合成データを入れて EXPLAIN を取り、索引が使われているかを確かめる（postgres では auto_explain を LOAD できないので、本体クエリを取り出して EXPLAIN する）
 
+
+## 顧客編集 API の IDOR（フェーズ5.9、2026-09-22）で得た知見
+
+### 所有検証の後に request body をスプレッドすると、検証した id が body で上書きされる
+
+- **症状**: `PUT /api/clients/[client_id]` がパスの id で `trainerOwnsClient` を通したのに、`updateClient({ clientId: client_id, ...body })` の `...body` が後ろにあるため、body の `clientId` が勝つ。helper は supabaseAdmin（RLS バイパス）なので、自分の顧客のパス経由で他トレーナーの顧客を更新できた
+- **原因**: 5.5 のガード横展開は「各ルートに所有検証があるか」を確認したが、「検証した値と、実際に DB の WHERE に渡る値が同じか」は見ていなかった。helper 側の列の許可リストは「どの列を書くか」しか守らず、「どの行を書くか」を決める id は守らない。DB 側の列ガード（5.8）も service_role は対象外なので、supabaseAdmin を使う API Route の穴は API Route で塞ぐしかない
+- **対策**: body はスプレッドせず、許可リストのフィールドだけを分割代入して helper に渡す（`clientId` を最後に置くだけだと、他の未知のキーは素通りのまま）。検証済みの id は params / `auth.user.id` からだけ取る
+- **テスト**: helper（updateClient）をモックすると「ルートが何を渡したか」しか見えない。supabaseAdmin のクエリビルダを記録するモックにして、**最終的に DB に渡る `eq(...)` の値と UPDATE のペイロード**を検証する（`src/app/api/clients/clients-update.test.ts`、流儀は `alerts-auth.test.ts`）。修正前のコードで落ちることを確認してから直す
+- **横展開のチェック方法**: `grep -rnE "\.\.\.(body|rest|payload|params)" src/app/api` に加え、body を読む全ハンドラで「所有検証に使った変数」と「`.eq(...)` / insert の id に使った変数」が同じかを目で追う

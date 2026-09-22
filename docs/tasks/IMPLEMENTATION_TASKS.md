@@ -33,7 +33,7 @@
 | 2 | LLM カロリー計算 | Mobile + Supabase | 90% | 🟢 2.1〜2.5 完了（スクショ取り込み含む）/ 2.4任意項目のみバックログ |
 | 3 | オンボーディングフロー | Mobile | 90% | 🟡 3.1〜3.4 完了（cat2 3-A: 同意ダイアログ・通知権限プライミング・後段フロー・はじめの3ステップカード。2026/07/19、PR: feature/mobile-onboarding）/ コーチマーク・PageView式アプリ紹介の拡張のみ残 |
 | 4 | ランディングページ | Web | 90% | 🟡 4.1〜4.4 + メタタグ・OGP + アナリティクス（GA4）完了（2026/07/12）/ Lighthouse最適化 残 |
-| 5 | セキュリティ・基盤修復【緊急】 | Supabase + Web | 75% | 🟡 5.1・5.2・5.5 完了 / 5.3 cron migration 化済み・cron 認証を新 secret キー（apikey）方式へ移行（2026-09-12）・Vault 登録済み・2関数デプロイ + migration リモート適用済み・本番 dry run 200 確認済み / `auto-skip-workouts`・`cleanup-ai-images` とも有効化済み（2026-09-12）・`send-session-reminders` も有効化済み（2026-09-13）（手順書: `2026-07-10-cron-vault-setup.md`）/ 5.4 未着手 / 5.6 SECURITY DEFINER 関数の権限是正 完了（#87、リモート適用 2026-09-22）/ 5.7 parse-message-tags の本番 URL 直書き・未認証の是正 完了（#89、リモート適用・deploy・本番確認 2026-09-22） / 5.8 clients / messages の列単位書き込みガード 実装済み・リモート適用待ち（2026-09-22） |
+| 5 | セキュリティ・基盤修復【緊急】 | Supabase + Web | 75% | 🟡 5.1・5.2・5.5 完了 / 5.3 cron migration 化済み・cron 認証を新 secret キー（apikey）方式へ移行（2026-09-12）・Vault 登録済み・2関数デプロイ + migration リモート適用済み・本番 dry run 200 確認済み / `auto-skip-workouts`・`cleanup-ai-images` とも有効化済み（2026-09-12）・`send-session-reminders` も有効化済み（2026-09-13）（手順書: `2026-07-10-cron-vault-setup.md`）/ 5.4 未着手 / 5.6 SECURITY DEFINER 関数の権限是正 完了（#87、リモート適用 2026-09-22）/ 5.7 parse-message-tags の本番 URL 直書き・未認証の是正 完了（#89、リモート適用・deploy・本番確認 2026-09-22） / 5.8 clients / messages の列単位書き込みガード 実装済み・リモート適用待ち（2026-09-22） / 5.9 顧客編集 API の IDOR 修正（2026-09-22） |
 | 6 | 収益化・リリース準備（Stripe/法務/アカウント削除/Apple Sign-In） | Web + Mobile + Supabase | 70% | 🟡 6.2 完了（アカウント削除 + Sign in with Apple）/ 6.1 完了（法務3ページ + user_consents + signup同意。Mobile側の顧客同意UIはフェーズ3の同意ダイアログとして実装済み 2026/07/19）/ 6.3 Stripe課金コア実装済み（テスト・本番切替はオーナーのStripeセットアップ待ち。手順書: 2026-07-12-stripe-setup-guide.md）/ 6.4 完了（フェーズ4として実装済み）/ 6.5 支払記録 実装済み（領収書PDF・Stripe Connect は後回し） |
 | 7 | 通知基盤統一（device_tokens + 共通ディスパッチャ） | Supabase + Web + Mobile | 100% | 🟢 7.1〜7.4 完了（7.4 通知権限プライミングはフェーズ3の 3.2 として実装。2026/07/19） |
 | 8 | 不具合修正・顧客体験の底上げ | Mobile + Web + Supabase | 100% | 🟢 8.1 完了（2026/07/10）/ 8.2 Storage private化+署名URL+強制アップデート+orphan cleanup 完了（2026/08/30、リモート適用済み）/ 8.3 ①セッション表示 完了（2026/09/06）・②前日リマインダー 完了（2026/09/12、cron 有効化 2026/09/13）/ 8.4 cron 再試行 + sessions.memo 非公開化 完了（2026/09/22、#86）。残はオーナー作業（Firebase への APNs 認証キー登録・App Store 公開後の ios_store_url）と拡張のみ / 8.5 顧客詳細の体重表示（最新と最古の取り違え）・アバターの読み込み失敗時の表示 修正中（2026/09/22、ブランチ `fix/client-detail-weight-order-avatar`） |
@@ -307,8 +307,16 @@
   - [ ] （オーナー作業）リモート適用: 本 PR を develop へマージ後、develop から `supabase migration list --linked` → `supabase db push --dry-run`（未適用が 20260922000200 の1本だけであること）→ `supabase db push`（--include-all 不要）
   - [ ] （オーナー作業・適用後）確認 SQL: clients / messages の `relacl` と clients の列 ACL、トリガー3本、ガード関数3本（prosecdef = false・search_path 固定）
   - 発見（2026-09-22）: `call_parse_message_tags()` が本番 URL を直書きしていたため、ローカル・隔離スタックの messages INSERT（Seed.sql 含む）が本番の parse-message-tags を呼んでいた → 5.7（#89）で是正済み（Vault 未登録のローカルでは呼ばない）。本番 `notification_logs` のローカル由来の行は 5.7 の任意作業を参照
-  - 別タスク化: `PUT /api/clients/[client_id]` の IDOR（body.clientId が検証済みのパス ID を上書きする）
+  - 別タスク化: `PUT /api/clients/[client_id]` の IDOR（body.clientId が検証済みのパス ID を上書きする）→ 5.9 で修正
   - [ ] （フォローアップ候補）messages の重複 INSERT / SELECT ポリシーの整理 / clients の anon DELETE・両テーブルの TRUNCATE 剥奪（cat7 1-B の残り）/ 登録時の trainer_id 自由選択（初回 INSERT は任意のトレーナーを選べる = QR 設計どおりだが、招待トークン化の検討余地）/ Mobile の生エラー表示（登録リトライで別トレーナーの QR を使った場合・管理者付け替え後の送信で 42501 がそのまま出る）/ 20260914000100 のコメント（ブラウザ時計の read_at 等）が本 migration 適用後は古くなる / 死にコード（Mobile goal_repository の目標更新・message_repository.delete、Web sendMessage.ts）
+- [x] **5.9 顧客編集 API の IDOR 修正**（2026-09-22 発見・実装、ブランチ `fix/client-edit-idor`）
+  - 発見: `PUT /api/clients/[client_id]` はパスの `client_id` で `trainerOwnsClient` を通した後、`updateClient({ clientId: client_id, ...body })` を呼んでいた。`...body` が後ろにあるため body の `clientId` が検証済みのパス id を上書きし、`updateClient` は supabaseAdmin（service_role・RLS バイパス。5.8 の列ガードも service_role は素通し）で `clients` を `WHERE client_id = clientId` で更新する。自分の顧客のパスに `{"clientId":"<他トレーナーの顧客>"}` を送るだけで、他人の顧客の年齢・性別・職業・身長・目標体重・目的・目標・期限を上書きできた（5.5 のガード横展開では「所有検証があるか」は見たが「検証した id が実際に使われているか」は見ていなかった）
+  - [x] 修正: body から許可リストの8フィールドだけを分割代入して渡す（他ルートの `const { ... } = body` と同じ流儀）。更新対象は所有検証済みのパスの id に固定
+  - [x] テスト `fit-connect/src/app/api/clients/clients-update.test.ts`（6件）: `updateClient` はモックせず supabaseAdmin のクエリビルダを記録し、DB に渡る `eq('client_id', …)` と UPDATE ペイロードを検証。body.clientId での上書き不可 / 許可リスト外キー（client_id・trainer_id・name 等）を書かない / 所有検証はパスの id / 所有しないパスは body に自分の顧客を入れても 404 / 未認証 401 / 編集モーダルと同じ body の正常系。修正前のコードでケース1・2が `eq('client_id', OTHER)` で失敗することを確認（RED）→ 修正後 6/6
+  - [x] 横展開: request body を読む `src/app/api/**` の全26ハンドラを確認（2026-09-22 時点）。body をスプレッドしているのは本ルートのみで、他はすべて許可リストの分割代入 + 検証済み id / `auth.user.id` を使用（同型の穴なし）
+  - [x] vitest 425/425（develop 3ed1cb7 に rebase 後）/ tsc 0 / lint 0 error / next build 通過 / 未認証 PUT が 401
+  - [ ] ブラウザでの編集モーダル確認（chrome-web-qa）は Claude in Chrome が未接続のため未実施（オーナー判断で省略して PR）
+  - （参考・未対応）`POST /api/messages/send` の `reply_to_message_id` はアプリ側で所有検証していない（5.8 の `messages_guard_insert` は authenticated のみ対象で、supabaseAdmin 経由の本ルートには効かない）。実害の有無は未確認
 
 ---
 
