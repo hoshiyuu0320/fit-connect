@@ -453,3 +453,57 @@
 
 - レポート概要が `.lte('recorded_at', endDate)` で絞っており、`'2026-09-22'` は 2026-09-22 00:00 UTC（JST 9:00）として比較されるため、終了日の JST 9:00 以降の記録（今日の体重）が出なかった。上限は `.lt('recorded_at', 翌日)` の半開区間にする（`src/lib/report/recordedAtRange.ts`。翌日の計算は UTC で行い、実行環境のタイムゾーンに左右されないようにする）
 - 同じ期間を「UTC の日付文字列で比べるビュー」と「timestamptz を素の日付で比べるビュー」で扱うと、同じ画面の中で数値が食い違う。期間フィルタと日付の数え方（UTC / ローカル）は 1 画面の中で揃える（ヒートマップはまだローカル日付で数えている。フォローアップ）
+
+## 列単位の書き込みガード（フェーズ5.8、2026-09-22）で得た知見
+
+### 行単位の WITH CHECK は他の列を守らない
+
+- **症状（2026-09-13 リモートの pg_policies 照会で確認）**: `clients_update_own` は `WITH CHECK (client_id = auth.uid())` だけなので、顧客は自分の行の `trainer_id`（任意のトレーナーへの紐づけ・担当外し）/ `created_at`（`'-infinity'` 等。フェーズ9 は登録日として使う）/ トレーナーが決める列（目標体重・目的など）を書き換えられた。messages も INSERT は `sender_id` だけ、送信者の UPDATE は `sender_id` だけ（`created_at` を未来にすれば5分の編集枠も延ばせる）、受信者の UPDATE は `receiver_id` だけを縛っていて、受信者が本文・タグ・メタデータまで書き換えられた
+- **原因**: RLS が決めるのは「どの行か」だけ。WITH CHECK は新しい行が条件を満たすかを見るだけで、**条件に出てこない列は何に変えても通る**。上の「行単位 RLS は全列を見せる」（読み取り側）の書き込み版。フェーズ9 の「行単位 RLS の WITH CHECK は他の列を守らない — 利用者が書ける値は敵対的な入力」（上）は**読む側（検知バッチ）での防御**で、本節は**書く側での封鎖**。両方が要る（封鎖前に書かれた値・service_role が書く値は検知側で引き続き疑う）
+- **対策の選び方**:
+  - 書き手のロールが違う（顧客 = authenticated / トレーナー = supabaseAdmin の service_role）→ **列レベル GRANT**（trainers の 20260712000000 §4 と同じ方式）。clients はこれ
+  - 書き手が同じロール（送信者も受信者も authenticated）→ 列 GRANT では区別できないので **BEFORE トリガー**。messages はこれ。UPDATE は `to_jsonb(NEW) - 許可列` と `to_jsonb(OLD) - 許可列` の比較にすると、今後追加される列も既定で保護される
+  - システム列（created_at / read_at / edited_at）は拒否ではなく**強制値で上書き**すると、端末時計の値を送っている既存アプリ（Mobile の edited_at は offset 無しのローカル時刻で 9 時間ずれていた、Web の read_at はブラウザ時計）を壊さずにサーバー時刻へ揃えられる
+- **ポリシーを足すときのチェック**: 「その行の**どの列を、誰が、どんな値に**書いてよいか」を列ごとに表にしてから書く。正規の書き込み経路（Mobile / Web / Edge Function / DEFINER 関数）を全数調査して表の根拠にする
+- 関連: `supabase/migrations/20260922000200_column_write_guards.sql` / `supabase/tests/column_write_guards_test.sql`
+
+### PostgREST の upsert は SET 句の全列に UPDATE 権限が要る（衝突しない初回でも）
+
+- Mobile の登録は `upsert(..., onConflict: 'client_id')` = `INSERT ... ON CONFLICT (client_id) DO UPDATE SET <ペイロードの全列> = EXCLUDED.<列>`。PostgreSQL は **SET 句の列の UPDATE 権限を計画時に検査する**ため、`trainer_id` の UPDATE 権限を剥がすと、行がまだ無い初回登録まで permission denied で落ちる
+- そこで `client_id` / `trainer_id` にも UPDATE 列権限を残し、トリガーで「OLD と同じ値の再送だけ許可」にした（登録リトライは同じ trainer_id を送るので通る）
+- **列 GRANT の変更は、実アプリと同じ HTTP リクエストで検証する**。SQL テストだけでは PostgREST が組み立てる SQL の形（upsert の SET 句、`.select()` の RETURNING）を再現しきれない。今回は postgrest-dart のソースを読んで同じクエリ文字列・`Prefer` ヘッダーを raw fetch で再現し、隔離スタックの PostgREST に投げた（47 ケース）
+
+### トリガーで「誰が書いているか」は current_user で見る（auth.role() ではない）
+
+- PostgREST は `SET ROLE authenticated / anon / service_role` するので、SECURITY INVOKER のトリガー関数内の `current_user` は呼び出し元ロールになる。**SECURITY DEFINER 関数の中から発火した場合は所有者（postgres）**になるので、`IF current_user NOT IN ('authenticated', 'anon') THEN RETURN NEW` で service_role と DEFINER 関数（`mark_messages_as_read`）を素通しできる。`auth.role()` は JWT のクレームを読むだけなので DEFINER 関数内でも 'authenticated' のままで、使うと DEFINER 経路まで制限してしまう
+- ガード関数自身は SECURITY INVOKER（DEFINER にすると current_user が失われる）+ `SET search_path = ''` + 完全修飾。トリガー関数は発火時に EXECUTE 権限を要らないので、EXECUTE は PUBLIC / anon / authenticated から剥がしてよい（テストで確認済み）
+- **BEFORE ROW トリガーは RLS の WITH CHECK より先に走る**。固定コード（`MESSAGES_SENDER_MISMATCH` 等）で先に落とせる一方、トリガー内の参照クエリは呼び出し元の RLS の下で動くので、正規の呼び出し元から見える行だけで判定を組む（見えなければ拒否 = fail closed）
+- BEFORE トリガーは名前順に発火する。`messages_guard_update` は `set_updated_at` より先に走るので、updated_at は比較対象から外した
+- anon は GRANT 剥奪で先に permission denied になるが、将来の `GRANT ALL`（Supabase の既定権限）で戻っても書けないように、トリガーでも `ANON_WRITE_FORBIDDEN` で拒否する。負の対照で anon に GRANT を戻すと、messages の書き込みはこの層で止まり、clients の UPDATE は `clients_update_own` が `TO authenticated` のため RLS で 0 行になる
+
+### REVOKE は「自分が付与した権限」しか剥がさない — 権限の最終形は migration の末尾で検査する
+
+- `REVOKE ... FROM authenticated` を postgres が実行しても、**別の grantor（例: GRANT OPTION を持つ service_role）が付けた権限は WARNING も無く残る**（隔離スタックで再現済み）。オーナーが手で push するリモートでこれが起きると、列 GRANT に切り替えたつもりでトレーナー所有列が書けたままになる
+- 対策: migration の最後に `has_table_privilege` / `has_column_privilege` / `has_any_column_privilege` とトリガーの存在・有効状態を検査する DO ブロックを置き、想定と違えば例外で migration ごと中断させる（`COLUMN_GUARD_PRIVILEGE_CHECK_FAILED`）
+
+### ポリシーの OR 結合で「別の役割の USING」から行に入られる — 自分宛ての行に注意
+
+- 受信者の UPDATE ポリシーには時間制限が無い。`sender_id = receiver_id`（自分宛て）の行では、送信者として5分を過ぎても受信者ポリシー経由で行に入れ、ガードが「送信者だから content 可」と判定していた（レビューで発見）
+- **トリガーで役割ごとの許可列を決めるときは、その役割の RLS 条件（ここでは5分の編集枠）もトリガー側で同じ式で再確認する**。PERMISSIVE ポリシーは OR なので、どのポリシーで行に入ったかをトリガーは知らない
+
+### ローカルスタックで messages を INSERT すると本番の Edge Function が呼ばれていた（→ 5.7 で是正済み）
+
+- 本タスクの検証中、隔離スタックを seed 付きで起動しただけで本番の `notification_logs` に行が入り、`call_parse_message_tags()` の本番 URL 直書きが見つかった（5.7 / #89 で是正。経緯と教訓は上の「DB トリガーに本番の URL を直書きすると、migration を流したすべての DB が本番を呼ぶ」「隔離スタックは修正が develop に入るまで seed を無効にする」）
+- 是正前の回避策として使ったのは、SQL テストは BEGIN…ROLLBACK（pg_net のキュー行も巻き戻る）、reset は `--no-seed`、メッセージを実際に書く API テスト・UI QA の前に隔離 DB の中だけで呼び出し先 URL を到達不能なアドレスへ差し替える、の3つ
+
+### DB だけの変更でも UI QA は「migration を当てた隔離スタック」に向けたアプリで行う
+
+- アプリのコードが変わらない変更（RLS・GRANT・トリガー）は、本番や共有スタックを向いたアプリで QA しても何も検証できない（しかもテストデータが本番に入る）。アプリを**隔離スタックへ向けて**正規経路を実際に通す
+- Web: worktree には `.env.local` が無いので、`NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` を隔離スタックのローカル既定キーで環境変数として渡して `pnpm dev --port <別ポート>`（3000 は他セッションが使っていることがある）。ログインはパスワード入力をせず、テスト用トレーナーのセッションを `sb-127-auth-token`（`base64-` + base64url(JSON)）Cookie として内蔵ブラウザに入れた
+- Mobile: worktree の `assets/.env`（本物のコピー）を隔離スタックの値で書いた別ファイルに一時的に差し替え（元ファイルは読まない。終わったら `cp` で戻す）、`flutter build ios --simulator --debug`。他セッションが起動中のシミュレータは避けて別機種を boot。ログインは隔離スタックの Mailpit（`/api/v1/messages`）からマジックリンク（PKCE）を取り、`open_url` でシミュレータに開かせる
+- 同意ダイアログ等のテスト用前提データは、隔離 DB に直接入れてよい（今回は user_consents）
+
+### チェック済みのタスクでも実装を確かめる
+
+- IMPLEMENTATION_TASKS 5.1 では cat7 1-B「anon への書き込み系 GRANT の REVOKE」が `[x]` だったが、どの migration にも REVOKE は無く、リモートでも clients / messages は anon に `arwdDxt` のままだった。**権限系のチェック項目は `relacl` / `has_table_privilege` で実物を見る**。今回剥奪したのは anon の clients INSERT / UPDATE と messages INSERT / UPDATE / DELETE だけ（clients の DELETE、両テーブルの TRUNCATE、他テーブルは未実施）
+
