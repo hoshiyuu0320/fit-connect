@@ -39,7 +39,7 @@ export default function PrivacyPage() {
         プライバシーポリシー
       </h1>
       <p className="mt-2 text-xs text-[#94A3B8]">
-        制定日: 2026年7月11日 ／ 最終更新日: 2026年7月12日
+        制定日: 2026年7月11日 ／ 最終更新日: 2026年9月22日
       </p>
 
       <p className="mt-8 text-sm leading-7 text-[#334155]">
@@ -103,6 +103,9 @@ export default function PrivacyPage() {
           <li>本人確認および認証のため</li>
           <li>利用料金の請求・決済のため</li>
           <li>AIによる食事解析等の機能提供のため</li>
+          <li>
+            顧客の記録の同期状況（アプリからデータが最後に届いた日）を担当トレーナーに表示し、トレーナーによる指導・フォローに役立てるため
+          </li>
           <li>お問い合わせへの対応のため</li>
           <li>利用状況の分析および新機能の開発のため</li>
           <li>不正利用の防止のため</li>

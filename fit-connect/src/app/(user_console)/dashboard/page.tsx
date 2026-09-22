@@ -10,7 +10,6 @@ import { getRecentMessageCount } from '@/lib/supabase/getRecentMessageCount'
 import { getRecentMessages } from '@/lib/supabase/getRecentMessages'
 import { getActiveClientCount } from '@/lib/supabase/getActiveClientCount'
 import { getExpiringTickets } from '@/lib/supabase/getExpiringTickets'
-import { getInactiveClients } from '@/lib/supabase/getInactiveClients'
 import { getTodaysSessions } from '@/lib/supabase/getTodaysSessions'
 import { getUndonePlanCount } from '@/lib/supabase/getUndonePlanCount'
 import { getRecentRecords } from '@/lib/supabase/getRecentRecords'
@@ -26,6 +25,7 @@ import { StatCard } from '@/components/dashboard/StatCard'
 import { MessagePreviewList } from '@/components/dashboard/MessagePreviewList'
 import { QuickActions } from '@/components/dashboard/QuickActions'
 import { AlertList } from '@/components/dashboard/AlertList'
+import { TriageSection } from '@/components/dashboard/TriageSection'
 import { TodaysSchedule } from '@/components/dashboard/TodaysSchedule'
 import { DashboardSkeleton } from '@/components/dashboard/DashboardSkeleton'
 import { RecentRecordsTimeline } from '@/components/dashboard/RecentRecordsTimeline'
@@ -132,7 +132,7 @@ function DashboardContent() {
   // メッセージデータ
   const [recentMessages, setRecentMessages] = useState<RecentMessage[]>([])
 
-  // アラートデータ
+  // チケット・プランのアラートデータ（顧客の記録の確認は TriageSection が自分で取得する）
   const [alerts, setAlerts] = useState<AlertItemProps[]>([])
 
   // 本日の予定データ
@@ -213,7 +213,6 @@ function DashboardContent() {
             recentMsgs,
             activeClients,
             expiringTickets,
-            inactiveClients,
             sessions,
             undonePlans,
             records,
@@ -228,7 +227,6 @@ function DashboardContent() {
             getRecentMessages(user.id, 5),
             getActiveClientCount(user.id),
             getExpiringTickets(user.id),
-            getInactiveClients(user.id),
             getTodaysSessions(user.id),
             getUndonePlanCount(user.id),
             getRecentRecords(user.id, { limit: 20 }),
@@ -253,19 +251,9 @@ function DashboardContent() {
           setGoalCategories(goals)
           setPaymentSummary(await paymentSummaryPromise)
 
-          // アラートリストを作成
+          // チケット・プランのアラートリストを作成
+          // （記録の途切れ・体重の変化は自動チェックの結果として「今日の対応」に出す）
           const alertList: AlertItemProps[] = []
-
-          // 非アクティブ顧客のアラート（最大3件）
-          inactiveClients.slice(0, 3).forEach((client) => {
-            alertList.push({
-              type: 'inactive',
-              clientId: client.client_id,
-              clientName: client.client_name,
-              message: `${client.days_inactive}日間記録なし`,
-              severity: 'high',
-            })
-          })
 
           // 期限切れ間近チケットのアラート
           expiringTickets.forEach((ticket) => {
@@ -349,6 +337,9 @@ function DashboardContent() {
           />
         </div>
 
+        {/* 今日の対応（自動チェックの結果。取得はセクション自身が行い、失敗してもここだけに閉じる） */}
+        <TriageSection />
+
         {/* 売上カード（取得失敗時は非表示） */}
         {paymentSummary && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -395,7 +386,7 @@ function DashboardContent() {
           {/* 最近のメッセージ */}
           <MessagePreviewList messages={recentMessages} />
 
-          {/* 要確認エリア */}
+          {/* チケット・プラン */}
           <AlertList alerts={alerts} />
         </div>
 

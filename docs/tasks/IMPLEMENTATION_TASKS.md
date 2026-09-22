@@ -3,7 +3,7 @@
 **作成日**: 2026年3月29日
 **バージョン**: 2.0
 **進捗状況**: フェーズ1 完了 / フェーズ2 2.1〜2.5 完了（2.4 任意項目のみバックログ）/ フェーズ3〜10 未着手
-**最終更新**: 2026年9月13日 - `send-session-reminders` cron をオーナーが有効化（#85 マージ）。cron 初回実行を確認（auto-skip は9件 skipped で正常 / cleanup-ai-images は RPC の一時的な 504 で失敗）→ 8.4 cron の再試行 + sessions.memo の顧客非公開化に着手（ブランチ `fix/cron-retry-session-memo`）。同日 フェーズ5.6 実装（SECURITY DEFINER 関数4本の権限是正: 追認 + 是正の migration 2本 + 権限テスト。リモート適用はオーナー作業待ち。ブランチ `fix/definer-function-privileges`）。2026年9月12日 - フェーズ8.3② 完了（セッション前日リマインダー: SQL 抽出関数 + Edge Function + cron（inactive 登録）+ Mobile 通知トグル。リモート適用済み・cron 有効化はオーナー判断）。同日ダークモード残件修正（#83）・cron 認証の secret キー移行（#84）。2026年9月10日 - フェーズ8.3① 完了（Mobile セッション表示 + セッション⇔カルテ連携 + トレーナー側の紐づけ導線。リモート適用済み・QA 完了）。各タスクの詳細設計は `docs/tasks/2026-07-08-solution-catalog.md`、共通基盤の設計決定は `docs/tasks/2026-07-10-integration-decisions.md` を参照
+**最終更新**: 2026年9月22日 - #86（8.4 cron の再試行 + sessions.memo の顧客非公開化）・#87（5.6 SECURITY DEFINER 関数の権限是正）をマージし、両方の migration をリモート適用（オーナー）。parse-message-tags を再デプロイ（push.ts の変更を反映）。2026年9月13日 - `send-session-reminders` cron をオーナーが有効化（#85 マージ）。cron 初回実行を確認（auto-skip は9件 skipped で正常 / cleanup-ai-images は RPC の一時的な 504 で失敗）→ 8.4 cron の再試行 + sessions.memo の顧客非公開化に着手（ブランチ `fix/cron-retry-session-memo`）。同日 フェーズ5.6 実装（SECURITY DEFINER 関数4本の権限是正: 追認 + 是正の migration 2本 + 権限テスト。リモート適用はオーナー作業待ち。ブランチ `fix/definer-function-privileges`）。2026年9月12日 - フェーズ8.3② 完了（セッション前日リマインダー: SQL 抽出関数 + Edge Function + cron（inactive 登録）+ Mobile 通知トグル。リモート適用済み・cron 有効化はオーナー判断）。同日ダークモード残件修正（#83）・cron 認証の secret キー移行（#84）。2026年9月10日 - フェーズ8.3① 完了（Mobile セッション表示 + セッション⇔カルテ連携 + トレーナー側の紐づけ導線。リモート適用済み・QA 完了）。各タスクの詳細設計は `docs/tasks/2026-07-08-solution-catalog.md`、共通基盤の設計決定は `docs/tasks/2026-07-10-integration-decisions.md` を参照
 
 > **2026-04-26 モノレポ化完了**: 旧 `fit-connect-mobile` リポジトリを `git subtree` で取り込み、単一 git リポジトリで Web/Mobile 両方を管理する構成に移行。詳細は `docs/tasks/2026-04-26-monorepo-migration.md`。
 
@@ -33,11 +33,11 @@
 | 2 | LLM カロリー計算 | Mobile + Supabase | 90% | 🟢 2.1〜2.5 完了（スクショ取り込み含む）/ 2.4任意項目のみバックログ |
 | 3 | オンボーディングフロー | Mobile | 90% | 🟡 3.1〜3.4 完了（cat2 3-A: 同意ダイアログ・通知権限プライミング・後段フロー・はじめの3ステップカード。2026/07/19、PR: feature/mobile-onboarding）/ コーチマーク・PageView式アプリ紹介の拡張のみ残 |
 | 4 | ランディングページ | Web | 90% | 🟡 4.1〜4.4 + メタタグ・OGP + アナリティクス（GA4）完了（2026/07/12）/ Lighthouse最適化 残 |
-| 5 | セキュリティ・基盤修復【緊急】 | Supabase + Web | 75% | 🟡 5.1・5.2・5.5 完了 / 5.3 cron migration 化済み・cron 認証を新 secret キー（apikey）方式へ移行（2026-09-12）・Vault 登録済み・2関数デプロイ + migration リモート適用済み・本番 dry run 200 確認済み / `auto-skip-workouts`・`cleanup-ai-images` とも有効化済み（2026-09-12）・`send-session-reminders` も有効化済み（2026-09-13）（手順書: `2026-07-10-cron-vault-setup.md`）/ 5.4 未着手 / 5.6 SECURITY DEFINER 関数の権限是正 実装済み・リモート適用待ち（2026-09-13） |
+| 5 | セキュリティ・基盤修復【緊急】 | Supabase + Web | 75% | 🟡 5.1・5.2・5.5 完了 / 5.3 cron migration 化済み・cron 認証を新 secret キー（apikey）方式へ移行（2026-09-12）・Vault 登録済み・2関数デプロイ + migration リモート適用済み・本番 dry run 200 確認済み / `auto-skip-workouts`・`cleanup-ai-images` とも有効化済み（2026-09-12）・`send-session-reminders` も有効化済み（2026-09-13）（手順書: `2026-07-10-cron-vault-setup.md`）/ 5.4 未着手 / 5.6 SECURITY DEFINER 関数の権限是正 完了（#87、リモート適用 2026-09-22） |
 | 6 | 収益化・リリース準備（Stripe/法務/アカウント削除/Apple Sign-In） | Web + Mobile + Supabase | 70% | 🟡 6.2 完了（アカウント削除 + Sign in with Apple）/ 6.1 完了（法務3ページ + user_consents + signup同意。Mobile側の顧客同意UIはフェーズ3の同意ダイアログとして実装済み 2026/07/19）/ 6.3 Stripe課金コア実装済み（テスト・本番切替はオーナーのStripeセットアップ待ち。手順書: 2026-07-12-stripe-setup-guide.md）/ 6.4 完了（フェーズ4として実装済み）/ 6.5 支払記録 実装済み（領収書PDF・Stripe Connect は後回し） |
 | 7 | 通知基盤統一（device_tokens + 共通ディスパッチャ） | Supabase + Web + Mobile | 100% | 🟢 7.1〜7.4 完了（7.4 通知権限プライミングはフェーズ3の 3.2 として実装。2026/07/19） |
-| 8 | 不具合修正・顧客体験の底上げ | Mobile + Web + Supabase | 95% | 🟡 8.1 完了（2026/07/10）/ 8.2 Storage private化+署名URL+強制アップデート+orphan cleanup 完了（2026/08/30、リモート適用済み）/ 8.3 ①セッション表示 完了（2026/09/06）・②前日リマインダー 完了（2026/09/12、cron 有効化 2026/09/13）/ 8.4 cron 再試行 + sessions.memo 非公開化 実装中（2026/09/13） |
-| 9 | トレーナー介入機能（異常検知・トリアージ） | Web + Supabase | 0% | 🔴 未着手 |
+| 8 | 不具合修正・顧客体験の底上げ | Mobile + Web + Supabase | 100% | 🟢 8.1 完了（2026/07/10）/ 8.2 Storage private化+署名URL+強制アップデート+orphan cleanup 完了（2026/08/30、リモート適用済み）/ 8.3 ①セッション表示 完了（2026/09/06）・②前日リマインダー 完了（2026/09/12、cron 有効化 2026/09/13）/ 8.4 cron 再試行 + sessions.memo 非公開化 完了（2026/09/22、#86）。残はオーナー作業（Firebase への APNs 認証キー登録・App Store 公開後の ios_store_url）と拡張のみ |
+| 9 | トレーナー介入機能（異常検知・トリアージ） | Web + Supabase | 10% | 🟡 計画確定（2026/09/13、`2026-09-13-trainer-intervention-plan.md`）/ 9.1 PR1 実装中（ブランチ `feature/client-alerts`）/ 9.2 は PR1 マージ後 |
 | 10 | リテンション機能（リマインダー・直接記録・ストリーク） | Mobile + Supabase | 0% | 🔴 未着手 |
 
 > フェーズ5〜10 の出典: `docs/tasks/2026-07-08-solution-catalog.md`（施策詳細）/ `docs/tasks/2026-07-10-integration-decisions.md`（共通基盤の設計決定。**カタログと矛盾する場合はこちらが優先**）。「cat〇 △-△」はカタログ内の施策番号。
@@ -265,7 +265,7 @@
   - [x] 対象外: `/api/billing/*`（既にセッション認証）・`/api/stripe/webhook`（署名認証）・`/api/push-notify`（supabaseAdmin 不使用・PUSH_API_KEY ゲート）
   - [x] tsc / vitest 70 / lint 0 / next build 通過。ブラウザでチケット・カルテ CRUD / メッセージ送信を確認、未ログイン時に対象12ルートが 401 を返すことを curl で確認
   - 2026-07-13 完了（PR fix/api-auth-hardening）。フェーズ6.3 の billing 認証パターンを全ルートに横展開
-- [ ] **5.6 SECURITY DEFINER 関数の権限是正**（2026-09-13 発見・実装、ブランチ `fix/definer-function-privileges`）
+- [x] **5.6 SECURITY DEFINER 関数の権限是正**（2026-09-13 発見・実装、ブランチ `fix/definer-function-privileges`）✅ 完了（#87 マージ・リモート適用 2026-09-22）
   - 発見（リモートの読み取り専用照会）: `calculate_achievement_rate` / `check_goal_achievement` / `issue_recurring_tickets` / `mark_messages_as_read` の4本が SECURITY DEFINER（owner postgres = RLS バイパス）で、EXECUTE が PUBLIC / anon / authenticated / service_role に付いていた（3本は search_path 未設定、mark_messages_as_read は search_path=public）。アプリ同梱の公開 anon キーだけで PostgREST RPC から呼べ、顧客 UUID があれば目標体重・体重記録を推測でき、定期チケット発行（書込み）も任意に起動できた
   - [x] 呼び出し元の全数調査（Web / Mobile / Edge Functions / SQL 関数・トリガー・ポリシー / cron.job）→ 最小ロールを決定
     - calculate_achievement_rate: Mobile（本人）+ parse-message-tags（service_role）→ authenticated / service_role + 本文で「本人 / 担当トレーナー / service_role / クレーム無しの直接DB接続」のみ許可（それ以外は `ACHIEVEMENT_RATE_FORBIDDEN` 42501）
@@ -278,8 +278,8 @@
   - [x] テスト `supabase/tests/definer_functions_privileges_test.sql`（クレーム無し anon / クレーム付き anon / 本人 / 他人の顧客 / NULL・存在しない顧客 ID / 担当・他人トレーナー / service_role / sub 無しクレーム / postgres・cron 経路 / カタログ固定 + grantee 集合の完全一致）。拒否は SQLERRM で本文チェック（`ACHIEVEMENT_RATE_FORBIDDEN`）と GRANT 層（`permission denied for function`）を区別。負の対照6本で各ケースの判別力を確認
   - [x] ローカル検証（共有スタックは別セッションが migration 検証に使用中だったため、隔離スタック `fit-connect-definer-qa` で実施）: `supabase db reset` 後に supabase/tests/*.sql 全8本 PASS / PR #86 と合わせた構成で全9本 PASS / リモート同等状態（000400 + リモートにだけあった定義）から 000500・000510 を差分適用して全9本 PASS（ドリフトガードの期待 md5 とリモートの本体が一致）/ PostgREST 経由（v12.2.3 = 本番と同版）で anon・publishable キー 401、他人の達成率 403、本人・担当トレーナー・service_role・sb_secret キー 200 の 20 ケース PASS
   - [x] リモート（読み取り専用）: PR #86 + 本 PR のツリーから `supabase db push --dry-run` → 未適用は 000500・000510 の2本のみ。引き渡し直前の再 dump で4本の本体 md5 がガードの期待値と一致（dump 以降のドリフトなし）・EXECUTE は依然 anon 等に付いたまま（= 未是正）であることを確認
-  - [ ] （オーナー作業）リモート適用: リモートには PR #86 の 000200〜000400 が適用済みのため、push は **PR #86 と本 PR の両方が入ったツリー**（両 PR を develop へマージ後の develop）から行う（本ブランチ単体だと「Remote migration versions not found」で止まる）。直前に `supabase migration list --linked` と `supabase db push --dry-run` で未適用が 000500・000510 の2本だけであることを確認してから `supabase db push`（`--include-all` 不要。feature/client-alerts の 20260914* が先にリモートへ入った場合のみ必要になる）
-  - [ ] （オーナー作業・適用後）`has_function_privilege` で EXECUTE マトリクスを確認 / Advisor で anon 実行可能 SECURITY DEFINER・search_path 未固定の警告が4本分消えたことを確認 / 翌 00:00 UTC 以降に `cron.job_run_details` で `issue-recurring-tickets` の成功を確認（cron の失敗は通知されないため）
+  - [x] ✅ オーナーがリモート適用（2026-09-22。000500・000510 とも適用済みを migration list で確認）。当時のメモ → リモートには PR #86 の 000200〜000400 が適用済みのため、push は **PR #86 と本 PR の両方が入ったツリー**（両 PR を develop へマージ後の develop）から行う（本ブランチ単体だと「Remote migration versions not found」で止まる）。直前に `supabase migration list --linked` と `supabase db push --dry-run` で未適用が 000500・000510 の2本だけであることを確認してから `supabase db push`（`--include-all` 不要。feature/client-alerts の 20260914* が先にリモートへ入った場合のみ必要になる）
+  - [x] 適用後の EXECUTE マトリクスを `has_function_privilege` で確認（2026-09-22: 4本とも anon 不可・search_path 固定、issue_recurring_tickets は付与なし、mark_messages_as_read / calculate_achievement_rate は authenticated、check_goal_achievement は service_role のみ）。残: Advisor の警告と、適用後初回の cron issue-recurring-tickets（2026-09-23 09:00 JST）の成功確認。元の手順 → / Advisor で anon 実行可能 SECURITY DEFINER・search_path 未固定の警告が4本分消えたことを確認 / 翌 00:00 UTC 以降に `cron.job_run_details` で `issue-recurring-tickets` の成功を確認（cron の失敗は通知されないため）
   - [ ] （フォローアップ候補）同型の `can_edit_message(uuid)`（SECURITY DEFINER・search_path 無し・anon EXECUTE。任意メッセージの作成時刻が5分以内かを判定できる）の是正 / リモートにだけある重複インデックス `idx_messages_unread`（`idx_messages_receiver_unread` と同定義）の整理 / messages の受信者 UPDATE ポリシー（`Receivers can mark messages as read`）+ authenticated のテーブル全体 UPDATE 権限により、受信者が read_at 以外の列（content 等）も更新できる件 / `issue_recurring_tickets` の同時実行で二重発行しうる件（`FOR UPDATE SKIP LOCKED`。EXECUTE がオーナーのみになったため優先度低）/ 未使用の Mobile `GoalRepository.checkGoalAchievement`・`isGoalAchievedProvider` の削除
 
 ---
@@ -403,13 +403,15 @@
     - [x] 通知種別 `session_reminder` を新設（`notification_preferences` CHECK 拡張 + `push.ts` 型 + Mobile の通知設定センターにトグル）。Web は変更なし（顧客宛のため）
     - [x] Edge Function は dry_run 省略時に送らない（push を伴うため安全側）。migration 20260913000000 + Function をリモート適用済み
     - [x] リモートで dry run → cron 有効化 ✅ オーナーが実施（2026-09-13、#85 マージ済み）。dry run の候補は1件（9/14 のセッション）。初回の本送信は 2026-09-13 20:00 JST
+    - 初回の本送信（2026-09-13 20:00 JST）: 関数は正常に動いた（対象抽出の RPC が1回目に 504 → 8.4 の再試行で成功）が、**push は FCM が `401 Invalid APNs credential`（THIRD_PARTY_AUTH_ERROR）で拒否し未達**（notification_logs は failed / sent=0/1）。メッセージ通知も含め、FCM→APNs の配信は本番で一度も成功していない（sent 0件）
+    - [ ] **（オーナー作業）Firebase Console に APNs 認証キー（.p8）を登録**: Apple Developer の Keys で APNs を有効にしたキーを作成 → Firebase Console > プロジェクトの設定 > Cloud Messaging > Apple アプリの構成（`com.fitconnect.fitConnectMobile`）に .p8・Key ID・Team ID を登録。登録後、Web からメッセージを送って実機に届くこと・notification_logs が sent になることを確認
     - 注: 通知タップでホームタブへ強制遷移しない（`onNotificationTap` は空実装のまま）。ホームの次回セッションカードは resume 時に再取得されるため MVP では省略
   - [x] （QA）ログイン後の対話 QA — **オーナーが Web・実機で確認済み・問題なし**（2026-09-10。セッション完了→カルテ作成→Mobile 過去タブからノート閲覧、ダークモード表示含む）
   - [x] （追補）ダークモード固定淡色背景の残件修正 — PR #82 で直したノート詳細ヘッダーと同型の残り4箇所（同意ダイアログ AI 枠 / ログインのメール送信カード / ヘルスケア同期エラー行 / 週間ミニカレンダー完了セル）+ MealSummaryCard。`successTint` / `dangerTint` を AppColorsExtension に追加、固定 `*100` 枠線も半透明オーバーレイ化、各対象に Dark プレビュー + ライト/ダーク背景色テスト追加（2026-09-12、ブランチ feature/dark-mode-tint-fixes、PR 作成済み・develop/1.0.0 向け）
-- [ ] **8.4 運用補強: cron の再試行 + sessions.memo の顧客非公開化**（2026-09-13 着手、ブランチ `fix/cron-retry-session-memo`。オーナー決定: 両方とも次の PR に同梱）
+- [x] **8.4 運用補強: cron の再試行 + sessions.memo の顧客非公開化** ✅ 完了（2026-09-22、#86 マージ）（2026-09-13 着手、ブランチ `fix/cron-retry-session-memo`。オーナー決定: 両方とも次の PR に同梱）
   - [x] cron 3関数（auto-skip-workouts / cleanup-ai-images / send-session-reminders）の DB・Storage 呼び出しに一時障害（status 0・5xx・例外）限定の再試行（`_shared/retry.ts`。最大3回、1秒→3秒、受付から40秒で打ち切り。GET は postgrest-js 内部の再試行を切って一本化）。push 送信は二重送信を避けるため対象外。**3関数ともリモートにデプロイ済み（2026-09-13）**
     - 発端: cleanup-ai-images の初回実行が RPC の 504（PostgREST の一時障害。SQL は 6.5ms）で失敗したが、cron の記録は succeeded のままで気づけなかった（lessons.md 参照）
-    - ディスパッチャ `push.ts` も、宛先の読み取り（通知設定・device_tokens・fcm_token）だけ再試行。それでも読めなかったときは端末未登録（skipped / no_tokens）と区別して `failed / resolve_error` で記録し、同じ dedup_key で再度呼ばれたら送り直す（何も送っていない行だけ。条件付き UPDATE で1回に限る）。parse-message-tags は push.ts を同梱しているので、マージ後に再デプロイする
+    - ディスパッチャ `push.ts` も、宛先の読み取り（通知設定・device_tokens・fcm_token）だけ再試行。それでも読めなかったときは端末未登録（skipped / no_tokens）と区別して `failed / resolve_error` で記録し、同じ dedup_key で再度呼ばれたら送り直す（何も送っていない行だけ。条件付き UPDATE で1回に限る）。parse-message-tags は push.ts を同梱しているので、マージ後に再デプロイした（2026-09-22、v21）
   - [x] auto-skip-workouts / cleanup-ai-images の cron HTTP タイムアウトを60秒に（migration `20260913000200`。pg_net 既定5秒では再試行込みの応答が timed_out になり結果を確認できない）— リモート適用済み（2026-09-13、オーナー）
   - [x] `sessions.memo`（トレーナーの内輪メモ）が顧客から API 経由で読めた問題の解消（`000300`・`000400` ともリモート適用済み、2026-09-13、オーナー。適用後の SELECT で顧客用ポリシーが無いこと・`get_my_sessions` があることを確認）（本番の memo 記入は0件の段階で対処）: 返す列を許可リストで固定した SECURITY DEFINER 関数 `get_my_sessions`（migration `20260913000300`）+ 顧客用 SELECT ポリシー `sessions_client_select` の DROP（`20260913000400`）。Mobile のセッション一覧・共有ノートの取得を関数 + 別クエリの突き合わせに変更
     - **リモート適用の順序**: ① 000300 だけ適用（関数の追加のみで旧アプリは壊れない）→ ② 新しい Mobile ビルドを実機に入れて確認 → ③ 000400 を適用。000400 を先に当てると旧ビルドのセッション一覧が黙って空になる。`supabase db push` は未適用分を全部流すので、000300 だけ当てるときは 000400 を一時的に退避する
@@ -421,10 +423,13 @@
 **目的**: 「データが見られる」から「見に行くきっかけがある」へ。トレーナー価値の核
 **詳細設計**: カタログ cat1 1-A / 2-A / 規模: 合計 2〜3週
 **前提**: フェーズ7（通知基盤）完了
+**実装計画（確定版）**: `docs/tasks/2026-09-13-trainer-intervention-plan.md`（2026-09-13）。PR1 = 9.1 MVP（`feature/client-alerts`）→ PR2 = 9.2 MVP（`feature/daily-triage`）
+**オーナー決定（2026-09-13）**: ① 記録開始前は登録から2週間以内だけ出し、それ以外とアプリ未登録は人数だけ ② データが届いた日は日付だけ見せ、プライバシーポリシーに1文足す ③ cron 失敗監視ジョブはトレーナー向け push と一緒に作る ④ 9.2 の消し込み（返信不要）は入れない。トレーナー向け push は VAPID（オーナー保留）待ちのため Phase 9 では送らない
 
 ### タスク
 
-- [ ] **9.1 異常検知エンジン**（cat1 1-A: 日次バッチ + `alerts` テーブル）
+- [ ] **9.1 異常検知エンジン**（cat1 1-A: 日次バッチ + `alerts` テーブル）— PR1 実装中（2026-09-13〜）
+  - PR1（#88）でプライバシーポリシーの利用目的に「同期状況（データが最後に届いた日）を担当トレーナーに表示する」旨を1項目追加。これに合わせて**最終更新日と同意バージョンを 2026-09-22 に更新**（オーナー決定 2026-09-22。Web `CONSENT_VERSION` と Mobile `ConsentRepository.consentVersion` を同時に変更）。既存の顧客はアプリ更新後の起動時に同意画面が再表示され、同意すると `user_consents` に新バージョンの3行が入る。トレーナー（Web）は新規登録時のみ記録するため、既存トレーナーへの再同意画面は無い
   - [ ] 検知ルール: 体重急変・記録途絶・睡眠悪化・カロリー超過（閾値はトレーナー設定可能に）
   - [ ] HealthKit 同期ラグの誤検知対策: 途絶判定を「最終アプリ起動」と分離（横断レビュー1-7節）
   - [ ] トレーナーへの通知はディスパッチャ経由（実効経路が LINE/トレーナーモード導入前なら Web 内バッジ中心）
