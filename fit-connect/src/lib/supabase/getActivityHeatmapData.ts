@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase'
 import { HeatmapRow, DateRange } from '@/types/report'
 import { Client } from '@/types/client'
 import { format, parseISO } from 'date-fns'
+import { exclusiveEndDate } from '@/lib/report/recordedAtRange'
 
 /**
  * ヒートマップ用のデータ取得関数
@@ -11,6 +12,10 @@ export async function getActivityHeatmapData(
   clients: Client[],
   dateRange: DateRange
 ): Promise<HeatmapRow[]> {
+  // recorded_at（timestamptz）の上限は「終了日の翌日 0時（UTC）未満」で指定する。
+  // .lte('recorded_at', endDate) だと終了日 0時 UTC（JST 9:00）以降の記録が漏れる
+  const endExclusive = exclusiveEndDate(dateRange.endDate)
+
   const rowPromises = clients.map(async (client): Promise<HeatmapRow> => {
     // weight_records, meal_records, exercise_records を並列取得
     const [weightResult, mealResult, exerciseResult] = await Promise.all([
@@ -19,21 +24,21 @@ export async function getActivityHeatmapData(
         .select('recorded_at')
         .eq('client_id', client.client_id)
         .gte('recorded_at', dateRange.startDate)
-        .lte('recorded_at', dateRange.endDate)
+        .lt('recorded_at', endExclusive)
         .limit(10000),
       supabase
         .from('meal_records')
         .select('recorded_at')
         .eq('client_id', client.client_id)
         .gte('recorded_at', dateRange.startDate)
-        .lte('recorded_at', dateRange.endDate)
+        .lt('recorded_at', endExclusive)
         .limit(10000),
       supabase
         .from('exercise_records')
         .select('recorded_at')
         .eq('client_id', client.client_id)
         .gte('recorded_at', dateRange.startDate)
-        .lte('recorded_at', dateRange.endDate)
+        .lt('recorded_at', endExclusive)
         .limit(10000),
     ])
 

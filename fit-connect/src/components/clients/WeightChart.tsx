@@ -36,8 +36,9 @@ export function WeightChart({ weightRecords, targetWeight, showPeriodFilter = tr
     if (weightRecords.length === 0) return []
 
     // showPeriodFilter=false の場合は親がフィルター済みなので全データ表示
+    // （props の配列を直接 sort すると親の state を破壊するため、コピーを並べ替える）
     if (!showPeriodFilter) {
-      return weightRecords
+      return [...weightRecords]
         .sort((a, b) => new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime())
         .map((record) => ({
           date: new Date(record.recorded_at),
