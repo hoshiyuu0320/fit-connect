@@ -5,10 +5,11 @@ part 'client_note_model.g.dart';
 
 /// ノートに紐づくセッションの抜粋（日時・種別）。
 ///
-/// `client_notes.session_id → sessions.id` のFKを使った PostgREST の embed
-/// （`sessions(session_date, session_type)`）の受け皿。顧客用RLS
-/// （sessions_client_select: `client_id = auth.uid()`）で自分のセッションは
-/// 読めるので、一覧・詳細の見出しに要る2列だけを持つ。
+/// ClientNote の JSON `sessions` キー（`{session_date, session_type}`）の受け皿。
+/// 顧客は sessions テーブルを直接読めない（memo を隠すため顧客用の SELECT
+/// ポリシーを置いていない）ので、`sessions(...)` の embed ではなく、
+/// ClientNoteRepository が必要な列だけを返す RPC get_my_sessions の結果から
+/// 一覧・詳細の見出しに要る2列だけを差し込む。
 ///
 /// 廃止した session_number（手入力の通し番号）の代わりに、この日時を
 /// 「どのセッションのノートか」の主役として表示する。
@@ -61,12 +62,13 @@ class ClientNote {
   @JsonKey(name: 'session_id')
   final String? sessionId;
 
-  /// 紐づくセッションの日時・種別（embed の受け皿）。
+  /// 紐づくセッションの日時・種別（JSON `sessions` キーの受け皿）。
   ///
-  /// ClientNoteRepository のように `sessions(...)` を embed した経路でだけ入る。
-  /// sessionId があっても embed しない経路（sessions 側から client_notes を
-  /// embed した逆向きの取得など）では null のままなので、表示側は
-  /// sessionId ではなくこちらの有無で「日時を出せるか」を判定すること
+  /// ClientNoteRepository が get_my_sessions の結果を差し込んだ経路でだけ入る。
+  /// sessionId があっても差し込まない経路（SessionRepository がセッション側に
+  /// ノートをぶら下げる取得など）や、セッション情報の取得に失敗したときは
+  /// null のままなので、表示側は sessionId ではなくこちらの有無で
+  /// 「日時を出せるか」を判定すること
   @JsonKey(name: 'sessions')
   final LinkedSession? session;
 
@@ -99,7 +101,7 @@ class ClientNote {
 
   /// 紐づくセッションを差し込んだコピーを返す。
   ///
-  /// sessions → client_notes の embed で取ったノートには逆向きの `sessions(...)` が
+  /// セッション側にぶら下げて取ったノート（SessionRepository 経由）には `sessions` が
   /// 入らないため、親セッション側で自分の日時・種別を後から補うのに使う
   /// （SessionModel.sharedNotes 参照）。他のフィールドはそのまま
   ClientNote withSession(LinkedSession session) => ClientNote(
