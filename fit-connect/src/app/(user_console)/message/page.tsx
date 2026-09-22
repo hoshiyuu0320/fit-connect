@@ -26,6 +26,7 @@ import { getMessageById } from '@/lib/supabase/getMessageById';
 import { getMealRecords } from '@/lib/supabase/getMealRecords';
 import { getWeightRecords } from '@/lib/supabase/getWeightRecords';
 import { aggregateDailyNutrition, type DailyNutritionPoint } from '@/lib/nutrition/aggregate';
+import { useTriageBadgeStore } from '@/store/triageBadgeStore';
 import { PanelRightOpen } from 'lucide-react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import type { Client, Message } from '@/types/client'
@@ -137,6 +138,9 @@ function MessageContent() {
             const text = await res.text();
             const data = text ? JSON.parse(text) : {};
             if (res.ok) {
+                // 返信で未返信が解消するので、サイドバー「ダッシュボード」の「今日の対応」のバッジを数え直す
+                // （?clientId= で顧客を切り替えても pathname は変わらず、レイアウトは数え直さないため）
+                void useTriageBadgeStore.getState().refresh();
                 const newCreatedAt = data.created_at || new Date().toISOString();
                 const newMsg: Message = {
                     id: data.id,

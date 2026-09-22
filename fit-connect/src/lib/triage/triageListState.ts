@@ -15,7 +15,11 @@
  * サーバーからも import されうるので、React や 'use client' に依存させない。
  */
 
-import { buildTriageRows, type TriageRowModel } from '@/lib/triage/buildTriageRows'
+import {
+  buildTriageRows,
+  type TriageRowModel,
+  type TriageUnrepliedInput,
+} from '@/lib/triage/buildTriageRows'
 import type { ClientAlert } from '@/types/alert'
 
 /** 最初に出す行数（残りは「すべて表示（N件）」でその場に展開する） */
@@ -188,11 +192,18 @@ export type TriageListView = {
   badgeCount: number
 }
 
+/**
+ * 一覧の表示内容。
+ * unreplied（未返信の顧客と表示時点）を渡すと、未返信の顧客を合流させてスコア順に並べる。
+ * 未返信は操作（対応済み・元に戻す）の対象にしないので reducer の状態には持たず、取得したものをここで渡す
+ * （オーナー決定4: 未返信の消し込みは作らない）
+ */
 export function selectTriageListView(
   state: TriageListState,
-  limit: number = TRIAGE_INITIAL_LIMIT
+  limit: number = TRIAGE_INITIAL_LIMIT,
+  unreplied?: TriageUnrepliedInput
 ): TriageListView {
-  const { rows, badgeClientIds } = buildTriageRows(selectVisibleAlerts(state))
+  const { rows, badgeClientIds } = buildTriageRows(selectVisibleAlerts(state), unreplied)
   return {
     rows,
     displayedRows: state.showAll ? rows : rows.slice(0, limit),

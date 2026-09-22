@@ -342,7 +342,7 @@
 - **サイドバー**: `renderNavItem` を、項目ごとにバッジの値と色を受け取れる形に広げる。「ダッシュボード」に「今日の対応」の顧客数を出す（aria-label「今日の対応 N人」）
   - 値は `triageBadgeStore`（Zustand、persist しない）で持つ
   - 取り直すのは、レイアウトの表示時・pathname の変化・タブに戻ったとき・操作の後
-  - Realtime は使わない（検知は1日1回で、publication も増やさない。横断1-5）
+  - Realtime は使わない（検知は1日1回で、publication も増やさない。横断1-5）。PR2 で未返信を合わせたあとも同じ方針で、/message で返信を送った直後にも取り直す。新着の未返信は次の画面遷移かタブ復帰で反映される
 - **下部のカード**: 'inactive' の組み立てを外し、見出しを「チケット・プラン」に変え、空の状態の文言も直す
 - ヘッダーのベルには触らない（(auth) レイアウトでも描画されている）
 
@@ -398,6 +398,11 @@
   - 最新の未返信が **7日以内** の顧客だけ
   - 削除済みの顧客とのメッセージは clients との JOIN で落ちる
 - 使う索引は `(sender_id, created_at DESC)` と `(receiver_id, created_at DESC)`。新しい索引は要らない
+- **実装で補強した点（2026-09-22、PR2 レビュー後）**
+  - 「返信」はトレーナーとして送ったメッセージ（`sender_type = 'trainer'`）だけ。兼務アカウントが相手の顧客として送った記録投稿で、未返信が消えないようにする
+  - 顧客のメッセージは `isfinite(created_at) AND created_at <= now()` のものだけ数える（messages の INSERT ポリシーは sender_id しか見ないため、未来・無限の日時で未返信が消えなくなる・画面の時間計算が壊れるのを防ぐ）
+  - 「今の担当顧客」の判定は `clients.trainer_id` を信用している。この列を顧客が書き換えられる既存の穴は、RLS の列ガードの別タスクで塞ぐ
+  - 性能: 関数本体で `(SELECT auth.uid())` と書くと計画時に値が分からず、顧客ごとに受信箱全体を走査する計画になった（155ms）。`auth.uid()` を直接書き、返信が無いときの `-infinity` は最後の返信を求めるサブクエリの中で coalesce して、索引が効く形にした（1.3ms）
 
 ### スコア `triageScore`（PR2、Web の純関数）
 - 式はカタログ 2-A の式に上限を付けたもの: `min(未返信の時間, 72) × 2 + open のアラート（high 30 / medium 10）+ open の record_gap の日数（上限14）× 5`
@@ -484,7 +489,7 @@
 ### PR2（9.2）
 
 #### レーンA: Supabase
-1. `supabase/migrations/20260915000000_triage_unreplied.sql`: `get_unreplied_clients_for_trainer()` を契約どおりに作る。`SET search_path = ''`、REVOKE（PUBLIC・anon）、GRANT authenticated、COMMENT
+1. `supabase/migrations/20260922200000_triage_unreplied.sql`（番号は実装時に変更。他セッションの `20260922000000` より後ろに並べるため）: `get_unreplied_clients_for_trainer()` を契約どおりに作る。`SET search_path = ''`、REVOKE（PUBLIC・anon）、GRANT authenticated、COMMENT
 2. `supabase/tests/triage_unreplied_test.sql`
    - (a) トレーナーの最後の送信より後にタグ無しが2件 → 1行（unreplied_since は古い方、count は2）
    - (b) タグ付きしか無い → 0行 / `tags` が NULL → タグ無しとして数える
@@ -516,7 +521,7 @@
 ## 検証
 1. **ローカル**
    - worktree のルートで `supabase db reset`。Docker のスタックは全 worktree で共有しているので、他のセッションとタイミングを合わせる
-   - `docker exec -i supabase_db_fit-connect psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f - < supabase/tests/<file>.sql` で全テスト（既存8本 → PR1 で11本、PR2 で12本）
+   - `docker exec -i supabase_db_fit-connect psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f - < supabase/tests/<file>.sql` で全テスト（既存8本 → PR1 で11本、PR2 で12本（5.6 の権限テストが加わったため実際は PR1 後 12本・PR2 後 13本））
    - 検知のテストは冒頭で alerts と runs を消すので、QA のための手動実行と順番を気にしなくてよい
 2. **テストの判別力**（わざと誤った実装に差し替えて落ちることを見てから戻す）
    - JST の範囲比較を UTC の日付に変える → 境界ケースが落ちる
@@ -551,6 +556,7 @@
 - **未返信からタグ付きメッセージを一律に除く**ので、ワークアウト達成の「💬 感想」や記録に添えた質問は拾えない。将来は「タグ以外の本文があるもの」を含める案
 - **purpose は顧客本人が書き換えられる**ので、diet に変えると減少の重要度が1段下がる（検知は残る）
 - **消し込みを入れない場合**（推奨案）、返信不要のメッセージが最長7日並ぶ
+- **新着の未返信はリアルタイムにはバッジに出ない**（次の画面遷移・タブ復帰・返信送信の後に反映）。見出しに「未返信は H:mm 時点」の取得時刻を出す
 - **既存の DEFINER 関数に穴がある**: `calculate_achievement_rate` / `check_goal_achievement` / `issue_recurring_tickets` は anon から実行でき search_path も未固定（範囲外。別タスクを推奨）
 - **8.4 と重なる**: migration の番号、手順書、000400 の適用順（db push で一緒に当たる）。ローカルの Supabase スタックとメインのチェックアウトも共有。コミット前に lock ファイルや .g.dart が develop から漏れていないか比べる
 - **既存の定義のずれは残る**: 期限間近チケット（14日と7日）、アクティブ（7日と30日）、`getClientListMetrics` の UTC 日付。KPI と「今日の対応」の数字が合わないことがある

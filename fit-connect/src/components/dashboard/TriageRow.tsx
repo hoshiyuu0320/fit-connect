@@ -1,6 +1,6 @@
 import React from 'react'
 import Link from 'next/link'
-import { Check, ChevronDown } from 'lucide-react'
+import { Check, ChevronDown, MessageCircle } from 'lucide-react'
 import { ProfileAvatar } from '@/components/clients/ProfileAvatar'
 import {
   clientMessageHref,
@@ -14,8 +14,13 @@ import {
   detailToggleLabel,
   messageLinkLabel,
   recordLinkLabel,
+  replyLinkLabel,
+  UNREPLIED_DETAIL_TITLE,
+  unrepliedChipLabel,
+  unrepliedDetailNote,
+  unrepliedDetailText,
 } from '@/lib/triage/triageLabels'
-import type { TriageReason, TriageRowModel } from '@/lib/triage/buildTriageRows'
+import type { TriageReason, TriageRowModel, TriageUnreplied } from '@/lib/triage/buildTriageRows'
 import type { AlertSeverity } from '@/types/alert'
 
 // 「今日の対応」の操作要素の見た目（TriageList / TriageSection でも使う）
@@ -90,6 +95,32 @@ function TriageReasonDetail({ row, reason, busy, onAcknowledge }: TriageReasonDe
   )
 }
 
+/**
+ * 行を開いたときの未返信（詳細文だけ）。
+ * 未返信には「対応済み」を置かない（オーナー決定4: 消し込みは作らない。返信すると次の取り直しで外れる）。
+ * open のアラートもある行（hasAlerts）は、返信しても行はアラートの分で残るので、注記を分ける
+ */
+function TriageUnrepliedDetail({
+  unreplied,
+  hasAlerts,
+}: {
+  unreplied: TriageUnreplied
+  hasAlerts: boolean
+}) {
+  return (
+    <li className="rounded-md border border-[#E2E8F0] bg-[#F8FAFC] p-4">
+      <p className="text-sm font-semibold text-[#0F172A]">{UNREPLIED_DETAIL_TITLE}</p>
+      <p className="mt-2 text-sm leading-6 text-[#475569] [overflow-wrap:anywhere]">
+        {unrepliedDetailText(unreplied)}
+      </p>
+      <p className="mt-1 text-xs text-[#475569]">{unrepliedDetailNote(hasAlerts)}</p>
+    </li>
+  )
+}
+
+const REASON_CHIP =
+  'inline-flex items-center gap-1 rounded border border-[#E2E8F0] bg-[#F8FAFC] px-2 py-0.5 text-xs font-medium text-[#475569]'
+
 type TriageRowProps = {
   row: TriageRowModel
   expanded: boolean
@@ -105,7 +136,10 @@ type TriageRowProps = {
 
 /**
  * 「今日の対応」の1行（1顧客）。表示専用。
- * 行全体はリンクにせず、顧客名・「記録を見る」・「メッセージ」・開閉ボタンを横に並べる（操作要素を入れ子にしない）。
+ * 行全体はリンクにせず、顧客名・主ボタン・副ボタン・開閉ボタンを横に並べる（操作要素を入れ子にしない）。
+ * - 未返信がある行: 主ボタンは「返信する」（/message?clientId=）、副ボタンは「記録を見る」
+ * - 未返信が無い行: 主ボタンは「記録を見る」、副ボタンは「メッセージ」（PR1 のまま）
+ * - 未返信の時間は、行を組み立てた表示時点で数えた値（row.unreplied.elapsedHours）を出すだけで、ここでは計算しない
  */
 export function TriageRow({
   row,
@@ -117,6 +151,7 @@ export function TriageRow({
   onAcknowledge,
 }: TriageRowProps) {
   const name = clientHonorific(row.clientName)
+  const unreplied = row.unreplied
 
   return (
     <li className="px-4 py-4 sm:px-6">
@@ -140,15 +175,20 @@ export function TriageRow({
                   {name}
                 </Link>
               </h3>
-              <SeverityBadge severity={row.severity} />
+              {/* 未返信だけの行（severity が null）には重要度を出さない */}
+              {row.severity !== null && <SeverityBadge severity={row.severity} />}
             </div>
             {/* role="list": Tailwind の list-style:none で Safari / VoiceOver がリストと読まなくなるため明示する */}
-            <ul role="list" aria-label="検知した理由" className="mt-2 flex flex-wrap gap-2">
+            {/* 未返信を先頭に置く（主ボタンの「返信する」と対応させる）。アラートは重要度の高い順 */}
+            <ul role="list" aria-label="対応が必要な理由" className="mt-2 flex flex-wrap gap-2">
+              {unreplied && (
+                <li className={REASON_CHIP}>
+                  <MessageCircle aria-hidden="true" className="h-3 w-3 flex-shrink-0" />
+                  {unrepliedChipLabel(unreplied)}
+                </li>
+              )}
               {row.reasons.map((reason) => (
-                <li
-                  key={reason.alertId}
-                  className="rounded border border-[#E2E8F0] bg-[#F8FAFC] px-2 py-0.5 text-xs font-medium text-[#475569]"
-                >
+                <li key={reason.alertId} className={REASON_CHIP}>
                   {reason.description.chip}
                 </li>
               ))}
@@ -158,20 +198,41 @@ export function TriageRow({
 
         {/* 操作 */}
         <div className="flex flex-wrap items-center gap-2 md:flex-shrink-0">
-          <Link
-            href={clientRecordHref(row.clientId, row.recordTab)}
-            aria-label={recordLinkLabel(row.clientName)}
-            className={TRIAGE_PRIMARY_BUTTON}
-          >
-            記録を見る
-          </Link>
-          <Link
-            href={clientMessageHref(row.clientId)}
-            aria-label={messageLinkLabel(row.clientName)}
-            className={TRIAGE_SECONDARY_BUTTON}
-          >
-            メッセージ
-          </Link>
+          {unreplied ? (
+            <>
+              <Link
+                href={clientMessageHref(row.clientId)}
+                aria-label={replyLinkLabel(row.clientName)}
+                className={TRIAGE_PRIMARY_BUTTON}
+              >
+                返信する
+              </Link>
+              <Link
+                href={clientRecordHref(row.clientId, row.recordTab)}
+                aria-label={recordLinkLabel(row.clientName)}
+                className={TRIAGE_SECONDARY_BUTTON}
+              >
+                記録を見る
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link
+                href={clientRecordHref(row.clientId, row.recordTab)}
+                aria-label={recordLinkLabel(row.clientName)}
+                className={TRIAGE_PRIMARY_BUTTON}
+              >
+                記録を見る
+              </Link>
+              <Link
+                href={clientMessageHref(row.clientId)}
+                aria-label={messageLinkLabel(row.clientName)}
+                className={TRIAGE_SECONDARY_BUTTON}
+              >
+                メッセージ
+              </Link>
+            </>
+          )}
           <button
             type="button"
             id={toggleId}
@@ -193,6 +254,9 @@ export function TriageRow({
       {/* 詳細（閉じている間も aria-controls の先として残す） */}
       <div id={detailId} hidden={!expanded} className="mt-4 md:pl-[52px]">
         <ul role="list" className="space-y-3">
+          {unreplied && (
+            <TriageUnrepliedDetail unreplied={unreplied} hasAlerts={row.reasons.length > 0} />
+          )}
           {row.reasons.map((reason) => (
             <TriageReasonDetail
               key={reason.alertId}

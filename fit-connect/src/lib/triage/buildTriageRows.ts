@@ -1,47 +1,40 @@
 /**
  * 「今日の対応」の行を組み立てる純関数。
  *
- * - 1行 = 1顧客。open のアラートを顧客ごとにまとめ、理由（アラート）を並べる
- * - 行の並び順: 最大の重要度 → surfaced_on の新しい順 → 顧客名 → 顧客 ID（安定させるため）
- *   行の重要度・surfaced_on は、行の先頭の理由（最も重要度が高く、その中で最も新しいもの）で決める
- * - サイドバー「ダッシュボード」のバッジは「今日の対応」に並ぶ顧客の数。
- *   数え方をここ1箇所に置き、getTriageBadgeCount と画面の見出しで同じ定義を使う
- *   （PR2 で未返信の顧客を合流させるときもここを広げる）
+ * - 1行 = 1顧客。open のアラート（9.1）と未返信（9.2）を顧客ごとにまとめる。
+ *   未返信だけの顧客も1行にする（その行の reasons は空、severity は null）
+ * - 行の並び順は優先度スコアの降順（lib/triage/triageScore.ts。同点のときの並びもそちら）
+ * - 行の中の理由（アラート）は、重要度の高い順 → surfaced_on の新しい順
+ * - サイドバー「ダッシュボード」のバッジは「今日の対応」に並ぶ顧客の数
+ *   （open のアラートがある顧客と未返信の顧客の和集合）。数え方をここ1箇所に置き、
+ *   getTriageBadgeCount と画面の見出しで同じ定義を使う
  * - サーバーからも import されうるので、React や 'use client' に依存させない
  */
 
+import { describeAlert, normalizeSeverity, severityRank } from '@/lib/alerts/describeAlert'
 import {
-  describeAlert,
-  normalizeSeverity,
-  severityRank,
-  type AlertDescription,
-  type AlertRecordTab,
-} from '@/lib/alerts/describeAlert'
-import type { AlertSeverity, ClientAlert } from '@/types/alert'
+  compareTriagePriority,
+  triageScore,
+  unrepliedElapsedHours,
+  type TriageSortKey,
+} from '@/lib/triage/triageScore'
+import type { ClientAlert } from '@/types/alert'
+import type {
+  TriageReason,
+  TriageRowModel,
+  TriageUnreplied,
+  UnrepliedClient,
+} from '@/types/triage'
 
-/** 行の中の理由（アラート1件） */
-export type TriageReason = {
-  alertId: string
-  alertType: string
-  severity: AlertSeverity
-  surfacedOn: string
-  firstDetectedOn: string
-  description: AlertDescription
-}
+// 行モデルの型は types/triage.ts に置く（PR1 の import 先を変えずに使えるよう、ここからも出す）
+export type { TriageReason, TriageRowModel, TriageUnreplied } from '@/types/triage'
 
-/** 「今日の対応」の1行（1顧客） */
-export type TriageRowModel = {
-  clientId: string
-  clientName: string
-  profileImageUrl: string | null
-  /** 行の重要度（先頭の理由の重要度 = 顧客の最大の重要度） */
-  severity: AlertSeverity
-  /** 先頭の理由の surfaced_on（並び順に使う） */
-  surfacedOn: string
-  /** 重要度の高い順 → surfaced_on の新しい順 */
-  reasons: TriageReason[]
-  /** 主ボタン「記録を見る」の遷移先タブ（先頭の理由のタブ） */
-  recordTab: AlertRecordTab
+/** 未返信の顧客と、未返信の時間を数える表示時点 */
+export type TriageUnrepliedInput = {
+  /** getUnrepliedClients の結果 */
+  unreplied: readonly UnrepliedClient[]
+  /** 表示時点（未返信の時間をここから数える。テストで固定できるよう引数で受ける） */
+  now: Date
 }
 
 export type TriageRowsResult = {
@@ -64,63 +57,128 @@ function compareReasons(a: TriageReason, b: TriageReason): number {
   )
 }
 
-/** 最大の重要度 → surfaced_on の新しい順 → 顧客名 → 顧客 ID */
-function compareRows(a: TriageRowModel, b: TriageRowModel): number {
-  return (
-    severityRank(b.severity) - severityRank(a.severity) ||
-    compareAsc(b.surfacedOn, a.surfacedOn) ||
-    a.clientName.localeCompare(b.clientName, 'ja') ||
-    compareAsc(a.clientId, b.clientId)
-  )
+function sortKeyOf(row: TriageRowModel): TriageSortKey {
+  return {
+    score: row.score,
+    unrepliedSince: row.unreplied?.since ?? null,
+    firstDetectedOn: row.firstDetectedOn,
+    clientName: row.clientName,
+    clientId: row.clientId,
+  }
 }
 
 /**
- * バッジに数える顧客 ID の集合。
- * PR1 は open のアラートがある顧客（getOpenAlerts / getTriageBadgeCount はどちらも open だけを取る）。
+ * バッジに数える顧客 ID の集合（open のアラートがある顧客と未返信の顧客の和集合）。
+ * 渡すアラートは open のものだけにする（getOpenAlerts / getTriageBadgeCount はどちらも open だけを取る）。
  */
 export function collectTriageClientIds(
-  alerts: ReadonlyArray<Pick<ClientAlert, 'client_id'>>
+  alerts: ReadonlyArray<Pick<ClientAlert, 'client_id'>>,
+  unreplied: ReadonlyArray<Pick<UnrepliedClient, 'client_id'>> = []
 ): Set<string> {
-  return new Set(alerts.map((alert) => alert.client_id))
+  const ids = new Set(alerts.map((alert) => alert.client_id))
+  for (const client of unreplied) ids.add(client.client_id)
+  return ids
 }
 
-/** open のアラートから「今日の対応」の行を作る。open 以外の行が混ざっていても数えない */
-export function buildTriageRows(alerts: readonly ClientAlert[]): TriageRowsResult {
+/** 未返信の行モデル。未返信の時間は表示時点 now から数える（スコアと同じ関数） */
+function toUnrepliedModel(client: UnrepliedClient, now: Date): TriageUnreplied {
+  return {
+    since: client.unreplied_since,
+    latestAt: client.latest_unreplied_at,
+    count: client.unreplied_count,
+    elapsedHours: unrepliedElapsedHours(client.unreplied_since, now),
+  }
+}
+
+type ClientGroup = {
+  alerts: ClientAlert[]
+  reasons: TriageReason[]
+  /** 未返信と、未返信の時間を数える表示時点 */
+  unreplied: { client: UnrepliedClient; now: Date } | null
+}
+
+/**
+ * open のアラートと未返信の顧客から「今日の対応」の行を作る。
+ * - open 以外のアラートが混ざっていても、行にもスコアにもバッジにも入れない
+ * - unrepliedInput を省くと、未返信の無い一覧になる（アラートだけのスコアで並べる）
+ * - 同じ顧客の未返信が2件来たら最初のものを使う（RPC は顧客ごとに1行）
+ */
+export function buildTriageRows(
+  alerts: readonly ClientAlert[],
+  unrepliedInput?: TriageUnrepliedInput
+): TriageRowsResult {
   const openAlerts = alerts.filter((alert) => alert.status === 'open')
-  const byClient = new Map<string, { alert: ClientAlert; reasons: TriageReason[] }>()
+  const groups = new Map<string, ClientGroup>()
+  const groupOf = (clientId: string): ClientGroup => {
+    let group = groups.get(clientId)
+    if (!group) {
+      group = { alerts: [], reasons: [], unreplied: null }
+      groups.set(clientId, group)
+    }
+    return group
+  }
 
   for (const alert of openAlerts) {
-    const reason: TriageReason = {
+    const group = groupOf(alert.client_id)
+    group.alerts.push(alert)
+    group.reasons.push({
       alertId: alert.id,
       alertType: alert.alert_type,
       severity: normalizeSeverity(alert.severity),
       surfacedOn: alert.surfaced_on,
       firstDetectedOn: alert.first_detected_on,
       description: describeAlert(alert),
-    }
-    const group = byClient.get(alert.client_id)
-    if (group) {
-      group.reasons.push(reason)
-    } else {
-      byClient.set(alert.client_id, { alert, reasons: [reason] })
+    })
+  }
+  if (unrepliedInput) {
+    for (const client of unrepliedInput.unreplied) {
+      const group = groupOf(client.client_id)
+      if (group.unreplied === null) group.unreplied = { client, now: unrepliedInput.now }
     }
   }
 
   const rows: TriageRowModel[] = []
-  for (const [clientId, { alert, reasons }] of byClient) {
-    reasons.sort(compareReasons)
-    const top = reasons[0]
+  for (const [clientId, group] of groups) {
+    const reasons = group.reasons.sort(compareReasons)
+    const top = reasons.length > 0 ? reasons[0] : null
+    // 顧客名・アバターはアラート（clients の埋め込み）を優先し、未返信だけの行は RPC の値を使う
+    const firstAlert = group.alerts.length > 0 ? group.alerts[0] : null
+    const unreplied = group.unreplied?.client ?? null
+    const unrepliedModel: TriageUnreplied | null =
+      group.unreplied === null ? null : toUnrepliedModel(group.unreplied.client, group.unreplied.now)
+    const firstDetectedOn = reasons.reduce<string | null>(
+      (oldest, reason) =>
+        oldest === null || compareAsc(reason.firstDetectedOn, oldest) < 0
+          ? reason.firstDetectedOn
+          : oldest,
+      null
+    )
+
     rows.push({
       clientId,
-      clientName: alert.client_name,
-      profileImageUrl: alert.client_profile_image_url,
-      severity: top.severity,
-      surfacedOn: top.surfacedOn,
+      clientName: firstAlert?.client_name ?? unreplied?.client_name ?? '',
+      profileImageUrl: firstAlert
+        ? firstAlert.client_profile_image_url
+        : (unreplied?.profile_image_url ?? null),
+      severity: top?.severity ?? null,
+      surfacedOn: top?.surfacedOn ?? null,
+      firstDetectedOn,
       reasons,
-      recordTab: top.description.tab,
+      unreplied: unrepliedModel,
+      recordTab: top?.description.tab ?? 'summary',
+      score: triageScore({
+        alerts: group.alerts,
+        unreplied:
+          group.unreplied === null
+            ? null
+            : { since: group.unreplied.client.unreplied_since, now: group.unreplied.now },
+      }),
     })
   }
-  rows.sort(compareRows)
+  rows.sort((a, b) => compareTriagePriority(sortKeyOf(a), sortKeyOf(b)))
 
-  return { rows, badgeClientIds: collectTriageClientIds(openAlerts) }
+  return {
+    rows,
+    badgeClientIds: collectTriageClientIds(openAlerts, unrepliedInput?.unreplied ?? []),
+  }
 }
