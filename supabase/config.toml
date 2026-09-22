@@ -88,7 +88,9 @@ enabled = false
 
 # Edge Functions の認証設定。
 # いずれも verify_jwt=false（ゲートウェイで JWT 検証しない）。
-# - parse-message-tags: DB Webhook から呼ばれ user JWT を持たないため必須で false
+# - parse-message-tags: DB トリガー call_parse_message_tags から pg_net で呼ばれ、
+#   Vault の secret キー（JWT ではない）を apikey ヘッダーで受けるため false。
+#   関数内で _shared/service_auth.ts により照合する
 # - estimate-meal-nutrition: 関数内で Authorization ヘッダの JWT を自前検証するため false
 # - delete-account: 関数内で Authorization ヘッダの JWT を自前検証するため false
 #   （削除対象は JWT の uid のみ。ボディでの uid 指定は受け付けない）
