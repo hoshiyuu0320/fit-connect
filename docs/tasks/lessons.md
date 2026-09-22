@@ -399,3 +399,36 @@
 - 「アプリからデータが届いた日」は、Mobile の睡眠 upsert が同期のたびに約30行の `updated_at` を更新することにも頼っている。weight / sleep を一括 UPDATE する migration を流すと全員が「今日同期した」ように見え、休眠中の顧客が監視対象に戻って「記録なし」が大量に出る。流すときはトリガーを一時的に無効にするか、前後で検知を止める
 - 兼務アカウント（トレーナーでもあり、別トレーナーの顧客でもある）の痕跡は、`sender_type` / `receiver_type` で分けないと混ざる
 
+
+## parse-message-tags の本番 URL 直書きと未認証（フェーズ5.7、2026-09-22）で得た知見
+
+### DB トリガーに本番の URL を直書きすると、migration を流したすべての DB が本番を呼ぶ
+
+- **症状**: 本番の `notification_logs` に、Seed.sql のプレースホルダー顧客（`11111111-…` / `22222222-…`）宛ての `kind='message'`・`status='skipped'` が 18 行あった。ローカル・隔離スタックの `supabase start` / `db reset`（Seed.sql のメッセージ投入）が原因
+- **原因**: `call_parse_message_tags()` が `https://<本番 ref>.supabase.co/functions/v1/parse-message-tags` を直書きしていた。コミットされたメッセージの INSERT / content UPDATE は、どの DB で起きても本番の関数へ送られる。本番の関数は payload を信用して動くので、たまたまプレースホルダー UUID が本番に無かったから記録と push が作られなかっただけ（ロールバックしたトランザクションは pg_net のキュー行ごと消えるので送られない）
+- **対策**: 送信先は環境ごとの Vault（`project_url`）から組み立て、**無ければ送らない**（WARNING だけ）。フォールバック URL は持たない。`net.http_post` は url が NULL だと `net.http_request_queue` の NOT NULL 違反でメッセージの INSERT 自体を落とすので、skip 分岐は「親切」ではなく必須
+- **教訓**: トリガー・cron から外部 HTTP を呼ぶ SQL に**環境固有の値を直書きしない**。「その migration を空の DB に流したら、どこへ何が飛ぶか」をレビュー観点に入れる。検証は「Vault 空で Seed.sql をコミットしても pg_net の要求 0 件・応答 0 件」で確かめた
+
+### Vault を読むトリガーは、トリガー関数そのものを SECURITY DEFINER にする
+
+- トリガー関数は INSERT したロール（authenticated）の権限で動くので、Vault を読むには DEFINER が要る。「secret を返す DEFINER ヘルパー」や「payload を受けて送る DEFINER ヘルパー」に分けると、INVOKER のトリガーから呼ぶために authenticated へ EXECUTE を付けざるを得ず、PostgREST RPC から secret の取得・任意 payload の送信ができてしまう
+- トリガー関数はトリガー以外から呼べない（`trigger functions can only be called as triggers`）うえ、**発火時に EXECUTE は検査されない**（検査は CREATE TRIGGER の時だけ）。なのでトリガー関数を DEFINER にして EXECUTE を全ロールから剥がすのが最小権限になる。テストで「authenticated に EXECUTE が無いのにトリガーが発火する」ことまで確かめた
+
+### Webhook 型の Edge Function は payload を「通知」と割り切り、DB から取り直す。ただし DB の値も「誰が書けるか」次第
+
+- 認証（`_shared/service_auth.ts` で apikey を照合）を入れても、payload の sender_id / content / created_at を使い続けると「secret を持つ呼び出し元が間違った値を送る」事故に弱い。type と record.id だけを使い、行を service role で取り直す（jsonb カラムが payload に入らない罠の対策とも一致）
+- DB の sender_id が信用できるのは、それを**書ける経路が絞られている間だけ**。INSERT は `WITH CHECK sender_id = auth.uid()` で固定されるが、受信者用の UPDATE ポリシーは列を制限しておらず、受信者が sender_id / content を書き換えて on_message_update を起こせる（`fix/rls-column-write-guards` で塞ぐ前提）。記録の作成・削除は `sender_type = 'client'` のときだけにし、トレーナー発のメッセージは通知だけにした
+
+### ローカルで secret キー認証の Edge Function を通す方法（CLI v2.75）
+
+- ローカルの CLI は edge runtime に `SUPABASE_SECRET_KEYS` / `SUPABASE_SECRET_KEY` を渡さない（`SUPABASE_` で始まる env は functions の env ファイルからも弾かれる）。代わりにローカルの kong が `apikey: <ローカルの sb_secret>`（Authorization なし）を `Authorization: Bearer <ローカルの service_role JWT>` に書き換えるので、`service_auth.ts` の互換経路で通る
+- DB コンテナから見たローカル API は `http://kong:8000`（スタックの Docker ネットワーク内のエイリアス。project_id / ポートによらず同じ）。ローカルの Vault に `project_url = http://kong:8000` と `secret_key = supabase status の Secret` を入れれば、トリガー → pg_net → 関数 → DB を通しで検証できる（手順: `2026-07-10-cron-vault-setup.md` §1-3）
+
+### 並行ブランチと migration のタイムスタンプが衝突する
+
+- 同じ日に別セッションの worktree（`fix/rls-column-write-guards`）が**未コミットの** `20260922000000_*.sql` を作っていた。同じ version だと後から push する側が schema_migrations の主キーで衝突する。作成前に `git worktree list` の各 worktree の `supabase/migrations/` も覗き、空いている番号（今回は 000100）を使う。どちらが先に push されても、後の側は引き渡し直前に `migration list --linked` と `db push --dry-run` で並びを確認する（5.6 の教訓と同じ）
+
+### 隔離スタックは修正が develop に入るまで seed を無効にする
+
+- 修正前の migration で起動した隔離スタックは、`supabase start` / `db reset` の seed 投入だけで本番を叩く。隔離スタックの scratch の config.toml に `[db.seed] enabled = false` を入れ、reset は `--no-seed` で行った。検証時点で他セッションの隔離スタック（`fit-connect-triage` / `fit-connect-colguard`）も起動していたので、18 行より増えている可能性がある（削除文は user_id で絞るので件数によらず有効）
+- 負の対照: 隔離スタックの edge runtime に旧 index.ts を戻し、認証なしで偽 payload を POST すると 200 で `recorded_at = 2000-01-01` の体重記録が作られた。新しい関数では同じ POST が 401

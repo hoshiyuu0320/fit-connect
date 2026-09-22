@@ -5,7 +5,7 @@
  * 関数側は verify_jwt=false にしてここで照合する（Supabase 公式の新 API キー移行ガイドの方針）。
  * - SUPABASE_SECRET_KEYS: 名前→キーの JSON オブジェクト（例 {"default":"sb_secret_..."}）
  * - SUPABASE_SECRET_KEY: キー1つの文字列（ローカルの CLI が渡すことがある）
- * auto-skip-workouts / cleanup-ai-images から利用する。
+ * auto-skip-workouts / cleanup-ai-images / send-session-reminders / parse-message-tags から利用する。
  */
 
 /**

@@ -2,7 +2,7 @@
 
 **作成日**: 2026-07-10
 **対象**: プロジェクトオーナー（1回きりの手動作業）
-**関連 migration**: `supabase/migrations/20260710020000_codify_cron_jobs.sql` / `20260829000300_cleanup_ai_images.sql` / `20260912000000_cron_use_secret_key.sql` / `20260913000000_session_reminder.sql` / `20260913000100_session_reminder_cron_target_date.sql` / `20260914000000_client_alerts.sql` / `20260914000100_client_activity_snapshot.sql` / `20260914000200_client_alert_detection.sql`
+**関連 migration**: `supabase/migrations/20260710020000_codify_cron_jobs.sql` / `20260829000300_cleanup_ai_images.sql` / `20260912000000_cron_use_secret_key.sql` / `20260913000000_session_reminder.sql` / `20260913000100_session_reminder_cron_target_date.sql` / `20260914000000_client_alerts.sql` / `20260914000100_client_activity_snapshot.sql` / `20260914000200_client_alert_detection.sql` / `20260922000100_secure_parse_message_tags_webhook.sql`（messages トリガー。§冒頭の 2026-09-22 追加の注記）
 
 `auto-skip-workouts` / `cleanup-ai-images` / `send-session-reminders` の cron ジョブは migration で「無効(inactive)状態」で登録されます。
 実際に動かすには、以下の **(1) Vault シークレット登録** と **(2) ジョブの有効化** が必要です。
@@ -19,6 +19,14 @@
 > 旧 service_role キーを `Authorization: Bearer` で送る方式は、本番の関数側の値と一致せず 401 になっていた
 > （旧キーは 2026 年末で廃止予定でもある）。cron は Vault の `secret_key` を `apikey` ヘッダーで送り、
 > 関数は `supabase/functions/_shared/service_auth.ts` で `SUPABASE_SECRET_KEYS` と照合する（verify_jwt = false）。
+
+> **2026-09-22 追加: メッセージのトリガーも同じ Vault の 2 件を使う。**
+> `20260922000100_secure_parse_message_tags_webhook.sql` 以降、messages のトリガー関数 `call_parse_message_tags()` は
+> 本番 URL の直書きをやめ、`project_url` + `/functions/v1/parse-message-tags` へ `secret_key` を `apikey` ヘッダーで送る。
+> **どちらかが無いと送信せず WARNING（`PARSE_MESSAGE_TAGS_SKIPPED`）を出すだけ**なので、本番で `project_url` / `secret_key` を
+> 削除・リネームすると、cron に加えて**メッセージのタグ解析・記録作成・メッセージ通知も黙って止まる**。
+> secret キーをローテーションするときは、Vault の `secret_key` を先に新しい値へ更新してから古いキーを失効させる。
+> ローカルスタックは Vault が空なので呼ばない（= Seed.sql 等のメッセージが本番へ送られない）。ローカルで動かす手順は §1-3。
 
 ---
 
@@ -53,6 +61,26 @@ select name, created_at from vault.secrets order by created_at;
 -- 'project_url' と 'secret_key' の2行が出ればOK
 -- （旧方式の 'service_role_key' が残っていても動作に影響はない。不要なら削除してよい）
 ```
+
+### 1-3. ローカルスタックで parse-message-tags を動かす場合（任意・ローカル専用）
+
+ローカルの Vault は空で、その状態ではメッセージを保存しても Edge Function は呼ばれない（WARNING のみ）。
+ローカルでタグ → 記録作成まで通したいときだけ、**そのローカルスタックの DB に**次の 2 件を登録する
+（2026-09-22 に隔離スタックで確認済み）。**本番の URL・キーは絶対に入れない**。
+
+```sql
+-- project_url: ローカルスタックの Docker ネットワーク内の API ゲートウェイ（kong）の別名。
+--              project_id / ポートの設定によらず同じ値でよい
+select vault.create_secret('http://kong:8000', 'project_url');
+-- secret_key: `supabase status` の Secret（sb_secret_...。ローカル既定のキー）
+select vault.create_secret('<supabase status の Secret>', 'secret_key');
+```
+
+- ローカルの CLI（v2.75）は edge runtime に `SUPABASE_SECRET_KEYS` を渡さない。代わりにローカルの kong が
+  `apikey: <ローカルの sb_secret>` を `Authorization: Bearer <ローカルの service_role JWT>` に書き換えるので、
+  `_shared/service_auth.ts` の互換経路（旧 Bearer service_role）で通る。互換経路を削除したら（旧キー廃止の 2026 年末予定）
+  この手順も見直す
+- 戻すときは `delete from vault.secrets where name in ('project_url', 'secret_key');`（ローカルの DB でのみ）
 
 ---
 

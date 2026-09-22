@@ -1,29 +1,91 @@
 // @ts-nocheck
+// messages の INSERT / UPDATE（content 変更）を受けて、タグ付きメッセージから
+// weight_records / meal_records / exercise_records を作成し、INSERT 時は受信者へプッシュ通知する。
+// - 呼び出し元は DB トリガー public.call_parse_message_tags（pg_net）のみ。
+//   Vault の secret キー（sb_secret_...）を apikey ヘッダーで送ってくる。
+// - config.toml で verify_jwt = false。認証は _shared/service_auth.ts（isServiceRequest）で行う。
+// - payload は「メッセージ <id> が INSERT/UPDATE された」という通知としてだけ扱い、
+//   各フィールドは service role で messages から取り直す（payload の値は信用しない）。
+// - 記録の作成・削除は送信者が顧客（sender_type = 'client'）のメッセージのときだけ行う。
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendNotification } from '../_shared/push.ts'
+import { isServiceRequest } from '../_shared/service_auth.ts'
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+function jsonResponse(status: number, body: unknown): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  })
+}
 
 Deno.serve(async (req) => {
+  // body を読む前に呼び出し元を認証する（ヘッダーの値はログに出さない）
+  if (!isServiceRequest(req)) {
+    console.warn('Unauthorized request rejected', {
+      hasApiKey: req.headers.has('apikey'),
+      hasAuthorization: req.headers.has('Authorization'),
+    })
+    return jsonResponse(401, { error: 'Unauthorized' })
+  }
+
   try {
-    const payload = await req.json()
+    let payload
+    try {
+      payload = await req.json()
+    } catch {
+      return jsonResponse(400, { error: 'Invalid JSON' })
+    }
 
-    // Check if this is a webhook payload (INSERT or UPDATE on messages)
-    if ((payload.type === 'INSERT' || payload.type === 'UPDATE') && payload.table === 'messages') {
-      const message = payload.record
-      // Skip if message is from system or doesn't have content
-      if (!message.content) {
-        return new Response(JSON.stringify({ skipped: true }), { headers: { 'Content-Type': 'application/json' } })
-      }
+    // messages の INSERT / UPDATE 以外は処理しない
+    if (!((payload?.type === 'INSERT' || payload?.type === 'UPDATE') && payload?.table === 'messages')) {
+      return jsonResponse(200, { skipped: true, reason: 'unsupported_event' })
+    }
 
-      // Initialize Supabase Client with Service Role Key
-      const supabaseUrl = Deno.env.get('SUPABASE_URL')
-      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    // payload から使うのはイベント種別とメッセージ ID だけ
+    const messageId = payload.record?.id
+    if (typeof messageId !== 'string' || !UUID_RE.test(messageId)) {
+      return jsonResponse(400, { error: 'Invalid payload' })
+    }
 
-      if (!supabaseUrl || !supabaseKey) {
-        throw new Error('Missing Supabase environment variables')
-      }
+    // Initialize Supabase Client with Service Role Key
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
-      const supabase = createClient(supabaseUrl, supabaseKey)
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Missing Supabase environment variables')
+    }
 
+    const supabase = createClient(supabaseUrl, supabaseKey)
+
+    // メッセージ本体を DB から取り直す。以降は payload ではなくこの行の値だけを使う
+    // （webhook payload に jsonb カラムが含まれない罠の対策も兼ねる: lessons.md 参照）
+    const { data: message, error: fetchErr } = await supabase
+      .from('messages')
+      .select('id, content, sender_id, sender_type, receiver_id, receiver_type, created_at, image_urls, metadata, tags')
+      .eq('id', messageId)
+      .maybeSingle()
+    if (fetchErr) {
+      throw new Error(`Failed to fetch message: ${fetchErr.message}`)
+    }
+    if (!message) {
+      return jsonResponse(200, { skipped: true, reason: 'message_not_found' })
+    }
+
+    // Skip if message is from system or doesn't have content
+    if (!message.content) {
+      return new Response(JSON.stringify({ skipped: true }), { headers: { 'Content-Type': 'application/json' } })
+    }
+
+    // 記録は送信者本人の健康データ（client_id = sender_id）なので、顧客が送ったメッセージだけを処理する。
+    // トレーナーのメッセージでトレーナーの ID に記録を作ったり、既存記録を消したりしてはいけない。
+    // INSERT では RLS（WITH CHECK sender_id = auth.uid()）で sender_id が送信者本人に固定される。
+    // ただし UPDATE は 2026-09-22 時点で、受信者用ポリシー "Receivers can mark messages as read"
+    // （USING / WITH CHECK receiver_id = auth.uid()）が列を制限しておらず、受信者が sender_id /
+    // sender_type / content を書き換えて on_message_update を発火させられる。この経路は
+    // ブランチ fix/rls-column-write-guards の列単位の書き込みガードで塞ぐ（本変更の対象外）。
+    if (message.sender_type === 'client') {
       // If UPDATE, delete existing records linked to this message
       if (payload.type === 'UPDATE') {
         console.log('UPDATE event: Deleting existing records for message:', message.id)
@@ -44,19 +106,6 @@ Deno.serve(async (req) => {
         })
       }
 
-      // 0. Re-fetch full row (webhook payload may omit columns like tags/metadata)
-      const { data: fullRow, error: fetchErr } = await supabase
-        .from('messages')
-        .select('metadata, tags')
-        .eq('id', message.id)
-        .maybeSingle()
-      if (fetchErr) {
-        console.error('Failed to re-fetch message row:', fetchErr)
-      } else if (fullRow) {
-        message.metadata = fullRow.metadata
-        message.tags = fullRow.tags
-      }
-
       // 1. Determine tag — 送信側付与のtagsを正準とし、無ければcontentから解析
       const tagData = parseTagFromTags(message.tags, message.content) ?? parseTag(message.content)
 
@@ -73,7 +122,7 @@ Deno.serve(async (req) => {
 
         // 3. Create specific record based on category
         const commonData = {
-          client_id: message.sender_id, // Assuming sender is the client
+          client_id: message.sender_id, // sender_type = 'client' のときだけここに来る
           source: 'message',
           message_id: message.id,
           recorded_at: message.created_at,
@@ -100,11 +149,13 @@ Deno.serve(async (req) => {
           console.log('UPDATE: No tags found, existing records were deleted')
         }
       }
+    } else {
+      console.log('Sender is not a client, skipping record processing:', message.sender_type)
+    }
 
-      // INSERT時のみメッセージ通知を送信（UPDATE時は送信しない）
-      if (payload.type === 'INSERT') {
-        await sendMessageNotification(supabase, message)
-      }
+    // INSERT時のみメッセージ通知を送信（UPDATE時は送信しない）。送信者種別を問わず送る
+    if (payload.type === 'INSERT') {
+      await sendMessageNotification(supabase, message)
     }
 
     return new Response(JSON.stringify({ success: true }), {
