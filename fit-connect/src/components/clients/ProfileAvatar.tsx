@@ -1,5 +1,6 @@
 'use client'
 
+import { useCallback, useState } from 'react'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { useStorageUrl } from '@/lib/supabase/signedStorageUrls'
@@ -27,9 +28,38 @@ const genderColors = {
 // 性別を渡さないときの色。赤・黄を重要度の表示に使う画面で、アバターの色と紛れないようにする
 const neutralColors = 'bg-[#F1F5F9] text-[#475569]'
 
+// 読み込み失敗を警告済みのホスト。一覧で同じホストの画像がまとめて失敗してもコンソールを埋めないよう、ホスト単位で1回だけ出す
+const warnedAvatarHosts = new Set<string>()
+
+/**
+ * アバター画像の読み込み失敗を console.warn する（ホスト単位で1回のみ）。
+ * 署名URLはクエリにトークンを含むため、URL全体は出さずホスト名だけを出す。
+ */
+export function warnAvatarLoadFailure(url: string): void {
+  let host = '不明'
+  try {
+    host = new URL(url).host
+  } catch {
+    // URL として解釈できない値はホスト不明のまま出す
+  }
+  if (warnedAvatarHosts.has(host)) return
+  warnedAvatarHosts.add(host)
+  console.warn(`アバター画像の読み込みに失敗したためイニシャル表示に切り替えました（ホスト: ${host}）`)
+}
+
 export function ProfileAvatar({ client, size = 'md', className }: ProfileAvatarProps) {
   // 値はパス or フルURL（レガシー）の両対応。署名URLへ解決してから表示する
   const avatarUrl = useStorageUrl(client.profile_image_url, 'client-avatars')
+
+  // 読み込みに失敗したURL。avatarUrl が変われば（署名URLの再発行・写真の差し替え）改めて画像の表示を試みる
+  const [failedSrc, setFailedSrc] = useState<string | null>(null)
+
+  // next/image は onError の参照が変わるたびに img.src を再代入するため、useCallback で参照を安定させる
+  const handleImageError = useCallback(() => {
+    if (!avatarUrl) return
+    warnAvatarLoadFailure(avatarUrl)
+    setFailedSrc(avatarUrl)
+  }, [avatarUrl])
 
   // 名前からイニシャルを取得（最大2文字）
   const getInitials = (name: string): string => {
@@ -40,7 +70,8 @@ export function ProfileAvatar({ client, size = 'md', className }: ProfileAvatarP
   const initials = getInitials(client.name)
   const bgColor = client.gender ? genderColors[client.gender] : neutralColors
 
-  if (avatarUrl) {
+  // 読み込みに失敗した画像は壊れた画像アイコンを出さず、下のイニシャル表示に切り替える
+  if (avatarUrl && failedSrc !== avatarUrl) {
     return (
       <div className={cn('relative rounded-full overflow-hidden', sizeClasses[size], className)}>
         <Image
@@ -49,6 +80,9 @@ export function ProfileAvatar({ client, size = 'md', className }: ProfileAvatarP
           fill
           className="object-cover"
           unoptimized
+          // 外部ホスト（Google のプロフィール写真など）へアプリのURLを送らない。Referer 付きだと拒否されることもある
+          referrerPolicy="no-referrer"
+          onError={handleImageError}
         />
       </div>
     )

@@ -404,7 +404,7 @@
 
 ### DB トリガーに本番の URL を直書きすると、migration を流したすべての DB が本番を呼ぶ
 
-- **症状**: 本番の `notification_logs` に、Seed.sql のプレースホルダー顧客（`11111111-…` / `22222222-…`）宛ての `kind='message'`・`status='skipped'` が 18 行あった。ローカル・隔離スタックの `supabase start` / `db reset`（Seed.sql のメッセージ投入）が原因
+- **症状**: 本番の `notification_logs` に、Seed.sql のプレースホルダー顧客（`11111111-…` / `22222222-…`）宛ての `kind='message'`・`status='skipped'` が 18 行あった（その後の照会で実数は 186 行。2026-07-26 の notification_logs 新設直後から、seed 投入のたびに書かれていた）。ローカル・隔離スタックの `supabase start` / `db reset`（Seed.sql のメッセージ投入）が原因
 - **原因**: `call_parse_message_tags()` が `https://<本番 ref>.supabase.co/functions/v1/parse-message-tags` を直書きしていた。コミットされたメッセージの INSERT / content UPDATE は、どの DB で起きても本番の関数へ送られる。本番の関数は payload を信用して動くので、たまたまプレースホルダー UUID が本番に無かったから記録と push が作られなかっただけ（ロールバックしたトランザクションは pg_net のキュー行ごと消えるので送られない）
 - **対策**: 送信先は環境ごとの Vault（`project_url`）から組み立て、**無ければ送らない**（WARNING だけ）。フォールバック URL は持たない。`net.http_post` は url が NULL だと `net.http_request_queue` の NOT NULL 違反でメッセージの INSERT 自体を落とすので、skip 分岐は「親切」ではなく必須
 - **教訓**: トリガー・cron から外部 HTTP を呼ぶ SQL に**環境固有の値を直書きしない**。「その migration を空の DB に流したら、どこへ何が飛ぶか」をレビュー観点に入れる。検証は「Vault 空で Seed.sql をコミットしても pg_net の要求 0 件・応答 0 件」で確かめた
@@ -432,3 +432,24 @@
 
 - 修正前の migration で起動した隔離スタックは、`supabase start` / `db reset` の seed 投入だけで本番を叩く。隔離スタックの scratch の config.toml に `[db.seed] enabled = false` を入れ、reset は `--no-seed` で行った。検証時点で他セッションの隔離スタック（`fit-connect-triage` / `fit-connect-colguard`）も起動していたので、18 行より増えている可能性がある（削除文は user_id で絞るので件数によらず有効）
 - 負の対照: 隔離スタックの edge runtime に旧 index.ts を戻し、認証なしで偽 payload を POST すると 200 で `recorded_at = 2000-01-01` の体重記録が作られた。新しい関数では同じ POST が 401
+
+## 顧客詳細の体重表示の取り違えとアバターの壊れた画像（フェーズ8.5、2026-09-22）で得た知見
+
+### 取得関数の並び順を呼び出し側で「暗黙に」前提にしない — 似た関数のロジックを流用すると逆順のまま動く
+
+- **症状**: 顧客詳細の体重タブ「最近の記録（最新5件）」に最新の記録が出ず、最古の5件が古い順に並んでいた（8/7 に +0.3）。同じページの KPI「現在体重」は最古の体重、「月間変動」は常に 0、体重予測（BMR・1ヶ月後予測）も最古の体重で計算されていた。半年間誰も気づかなかった
+- **原因**: `getWeightRecords` は作成時から古い順。UI 刷新（0c16d3f）で、新しい順を返す `getClientListMetrics` 用のロジック（`records[0]` が最新・`find(<=30日前)`）を、古い順のデータにそのまま流用した。取得関数は正しく、壊れたのは呼び出し側の前提
+- **対策**: 表示用の値（最新・最新 N 件・前回比・N 日前比）は**並び順に依存しない純粋関数**（`src/lib/weight/weightRecordSelectors.ts`）で算出し、テストは古い順・新しい順・シャッフルの3通りの入力で同じ結果になることを確かめる。取得関数の順序を変えて直す案は、`WeightChart` が props の配列をその場で sort していた（描画中に親の state を書き換える）ため、ALL 期間を押すと再発する不安定なバグになるので採らなかった
+- **教訓**: `[0]` / `slice(0, N)` / `[i + 1]` を「最新」「前回」の意味で書くときは、**その配列を作った関数の order を必ず読む**。新しい順・古い順の取得関数が混在するコードベースでは、呼び出し側に並び順の前提を持たせない。`.sort()` は入力配列を破壊するので props / state には使わない（`[...xs].sort()`）
+
+### 外部 URL の画像は読み込みに失敗しうる前提で、失敗時の表示を用意する
+
+- Google のプロフィール写真（lh3.googleusercontent.com）を hotlink しているアバターが、ユーザーのブラウザでだけ壊れた画像アイコンになった。URL 自体は curl でも別ブラウザでも 200 で読める。外部ホストは 403 / 429・拡張機能のブロック・写真の差し替えによる失効などで**こちらの制御外で失敗する**
+- `ProfileAvatar` と `ClientCard` の next/image に onError が無かったので、失敗すると alt テキスト付きの壊れた画像のまま残った（`StorageImg` は fallback 済みだった）。失敗した URL を state に持ち、同じ URL の間はイニシャル表示、URL が変われば再試行する形にした。Referer は送らない（`referrerPolicy="no-referrer"`）
+- 失敗の原因をユーザーの環境で確かめるには DevTools の Network のステータス（403 / 429 / `(blocked:other)` / `ERR_BLOCKED_BY_CLIENT`）を見てもらう。こちらのブラウザで再現しないからといって「直った」とは言わない
+- ログに URL 全体を出さない（Supabase の署名 URL はクエリにトークンを含む）。ホスト名だけ出す
+
+### timestamptz を素の日付（'yyyy-MM-dd'）で `.lte` すると終了日がほぼ丸ごと漏れる
+
+- レポート概要が `.lte('recorded_at', endDate)` で絞っており、`'2026-09-22'` は 2026-09-22 00:00 UTC（JST 9:00）として比較されるため、終了日の JST 9:00 以降の記録（今日の体重）が出なかった。上限は `.lt('recorded_at', 翌日)` の半開区間にする（`src/lib/report/recordedAtRange.ts`。翌日の計算は UTC で行い、実行環境のタイムゾーンに左右されないようにする）
+- 同じ期間を「UTC の日付文字列で比べるビュー」と「timestamptz を素の日付で比べるビュー」で扱うと、同じ画面の中で数値が食い違う。期間フィルタと日付の数え方（UTC / ローカル）は 1 画面の中で揃える（ヒートマップはまだローカル日付で数えている。フォローアップ）

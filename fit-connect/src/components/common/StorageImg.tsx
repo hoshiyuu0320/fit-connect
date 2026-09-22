@@ -18,12 +18,15 @@ interface StorageImgProps
  * Storage の値（パス/フルURL/外部URL）を署名URLへ解決して表示する <img> ラッパー。
  * 署名URLの解決は useStorageUrl（メモリキャッシュ付き）に委譲し、
  * 解決できない場合や画像読み込みエラー時は fallback を表示する。
+ * referrerPolicy は既定で "no-referrer"（外部ホストへアプリのURLを送らない）。props で上書きできる。
  */
 export function StorageImg({
   value,
   bucket,
   fallback = null,
   alt = '',
+  // 署名URLには影響せず、外部ホスト（Google のプロフィール写真など）へアプリのURLを漏らさない
+  referrerPolicy = 'no-referrer',
   onError,
   ...imgProps
 }: StorageImgProps) {
@@ -44,6 +47,7 @@ export function StorageImg({
     <img
       src={url}
       alt={alt}
+      referrerPolicy={referrerPolicy}
       onError={(e) => {
         setFailed(true)
         onError?.(e)

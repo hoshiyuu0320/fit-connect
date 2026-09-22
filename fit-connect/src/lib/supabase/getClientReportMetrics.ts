@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase'
 import { ClientReportRow, DateRange, OverviewKPIData } from '@/types/report'
 import { Client } from '@/types/client'
 import { differenceInDays, eachDayOfInterval, parseISO, subDays, format } from 'date-fns'
+import { exclusiveEndDate } from '@/lib/report/recordedAtRange'
 
 /**
  * 全クライアントのレポート用メトリクスをバッチ取得する
@@ -18,6 +19,10 @@ export async function getClientReportMetrics(
   const totalDays = differenceInDays(end, start) + 1
   const allDates = eachDayOfInterval({ start, end })
 
+  // recorded_at（timestamptz）の上限は「終了日の翌日 0時（UTC）未満」で指定する。
+  // .lte('recorded_at', endDate) だと終了日 0時 UTC（JST 9:00）以降の記録（今日の体重など）が漏れる
+  const endExclusive = exclusiveEndDate(dateRange.endDate)
+
   // 過去30日の基準日（アクティブ率算出用）
   const thirtyDaysAgo = format(subDays(new Date(), 30), 'yyyy-MM-dd')
 
@@ -29,7 +34,7 @@ export async function getClientReportMetrics(
         .select('weight, recorded_at')
         .eq('client_id', client.client_id)
         .gte('recorded_at', dateRange.startDate)
-        .lte('recorded_at', dateRange.endDate)
+        .lt('recorded_at', endExclusive)
         .order('recorded_at', { ascending: true })
         .limit(10000),
       supabase
@@ -37,14 +42,14 @@ export async function getClientReportMetrics(
         .select('recorded_at')
         .eq('client_id', client.client_id)
         .gte('recorded_at', dateRange.startDate)
-        .lte('recorded_at', dateRange.endDate)
+        .lt('recorded_at', endExclusive)
         .limit(10000),
       supabase
         .from('exercise_records')
         .select('recorded_at')
         .eq('client_id', client.client_id)
         .gte('recorded_at', dateRange.startDate)
-        .lte('recorded_at', dateRange.endDate)
+        .lt('recorded_at', endExclusive)
         .limit(10000),
     ])
 
@@ -59,15 +64,13 @@ export async function getClientReportMetrics(
       latestWeight !== null && firstWeight !== null ? latestWeight - firstWeight : null
 
     // 食事記録率: 記録がある日数 / 期間の総日数 * 100
-    const mealDates = new Set(
-      meals.map((m) => format(parseISO(m.recorded_at), 'yyyy-MM-dd'))
-    )
+    // 日付は取得範囲（UTC の暦日）と揃えて recorded_at.split('T')[0] で数える（個別分析ビューと同じ）。
+    // ローカル日付で数えると、翌日 0〜9時（JST）の記録が期間外の1日として加算されてしまう
+    const mealDates = new Set(meals.map((m) => m.recorded_at.split('T')[0]))
     const mealRecordRate = totalDays > 0 ? (mealDates.size / totalDays) * 100 : 0
 
     // 運動記録率: 記録がある日数 / 期間の総日数 * 100
-    const exerciseDates = new Set(
-      exercises.map((e) => format(parseISO(e.recorded_at), 'yyyy-MM-dd'))
-    )
+    const exerciseDates = new Set(exercises.map((e) => e.recorded_at.split('T')[0]))
     const exerciseRecordRate = totalDays > 0 ? (exerciseDates.size / totalDays) * 100 : 0
 
     // 体重スコア: 体重が目標に近づいた割合 (0-100)

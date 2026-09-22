@@ -5,6 +5,7 @@ import { format } from 'date-fns'
 import { WeightChart } from '@/components/clients/WeightChart'
 import { ImageModal } from '@/components/message/ImageModal'
 import { StorageImg } from '@/components/common/StorageImg'
+import { latestWeightRecord, recentWeightRecordsWithChange } from '@/lib/weight/weightRecordSelectors'
 import type { WeightRecord, MealRecord, ExerciseRecord } from '@/types/client'
 import {
   type BmrFormula,
@@ -95,7 +96,11 @@ export function WeightTab({
     return exerciseRecords.filter((e) => new Date(e.recorded_at) >= startDate)
   }, [exerciseRecords, weightPeriod])
 
-  const currentWeight = weightRecords[0]?.weight ?? null
+  // weightRecords は古い順で届くため、並び順に依存せず最新記録を取る（BMR・予測の基準）
+  const currentWeight = latestWeightRecord(weightRecords)?.weight ?? null
+
+  // 最近の記録（新しい順5件、差分は1つ前＝より古い記録との比較）。期間フィルター前の全件が対象
+  const recentRecords = useMemo(() => recentWeightRecordsWithChange(weightRecords, 5), [weightRecords])
 
   const bmr = useMemo(() => {
     if (!currentWeight || !clientHeight || !clientAge || !clientGender) return null
@@ -322,9 +327,7 @@ export function WeightTab({
       <div className="bg-white border border-[#E2E8F0] rounded-md p-4">
         <h3 className="text-sm font-semibold text-[#0F172A] mb-3">最近の記録</h3>
         <div className="space-y-0">
-          {weightRecords.slice(0, 5).map((record, i) => {
-            const prevRecord = weightRecords[i + 1]
-            const change = prevRecord ? record.weight - prevRecord.weight : null
+          {recentRecords.map(({ record, change }) => {
             const comment = record.notes
               ?.replace(/^[\d.]+\s*(?:kg)?\s*/i, '')
               .trim() || null

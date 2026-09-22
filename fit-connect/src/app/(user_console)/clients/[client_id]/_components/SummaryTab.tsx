@@ -6,6 +6,7 @@ import { WeightNutritionChart } from '@/components/clients/WeightNutritionChart'
 import { PfcBalanceCard } from '@/components/clients/PfcBalanceCard'
 import { PeriodSelector } from '@/components/clients/PeriodSelector'
 import { aggregateDailyNutrition } from '@/lib/nutrition/aggregate'
+import { latestWeightRecord } from '@/lib/weight/weightRecordSelectors'
 import type { PeriodFilter } from '@/types/period'
 import type { WeightRecord, MealRecord, ExerciseRecord, Ticket, SleepRecord } from '@/types/client'
 import { MEAL_TYPE_OPTIONS, EXERCISE_TYPE_OPTIONS, PURPOSE_OPTIONS } from '@/types/client'
@@ -124,7 +125,8 @@ export function SummaryTab({
 
   // 予測データ（30日固定）
   const predictionData = useMemo(() => {
-    const currentWeight = weightRecords[0]?.weight ?? null
+    // weightRecords は古い順で届くため、並び順に依存せず最新記録を取る
+    const currentWeight = latestWeightRecord(weightRecords)?.weight ?? null
     if (!currentWeight || !height || !clientAge || !clientGender) return null
 
     const bmr = calculateBmr({

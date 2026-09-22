@@ -11,6 +11,7 @@ import { getTickets } from '@/lib/supabase/getTickets'
 import { getClientNotes } from '@/lib/supabase/getClientNotes'
 import { getClientAssignments } from '@/lib/supabase/getClientAssignments'
 import { getSleepRecords } from '@/lib/supabase/getSleepRecords'
+import { latestWeightRecord, weightChangeSince } from '@/lib/weight/weightRecordSelectors'
 import { supabase } from '@/lib/supabase'
 import type { ClientDetail, WeightRecord, MealRecord, ExerciseRecord, Ticket, ClientNote, SleepRecord } from '@/types/client'
 import type { WorkoutAssignment } from '@/types/workout'
@@ -177,18 +178,10 @@ export default function ClientDetailPage() {
     )
   }
 
-  // KPI 計算
-  const currentWeight = weightRecords[0]?.weight ?? null
-  const thirtyDaysAgo = new Date()
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-  const oldRecord = weightRecords.find(
-    (r) => new Date(r.recorded_at) <= thirtyDaysAgo
-  )
-  const weightChange =
-    currentWeight !== null && oldRecord
-      ? Math.round((currentWeight - oldRecord.weight) * 10) / 10
-      : null
+  // KPI 計算（weightRecords は古い順で届くため、並び順に依存しないヘルパーで最新・30日前を求める）
   const now = new Date()
+  const currentWeight = latestWeightRecord(weightRecords)?.weight ?? null
+  const weightChange = weightChangeSince(weightRecords, now)
   const remainingTickets = tickets
     .filter((t) => new Date(t.valid_until) >= now)
     .reduce((sum, t) => sum + t.remaining_sessions, 0)

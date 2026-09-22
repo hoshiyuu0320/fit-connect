@@ -1,5 +1,6 @@
 'use client'
 
+import { useCallback, useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { Check, MinusCircle, MessageCircle, FileText, Calendar } from 'lucide-react'
@@ -7,6 +8,7 @@ import { useStorageUrl } from '@/lib/supabase/signedStorageUrls'
 import type { Client } from '@/types/client'
 import { GENDER_OPTIONS, PURPOSE_OPTIONS } from '@/types/client'
 import type { ClientMetrics } from '@/lib/supabase/getClientListMetrics'
+import { warnAvatarLoadFailure } from '@/components/clients/ProfileAvatar'
 
 type ClientCardProps = {
   client: Client
@@ -40,6 +42,19 @@ export function ClientCard({ client, workoutStatus, metrics }: ClientCardProps) 
 
   // 値はパス or フルURL（レガシー）の両対応。署名URLへ解決してから表示する
   const avatarUrl = useStorageUrl(client.profile_image_url, 'client-avatars')
+
+  // 読み込みに失敗したアバターURL。avatarUrl が変われば（署名URLの再発行・写真の差し替え）改めて画像の表示を試みる
+  const [failedAvatarUrl, setFailedAvatarUrl] = useState<string | null>(null)
+
+  // next/image は onError の参照が変わるたびに img.src を再代入するため、useCallback で参照を安定させる
+  const handleAvatarError = useCallback(() => {
+    if (!avatarUrl) return
+    warnAvatarLoadFailure(avatarUrl)
+    setFailedAvatarUrl(avatarUrl)
+  }, [avatarUrl])
+
+  // 読み込みに失敗した画像は壊れた画像アイコンを出さず、イニシャル表示に切り替える
+  const showAvatarImage = avatarUrl !== null && failedAvatarUrl !== avatarUrl
 
   const handleClick = () => {
     router.push(`/clients/${client.client_id}`)
@@ -100,7 +115,7 @@ export function ClientCard({ client, workoutStatus, metrics }: ClientCardProps) 
       <div className="flex items-start gap-3.5 mb-3.5">
         {/* アバター */}
         <div className="flex-shrink-0 w-11 h-11 rounded-md overflow-hidden">
-          {avatarUrl ? (
+          {showAvatarImage ? (
             <Image
               src={avatarUrl}
               alt={client.name}
@@ -108,6 +123,9 @@ export function ClientCard({ client, workoutStatus, metrics }: ClientCardProps) 
               height={44}
               className="w-full h-full object-cover rounded-md"
               unoptimized
+              // 外部ホスト（Google のプロフィール写真など）へアプリのURLを送らない。Referer 付きだと拒否されることもある
+              referrerPolicy="no-referrer"
+              onError={handleAvatarError}
             />
           ) : (
             <div
