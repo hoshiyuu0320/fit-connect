@@ -10,6 +10,7 @@ import {
   type TriageListState,
 } from '@/lib/triage/triageListState'
 import type { ClientAlert } from '@/types/alert'
+import type { UnrepliedClient } from '@/types/triage'
 
 function makeAlert(id: string, overrides: Partial<ClientAlert> = {}): ClientAlert {
   return {
@@ -277,5 +278,51 @@ describe('selectTriageListView', () => {
     const s3 = run(s2, { type: 'acknowledge', alertId: 'a2' })
     expect(selectTriageListView(s3).totalCount).toBe(1)
     expect(selectTriageListView(s3).badgeCount).toBe(1)
+  })
+
+  describe('未返信を渡したとき', () => {
+    const now = new Date('2026-09-13T09:00:00Z')
+    const unreplied = (clientId: string): UnrepliedClient => ({
+      client_id: clientId,
+      client_name: `顧客${clientId}`,
+      profile_image_url: null,
+      unreplied_since: '2026-09-12T15:00:00Z',
+      latest_unreplied_at: '2026-09-12T15:00:00Z',
+      unreplied_count: 1,
+    })
+
+    it('未返信だけの顧客も行と件数・バッジに入る', () => {
+      const view = selectTriageListView(createTriageListState([A]), TRIAGE_INITIAL_LIMIT, {
+        unreplied: [unreplied('client-z')],
+        now,
+      })
+      expect(view.rows.map((r) => r.clientId)).toEqual(['client-z', 'client-a']) // 36点 > 30点
+      expect(view.totalCount).toBe(2)
+      expect(view.badgeCount).toBe(2)
+    })
+
+    it('未返信のある顧客は、アラートをすべて対応済みにしても行とバッジに残る', () => {
+      const s1 = run(createTriageListState([A, B]), { type: 'acknowledge', alertId: 'a' })
+      const view = selectTriageListView(s1, TRIAGE_INITIAL_LIMIT, {
+        unreplied: [unreplied('client-a')],
+        now,
+      })
+      const rowA = view.rows.find((r) => r.clientId === 'client-a')
+      expect(rowA?.reasons).toEqual([])
+      expect(rowA?.unreplied?.count).toBe(1)
+      expect(view.totalCount).toBe(2)
+      expect(view.badgeCount).toBe(2)
+    })
+
+    it('上位5件の切り出しは未返信を合わせた並びに掛かる', () => {
+      const alerts = Array.from({ length: TRIAGE_INITIAL_LIMIT }, (_, i) => makeAlert(`m${i}`))
+      const view = selectTriageListView(createTriageListState(alerts), TRIAGE_INITIAL_LIMIT, {
+        unreplied: [unreplied('client-z')],
+        now,
+      })
+      expect(view.totalCount).toBe(TRIAGE_INITIAL_LIMIT + 1)
+      expect(view.hasMore).toBe(true)
+      expect(view.displayedRows[0].clientId).toBe('client-z')
+    })
   })
 })

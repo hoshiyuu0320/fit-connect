@@ -507,3 +507,11 @@
 
 - IMPLEMENTATION_TASKS 5.1 では cat7 1-B「anon への書き込み系 GRANT の REVOKE」が `[x]` だったが、どの migration にも REVOKE は無く、リモートでも clients / messages は anon に `arwdDxt` のままだった。**権限系のチェック項目は `relacl` / `has_table_privilege` で実物を見る**。今回剥奪したのは anon の clients INSERT / UPDATE と messages INSERT / UPDATE / DELETE だけ（clients の DELETE、両テーブルの TRUNCATE、他テーブルは未実施）
 
+## デイリートリアージ（フェーズ9.2 PR2、2026-09-22）で得た知見
+
+### RLS 付きの表を読む SQL 関数で `(SELECT auth.uid())` と書くと、索引が効かない計画になることがある
+
+- 未返信 RPC（SECURITY INVOKER）の最初の版は、顧客ごとにトレーナーの受信箱全体を走査する計画になり、合成データで 155ms かかった。原因は2つ: (1) 関数本体の `(SELECT auth.uid())` は計画時に値が分からず、索引条件として使われなかった (2) 「返信が無いときは -infinity」の coalesce を比較の側に書くと、RLS 下で索引条件にならなかった
+- `auth.uid()` を直接書き、coalesce を「最後の返信」を求めるサブクエリの中に移すと、`(sender_id, created_at DESC)` / `(receiver_id, created_at DESC)` の範囲走査と逆順 LIMIT 1 になり 1.3ms（結果の差分 0 行）
+- **教訓**: RLS ポリシーでは `(SELECT auth.uid())` で包むのが定石だが、関数本体のクエリでは逆効果になることがある。SQL 関数を書いたら、**本番と同じロール・JWT クレーム**で合成データを入れて EXPLAIN を取り、索引が使われているかを確かめる（postgres では auto_explain を LOAD できないので、本体クエリを取り出して EXPLAIN する）
+

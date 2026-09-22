@@ -79,7 +79,8 @@ export default function Sidebar({ children }: { children: React.ReactNode }) {
     const refreshTriageBadge = useTriageBadgeStore((state) => state.refresh);
 
     // 「今日の対応」のバッジ: 表示時と画面を移るたびに数え直す
-    // （検知は1日1回なので Realtime は使わない。操作の後は TriageSection が数え直す）
+    // （Realtime は使わない。アラートの検知は1日1回、未返信は画面遷移・タブ復帰・返信の後に取り直す。
+    //   「今日の対応」の操作の後は TriageSection が、返信の後はメッセージ画面が数え直す）
     useEffect(() => {
         void refreshTriageBadge();
     }, [pathname, refreshTriageBadge]);
