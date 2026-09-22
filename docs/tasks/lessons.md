@@ -525,3 +525,37 @@
 - **対策**: body はスプレッドせず、許可リストのフィールドだけを分割代入して helper に渡す（`clientId` を最後に置くだけだと、他の未知のキーは素通りのまま）。検証済みの id は params / `auth.user.id` からだけ取る
 - **テスト**: helper（updateClient）をモックすると「ルートが何を渡したか」しか見えない。supabaseAdmin のクエリビルダを記録するモックにして、**最終的に DB に渡る `eq(...)` の値と UPDATE のペイロード**を検証する（`src/app/api/clients/clients-update.test.ts`、流儀は `alerts-auth.test.ts`）。修正前のコードで落ちることを確認してから直す
 - **横展開のチェック方法**: `grep -rnE "\.\.\.(body|rest|payload|params)" src/app/api` に加え、body を読む全ハンドラで「所有検証に使った変数」と「`.eq(...)` / insert の id に使った変数」が同じかを目で追う
+
+## 残りの関数の search_path 固定とトリガー関数の権限（フェーズ5.10、2026-09-22〜23）で得た知見
+
+### 本体が修飾済みなら `ALTER FUNCTION ... SET search_path` で固定する（CREATE OR REPLACE しない）
+- `ALTER FUNCTION f() SET search_path = ''` は proconfig だけを変え、本体（prosrc）・owner・ACL・COMMENT・揮発性・SECURITY 属性を残す。本体を書き換えないので「リモートの実定義を追認してから是正」の 2 段構えが要らず、migration の差分も「変えたこと」だけになる
+- ただし ALTER はエラーにならないため、本体に無修飾の参照が残っていると**利用者の操作で初めて壊れる**（顧客登録のトリガー、メッセージ Webhook など）。本体が「空の search_path で動く」とレビューした時点のものであることを md5(prosrc) のガードで確かめてから ALTER する
+- MCP が無くても、`supabase db dump --linked --schema public` の関数定義を scratch スキーマに読み込めば、リモートの md5(prosrc) をローカル DB で計算できる。手順の正しさは、値の分かっている関数（5.6 の 2 本）を対照にして確かめた
+
+### トリガー関数の EXECUTE は発火時に検査されない — 剥がしてよく、直接呼び出しで GRANT 層をテストできる
+- PostgreSQL がトリガー関数の EXECUTE を見るのは CREATE TRIGGER の時だけ。authenticated / service_role から EXECUTE を剥がしても、その役割の INSERT / UPDATE でトリガーは発火し続ける（SECURITY DEFINER のトリガーも同じ）。migration は postgres（オーナー）で流れるので、既存関数を使う新しいトリガーも作れる
+- 直接呼び出すと ACL 検査がトリガー専用の制約より先に走る。EXECUTE の無いロールは `42501 permission denied for function`、オーナーは `0A000 trigger functions can only be called as triggers`。この違いで「GRANT 層で拒否されている」ことをテストで区別できる
+- 拡張が所有する関数（`net.http_post` など）は pg_dump に出ず、リモートの版も CLI の読み取り専用 dump では確かめられない。「net を含まない search_path のセッションから既に動いている」ことは net が不要なことしか示さない（それらのセッションは public / extensions を含む）。空の search_path で動く根拠は、ローカルの pg_net 0.14.0 の定義（SECURITY DEFINER + SET search_path = net、内部名は修飾済み）とテストでの実測で立て、本番はオーナーの適用後確認（タグ付きメッセージで記録が作られる）で確かめる
+
+### ローカルの `supabase db reset` は seed のメッセージを本番の Edge Function に送る
+- `call_parse_message_tags()` は本番の parse-message-tags の URL を直書きしており、Seed.sql は on_message_insert を有効にしたまま messages を 6 件 INSERT する。reset 後の `net._http_response` に本番からの `200 {"success":true}` が 6 件残っていた。本番の notification_logs にも Seed.sql 由来の行が残る（PR #89 で是正。Vault の project_url が無い環境では送らない）。#89 が入るまでは、隔離スタックでも `supabase db reset --no-seed` を使う
+- テストが BEGIN...ROLLBACK 内なら pg_net のワーカーは未コミットのキューを読まないので送信されない。ローカルで messages を**コミットする**操作（REST 経由の INSERT・content の更新を含む）は本番を叩くので、QA データはトリガーを無効にしてから入れる
+
+### 隔離スタックのポートは作業中に他セッションに取られる
+- 5572x で `supabase start` しようとした直前に、別セッションが同じ帯で起動していて `port is already allocated` で失敗した。起動直前に `lsof -iTCP:<port> -sTCP:LISTEN` で空きを確かめ、他セッションと被りにくい帯（今回 5872x）を使う
+
+### auto mode では worktree への `assets/.env` のコピーが拒否される
+- Mobile の `flutter test` は `assets/.env` が無いと失敗するが、auto mode ではコピーが Credential Leakage として拒否された。Dart の変更が無い DB 側の PR では、Mobile の呼び出し経路を PostgREST 経由（顧客の JWT で RPC）で確かめて代替した
+
+### 並行ブランチが同じ関数・同じ migration 版を触るときは「どちらの順でも適用できる」形にする
+- 同じ日に 3 つのセッションが `20260922000000`（列ガード）/ `20260922000100`（parse-message-tags、PR #89）/ 本作業を作っており、本作業は当初 #89 と同じ `20260922000100` だった。着手時だけでなく**引き渡し直前にも** `git worktree list` と各 worktree の `supabase/migrations/2026MMDD*`、`gh pr list` で並行作業の版と対象関数を確かめる
+- 同じ関数を「本体は変えない ALTER」と「本体を作り直す CREATE OR REPLACE」で触る場合、ALTER 側のガードに「既に目的の状態（search_path 空）なら通す」を足すと、どちらが先に入っても壊れない。テストも、相手が本体を差し替えた後に成り立たない検査（URL・md5・INVOKER）だけを本体の md5 で条件分岐し、自分の migration が保証する不変条件（search_path・ACL・トリガーの発火）は無条件に残す
+- 確認は `supabase db reset --no-seed` で両方の順序（相手の migration を後から psql で流す／両方置いて reset）を実際に流して行った
+- それでも**二度目の衝突**が起きた: 本 PR の版を 000200 に振り直した後、#90 も 000000 → 000200 に振り直してマージされ、フェーズ番号 5.8 も重なった（git は別ファイル名なので衝突を検出せず、PR の docs だけがコンフリクトした）。並行作業がすべてマージ・リモート適用された後に、リモート最新（20260922200000）より後ろの 20260923000000 へ振り直して解消した。**振り直すなら「今日の日付＋リモート最新より後ろ」にし、他ブランチの版の間に割り込ませない**。rebase 後は `supabase migration list --linked` の Local 列と Remote 列を読み違えない（Local が空の行は「リモートにあって手元のブランチに無い」）
+
+### search_path のピンは DB にしか無い — 作り直すときに黙って外れる
+- ALTER で固定した 8 本は、repo のどの CREATE 文にも `SET search_path` が書かれていない。今後これらを `CREATE OR REPLACE` するときに SET 句を書き忘れると、ACL は残ったままピンだけが外れ、Advisor の 0011 が戻る。作り直すときは `SET search_path = ''` を必ず書き、ガードの md5 とテストの pin も更新する
+- Supabase の default privileges により、public に新しく作る関数には anon / authenticated / service_role の EXECUTE が付く。トリガー関数を新設したら毎回 `REVOKE ALL ... FROM PUBLIC, anon, authenticated, service_role` を書く
+- Advisor の 0029（authenticated が実行できる SECURITY DEFINER）は、意図して authenticated に開いた関数（calculate_achievement_rate / mark_messages_as_read / get_my_sessions / get_alert_detection_status / can_edit_message）で残り続ける。適用後の確認は「対象の関数について」出る・出ないで書く（全体の件数で書くと、正しい適用でも失敗に見える）
+
