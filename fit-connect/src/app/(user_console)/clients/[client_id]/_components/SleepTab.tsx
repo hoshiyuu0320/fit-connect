@@ -1,13 +1,18 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import Link from 'next/link'
 import { format, parseISO } from 'date-fns'
+import { MessageSquare } from 'lucide-react'
 import { SleepChart } from '@/components/clients/SleepChart'
+import { recordQuoteHref } from '@/lib/message/recordQuoteRef'
 import type { SleepRecord } from '@/types/client'
 import { WAKEUP_RATING_OPTIONS, SLEEP_SOURCE_LABELS } from '@/types/client'
 
 interface SleepTabProps {
   sleepRecords: SleepRecord[]
+  /** 「この記録についてメッセージ」のリンク先。未指定ならリンクを出さない */
+  clientId?: string
 }
 
 type SleepPeriod = '1W' | '1M' | '3M' | 'ALL'
@@ -19,7 +24,7 @@ const SLEEP_PERIOD_BUTTONS: { value: SleepPeriod; label: string }[] = [
   { value: 'ALL', label: 'ALL' },
 ]
 
-export function SleepTab({ sleepRecords }: SleepTabProps) {
+export function SleepTab({ sleepRecords, clientId }: SleepTabProps) {
   const [sleepPeriod, setSleepPeriod] = useState<SleepPeriod>('1M')
 
   const filteredRecords = useMemo(() => {
@@ -208,11 +213,23 @@ export function SleepTab({ sleepRecords }: SleepTabProps) {
                     </span>
                     <span className="text-xs text-[#64748B]">{wakeupLabel}</span>
                   </div>
-                  <span
-                    className={`text-[10px] px-1.5 py-0.5 rounded ${sourceBadgeClass}`}
-                  >
-                    {sourceLabel}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`text-[10px] px-1.5 py-0.5 rounded ${sourceBadgeClass}`}
+                    >
+                      {sourceLabel}
+                    </span>
+                    {clientId && (
+                      <Link
+                        href={recordQuoteHref(clientId, { kind: 'sleep_night', date: record.recorded_date })}
+                        className="inline-flex items-center justify-center h-8 w-8 rounded-md text-[#64748B] hover:text-[#14B8A6] hover:bg-[#F0FDFA] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14B8A6]"
+                        aria-label="この記録についてメッセージ"
+                        title="この記録についてメッセージ"
+                      >
+                        <MessageSquare className="h-4 w-4" aria-hidden="true" />
+                      </Link>
+                    )}
+                  </div>
                 </div>
               </div>
             )

@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState, useRef, Suspense } from "react";
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { getClientDetail } from '@/lib/supabase/getClientDetail'
 
 import { supabase } from '@/lib/supabase';
@@ -15,6 +15,11 @@ import { getLastMessagesForClients } from '@/lib/supabase/getLastMessagesForClie
 import { ImageUploader } from '@/components/message/ImageUploader';
 import { ImageModal } from '@/components/message/ImageModal';
 import { ReplyPreview } from '@/components/message/ReplyPreview';
+import { RecordQuotePreview } from '@/components/message/RecordQuotePreview';
+import { getSleepRecordsInRange } from '@/lib/supabase/getSleepRecordsInRange';
+import { parseRecordQuoteRef, recordQuoteDateRange } from '@/lib/message/recordQuoteRef';
+import { buildSleepQuote, type RecordQuote } from '@/lib/sleep/sleepQuote';
+import { composeMessageContent } from '@/lib/message/composeMessageContent';
 import { MessageBubble } from '@/components/message/MessageBubble';
 import { ClientListItem } from '@/components/message/ClientListItem';
 import { ChatHeader } from '@/components/message/ChatHeader';
@@ -48,6 +53,8 @@ interface LastMessageInfo {
 function MessageContent() {
     const searchParams = useSearchParams()
     const client_id = searchParams.get("clientId")
+    const recordParam = searchParams.get("record")
+    const router = useRouter()
     const [userId, setUserId] = useState<string | null>(null);
     const [input, setInput] = useState('');
     const [clientList, setClientList] = useState<Client[]>([]);
@@ -61,6 +68,8 @@ function MessageContent() {
     const [editInput, setEditInput] = useState('');
     const [editSaving, setEditSaving] = useState(false);
     const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
+    // 記録の引用（顧客詳細の睡眠カード等から ?record=sleep:… で着地したとき）。送信時に本文の先頭へ付く
+    const [recordQuote, setRecordQuote] = useState<RecordQuote | null>(null);
     const [unreadCounts, setUnreadCounts] = useState<Map<string, number>>(new Map());
     const [lastMessages, setLastMessages] = useState<Map<string, LastMessageInfo>>(new Map());
     const [isRecordPanelOpen, setIsRecordPanelOpen] = useState(true);
@@ -108,6 +117,7 @@ function MessageContent() {
         const hasImages = selectedImages.length > 0;
         if ((!hasText && !hasImages) || !userId || !selectedClient?.client_id) return;
 
+        const content = composeMessageContent(recordQuote?.text, input);
         setLoading(true);
         setUploading(hasImages);
 
@@ -130,7 +140,7 @@ function MessageContent() {
                 },
                 body: JSON.stringify({
                     clientId: selectedClient.client_id,
-                    content: input,
+                    content,
                     ...(imageUrls.length > 0 && { image_urls: imageUrls }),
                     ...(replyToMessage && { reply_to_message_id: replyToMessage.id }),
                 }),
@@ -145,7 +155,7 @@ function MessageContent() {
                 const newMsg: Message = {
                     id: data.id,
                     sender: 'You',
-                    content: input,
+                    content,
                     timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                     created_at: newCreatedAt,
                     senderType: 'trainer',
@@ -168,13 +178,14 @@ function MessageContent() {
                 setLastMessages((prev) => {
                     const next = new Map(prev);
                     next.set(selectedClient.client_id, {
-                        content: input || (imageUrls.length > 0 ? '画像' : ''),
+                        content: content || (imageUrls.length > 0 ? '画像' : ''),
                         created_at: newCreatedAt,
                     });
                     return next;
                 });
                 setSelectedImages([]);
                 setReplyToMessage(null);
+                setRecordQuote(null);
             } else {
                 alert('送信に失敗しました' + data.error);
             }
@@ -286,6 +297,47 @@ function MessageContent() {
         }
         fetchClientInfo();
     }, [client_id]);
+
+    // 顧客を切り替えたら引用を捨てる（別の顧客の睡眠を引用しない）
+    useEffect(() => {
+        setRecordQuote(null);
+    }, [selectedClient?.client_id]);
+
+    // ?record=sleep:… の引用を用意する（顧客の自動選択が済んでから）
+    useEffect(() => {
+        if (!client_id || !recordParam) return;
+        const ref = parseRecordQuoteRef(recordParam);
+        if (!ref) {
+            // 不正な値は無視してクエリから落とす（再読み込みのたびに warn が出ないように）
+            console.warn('record クエリを解釈できません:', recordParam);
+            router.replace(`/message?clientId=${encodeURIComponent(client_id)}`, { scroll: false });
+            return;
+        }
+        if (selectedClient?.client_id !== client_id) return;
+        const cid = client_id;
+        let cancelled = false;
+        (async () => {
+            try {
+                const now = new Date();
+                const { from, to } = recordQuoteDateRange(ref, now);
+                const records = await getSleepRecordsInRange(cid, from, to);
+                // 取得中に別の顧客へ切り替わっていたら捨てる（StrictMode の二重実行も同じ扱い）
+                if (cancelled || selectedClientRef.current?.client_id !== cid) return;
+                const quote = buildSleepQuote(ref, records, now);
+                if (quote) {
+                    setRecordQuote(quote);
+                    textareaRef.current?.focus();
+                } else {
+                    console.warn('引用する睡眠記録がありません:', recordParam);
+                }
+                // 消費したらクエリから record を落とす（再読み込みで引用が復活しない。clientId は同じなので再選択は起きない）
+                router.replace(`/message?clientId=${encodeURIComponent(cid)}`, { scroll: false });
+            } catch (e) {
+                if (!cancelled) console.error('睡眠記録（引用）取得エラー:', e);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [client_id, recordParam, selectedClient?.client_id, router]);
 
     // 既読マーク: クライアント選択時
     useEffect(() => {
@@ -592,6 +644,13 @@ function MessageContent() {
                             onCancel={handleReplyCancel}
                         />
                     )}
+                    {recordQuote && (
+                        <RecordQuotePreview
+                            label={recordQuote.label}
+                            text={recordQuote.text}
+                            onCancel={() => setRecordQuote(null)}
+                        />
+                    )}
                     <div className="flex items-center space-x-3 mt-2">
                         <textarea
                             ref={textareaRef}
@@ -639,6 +698,7 @@ function MessageContent() {
                     resizeHandleProps={rightResize.handleProps}
                     onClose={() => setIsRecordPanelOpen(false)}
                     onImageClick={setSelectedImageUrl}
+                    onReplyStart={handleReplyStart}
                 />
             )}
 

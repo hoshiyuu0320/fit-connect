@@ -2,8 +2,8 @@
 
 **作成日**: 2026年3月29日
 **バージョン**: 2.0
-**進捗状況**: フェーズ1 完了 / フェーズ2 2.1〜2.5 完了（2.4 任意項目のみバックログ）/ フェーズ3〜10 未着手
-**最終更新**: 2026年9月23日 - フェーズ5.10 実装（Advisor に残った search_path 未固定7本・anon 実行可能な SECURITY DEFINER 3本の是正: migration 1本 + テスト。追認不要をリモート dump の md5 で確認。リモート適用はオーナー作業待ち。ブランチ `fix/function-search-path-hardening`、#92）。2026年9月22日 - フェーズ9.1 PR1（#88）マージ・migration 3本リモート適用・本番 dry run と30日バックテスト（新規2件/30日）・初回手動実行・cron `detect-client-alerts` 有効化（オーナー）。9.2 PR2 に着手（ブランチ `feature/daily-triage`）。同日 フェーズ5.8 実装（clients / messages の列単位書き込みガード: clients は列レベル GRANT + 保護列トリガー、messages は INSERT / UPDATE ガードトリガー + テスト。リモート適用はオーナー作業待ち。ブランチ `fix/rls-column-write-guards`）。同日 フェーズ5.7 をオーナーがリモート適用・deploy し本番で確認（タグ付きメッセージで記録作成・pg_net 200）。同日 8.5 着手（顧客詳細の体重表示が最古の記録を最新として扱っていた不具合・アバター画像の読み込み失敗時の壊れた画像表示・レポートの終了日当日の記録漏れ。ブランチ `fix/client-detail-weight-order-avatar`）。同日 フェーズ5.7 実装（parse-message-tags の本番 URL 直書きと未認証の是正: トリガーは Vault の project_url / secret_key で送信先と apikey を決め、未登録なら送らない + 関数は apikey 照合と messages からの取り直し。ブランチ `fix/parse-message-tags-webhook`。migration の push → 関数 deploy はオーナー作業待ち）。同日 #86（8.4 cron の再試行 + sessions.memo の顧客非公開化）・#87（5.6 SECURITY DEFINER 関数の権限是正）をマージし、両方の migration をリモート適用（オーナー）。parse-message-tags を再デプロイ（push.ts の変更を反映）。2026年9月13日 - `send-session-reminders` cron をオーナーが有効化（#85 マージ）。cron 初回実行を確認（auto-skip は9件 skipped で正常 / cleanup-ai-images は RPC の一時的な 504 で失敗）→ 8.4 cron の再試行 + sessions.memo の顧客非公開化に着手（ブランチ `fix/cron-retry-session-memo`）。同日 フェーズ5.6 実装（SECURITY DEFINER 関数4本の権限是正: 追認 + 是正の migration 2本 + 権限テスト。リモート適用はオーナー作業待ち。ブランチ `fix/definer-function-privileges`）。2026年9月12日 - フェーズ8.3② 完了（セッション前日リマインダー: SQL 抽出関数 + Edge Function + cron（inactive 登録）+ Mobile 通知トグル。リモート適用済み・cron 有効化はオーナー判断）。同日ダークモード残件修正（#83）・cron 認証の secret キー移行（#84）。2026年9月10日 - フェーズ8.3① 完了（Mobile セッション表示 + セッション⇔カルテ連携 + トレーナー側の紐づけ導線。リモート適用済み・QA 完了）。各タスクの詳細設計は `docs/tasks/2026-07-08-solution-catalog.md`、共通基盤の設計決定は `docs/tasks/2026-07-10-integration-decisions.md` を参照
+**進捗状況**: フェーズ1 完了 / フェーズ2 2.1〜2.5 完了（2.4 任意項目のみバックログ）/ フェーズ3・4 ほぼ完了 / フェーズ5・6 進行中 / フェーズ7・8・9 完了（拡張は未着手）/ フェーズ10 未着手
+**最終更新**: 2026年9月23日 - フェーズ9.3 MVP 実装（記録サイドパネルの「返信で触れる」＋顧客詳細の睡眠カード / 記録行からの「メッセージで触れる」→ メッセージ画面の引用チップ。Web のみ・DB / Mobile 変更なし。ブランチ `feature/record-reply-quote`）。9.2 を完了に更新（#91）。フェーズ5.10 実装（Advisor に残った search_path 未固定7本・anon 実行可能な SECURITY DEFINER 3本の是正: migration 1本 + テスト。追認不要をリモート dump の md5 で確認。リモート適用はオーナー作業待ち。ブランチ `fix/function-search-path-hardening`、#92）。2026年9月22日 - フェーズ9.1 PR1（#88）マージ・migration 3本リモート適用・本番 dry run と30日バックテスト（新規2件/30日）・初回手動実行・cron `detect-client-alerts` 有効化（オーナー）。9.2 PR2 に着手（ブランチ `feature/daily-triage`）。同日 フェーズ5.8 実装（clients / messages の列単位書き込みガード: clients は列レベル GRANT + 保護列トリガー、messages は INSERT / UPDATE ガードトリガー + テスト。リモート適用はオーナー作業待ち。ブランチ `fix/rls-column-write-guards`）。同日 フェーズ5.7 をオーナーがリモート適用・deploy し本番で確認（タグ付きメッセージで記録作成・pg_net 200）。同日 8.5 着手（顧客詳細の体重表示が最古の記録を最新として扱っていた不具合・アバター画像の読み込み失敗時の壊れた画像表示・レポートの終了日当日の記録漏れ。ブランチ `fix/client-detail-weight-order-avatar`）。同日 フェーズ5.7 実装（parse-message-tags の本番 URL 直書きと未認証の是正: トリガーは Vault の project_url / secret_key で送信先と apikey を決め、未登録なら送らない + 関数は apikey 照合と messages からの取り直し。ブランチ `fix/parse-message-tags-webhook`。migration の push → 関数 deploy はオーナー作業待ち）。同日 #86（8.4 cron の再試行 + sessions.memo の顧客非公開化）・#87（5.6 SECURITY DEFINER 関数の権限是正）をマージし、両方の migration をリモート適用（オーナー）。parse-message-tags を再デプロイ（push.ts の変更を反映）。2026年9月13日 - `send-session-reminders` cron をオーナーが有効化（#85 マージ）。cron 初回実行を確認（auto-skip は9件 skipped で正常 / cleanup-ai-images は RPC の一時的な 504 で失敗）→ 8.4 cron の再試行 + sessions.memo の顧客非公開化に着手（ブランチ `fix/cron-retry-session-memo`）。同日 フェーズ5.6 実装（SECURITY DEFINER 関数4本の権限是正: 追認 + 是正の migration 2本 + 権限テスト。リモート適用はオーナー作業待ち。ブランチ `fix/definer-function-privileges`）。2026年9月12日 - フェーズ8.3② 完了（セッション前日リマインダー: SQL 抽出関数 + Edge Function + cron（inactive 登録）+ Mobile 通知トグル。リモート適用済み・cron 有効化はオーナー判断）。同日ダークモード残件修正（#83）・cron 認証の secret キー移行（#84）。2026年9月10日 - フェーズ8.3① 完了（Mobile セッション表示 + セッション⇔カルテ連携 + トレーナー側の紐づけ導線。リモート適用済み・QA 完了）。各タスクの詳細設計は `docs/tasks/2026-07-08-solution-catalog.md`、共通基盤の設計決定は `docs/tasks/2026-07-10-integration-decisions.md` を参照
 
 > **2026-04-26 モノレポ化完了**: 旧 `fit-connect-mobile` リポジトリを `git subtree` で取り込み、単一 git リポジトリで Web/Mobile 両方を管理する構成に移行。詳細は `docs/tasks/2026-04-26-monorepo-migration.md`。
 
@@ -37,7 +37,7 @@
 | 6 | 収益化・リリース準備（Stripe/法務/アカウント削除/Apple Sign-In） | Web + Mobile + Supabase | 70% | 🟡 6.2 完了（アカウント削除 + Sign in with Apple）/ 6.1 完了（法務3ページ + user_consents + signup同意。Mobile側の顧客同意UIはフェーズ3の同意ダイアログとして実装済み 2026/07/19）/ 6.3 Stripe課金コア実装済み（テスト・本番切替はオーナーのStripeセットアップ待ち。手順書: 2026-07-12-stripe-setup-guide.md）/ 6.4 完了（フェーズ4として実装済み）/ 6.5 支払記録 実装済み（領収書PDF・Stripe Connect は後回し） |
 | 7 | 通知基盤統一（device_tokens + 共通ディスパッチャ） | Supabase + Web + Mobile | 100% | 🟢 7.1〜7.4 完了（7.4 通知権限プライミングはフェーズ3の 3.2 として実装。2026/07/19） |
 | 8 | 不具合修正・顧客体験の底上げ | Mobile + Web + Supabase | 100% | 🟢 8.1 完了（2026/07/10）/ 8.2 Storage private化+署名URL+強制アップデート+orphan cleanup 完了（2026/08/30、リモート適用済み）/ 8.3 ①セッション表示 完了（2026/09/06）・②前日リマインダー 完了（2026/09/12、cron 有効化 2026/09/13）/ 8.4 cron 再試行 + sessions.memo 非公開化 完了（2026/09/22、#86）。残はオーナー作業（Firebase への APNs 認証キー登録・App Store 公開後の ios_store_url）と拡張のみ / 8.5 顧客詳細の体重表示（最新と最古の取り違え）・アバターの読み込み失敗時の表示 修正中（2026/09/22、ブランチ `fix/client-detail-weight-order-avatar`） |
-| 9 | トレーナー介入機能（異常検知・トリアージ） | Web + Supabase | 50% | 🟡 計画確定（2026/09/13、`2026-09-13-trainer-intervention-plan.md`）/ 9.1 MVP 完了（#88、2026/09/22 リモート適用・cron 有効化）/ 9.2 PR2 実装中（ブランチ `feature/daily-triage`）/ 9.3 未着手 |
+| 9 | トレーナー介入機能（異常検知・トリアージ） | Web + Supabase | 100% | 🟢 計画確定（2026/09/13、`2026-09-13-trainer-intervention-plan.md`）/ 9.1 MVP 完了（#88、2026/09/22 リモート適用・cron 有効化）/ 9.2 MVP 完了（#91、2026/09/22 マージ・migration `20260922200000` リモート適用済み）/ 9.3 MVP 完了（2026/09/23、ブランチ `feature/record-reply-quote`）。拡張（睡眠悪化・カロリー超過の検知、閾値設定、トレーナー向け push、消し込み、チャート点クリック、record_ref）は未着手 |
 | 10 | リテンション機能（リマインダー・直接記録・ストリーク） | Mobile + Supabase | 0% | 🔴 未着手 |
 
 > フェーズ5〜10 の出典: `docs/tasks/2026-07-08-solution-catalog.md`（施策詳細）/ `docs/tasks/2026-07-10-integration-decisions.md`（共通基盤の設計決定。**カタログと矛盾する場合はこちらが優先**）。「cat〇 △-△」はカタログ内の施策番号。
@@ -503,12 +503,18 @@
   - [ ] 検知ルール: 体重急変・記録途絶 ✅（MVP）/ 睡眠悪化・カロリー超過・閾値のトレーナー設定は拡張
   - [x] HealthKit 同期ラグの誤検知対策: 途絶判定を「最終アプリ起動」と分離（横断レビュー1-7節）✅ サーバー時刻の到着日で判定（Mobile の heartbeat は拡張）
   - [ ] トレーナーへの通知はディスパッチャ経由（実効経路が LINE/トレーナーモード導入前なら Web 内バッジ中心）— Web 内バッジは ✅（MVP）。push は VAPID と APNs キーの設定待ち
-- [ ] **9.2 デイリートリアージ**（cat1 2-A: 優先度スコア付き「今日対応すべきクライアント」）— PR2 実装中（2026-09-22〜、ブランチ `feature/daily-triage`。計画書「PR2」節）
+- [x] **9.2 デイリートリアージ**（cat1 2-A: 優先度スコア付き「今日対応すべきクライアント」）— **MVP 完了**（#91 マージ、2026-09-22。migration `20260922200000` リモート適用済み。計画書「PR2」節）
   - [x] 未返信 RPC `get_unreplied_clients_for_trainer()`（migration `20260922200000`、SECURITY INVOKER・引数なし・戻り列の許可リスト）+ SQL テスト（13本目）。返信はトレーナーとして送ったものだけ、未来・無限の日時は数えない
   - [x] Web: 「今日の対応」に未返信を合流（チップ「未返信 N時間・M件」・「返信する」・スコア順・部分失敗はその部分だけエラー表示・見出しのヘルプと取得時刻）、バッジはアラートと未返信の顧客の和集合、/message で返信後にバッジを取り直す
-  - [ ] （オーナー）Web の動作確認 → マージ → `supabase db push`（未適用は `20260922200000` のみのはず。他セッションの migration との順序を dry run で確認）
-  - [ ] ダッシュボードに統合、alerts テーブルを消費
-- [ ] **9.3 睡眠→指導動線**（cat1 6-A: 記録カード起点の「メッセージで指導」。S規模・先行実装可）
+  - [x] （オーナー）Web の動作確認 → マージ → `supabase db push`（2026-09-22 適用済み）。残る確認: 返信して行が消える・バッジが減ること（オーナー確認待ち）
+  - [x] ダッシュボードに統合、alerts テーブルを消費
+- [x] **9.3 記録→指導動線**（cat1 6-A。旧「睡眠→指導動線」）— **MVP 完了**（2026-09-23、ブランチ `feature/record-reply-quote`。設計: `fit-connect/docs/superpowers/specs/2026-09-23-record-coaching-flow-design.md`）
+  - [x] メッセージ画面の記録サイドパネル: 記録カード（体重・食事・運動・達成）に「返信で触れる」→ 既存の返信機構（`reply_to_message_id`）。Mobile 変更なし
+  - [x] 顧客詳細 → メッセージ: 睡眠（直近7日）カードの「メッセージで触れる」（`/message?clientId=…&record=sleep:7d`）と睡眠タブの記録行（`record=sleep:YYYY-MM-DD`）。メッセージ画面が睡眠の要約を取り消し可能な引用チップにし、送信時に本文の先頭へ平文で付ける（`【睡眠 9/22(火)】4時間12分・目覚め: だるい`）。`messages.metadata` は使わない
+  - [x] 純関数 + テスト: `summarizeRecentSleep`（SummaryTab から切り出し）/ `sleepQuote` / `recordQuoteRef` / `composeMessageContent`
+  - [ ] 拡張1: `SleepChart` / `WeightChart` のデータ点クリック → `recordQuoteHref`
+  - [ ] 拡張2: `metadata.record_ref` + Mobile のカード描画（統合判断7-1 のレジストリ文書 `docs/architecture/message-metadata-registry.md` の新設が前提）
+  - [ ] 9.1 の睡眠悪化アラート（未実装）の行から `sleep:7d` の引用リンクへ接続
 
 ---
 
