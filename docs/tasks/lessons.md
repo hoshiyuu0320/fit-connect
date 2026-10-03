@@ -581,3 +581,25 @@
 - dev server は `NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:<port>`（`localhost` だと Cookie 名が `sb-localhost-…` になり不一致）で `pnpm dev -p 3100`。内蔵ブラウザで `/login` を開いて `document.cookie` に入れれば、Google ログインもユーザー操作も無しで保護ページに入れる
 - 内蔵ブラウザの癖: `find` はボタン本文ではなく `title` / `aria-label` で当たる。`key` は `"Enter"`（`"Return"` は送信されず、アプリの不具合と誤認しかけた）。`get_page_text` の URL は origin だけなので、クエリは `location.href` で確認する
 - 終了時は `supabase stop --no-backup`（scratch の qa-stack から）と dev server の停止を忘れない
+
+## 睡眠悪化アラート（フェーズ9.1 拡張③、2026-10-03）で得た知見
+
+### 睡眠の「平均の比較」は1晩の外れ値で成立してしまう
+- カタログの「直近7日の平均睡眠が前週比 −1時間」をそのまま実装すると、範囲内の値（例: 前の窓に1晩だけ 803分）でも平均の差が −60 になる。体重の外れ値除去（14日の中央値 ±15%）は、日ごとの揺れが大きい睡眠（実データの p10〜p90 で ±約25%）では普通の晩まで落とす
+- 窓ごとの代表値を中央値にすると、1晩の外れ値では動かず、直近の窓の半分以上が短くなったときだけ成立する。`percentile_cont` は double precision を返すので、`::numeric` にキャストしてから丸める（double のままだと偶数丸めになり、`round(x, 2)` も書けない）
+
+### 複数条件の OR で検知するときは「解消」の条件を表にする
+- 「どちらかが成立で detected、どれかが解消で cleared」と素直に書くと、到着遅れで睡眠時間が評価できない日（直近3晩）に目覚め評価だけで解消し、翌日に新しい行が作り直される（対応済みが閉じては開く）
+- 条件ごとに「なし / 不足 / 成立 / 保留 / 解消」の5状態を持ち、全体を順序付きの規則と5×5の表で決めた。テストが固定しているのは25マスすべてではなく代表的な組み合わせ。規則の順序で結果が変わるマス（不足 + 成立・成立 + 保留・保留 + 成立は detected、保留・不足 + 解消は unknown。登録直後で前の窓が空の顧客を含む）を必ず入れる。入れないと、規則1と規則2を入れ替えてもテストが通る。「データはあるが足りない」は解消を止め、「データが無い」は止めない
+
+### 既存関数を CREATE OR REPLACE する migration はドリフトガードと末尾の権限検査で挟む
+- 先頭で `md5(prosrc)` が期待値と一致することを確かめる（リモートで誰かが直していたら止まる）。期待値はローカルとリモート（MCP の読み取り）の両方で取って一致を確かめてから書く
+- 末尾で `'search_path=""' = ANY (proconfig)` と `has_function_privilege`（PUBLIC / anon / authenticated / service_role）を検査する。`proconfig::text` で比べると失敗する
+- ガードがあるので同じ DB に2回は流せない。開発中は scratch の隔離スタックで `rsync --delete` → `supabase db reset`（必ず scratch のディレクトリで実行）を回す。下書きの検証は `BEGIN;` + migration + テスト（テスト末尾の ROLLBACK で巻き戻る）でできる
+
+### テストが「評価の行数」を数えていると、種別を足したときに落ちる
+- 既存の検知テスト case (e) は「監視対象は2行」を数えていた。新しい種別を足すタスクで一緒に直さないと、そのコミットでは既存テストが落ちる
+
+### 全ページの layout から読まれる純関数に、重い依存を足さない
+- `describeAlert` は `(user_console)/layout.tsx` → `triageLabels` → `detectionStatus` 経由で全ページに載る。date-fns とロケールを読む `sleepQuote` / `recordQuoteRef` を import すると、/settings の First Load が 206 → 218 kB に増えた
+- 依存の無い小さなモジュール（`formatSleepMinutes.ts` / `recordQuoteLink.ts`）に分け、元のファイルから再 export して 207 kB に抑えた。`next build` の First Load を変更の前後で比べる

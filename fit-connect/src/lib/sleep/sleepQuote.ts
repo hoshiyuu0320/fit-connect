@@ -4,6 +4,7 @@ import type { SleepRecord } from '@/types/client'
 import { WAKEUP_RATING_OPTIONS } from '@/types/client'
 import { summarizeRecentSleep } from '@/lib/sleep/sleepSummary'
 import type { RecordQuoteRef } from '@/lib/message/recordQuoteRef'
+import { formatSleepMinutes } from '@/lib/sleep/formatSleepMinutes'
 
 // メッセージ画面の「記録の引用」。送信時に本文の先頭へ平文で付く（Mobile でも崩れない）。
 // 将来 metadata.record_ref を添えるときも text はそのまま旧アプリ向けのフォールバックになる。
@@ -15,14 +16,8 @@ export interface RecordQuote {
   text: string
 }
 
-/** 分 → 'H時間M分'（ゼロ埋めなし。分が 0 なら 'H時間'、60分未満は 'M分'） */
-export function formatSleepMinutes(totalMinutes: number): string {
-  const minutes = Math.max(0, Math.round(totalMinutes))
-  const h = Math.floor(minutes / 60)
-  const m = minutes % 60
-  if (h === 0) return `${m}分`
-  return m === 0 ? `${h}時間` : `${h}時間${m}分`
-}
+// 分 → 'H時間M分'。実体は依存の無い lib/sleep/formatSleepMinutes.ts（既存の import 先を変えないよう再 export する）
+export { formatSleepMinutes }
 
 /** 'yyyy-MM-dd' → 'M/d(曜)'（曜日は日本語1文字） */
 function formatSleepDate(recordedDate: string): string {

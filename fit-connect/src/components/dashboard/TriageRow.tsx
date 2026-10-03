@@ -1,20 +1,22 @@
 import React from 'react'
 import Link from 'next/link'
-import { Check, ChevronDown, MessageCircle } from 'lucide-react'
+import { Check, ChevronDown, MessageCircle, MessageSquare } from 'lucide-react'
 import { ProfileAvatar } from '@/components/clients/ProfileAvatar'
 import {
   clientMessageHref,
   clientRecordHref,
   formatJstMonthDay,
+  quotedMessageHref,
   severityLabel,
 } from '@/lib/alerts/describeAlert'
 import {
   acknowledgeButtonLabel,
   clientHonorific,
   detailToggleLabel,
-  messageLinkLabel,
+  quotedMessageLinkLabel,
   recordLinkLabel,
   replyLinkLabel,
+  SLEEP_QUOTE_LINK_TEXT,
   UNREPLIED_DETAIL_TITLE,
   unrepliedChipLabel,
   unrepliedDetailNote,
@@ -32,6 +34,10 @@ const BUTTON_BASE = `inline-flex items-center justify-center gap-1.5 rounded-md 
 export const TRIAGE_PRIMARY_BUTTON = `${BUTTON_BASE} bg-[#14B8A6] text-white hover:bg-[#0D9488]`
 
 export const TRIAGE_SECONDARY_BUTTON = `${BUTTON_BASE} border border-[#E2E8F0] bg-white text-[#475569] hover:bg-[#F8FAFC] hover:text-[#0F172A]`
+
+// 詳細の中のテキストリンク。色と hover は 9.3 の SummaryTab「メッセージで触れる」に合わせ、
+// 押せる高さは隣の「対応済みにする」（BUTTON_BASE の px-3 py-2 text-sm）とそろえる
+const TRIAGE_TEXT_LINK = `inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-[#0F766E] transition-colors duration-150 hover:bg-[#F0FDFA] motion-reduce:transition-none ${TRIAGE_FOCUS_RING}`
 
 // 重要度は色だけでなく「要確認」「注意」の文字でも示す（red / amber は重要度の表示だけに使う）
 const severityStyles: Record<AlertSeverity, string> = {
@@ -58,9 +64,14 @@ type TriageReasonDetailProps = {
   onAcknowledge: (row: TriageRowModel, reason: TriageReason) => void
 }
 
-/** 行を開いたときの理由1件（詳細文・検知日・「対応済みにする」） */
+/**
+ * 行を開いたときの理由1件（詳細文・検知日・「対応済みにする」）。
+ * 引用の付く理由（睡眠悪化）には「睡眠の記録を引用してメッセージ」のリンクを出す
+ * （未返信の有無・理由の順番を問わない。行の「メッセージ」は先頭の理由が睡眠悪化のときしか引用を付けないため）
+ */
 function TriageReasonDetail({ row, reason, busy, onAcknowledge }: TriageReasonDetailProps) {
   const detectedOn = formatJstMonthDay(reason.firstDetectedOn)
+  const messageRef = reason.description.messageRef
 
   return (
     <li className="rounded-md border border-[#E2E8F0] bg-[#F8FAFC] p-4">
@@ -74,6 +85,17 @@ function TriageReasonDetail({ row, reason, busy, onAcknowledge }: TriageReasonDe
             {reason.description.detail}
           </p>
           {detectedOn && <p className="mt-1 text-xs text-[#475569]">検知日 {detectedOn}</p>}
+          {messageRef !== null && (
+            // -ml-3 で、アイコンの左端を詳細文の左端にそろえる（px-3 の分）
+            <Link
+              href={quotedMessageHref(row.clientId, messageRef)}
+              aria-label={quotedMessageLinkLabel(row.clientName, messageRef)}
+              className={`${TRIAGE_TEXT_LINK} -ml-3 mt-1`}
+            >
+              <MessageSquare aria-hidden="true" className="h-3.5 w-3.5 flex-shrink-0" />
+              {SLEEP_QUOTE_LINK_TEXT}
+            </Link>
+          )}
         </div>
         <button
           type="button"
@@ -137,8 +159,9 @@ type TriageRowProps = {
 /**
  * 「今日の対応」の1行（1顧客）。表示専用。
  * 行全体はリンクにせず、顧客名・主ボタン・副ボタン・開閉ボタンを横に並べる（操作要素を入れ子にしない）。
- * - 未返信がある行: 主ボタンは「返信する」（/message?clientId=）、副ボタンは「記録を見る」
- * - 未返信が無い行: 主ボタンは「記録を見る」、副ボタンは「メッセージ」（PR1 のまま）
+ * - 未返信がある行: 主ボタンは「返信する」（/message?clientId=。引用は付けない）、副ボタンは「記録を見る」
+ * - 未返信が無い行: 主ボタンは「記録を見る」、副ボタンは「メッセージ」。
+ *   先頭の理由が睡眠悪化なら（row.messageRef）、直近7日の睡眠の引用付きで開く（&record=sleep%3A7d）
  * - 未返信の時間は、行を組み立てた表示時点で数えた値（row.unreplied.elapsedHours）を出すだけで、ここでは計算しない
  */
 export function TriageRow({
@@ -225,8 +248,8 @@ export function TriageRow({
                 記録を見る
               </Link>
               <Link
-                href={clientMessageHref(row.clientId)}
-                aria-label={messageLinkLabel(row.clientName)}
+                href={quotedMessageHref(row.clientId, row.messageRef)}
+                aria-label={quotedMessageLinkLabel(row.clientName, row.messageRef)}
                 className={TRIAGE_SECONDARY_BUTTON}
               >
                 メッセージ

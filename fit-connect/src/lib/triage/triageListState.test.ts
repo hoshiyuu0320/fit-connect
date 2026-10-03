@@ -326,3 +326,35 @@ describe('selectTriageListView', () => {
     })
   })
 })
+
+describe('「メッセージ」の引用（睡眠悪化）', () => {
+  const sleepPayload = {
+    v: 1,
+    triggers: ['duration'],
+    recent: { from: '2026-09-06', to: '2026-09-12', median_minutes: 330, nights: 5 },
+    previous: { from: '2026-08-30', to: '2026-09-05', median_minutes: 402, nights: 7 },
+    delta_minutes: -72,
+    wakeup: { avg: null, count: 0 },
+    threshold: { drop_minutes: 60, min_nights: 4, wakeup_avg: 1.5, min_ratings: 3 },
+  }
+
+  it('先頭の睡眠悪化を対応済みにすると引用が外れ（次の理由のタブになる）、元に戻すと付き直す', () => {
+    const sleep = makeAlert('s', {
+      client_id: 'client-x',
+      alert_type: 'sleep_decline',
+      payload: sleepPayload,
+      surfaced_on: '2026-09-13',
+    })
+    const gap = makeAlert('g', { client_id: 'client-x', surfaced_on: '2026-09-12' })
+    const s0 = createTriageListState([sleep, gap])
+    expect(selectTriageListView(s0).rows[0].messageRef).toEqual({ kind: 'sleep_week' })
+    expect(selectTriageListView(s0).rows[0].recordTab).toBe('sleep')
+
+    const s1 = run(s0, { type: 'acknowledge', alertId: 's' })
+    expect(selectTriageListView(s1).rows[0].messageRef).toBeNull()
+    expect(selectTriageListView(s1).rows[0].recordTab).toBe('summary')
+
+    const s2 = run(s1, { type: 'acknowledgeSucceeded', alertId: 's' }, { type: 'undo', alertId: 's' })
+    expect(selectTriageListView(s2).rows[0].messageRef).toEqual({ kind: 'sleep_week' })
+  })
+})

@@ -23,6 +23,17 @@ const gapPayload = {
   threshold_days: 3,
 }
 
+// 睡眠悪化（設計書 §4.6 の例。重大度は常に medium）
+const sleepPayload = {
+  v: 1,
+  triggers: ['duration'],
+  recent: { from: '2026-09-26', to: '2026-10-02', median_minutes: 330, nights: 5 },
+  previous: { from: '2026-09-19', to: '2026-09-25', median_minutes: 402, nights: 7 },
+  delta_minutes: -72,
+  wakeup: { avg: null, count: 0 },
+  threshold: { drop_minutes: 60, min_nights: 4, wakeup_avg: 1.5, min_ratings: 3 },
+}
+
 let seq = 0
 function makeAlert(overrides: Partial<ClientAlert> = {}): ClientAlert {
   seq += 1
@@ -225,6 +236,7 @@ describe('buildTriageRows（未返信の合流）', () => {
           elapsedHours: 18, // 表示時点 NOW から数える
         },
         recordTab: 'summary',
+        messageRef: null,
         score: 36,
       },
     ])
@@ -333,6 +345,87 @@ describe('buildTriageRows（未返信の合流）', () => {
     expect(rows).toHaveLength(1)
     expect(rows[0].unreplied?.count).toBe(1)
     expect(rows[0].score).toBe(36)
+  })
+})
+
+describe('buildTriageRows（「メッセージ」の引用 messageRef）', () => {
+  it('睡眠悪化が先頭の理由なら、「記録を見る」は睡眠タブ・「メッセージ」は直近7日の睡眠の引用', () => {
+    const { rows } = buildTriageRows([
+      makeAlert({ id: 'sleep', alert_type: 'sleep_decline', severity: 'medium', payload: sleepPayload }),
+    ])
+    expect(rows[0].recordTab).toBe('sleep')
+    expect(rows[0].messageRef).toEqual({ kind: 'sleep_week' })
+    expect(rows[0].reasons[0].description.chip).toBe('睡眠 -1時間12分')
+    expect(rows[0].score).toBe(10) // medium 1件（スコアは変えない）
+  })
+
+  it('体重の急変（要確認）と睡眠悪化（注意）が同じ行なら、先頭は体重 → 「記録を見る」は体重タブ・引用なし', () => {
+    const { rows } = buildTriageRows([
+      makeAlert({ id: 'sleep', alert_type: 'sleep_decline', severity: 'medium', payload: sleepPayload, surfaced_on: '2026-10-03' }),
+      makeAlert({ id: 'weight', alert_type: 'weight_change', severity: 'high', payload: weightPayload, surfaced_on: '2026-09-30' }),
+    ])
+    expect(rows[0].reasons.map((r) => r.alertId)).toEqual(['weight', 'sleep'])
+    expect(rows[0].recordTab).toBe('weight')
+    expect(rows[0].messageRef).toBeNull()
+    // 睡眠への導線は詳細のリンクに任せる（理由の description には引用が残る）
+    expect(rows[0].reasons[1].description.messageRef).toEqual({ kind: 'sleep_week' })
+  })
+
+  it('記録途絶と睡眠悪化（どちらも medium）は surfaced_on の新しい方が先頭になり、引用もそれで決まる', () => {
+    const sleepNewer = buildTriageRows([
+      makeAlert({ id: 'gap', surfaced_on: '2026-10-01' }),
+      makeAlert({ id: 'sleep', alert_type: 'sleep_decline', payload: sleepPayload, surfaced_on: '2026-10-03' }),
+    ]).rows[0]
+    expect(sleepNewer.reasons.map((r) => r.alertId)).toEqual(['sleep', 'gap'])
+    expect(sleepNewer.recordTab).toBe('sleep')
+    expect(sleepNewer.messageRef).toEqual({ kind: 'sleep_week' })
+
+    const gapNewer = buildTriageRows([
+      makeAlert({ id: 'gap', surfaced_on: '2026-10-03' }),
+      makeAlert({ id: 'sleep', alert_type: 'sleep_decline', payload: sleepPayload, surfaced_on: '2026-10-01' }),
+    ]).rows[0]
+    expect(gapNewer.reasons.map((r) => r.alertId)).toEqual(['gap', 'sleep'])
+    expect(gapNewer.recordTab).toBe('summary')
+    expect(gapNewer.messageRef).toBeNull()
+  })
+
+  it('medium どうしで surfaced_on も同じなら alert id の順（入力の順に依らない）', () => {
+    const alerts = [
+      makeAlert({ id: 'b-gap', surfaced_on: '2026-10-03' }),
+      makeAlert({ id: 'a-sleep', alert_type: 'sleep_decline', payload: sleepPayload, surfaced_on: '2026-10-03' }),
+    ]
+    for (const input of [alerts, [...alerts].reverse()]) {
+      const [row] = buildTriageRows(input).rows
+      expect(row.reasons.map((r) => r.alertId)).toEqual(['a-sleep', 'b-gap'])
+      expect(row.messageRef).toEqual({ kind: 'sleep_week' })
+    }
+  })
+
+  it('未返信がある行でも messageRef は先頭の理由から取る（「返信する」に引用を付けないのは TriageRow の役目）', () => {
+    const { rows } = buildTriageRows(
+      [makeAlert({ client_id: 'client-u', alert_type: 'sleep_decline', payload: sleepPayload })],
+      { unreplied: [makeUnreplied({ client_id: 'client-u' })], now: NOW }
+    )
+    expect(rows[0].unreplied).not.toBeNull()
+    expect(rows[0].messageRef).toEqual({ kind: 'sleep_week' })
+  })
+
+  it('壊れた睡眠の payload でも引用と睡眠タブは残る', () => {
+    const { rows } = buildTriageRows([
+      makeAlert({ alert_type: 'sleep_decline', payload: { v: 2 } }),
+    ])
+    expect(rows[0].reasons[0].description.recognized).toBe(false)
+    expect(rows[0].recordTab).toBe('sleep')
+    expect(rows[0].messageRef).toEqual({ kind: 'sleep_week' })
+  })
+
+  it('記録途絶・体重だけの行は引用なし', () => {
+    expect(buildTriageRows([makeAlert()]).rows[0].messageRef).toBeNull()
+    expect(
+      buildTriageRows([
+        makeAlert({ alert_type: 'weight_change', severity: 'high', payload: weightPayload }),
+      ]).rows[0].messageRef
+    ).toBeNull()
   })
 })
 

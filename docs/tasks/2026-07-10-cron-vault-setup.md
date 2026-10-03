@@ -283,11 +283,12 @@ limit 20;
 ## 5. `detect-client-alerts`（異常検知）の有効化
 
 **関連 migration**: `20260914000000_client_alerts.sql`（alerts / alert_detection_runs）/
-`20260914000100_client_activity_snapshot.sql`（活動の定義）/ `20260914000200_client_alert_detection.sql`（評価・本実行・検知状態・cron）
+`20260914000100_client_activity_snapshot.sql`（活動の定義）/ `20260914000200_client_alert_detection.sql`（評価・本実行・検知状態・cron）/
+`20261003000000_alert_sleep_decline.sql`（睡眠の悪化を追加。§5-10。設計: `docs/superpowers/specs/2026-10-03-sleep-decline-alert-design.md`）
 **仕様**: `docs/tasks/2026-09-13-trainer-intervention-plan.md`
 
-毎日 06:00 JST（`0 21 * * *` = UTC 21:00）に、担当顧客の「体重の急な変化（weight_change）」と「記録途絶（record_gap）」を
-判定して `public.alerts` に残すジョブです。Web のダッシュボード「今日の対応」とサイドバーのバッジがこの表を読みます。
+毎日 06:00 JST（`0 21 * * *` = UTC 21:00）に、担当顧客の「体重の急な変化（weight_change）」「記録途絶（record_gap）」
+「睡眠の悪化（sleep_decline、2026-10-03 追加）」を判定して `public.alerts` に残すジョブです。Web のダッシュボード「今日の対応」とサイドバーのバッジがこの表を読みます。
 **push 通知は送りません**（VAPID 設定後の後続タスク）。
 
 ### 他のジョブとの違い
@@ -376,6 +377,8 @@ select days.d as target_date,
                           and cur.alert_type = 'weight_change')                              as new_weight_change,
        count(*) filter (where cur.state = 'detected' and prev.state is distinct from 'detected'
                           and cur.alert_type = 'record_gap')                                 as new_record_gap,
+       count(*) filter (where cur.state = 'detected' and prev.state is distinct from 'detected'
+                          and cur.alert_type = 'sleep_decline')                              as new_sleep_decline,
        count(*) filter (where cur.state = 'detected')                                        as detected_total
 from days
 left join ev as cur on cur.d = days.d
@@ -392,6 +395,8 @@ order by days.d;
 - 睡眠の `updated_at` は後の同期で上書きされるため、過去の到着の痕跡が一部失われる →
   バックテストは「記録・同期なし（no_data）」を**多めに数える方向**にずれる（安全側）
 - 体重は成立値と解消値の間（unknown）の日を挟むと、翌日にもう一度「新規」に数えられることがある（ヒステリシスの分）
+- 睡眠の悪化も同じで、保留の日や、到着遅れで直近の窓が4晩に満たない日（不足 = unknown）を挟むと、翌日にもう一度「新規」に数えられる。
+  睡眠は到着遅れが大きい（中央値 約35時間）ので、weight_change より**多めに出る方向**にずれる
 - 見込み（計画時点のデータ）: 有効化の初回は 0〜1件、その後は1トレーナーあたり1日 0.03〜0.05件
 
 ### 5-3. 有効化直前の dry run の取り直し
@@ -552,3 +557,48 @@ commit;
   `delete from auth.users where id::text like '99999999-0914-%';`（seed の顧客の体重・登録日は `supabase db reset` で戻る。
   reset はスタックを共有している他のセッションと調整してから）
 - seed のトレーナーが free プラン（トライアル切れ）だと顧客は3人まで。seed の顧客と QA 用の2人でちょうど3人になる
+
+### 5-10. 睡眠の悪化（sleep_decline）の追加（2026-10-03、migration `20261003000000`）
+
+cron はすでに有効なので、**push した翌朝 06:00 から新しいルールが動く**。判定の仕様は
+`docs/superpowers/specs/2026-10-03-sleep-decline-alert-design.md` §4（直近7日と前の7日の睡眠時間の中央値を比べて1時間以上短い、
+または直近の目覚め評価の平均が1.5未満。重大度は medium）。
+
+1. push の前に `supabase migration list --linked` と `supabase db push --dry-run` で、未適用が `20261003000000` の1本だけであることを確かめる。
+   06:00 JST の直前は避ける（適用後の確認の時間を取るため）
+2. `supabase db push`。先頭のドリフトガード（`REMOTE_DRIFT_SINCE_CAPTURE`）か末尾の検査（`ALERT_FUNCTION_POSTCHECK_FAILED`）で止まったら、
+   トランザクションごと巻き戻っている。リモートの関数の差分を調べてから migration を直す
+3. 適用後すぐに確認する（**件数だけ**。AI（MCP）経由でも client_id や睡眠の値は出力しない）:
+
+```sql
+-- CHECK に sleep_decline が入った
+select pg_get_constraintdef(oid) from pg_constraint where conname = 'alerts_alert_type_check';
+
+-- 両関数の search_path と EXECUTE（service_role だけ true）
+select p.proname, p.proconfig,
+       has_function_privilege('anon', p.oid, 'EXECUTE')          as anon,
+       has_function_privilege('authenticated', p.oid, 'EXECUTE') as authenticated,
+       has_function_privilege('service_role', p.oid, 'EXECUTE')  as service_role
+from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public' and p.proname in ('evaluate_client_alerts', 'run_client_alert_detection');
+
+-- dry run: 睡眠の悪化の判定ごとの件数
+select state, count(*) from public.evaluate_client_alerts()
+where alert_type = 'sleep_decline' group by 1 order by 1;
+```
+
+   続けて §5-2 のバックテストを流し、`new_sleep_decline` の1日あたりの件数を見る
+4. 想定外の件数が出たら、06:00 より前に §5-5 の停止 SQL で cron を止める（体重・途絶の検知も止まるので、原因を直したらすぐ戻す）。
+   想定外の目安: 監視対象は今1名で、睡眠悪化の検知はほぼ0件の見込み（設計 §2）。監視対象の人数を超える detected や、毎日の新規が続く場合は想定外とみなす。
+   §5-2 の見込み（1トレーナーあたり1日 0.03〜0.05件）は体重と途絶だけを数えた値なので、睡眠悪化の目安には使わない
+5. 翌朝、§5-6 の確認 SQL の runs の stats に `detected.sleep_decline` が入っていることを確かめる
+6. ロールバック（必要なときだけ。新しい migration で、この順番で）:
+   1. `delete from public.alerts where alert_type = 'sleep_decline';`（resolved の行も含めて全部。CHECK を ADD するときに全行が検証されるため、resolved にするだけでは戻せない）
+   2. 両関数を `20260914000200` の定義に戻す。ドリフトガードの期待値は `evaluate_client_alerts` = `f9da5a2ab0ed75c6e3eb6cede096f41b`、
+      `run_client_alert_detection` = `8204524cb8882d68e7314d318e9af9cd`（`md5(prosrc)`。2026-10-03 の実装の値）
+   3. CHECK を `('weight_change', 'record_gap')` に戻す
+   4. COMMENT を元の文面に戻す（`CREATE OR REPLACE FUNCTION` では COMMENT は戻らない。`md5(prosrc)` には影響しない）:
+      - `public.alerts` の列 COMMENT 5つ（`alert_type` / `severity` / `payload` / `last_detected_on` / `resolved_reason`）を、
+        `20260914000000_client_alerts.sql` の `COMMENT ON COLUMN public.alerts.…`（96〜127行）の文面に戻す
+      - 関数の COMMENT 2つ（`evaluate_client_alerts` / `run_client_alert_detection`）を、
+        `20260914000200_client_alert_detection.sql` の `COMMENT ON FUNCTION`（288行・601行）の文面に戻す

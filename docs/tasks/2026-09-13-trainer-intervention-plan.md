@@ -158,7 +158,7 @@
 | id | uuid PK DEFAULT gen_random_uuid() | |
 | trainer_id | uuid NOT NULL、FK → trainers(id) ON DELETE CASCADE | 検知した時点の担当トレーナー |
 | client_id | uuid NOT NULL、FK → clients(client_id) ON DELETE CASCADE | 退会（delete-account の CASCADE）で一緒に消える |
-| alert_type | text NOT NULL、CHECK IN ('weight_change','record_gap') | 種別を増やすときは CHECK を DROP → ADD し、既存の値を落とさない |
+| alert_type | text NOT NULL、CHECK IN ('weight_change','record_gap','sleep_decline') | 種別を増やすときは CHECK を DROP → ADD し、既存の値を落とさない（sleep_decline は 2026-10-03 に追加。設計: `docs/superpowers/specs/2026-10-03-sleep-decline-alert-design.md`） |
 | severity | text NOT NULL、CHECK IN ('high','medium','low') | low は将来用 |
 | status | text NOT NULL DEFAULT 'open'、CHECK IN ('open','acknowledged','resolved') | |
 | payload | jsonb NOT NULL DEFAULT '{}' | 判定時点の値・閾値・期間・変種。表示用の文字列は入れない |
@@ -561,7 +561,7 @@
 - **8.4 と重なる**: migration の番号、手順書、000400 の適用順（db push で一緒に当たる）。ローカルの Supabase スタックとメインのチェックアウトも共有。コミット前に lock ファイルや .g.dart が develop から漏れていないか比べる
 - **既存の定義のずれは残る**: 期限間近チケット（14日と7日）、アクティブ（7日と30日）、`getClientListMetrics` の UTC 日付。KPI と「今日の対応」の数字が合わないことがある
 - **監視対象が今は1名**なので、見込み件数は有効化の直前に dry run で取り直す
-- **拡張の優先順（提案）**: 1. トレーナー向け push（と cron 失敗監視）2. 9.2 の消し込み 3. alert_settings（ミュート・閾値 UI・目的の上書き）4. Mobile heartbeat 5. ③睡眠悪化 6. 追加の実行回 7. ⑤期日×未達（initial_weight の入力導線と達成率の定義の統一が前提）8. ④カロリー超過（目標カロリーは alert_settings に置く）9. 1-B の即時検知
+- **拡張の優先順（提案）**: 1. トレーナー向け push（と cron 失敗監視）2. 9.2 の消し込み 3. alert_settings（ミュート・閾値 UI・目的の上書き）4. Mobile heartbeat 5. ③睡眠悪化（2026-10-03 実装。ブランチ `feature/sleep-decline-alert`） 6. 追加の実行回 7. ⑤期日×未達（initial_weight の入力導線と達成率の定義の統一が前提）8. ④カロリー超過（目標カロリーは alert_settings に置く）9. 1-B の即時検知
 
 ## オーナー決定（2026-09-13。4点とも推奨案を採用）
 1. 記録開始前・アプリ未登録の顧客の扱い（旧「N日間記録なし」の撤去）→ **登録から2週間以内の未開始だけ出し、それ以外は理由別の人数だけ**

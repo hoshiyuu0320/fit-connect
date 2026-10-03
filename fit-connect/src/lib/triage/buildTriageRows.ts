@@ -166,6 +166,7 @@ export function buildTriageRows(
       reasons,
       unreplied: unrepliedModel,
       recordTab: top?.description.tab ?? 'summary',
+      messageRef: top?.description.messageRef ?? null,
       score: triageScore({
         alerts: group.alerts,
         unreplied:

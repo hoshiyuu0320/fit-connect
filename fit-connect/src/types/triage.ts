@@ -7,6 +7,7 @@
  */
 
 import type { AlertDescription, AlertRecordTab } from '@/lib/alerts/describeAlert'
+import type { RecordQuoteRef } from '@/lib/message/recordQuoteLink'
 import type { AlertSeverity } from '@/types/alert'
 
 // ---------------------------------------------------------------------------
@@ -78,6 +79,12 @@ export type TriageRowModel = {
   unreplied: TriageUnreplied | null
   /** 「記録を見る」の遷移先タブ（先頭の理由のタブ。未返信だけの行は summary） */
   recordTab: AlertRecordTab
+  /**
+   * 未返信が無い行の「メッセージ」に付ける記録の引用（先頭の理由の messageRef。未返信だけの行は null）。
+   * recordTab と同じく先頭の理由から取り、「記録を見る」と「メッセージ」の対象をそろえる。
+   * 未返信がある行の「返信する」には付けない（TriageRow が決める）
+   */
+  messageRef: RecordQuoteRef | null
   /**
    * 優先度スコア（lib/triage/triageScore.ts）。並べるためだけに使い、画面には出さない
    * （見かけの精度を持たせない。計画書 Web UI > PR2）
