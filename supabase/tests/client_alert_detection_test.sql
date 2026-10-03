@@ -628,13 +628,13 @@ BEGIN
     RAISE EXCEPTION 'FAIL: (e) 対象外の顧客（auth 無し / 自己登録 / D−15）が % 行評価されている', cnt;
   END IF;
 
-  -- 監視対象の顧客は2行（weight_change と record_gap）ずつ返る
+  -- 監視対象の顧客は3行（weight_change・record_gap・sleep_decline）ずつ返る
   SELECT count(*) INTO cnt FROM pg_temp.eval_0820 e
    WHERE e.client_id = 'cccccccc-0914-0002-0000-000000000001';
-  IF cnt <> 2 THEN
-    RAISE EXCEPTION 'FAIL: (e) 監視対象の顧客の評価が % 行（期待 2 行 = 種別ごと）', cnt;
+  IF cnt <> 3 THEN
+    RAISE EXCEPTION 'FAIL: (e) 監視対象の顧客の評価が % 行（期待 3 行 = 種別ごと）', cnt;
   END IF;
-  RAISE NOTICE 'OK: 対象外（auth 無し / 自己登録 / 最終到着 D−15）は評価せず、監視対象は種別ごとに2行';
+  RAISE NOTICE 'OK: 対象外（auth 無し / 自己登録 / 最終到着 D−15）は評価せず、監視対象は種別ごとに3行';
 END $$;
 
 -- -----------------------------------------------------------------------------
@@ -1343,7 +1343,8 @@ BEGIN
   IF NOT (v_stats ?& ARRAY['monitored', 'excluded', 'detected', 'opened', 'updated', 'escalated',
                            'reopened', 'resolved', 'severity_lowered'])
      OR NOT (v_stats->'excluded' ?& ARRAY['no_account', 'self', 'not_started', 'inactive'])
-     OR NOT (v_stats->'detected' ?& ARRAY['weight_change', 'record_gap'])
+     OR NOT (v_stats->'detected' ?& ARRAY['weight_change', 'record_gap', 'sleep_decline'])
+     OR jsonb_typeof(v_stats->'detected'->'sleep_decline') IS DISTINCT FROM 'number'
      OR NOT (v_stats->'detected'->'record_gap' ?& ARRAY['not_started', 'no_data', 'no_record'])
      OR NOT (v_stats->'resolved' ?& ARRAY['cleared', 'expired', 'reassigned', 'ineligible']) THEN
     RAISE EXCEPTION 'FAIL: (j) stats のキーが期待と異なる: %', v_stats;

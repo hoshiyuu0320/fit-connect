@@ -6,9 +6,11 @@ import {
   detailToggleLabel,
   formatUnrepliedElapsed,
   messageLinkLabel,
+  quotedMessageLinkLabel,
   recordLinkLabel,
   replyLinkLabel,
   showAllButtonLabel,
+  SLEEP_QUOTE_LINK_TEXT,
   TRIAGE_HELP_TEXT,
   triageBadgeLabel,
   triageCountAnnouncement,
@@ -60,6 +62,22 @@ describe('アクセシブルな名前（顧客名と種別を入れ、見える�
     expect(replyLinkLabel('田中')).toBe('田中さんに返信する')
     expect(replyLinkLabel('田中')).toContain('返信する')
     expect(replyLinkLabel('')).toBe('名前未設定の顧客に返信する')
+  })
+
+  it('睡眠の記録を引用して開く「メッセージ」と詳細のリンク（見える文字をどちらも含む）', () => {
+    expect(SLEEP_QUOTE_LINK_TEXT).toBe('睡眠の記録を引用してメッセージ')
+    const label = quotedMessageLinkLabel('田中', { kind: 'sleep_week' })
+    expect(label).toBe('田中さんに睡眠の記録を引用してメッセージを書く')
+    expect(label).toContain('メッセージ') // 行の「メッセージ」
+    expect(label).toContain(SLEEP_QUOTE_LINK_TEXT) // 詳細の「睡眠の記録を引用してメッセージ」
+    expect(quotedMessageLinkLabel('', { kind: 'sleep_week' })).toBe(
+      '名前未設定の顧客に睡眠の記録を引用してメッセージを書く'
+    )
+  })
+
+  it('引用が無ければ、今までの「メッセージ」の名前', () => {
+    expect(quotedMessageLinkLabel('田中', null)).toBe('田中さんにメッセージを送る')
+    expect(quotedMessageLinkLabel('田中', null)).toBe(messageLinkLabel('田中'))
   })
 
   it('名前が空でも文として読める', () => {

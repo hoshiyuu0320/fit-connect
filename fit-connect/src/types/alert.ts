@@ -9,7 +9,7 @@
  */
 
 /** alerts.alert_type（CHECK と一致させる。種別を増やすときは migration と同時に足す） */
-export type ClientAlertType = 'weight_change' | 'record_gap'
+export type ClientAlertType = 'weight_change' | 'record_gap' | 'sleep_decline'
 
 /** alerts.severity（low は将来用で、PR1 では作られない） */
 export type AlertSeverity = 'high' | 'medium' | 'low'
@@ -83,7 +83,35 @@ export type RecordGapPayload =
   | RecordGapNoDataPayload
   | RecordGapNoRecordPayload
 
-export type ClientAlertPayload = WeightChangePayload | RecordGapPayload
+/** ③ 睡眠悪化の成立した条件（並びは duration → wakeup） */
+export type SleepDeclineTrigger = 'duration' | 'wakeup'
+
+/** 睡眠の比較窓（直近 = GREATEST(D − 7, 登録日)〜D − 1 / 前 = GREATEST(D − 14, 登録日)〜D − 8） */
+export type SleepDeclineWindow = {
+  /** 窓の実際の始まり。登録直後は前の窓の from が to より後になることがある（そのとき nights は 0） */
+  from: string
+  to: string
+  /** 有効な晩（120〜960分）の睡眠時間の中央値を整数に丸めたもの。窓が空なら null */
+  median_minutes: number | null
+  /** 有効な晩（120〜960分）の数 */
+  nights: number
+}
+
+/** ③ 睡眠悪化（重大度は常に medium） */
+export type SleepDeclinePayload = {
+  v: 1
+  /** 成立した条件。detected のときは1つ以上 */
+  triggers: SleepDeclineTrigger[]
+  recent: SleepDeclineWindow
+  previous: SleepDeclineWindow
+  /** 丸める前の中央値どうしの差（直近 − 前）を整数に丸めたもの。どちらかの窓が空なら null */
+  delta_minutes: number | null
+  /** 直近の窓の目覚め評価（1 = だるい、3 = すっきり）。avg は小数2桁。評価が0回なら avg は null・count は 0 */
+  wakeup: { avg: number | null; count: number }
+  threshold: { drop_minutes: number; min_nights: number; wakeup_avg: number; min_ratings: number }
+}
+
+export type ClientAlertPayload = WeightChangePayload | RecordGapPayload | SleepDeclinePayload
 
 // ---------------------------------------------------------------------------
 // 行・RPC・API

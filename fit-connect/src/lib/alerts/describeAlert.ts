@@ -2,7 +2,7 @@
  * 自動チェックのアラート（alerts 行）の表示内容を payload から組み立てる純関数。
  *
  * - 文言は DB に持たない（導出値は保存しない）。見出し・詳細文・理由のチップ・重要度のラベル・
- *   「記録を見る」のリンク先タブ・途絶の日数を、ここ1箇所で決める
+ *   「記録を見る」のリンク先タブ・「メッセージ」に付ける記録の引用・途絶の日数を、ここ1箇所で決める
  * - payload は DB の jsonb をそのまま受け取る。未知の alert_type / v・欠けた項目・壊れた日付でも
  *   例外にせず、種別ごとの汎用の文言に落とす（1件の不正で「今日の対応」全体を落とさない）
  * - 日付は JST の暦日 'YYYY-MM-DD' のまま文字列で扱い、Date のローカル時刻に通さない
@@ -11,10 +11,12 @@
  */
 
 import { toJstDateString } from '@/lib/payments/jstDate'
-import type { AlertSeverity } from '@/types/alert'
+import { formatSleepMinutes } from '@/lib/sleep/formatSleepMinutes'
+import { recordQuoteHref, type RecordQuoteRef } from '@/lib/message/recordQuoteLink'
+import type { AlertSeverity, SleepDeclineTrigger } from '@/types/alert'
 
-/** 「記録を見る」の遷移先タブ（/clients/<id>?tab=…） */
-export type AlertRecordTab = 'weight' | 'summary'
+/** 「記録を見る」の遷移先タブ（/clients/<id>?tab=…。顧客詳細は sleep も受け付ける） */
+export type AlertRecordTab = 'weight' | 'summary' | 'sleep'
 
 export type AlertDescription = {
   /** 種別の短い名前。ボタンのアクセシブルな名前に使う（例:「田中さんの体重の変化を対応済みにする」） */
@@ -30,6 +32,11 @@ export type AlertDescription = {
   /** 重要度の文字ラベル（色だけに頼らない） */
   severityLabel: string
   tab: AlertRecordTab
+  /**
+   * 「メッセージ」で開くときに付ける記録の引用（/message?clientId=…&record=…）。
+   * 睡眠悪化は直近7日の睡眠（payload が壊れていても付ける。payload に依存しないため）。それ以外の種別は null
+   */
+  messageRef: RecordQuoteRef | null
   /** 記録途絶の日数（gap_to − gap_from + 1）。途絶以外・日付が壊れているときは null */
   gapDays: number | null
   /** payload を解釈して具体的な文言を作れたか（false は汎用の文言） */
@@ -152,6 +159,12 @@ function toFiniteNumber(value: unknown): number | null {
   return null
 }
 
+/** 0 以上の整数（晩の数・評価の回数）。それ以外は null */
+function toCount(value: unknown): number | null {
+  const parsed = toFiniteNumber(value)
+  return parsed !== null && Number.isInteger(parsed) && parsed >= 0 ? parsed : null
+}
+
 /** 小数1桁・符号付き（+2.4 / -2.4）。丸めて 0.0 になるときは符号を付けない */
 function formatSigned(value: number): string {
   const abs = Math.abs(value).toFixed(1)
@@ -225,6 +238,105 @@ function readRecordGap(payload: unknown): RecordGapView | null {
   }
 }
 
+type SleepDurationView = {
+  /** 直近の窓の中央値（分） */
+  recentMedian: number
+  /** 前の窓より短くなった分（正の数。delta_minutes の絶対値） */
+  dropMinutes: number
+  recentRange: string
+  recentNights: number
+  previousRange: string
+  previousNights: number
+}
+
+type SleepWakeupView = {
+  avg: number
+  count: number
+  /** 直近の窓（登録直後は7日より短い。実際の期間を出す） */
+  recentRange: string
+}
+
+/** 成立した条件の表示に要る値。少なくとも一方は必ずある */
+type SleepDeclineView =
+  | { duration: SleepDurationView; wakeup: SleepWakeupView | null }
+  | { duration: null; wakeup: SleepWakeupView }
+
+/** triggers のうち既知の条件だけを集める（未知の値は無視する） */
+function readSleepTriggers(value: unknown): Set<SleepDeclineTrigger> {
+  const triggers = new Set<SleepDeclineTrigger>()
+  if (!Array.isArray(value)) return triggers
+  for (const trigger of value) {
+    if (trigger === 'duration' || trigger === 'wakeup') triggers.add(trigger)
+  }
+  return triggers
+}
+
+/** 睡眠時間の条件に要る項目: recent / previous の from・to・median_minutes・nights と delta_minutes */
+function readSleepDuration(payload: Record<string, unknown>): SleepDurationView | null {
+  const { recent, previous } = payload
+  if (!isRecord(recent) || !isRecord(previous)) return null
+
+  const recentMedian = toFiniteNumber(recent.median_minutes)
+  const previousMedian = toFiniteNumber(previous.median_minutes)
+  const recentNights = toCount(recent.nights)
+  const previousNights = toCount(previous.nights)
+  const deltaMinutes = toFiniteNumber(payload.delta_minutes)
+  const recentRange = formatRange(recent.from, recent.to)
+  const previousRange = formatRange(previous.from, previous.to)
+  if (
+    recentMedian === null ||
+    previousMedian === null ||
+    recentNights === null ||
+    previousNights === null ||
+    deltaMinutes === null ||
+    recentRange === null ||
+    previousRange === null
+  ) {
+    return null
+  }
+  // 成立は Δ ≤ −60。0 以上は壊れた payload（「短くなっています」と書けない）
+  if (deltaMinutes >= 0) return null
+  return {
+    recentMedian,
+    dropMinutes: -deltaMinutes,
+    recentRange,
+    recentNights,
+    previousRange,
+    previousNights,
+  }
+}
+
+/** 目覚め評価の条件に要る項目: recent の from・to と wakeup の avg・count（前の窓は見ない） */
+function readSleepWakeup(payload: Record<string, unknown>): SleepWakeupView | null {
+  const { recent, wakeup } = payload
+  if (!isRecord(recent) || !isRecord(wakeup)) return null
+  const avg = toFiniteNumber(wakeup.avg)
+  const count = toCount(wakeup.count)
+  const recentRange = formatRange(recent.from, recent.to)
+  if (avg === null || count === null || recentRange === null) return null
+  return { avg, count, recentRange }
+}
+
+/**
+ * payload の検証は triggers にある条件に要る項目だけを見る（設計書 §6.1）。
+ * 目覚め評価だけで成立した行は、前の窓が空（from が to より後・median_minutes が null）でも読める。
+ * v が 1 でない・triggers が空か未知の値だけ・triggers の条件の項目が1つでも欠けているときは null
+ */
+function readSleepDecline(payload: unknown): SleepDeclineView | null {
+  if (!isRecord(payload) || payload.v !== 1) return null
+  const triggers = readSleepTriggers(payload.triggers)
+  if (triggers.size === 0) return null
+
+  const duration = triggers.has('duration') ? readSleepDuration(payload) : null
+  const wakeup = triggers.has('wakeup') ? readSleepWakeup(payload) : null
+  if (triggers.has('duration') && duration === null) return null
+  if (triggers.has('wakeup') && wakeup === null) return null
+
+  if (duration !== null) return { duration, wakeup }
+  if (wakeup !== null) return { duration: null, wakeup }
+  return null
+}
+
 // ---------------------------------------------------------------------------
 // 文言
 // ---------------------------------------------------------------------------
@@ -240,6 +352,7 @@ function describeWeightChange(payload: unknown): DescriptionBody {
       title: '体重の急な変化',
       detail: '比較の詳しい内容は表示できません。体重の記録を確認してください。',
       tab: 'weight',
+      messageRef: null,
       gapDays: null,
       recognized: false,
     }
@@ -251,6 +364,7 @@ function describeWeightChange(payload: unknown): DescriptionBody {
     title: '体重の急な変化',
     detail: `${view.windowDays}日平均 ${kg}（${formatSigned(view.deltaPct)}%）。${view.recentRange} と ${view.previousRange} の比較`,
     tab: 'weight',
+    messageRef: null,
     gapDays: null,
     recognized: true,
   }
@@ -265,6 +379,7 @@ function describeRecordGap(payload: unknown): DescriptionBody {
       title: '記録の途切れ',
       detail: '詳しい内容は表示できません。顧客の記録を確認してください。',
       tab: 'summary',
+      messageRef: null,
       gapDays: null,
       recognized: false,
     }
@@ -280,6 +395,7 @@ function describeRecordGap(payload: unknown): DescriptionBody {
         title: '記録開始前',
         detail: `${gapFrom} に登録してから、記録もメッセージもありません`,
         tab: 'summary',
+        messageRef: null,
         gapDays: days,
         recognized: true,
       }
@@ -291,6 +407,7 @@ function describeRecordGap(payload: unknown): DescriptionBody {
         title: `記録・同期なし ${days}日`,
         detail: `${gapFrom} 以降、記録も同期も届いていません（計測していても、アプリを開くまで届かないことがあります）`,
         tab: 'summary',
+        messageRef: null,
         gapDays: days,
         recognized: true,
       }
@@ -313,6 +430,7 @@ function describeRecordGap(payload: unknown): DescriptionBody {
         title: `記録なし ${days}日`,
         detail: `${lastRecord}${arrived}`,
         tab: 'summary',
+        messageRef: null,
         gapDays: days,
         recognized: true,
       }
@@ -325,9 +443,66 @@ function describeRecordGap(payload: unknown): DescriptionBody {
         title: `記録の途切れ ${days}日`,
         detail: '詳しい内容は表示できません。顧客の記録を確認してください。',
         tab: 'summary',
+        messageRef: null,
         gapDays: days,
         recognized: false,
       }
+  }
+}
+
+const SLEEP_GENERIC_DETAIL =
+  '睡眠の自動チェックで変化を検知しました。睡眠タブで記録を確認してください。'
+
+/** 目覚め評価の平均（小数1桁。9.3 の引用「目覚め評価 1.3/3」と同じ丸め） */
+function formatWakeupAvg(avg: number): string {
+  return avg.toFixed(1)
+}
+
+function describeSleepDecline(payload: unknown): DescriptionBody {
+  const view = readSleepDecline(payload)
+  if (view === null) {
+    return {
+      kindLabel: '睡眠の悪化',
+      chip: '睡眠の悪化',
+      title: '睡眠の悪化',
+      detail: SLEEP_GENERIC_DETAIL,
+      tab: 'sleep',
+      messageRef: { kind: 'sleep_week' },
+      gapDays: null,
+      recognized: false,
+    }
+  }
+
+  // 分は formatSleepMinutes（負の数は0に丸める）に絶対値を渡し、符号は文言側で付ける。
+  // チップの符号は体重のチップと同じ ASCII の -
+  const sentences: string[] = []
+  if (view.duration !== null) {
+    const { recentMedian, dropMinutes, recentRange, recentNights, previousRange, previousNights } =
+      view.duration
+    sentences.push(
+      `直近の睡眠 ${formatSleepMinutes(recentMedian)}（中央値）。前の週より${formatSleepMinutes(dropMinutes)}短くなっています。${recentRange}（${recentNights}晩）と ${previousRange}（${previousNights}晩）の比較`
+    )
+  }
+  if (view.wakeup !== null) {
+    const { avg, count, recentRange } = view.wakeup
+    sentences.push(
+      `目覚め評価の平均 ${formatWakeupAvg(avg)}（${recentRange} に${count}回。1 = だるい、3 = すっきり）`
+    )
+  }
+  const chip =
+    view.duration !== null
+      ? `睡眠 -${formatSleepMinutes(view.duration.dropMinutes)}`
+      : `目覚め評価 ${formatWakeupAvg(view.wakeup.avg)}`
+
+  return {
+    kindLabel: '睡眠の悪化',
+    chip,
+    title: '睡眠の悪化',
+    detail: sentences.join('。'),
+    tab: 'sleep',
+    messageRef: { kind: 'sleep_week' },
+    gapDays: null,
+    recognized: true,
   }
 }
 
@@ -338,6 +513,7 @@ function describeUnknown(): DescriptionBody {
     title: '自動チェックの検知',
     detail: 'この項目の詳しい内容は表示できません。顧客の記録を確認してください。',
     tab: 'summary',
+    messageRef: null,
     gapDays: null,
     recognized: false,
   }
@@ -351,7 +527,9 @@ export function describeAlert(alert: DescribableAlert): AlertDescription {
       ? describeWeightChange(alert.payload)
       : alert.alert_type === 'record_gap'
         ? describeRecordGap(alert.payload)
-        : describeUnknown()
+        : alert.alert_type === 'sleep_decline'
+          ? describeSleepDecline(alert.payload)
+          : describeUnknown()
   return { ...body, severity, severityLabel: SEVERITY_LABELS[severity] }
 }
 
@@ -367,4 +545,12 @@ export function clientRecordHref(clientId: string, tab: AlertRecordTab): string 
 /** 「メッセージ」の遷移先（message/page.tsx が ?clientId= を読む） */
 export function clientMessageHref(clientId: string): string {
   return `/message?clientId=${encodeURIComponent(clientId)}`
+}
+
+/**
+ * 記録の引用付きの「メッセージ」の遷移先。messageRef があれば /message?clientId=…&record=…（9.3 の引用。
+ * 睡眠の直近7日は record=sleep%3A7d）、無ければ clientMessageHref と同じ
+ */
+export function quotedMessageHref(clientId: string, messageRef: RecordQuoteRef | null): string {
+  return messageRef === null ? clientMessageHref(clientId) : recordQuoteHref(clientId, messageRef)
 }

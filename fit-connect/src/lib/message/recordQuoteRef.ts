@@ -1,16 +1,15 @@
 import { format, isValid, parseISO, subDays } from 'date-fns'
+import { SLEEP_WEEK_PARAM, type RecordQuoteRef } from '@/lib/message/recordQuoteLink'
 
 // /message?clientId=…&record=<ref> の <ref> の文法。
 //   sleep:YYYY-MM-DD … その日付（sleep_records.recorded_date）の1晩
 //   sleep:7d         … 直近7日のサマリー（SummaryTab の睡眠カードと同じ計算）
-// それ以外は受け付けない（拡張で weight: 等を足すときはここに追加する）。
+// それ以外は受け付けない（拡張で weight: 等を足すときはここと recordQuoteLink.ts に追加する）。
 // URL に載せるのは日付だけで、睡眠時間などの値は載せない。
+// 型とリンクの組み立ては依存の無い recordQuoteLink.ts に置き、既存の import 先を変えないよう再 export する。
 
-export type RecordQuoteRef =
-  | { kind: 'sleep_night'; date: string } // 'yyyy-MM-dd'
-  | { kind: 'sleep_week' }
+export { formatRecordQuoteRef, recordQuoteHref, type RecordQuoteRef } from '@/lib/message/recordQuoteLink'
 
-const SLEEP_WEEK = 'sleep:7d'
 const SLEEP_NIGHT_RE = /^sleep:(\d{4}-\d{2}-\d{2})$/
 
 /** 'yyyy-MM-dd' が実在する暦日か（parseISO の検証 + 往復で桁ずれを弾く） */
@@ -21,20 +20,11 @@ function isCalendarDate(date: string): boolean {
 
 export function parseRecordQuoteRef(param: string | null | undefined): RecordQuoteRef | null {
   if (!param) return null
-  if (param === SLEEP_WEEK) return { kind: 'sleep_week' }
+  if (param === SLEEP_WEEK_PARAM) return { kind: 'sleep_week' }
   const m = SLEEP_NIGHT_RE.exec(param)
   if (!m) return null
   const date = m[1]
   return isCalendarDate(date) ? { kind: 'sleep_night', date } : null
-}
-
-export function formatRecordQuoteRef(ref: RecordQuoteRef): string {
-  return ref.kind === 'sleep_week' ? SLEEP_WEEK : `sleep:${ref.date}`
-}
-
-/** 顧客詳細 → メッセージ画面のリンク */
-export function recordQuoteHref(clientId: string, ref: RecordQuoteRef): string {
-  return `/message?clientId=${encodeURIComponent(clientId)}&record=${encodeURIComponent(formatRecordQuoteRef(ref))}`
 }
 
 /**

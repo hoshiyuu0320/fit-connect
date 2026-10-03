@@ -8,12 +8,14 @@ import {
   severityRank,
   clientRecordHref,
   clientMessageHref,
+  quotedMessageHref,
 } from '@/lib/alerts/describeAlert'
 import type {
   WeightChangePayload,
   RecordGapNotStartedPayload,
   RecordGapNoDataPayload,
   RecordGapNoRecordPayload,
+  SleepDeclinePayload,
 } from '@/types/alert'
 
 // 計画書「Web UI > 文言」の例に合わせた payload（対象日 D = 2026-09-13）
@@ -57,6 +59,36 @@ const noRecord: RecordGapNoRecordPayload = {
   threshold_days: 3,
 }
 
+// 設計書 §4.6 の例（対象日 D = 2026-10-03）
+const sleepBoth: SleepDeclinePayload = {
+  v: 1,
+  triggers: ['duration', 'wakeup'],
+  recent: { from: '2026-09-26', to: '2026-10-02', median_minutes: 330, nights: 5 },
+  previous: { from: '2026-09-19', to: '2026-09-25', median_minutes: 402, nights: 7 },
+  delta_minutes: -72,
+  wakeup: { avg: 1.33, count: 3 },
+  threshold: { drop_minutes: 60, min_nights: 4, wakeup_avg: 1.5, min_ratings: 3 },
+}
+
+const sleepDuration: SleepDeclinePayload = {
+  ...sleepBoth,
+  triggers: ['duration'],
+  wakeup: { avg: null, count: 0 },
+}
+
+// 目覚め評価だけで成立（登録日 J = 9/28 の直後。睡眠時間の無い評価だけの行で、前の窓は空・from が to より後）
+const sleepWakeupOnly: SleepDeclinePayload = {
+  ...sleepBoth,
+  triggers: ['wakeup'],
+  recent: { from: '2026-09-28', to: '2026-10-02', median_minutes: null, nights: 0 },
+  previous: { from: '2026-09-28', to: '2026-09-25', median_minutes: null, nights: 0 },
+  delta_minutes: null,
+  wakeup: { avg: 1.33, count: 3 },
+}
+
+const SLEEP_DURATION_DETAIL =
+  '直近の睡眠 5時間30分（中央値）。前の週より1時間12分短くなっています。9/26〜10/2（5晩）と 9/19〜9/25（7晩）の比較'
+
 describe('describeAlert: weight_change', () => {
   it('増加: チップ・見出し・詳細（窓の日数と比較期間）・要確認・体重タブ', () => {
     const d = describeAlert({ alert_type: 'weight_change', severity: 'high', payload: weightIncrease })
@@ -68,6 +100,7 @@ describe('describeAlert: weight_change', () => {
       severity: 'high',
       severityLabel: '要確認',
       tab: 'weight',
+      messageRef: null,
       gapDays: null,
       recognized: true,
     })
@@ -161,6 +194,7 @@ describe('describeAlert: record_gap', () => {
       severity: 'medium',
       severityLabel: '注意',
       tab: 'summary',
+      messageRef: null,
       gapDays: 5,
       recognized: true,
     })
@@ -287,6 +321,142 @@ describe('describeAlert: record_gap', () => {
   })
 })
 
+describe('describeAlert: sleep_decline', () => {
+  it('睡眠時間だけで成立: 短くなった分のチップ・中央値と比較期間の詳細・注意・睡眠タブ・直近7日の引用', () => {
+    const d = describeAlert({ alert_type: 'sleep_decline', severity: 'medium', payload: sleepDuration })
+    expect(d).toEqual({
+      kindLabel: '睡眠の悪化',
+      chip: '睡眠 -1時間12分',
+      title: '睡眠の悪化',
+      detail: SLEEP_DURATION_DETAIL,
+      severity: 'medium',
+      severityLabel: '注意',
+      tab: 'sleep',
+      messageRef: { kind: 'sleep_week' },
+      gapDays: null,
+      recognized: true,
+    })
+  })
+
+  it('目覚め評価だけで成立: 前の窓が空（from が to より後・中央値 null）でも正しい payload として扱う', () => {
+    const d = describeAlert({ alert_type: 'sleep_decline', severity: 'medium', payload: sleepWakeupOnly })
+    expect(d.recognized).toBe(true)
+    expect(d.chip).toBe('目覚め評価 1.3')
+    expect(d.detail).toBe('目覚め評価の平均 1.3（9/28〜10/2 に3回。1 = だるい、3 = すっきり）')
+    expect(d.title).toBe('睡眠の悪化')
+    expect(d.kindLabel).toBe('睡眠の悪化')
+    expect(d.severityLabel).toBe('注意')
+    expect(d.tab).toBe('sleep')
+    expect(d.messageRef).toEqual({ kind: 'sleep_week' })
+  })
+
+  it('両方成立: チップは睡眠時間、詳細は睡眠時間の文のあとに目覚め評価の文', () => {
+    const d = describeAlert({ alert_type: 'sleep_decline', severity: 'medium', payload: sleepBoth })
+    expect(d.recognized).toBe(true)
+    expect(d.chip).toBe('睡眠 -1時間12分')
+    expect(d.detail).toBe(
+      `${SLEEP_DURATION_DETAIL}。目覚め評価の平均 1.3（9/26〜10/2 に3回。1 = だるい、3 = すっきり）`
+    )
+  })
+
+  it('triggers の並び・未知の値に依らず、既知の条件を duration → wakeup の順で出す', () => {
+    const d = describeAlert({
+      alert_type: 'sleep_decline',
+      severity: 'medium',
+      payload: { ...sleepBoth, triggers: ['heart_rate', 'wakeup', 'duration'] },
+    })
+    expect(d.recognized).toBe(true)
+    expect(d.chip).toBe('睡眠 -1時間12分')
+    expect(d.detail.startsWith('直近の睡眠 5時間30分（中央値）')).toBe(true)
+    expect(d.detail.endsWith('1 = だるい、3 = すっきり）')).toBe(true)
+  })
+
+  it('分は「H時間M分」（ちょうどの時間は「H時間」）。符号は ASCII の -', () => {
+    const d = describeAlert({
+      alert_type: 'sleep_decline',
+      severity: 'medium',
+      payload: {
+        ...sleepDuration,
+        recent: { ...sleepDuration.recent, median_minutes: 360 },
+        previous: { ...sleepDuration.previous, median_minutes: 420 },
+        delta_minutes: -60,
+      },
+    })
+    expect(d.chip).toBe('睡眠 -1時間')
+    expect(d.detail).toBe(
+      '直近の睡眠 6時間（中央値）。前の週より1時間短くなっています。9/26〜10/2（5晩）と 9/19〜9/25（7晩）の比較'
+    )
+    expect(d.chip).not.toContain('−') // U+2212 ではない
+  })
+
+  it('目覚め評価だけの行は、睡眠時間の項目が欠けていても読める（triggers にある条件だけを確かめる）', () => {
+    const d = describeAlert({
+      alert_type: 'sleep_decline',
+      severity: 'medium',
+      payload: { ...sleepWakeupOnly, previous: undefined, delta_minutes: 'broken' },
+    })
+    expect(d.recognized).toBe(true)
+    expect(d.chip).toBe('目覚め評価 1.3')
+  })
+
+  it('壊れた payload・v が 1 でない・triggers が空や未知だけ・条件の項目の欠けは、睡眠の汎用文言（引用とタブは残す）', () => {
+    expect(describeAlert({ alert_type: 'sleep_decline', severity: 'medium', payload: { ...sleepBoth, v: 2 } })).toEqual({
+      kindLabel: '睡眠の悪化',
+      chip: '睡眠の悪化',
+      title: '睡眠の悪化',
+      detail: '睡眠の自動チェックで変化を検知しました。睡眠タブで記録を確認してください。',
+      severity: 'medium',
+      severityLabel: '注意',
+      tab: 'sleep',
+      messageRef: { kind: 'sleep_week' },
+      gapDays: null,
+      recognized: false,
+    })
+
+    const broken: unknown[] = [
+      null,
+      undefined,
+      'sleep',
+      [],
+      {},
+      { ...sleepBoth, v: undefined },
+      { ...sleepBoth, triggers: [] },
+      { ...sleepBoth, triggers: ['heart_rate'] },
+      { ...sleepBoth, triggers: 'duration' },
+      { ...sleepBoth, triggers: undefined },
+      // duration の項目の欠け
+      { ...sleepDuration, delta_minutes: null },
+      { ...sleepDuration, delta_minutes: 12 }, // 成立は Δ ≤ −60。0 以上は「短くなっています」と書けない
+      { ...sleepDuration, recent: undefined },
+      { ...sleepDuration, recent: { ...sleepDuration.recent, median_minutes: null } },
+      { ...sleepDuration, previous: { ...sleepDuration.previous, median_minutes: null } },
+      { ...sleepDuration, previous: { ...sleepDuration.previous, nights: undefined } },
+      { ...sleepDuration, recent: { ...sleepDuration.recent, nights: 2.5 } },
+      { ...sleepDuration, previous: { ...sleepDuration.previous, from: '2026-09-26' } }, // from > to
+      { ...sleepDuration, recent: { ...sleepDuration.recent, to: '2026-02-30' } },
+      // wakeup の項目の欠け
+      { ...sleepWakeupOnly, wakeup: undefined },
+      { ...sleepWakeupOnly, wakeup: { avg: null, count: 3 } },
+      { ...sleepWakeupOnly, wakeup: { avg: 1.33 } },
+      { ...sleepWakeupOnly, recent: { ...sleepWakeupOnly.recent, from: '2026-10-03' } }, // from > to
+      // 両方が triggers にあるのに片方の項目が欠けている
+      { ...sleepBoth, wakeup: { avg: null, count: 0 } },
+      { ...sleepBoth, delta_minutes: null },
+    ]
+    for (const payload of broken) {
+      const d = describeAlert({ alert_type: 'sleep_decline', severity: 'medium', payload })
+      expect(d.recognized).toBe(false)
+      expect(d.kindLabel).toBe('睡眠の悪化')
+      expect(d.title).toBe('睡眠の悪化')
+      expect(d.chip).toBe('睡眠の悪化')
+      expect(d.detail).toBe('睡眠の自動チェックで変化を検知しました。睡眠タブで記録を確認してください。')
+      expect(d.tab).toBe('sleep')
+      expect(d.messageRef).toEqual({ kind: 'sleep_week' })
+      expect(d.severityLabel).toBe('注意')
+    }
+  })
+})
+
 describe('describeAlert: 未知の種別・重要度', () => {
   it('未知の alert_type は汎用の文言で、サマリータブへ', () => {
     const d = describeAlert({ alert_type: 'sleep_drop', severity: 'high', payload: { v: 1 } })
@@ -298,6 +468,7 @@ describe('describeAlert: 未知の種別・重要度', () => {
       severity: 'high',
       severityLabel: '要確認',
       tab: 'summary',
+      messageRef: null,
       gapDays: null,
       recognized: false,
     })
@@ -339,6 +510,13 @@ describe('日付の表示（JST の暦日）', () => {
     )
   })
 
+  it('睡眠悪化の比較期間も、UTC より西のタイムゾーンで前日にならない', () => {
+    process.env.TZ = 'America/Los_Angeles'
+    expect(describeAlert({ alert_type: 'sleep_decline', severity: 'medium', payload: sleepBoth }).detail).toBe(
+      `${SLEEP_DURATION_DETAIL}。目覚め評価の平均 1.3（9/26〜10/2 に3回。1 = だるい、3 = すっきり）`
+    )
+  })
+
   it('時刻付きの値は JST の暦日に直す（JST 9/8 0:30 = UTC 9/7 15:30 は 9/8）', () => {
     // 先頭10文字を切り出す（UTC の日付）と 9/7 になる
     expect('2026-09-07T15:30:00.000Z'.slice(0, 10)).toBe('2026-09-07')
@@ -367,10 +545,18 @@ describe('リンク先', () => {
   it('記録を見る: /clients/<id>?tab=…', () => {
     expect(clientRecordHref('c-1', 'weight')).toBe('/clients/c-1?tab=weight')
     expect(clientRecordHref('c-1', 'summary')).toBe('/clients/c-1?tab=summary')
+    expect(clientRecordHref('c-1', 'sleep')).toBe('/clients/c-1?tab=sleep')
   })
 
   it('メッセージ: /message?clientId=<id>（値はエンコードする）', () => {
     expect(clientMessageHref('c-1')).toBe('/message?clientId=c-1')
     expect(clientMessageHref('a&b')).toBe('/message?clientId=a%26b')
+  })
+
+  it('メッセージ（引用付き）: messageRef があれば record=<参照> を付け、無ければ clientMessageHref と同じ', () => {
+    expect(quotedMessageHref('c-1', { kind: 'sleep_week' })).toBe('/message?clientId=c-1&record=sleep%3A7d')
+    expect(quotedMessageHref('a&b', { kind: 'sleep_week' })).toBe('/message?clientId=a%26b&record=sleep%3A7d')
+    expect(quotedMessageHref('c-1', null)).toBe('/message?clientId=c-1')
+    expect(quotedMessageHref('c-1', null)).toBe(clientMessageHref('c-1'))
   })
 })

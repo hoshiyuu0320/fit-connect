@@ -8,6 +8,7 @@
  */
 
 import { formatJstMonthDayTime, type DetectionState } from '@/lib/alerts/detectionStatus'
+import type { RecordQuoteRef } from '@/lib/message/recordQuoteLink'
 import type { TriageUnreplied } from '@/types/triage'
 
 /** 「田中 太郎さん」。名前が空なら「名前未設定の顧客」 */
@@ -29,6 +30,20 @@ export function recordLinkLabel(clientName: string): string {
 /** 「田中さんにメッセージを送る」（見える文字は「メッセージ」） */
 export function messageLinkLabel(clientName: string): string {
   return `${clientHonorific(clientName)}にメッセージを送る`
+}
+
+/** 詳細の睡眠悪化の理由に出す、睡眠の記録を引用してメッセージ画面を開くリンクの見える文字 */
+export const SLEEP_QUOTE_LINK_TEXT = '睡眠の記録を引用してメッセージ'
+
+/**
+ * 記録の引用付きで開く「メッセージ」の名前。
+ * - 引用あり:「田中さんに睡眠の記録を引用してメッセージを書く」。行の「メッセージ」と詳細の
+ *   「睡眠の記録を引用してメッセージ」のどちらの見える文字も含む（RecordQuoteRef は今は睡眠の参照だけ）
+ * - 引用なし: messageLinkLabel と同じ「田中さんにメッセージを送る」
+ */
+export function quotedMessageLinkLabel(clientName: string, messageRef: RecordQuoteRef | null): string {
+  if (messageRef === null) return messageLinkLabel(clientName)
+  return `${clientHonorific(clientName)}に${SLEEP_QUOTE_LINK_TEXT}を書く`
 }
 
 /** 未返信のある行の主ボタン「田中さんに返信する」（見える文字は「返信する」） */
