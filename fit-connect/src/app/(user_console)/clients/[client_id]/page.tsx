@@ -280,6 +280,7 @@ export default function ClientDetailPage() {
                 clientGender={client.gender}
                 bmrFormula={bmrFormula}
                 sleepRecords={sleepRecords}
+                clientId={clientId}
               />
             </TabsContent>
 
@@ -302,7 +303,7 @@ export default function ClientDetailPage() {
             </TabsContent>
 
             <TabsContent value="sleep">
-              <SleepTab sleepRecords={sleepRecords} />
+              <SleepTab sleepRecords={sleepRecords} clientId={clientId} />
             </TabsContent>
 
             <TabsContent value="exercise">

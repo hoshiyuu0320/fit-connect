@@ -559,3 +559,25 @@
 - Supabase の default privileges により、public に新しく作る関数には anon / authenticated / service_role の EXECUTE が付く。トリガー関数を新設したら毎回 `REVOKE ALL ... FROM PUBLIC, anon, authenticated, service_role` を書く
 - Advisor の 0029（authenticated が実行できる SECURITY DEFINER）は、意図して authenticated に開いた関数（calculate_achievement_rate / mark_messages_as_read / get_my_sessions / get_alert_detection_status / can_edit_message）で残り続ける。適用後の確認は「対象の関数について」出る・出ないで書く（全体の件数で書くと、正しい適用でも失敗に見える）
 
+## 記録→指導動線（フェーズ9.3、2026-09-23）で得た知見
+
+### 「その記録はどの経路で来るか」を設計の前に確かめる
+- カタログ 6-A の MVP は「記録サイドパネルの引用返信」だったが、サイドパネルの記録カードは **messages 配列から抽出したタグ付きメッセージ** であり、睡眠は HealthKit / 手動で `sleep_records` に直接入る（`message_id` も `#睡眠` タグも無い）。そのため MVP どおりに作っても「睡眠→指導」の動線にはならなかった
+- 対策: 記録種別ごとに「どのテーブルに・どの経路で・メッセージを伴うか」を最初に表にする。睡眠は顧客詳細からのディープリンク（`/message?clientId=…&record=sleep:…`）+ 本文先頭の平文引用にし、`messages.metadata` の規約新設と Mobile リリースを避けた
+
+### 同じ数字を別画面で出すなら、計算を純関数に切り出して両方から呼ぶ
+- 「睡眠（直近7日）」カードの平均と、メッセージ画面の `sleep:7d` の引用文が食い違うと信用を失う。`SummaryTab` の `useMemo` を `summarizeRecentSleep(records, now)` に切り出し、両方がそれを呼ぶようにした（挙動は不変、テスト 12 本）
+- 平均を「時間」に変換してから `* 60` で分に戻すと浮動小数の往復で `61.5 → 61.4999…` になり丸めが 1 分ずれる（2〜7 日の総当たりで 88 組）。**平均は元の単位（分）で持ち、その単位で丸める**
+- `Object.freeze` した値を可変の型で返すと tsc は通るが実行時に TypeError になる。凍結するならフィールドに `readonly` を付ける
+
+### URL クエリの文法は厳格に、未知の値は無視して URL から落とす
+- `record=` は `sleep:YYYY-MM-DD` / `sleep:7d` だけを受け付け（正規表現 + `parseISO` + `format` の往復で暦日を検証）、それ以外は `console.warn` のうえ `router.replace` で落とす。値（睡眠時間など）は URL に載せず日付だけにする
+- 消費後の `router.replace` は同じ pathname なので `client_id` の effect は再実行されないが、`{ scroll: false }` を渡さないと Next がページ先頭へスクロール／フォーカスしようとする
+- 取得中に別の顧客へ切り替わる競合は、`cancelled` フラグに加えて `selectedClientRef.current?.client_id === cid` を set の直前で照合する（StrictMode の二重実行にも効く）
+
+### `.env.local` 無しでログイン必須画面を QA する（隔離スタック + 合成 Cookie + 内蔵ブラウザ）
+- scratchpad に `supabase/` をコピーして `project_id` とポート（587xx）を変え、studio / inbucket / analytics / edge_runtime と seed を無効にして `supabase start`。共有スタック（54321〜）には触れない
+- admin API でテスト用トレーナー・顧客を作り（`clients.client_id` = 顧客の auth id）、`docker exec … psql` でデータ投入（`on_message_insert` / `on_message_update` だけ DISABLE）。`grant_type=password` でセッションを取り、Cookie `sb-127-auth-token` = `base64-` + base64url(JSON)
+- dev server は `NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:<port>`（`localhost` だと Cookie 名が `sb-localhost-…` になり不一致）で `pnpm dev -p 3100`。内蔵ブラウザで `/login` を開いて `document.cookie` に入れれば、Google ログインもユーザー操作も無しで保護ページに入れる
+- 内蔵ブラウザの癖: `find` はボタン本文ではなく `title` / `aria-label` で当たる。`key` は `"Enter"`（`"Return"` は送信されず、アプリの不具合と誤認しかけた）。`get_page_text` の URL は origin だけなので、クエリは `location.href` で確認する
+- 終了時は `supabase stop --no-backup`（scratch の qa-stack から）と dev server の停止を忘れない

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { X, ClipboardList } from "lucide-react";
+import { X, ClipboardList, Reply } from "lucide-react";
 import type { Message } from "@/types/client";
 import type { DailyNutritionPoint } from "@/lib/nutrition/aggregate";
 import type { RecordCardType } from "@/components/message/recordCardParser";
@@ -23,6 +23,8 @@ interface RecordSidePanelProps {
   resizeHandleProps: Record<string, unknown>;
   onClose: () => void;
   onImageClick: (url: string) => void;
+  /** 記録カードの「返信で触れる」。未指定ならボタンを出さない */
+  onReplyStart?: (msg: Message) => void;
 }
 
 const TYPE_TABS: { value: RecordCardType | "all"; label: string }[] = [
@@ -43,6 +45,7 @@ export function RecordSidePanel({
   resizeHandleProps,
   onClose,
   onImageClick,
+  onReplyStart,
 }: RecordSidePanelProps) {
   const [typeFilter, setTypeFilter] = useState<RecordCardType | "all">("all");
 
@@ -224,14 +227,27 @@ export function RecordSidePanel({
                   imageUrls={item.message.image_urls}
                   onImageClick={onImageClick}
                 />
-                <p className="text-[10px] text-[#94A3B8] mt-1.5">
-                  {new Date(item.message.created_at).toLocaleString("ja-JP", {
-                    month: "numeric",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </p>
+                <div className="flex items-center justify-between gap-2 mt-1.5">
+                  <p className="text-[10px] text-[#94A3B8]">
+                    {new Date(item.message.created_at).toLocaleString("ja-JP", {
+                      month: "numeric",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                  {onReplyStart && (
+                    <button
+                      type="button"
+                      onClick={() => onReplyStart(item.message)}
+                      className="inline-flex items-center gap-1 text-[11px] text-[#64748B] hover:text-[#14B8A6] rounded-md px-1.5 py-0.5 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14B8A6]"
+                      title="この記録に返信する"
+                    >
+                      <Reply className="h-3 w-3" aria-hidden="true" />
+                      返信で触れる
+                    </button>
+                  )}
+                </div>
               </li>
             ))}
           </ul>

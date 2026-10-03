@@ -1,12 +1,16 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import { format } from 'date-fns'
+import { MessageSquare } from 'lucide-react'
 import { WeightNutritionChart } from '@/components/clients/WeightNutritionChart'
 import { PfcBalanceCard } from '@/components/clients/PfcBalanceCard'
 import { PeriodSelector } from '@/components/clients/PeriodSelector'
 import { aggregateDailyNutrition } from '@/lib/nutrition/aggregate'
 import { latestWeightRecord } from '@/lib/weight/weightRecordSelectors'
+import { summarizeRecentSleep } from '@/lib/sleep/sleepSummary'
+import { recordQuoteHref } from '@/lib/message/recordQuoteRef'
 import type { PeriodFilter } from '@/types/period'
 import type { WeightRecord, MealRecord, ExerciseRecord, Ticket, SleepRecord } from '@/types/client'
 import { MEAL_TYPE_OPTIONS, EXERCISE_TYPE_OPTIONS, PURPOSE_OPTIONS } from '@/types/client'
@@ -31,6 +35,8 @@ interface SummaryTabProps {
   clientGender?: 'male' | 'female' | 'other'
   bmrFormula?: BmrFormula
   sleepRecords?: SleepRecord[]
+  /** 「メッセージで触れる」のリンク先。未指定ならリンクを出さない */
+  clientId?: string
 }
 
 const MEAL_EMOJI: Record<string, string> = {
@@ -54,6 +60,7 @@ export function SummaryTab({
   clientGender,
   bmrFormula = 'mifflin',
   sleepRecords = [],
+  clientId,
 }: SummaryTabProps) {
   // 栄養トレンド: 期間フィルター
   const [nutritionPeriod, setNutritionPeriod] = useState<PeriodFilter>('month')
@@ -100,28 +107,8 @@ export function SummaryTab({
       .slice(0, 6)
   }, [mealRecords, exerciseRecords])
 
-  // 直近7日の睡眠サマリー
-  const sleepSummary = useMemo(() => {
-    if (sleepRecords.length === 0) {
-      return { avgHours: null, avgWakeupRating: null, hasWarning: false, recentCount: 0 }
-    }
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-    const recent = sleepRecords.filter((r) => new Date(r.recorded_date) >= sevenDaysAgo)
-    if (recent.length === 0) {
-      return { avgHours: null, avgWakeupRating: null, hasWarning: false, recentCount: 0 }
-    }
-    const totalMins = recent.filter((r) => r.total_sleep_minutes !== null)
-    const avgHours = totalMins.length > 0
-      ? totalMins.reduce((sum, r) => sum + (r.total_sleep_minutes ?? 0), 0) / totalMins.length / 60
-      : null
-    const ratings = recent.filter((r) => r.wakeup_rating !== null)
-    const avgWakeupRating = ratings.length > 0
-      ? ratings.reduce((sum, r) => sum + (r.wakeup_rating ?? 0), 0) / ratings.length
-      : null
-    // 6時間未満 or 平均評価1.5以下なら注意喚起
-    const hasWarning = (avgHours !== null && avgHours < 6) || (avgWakeupRating !== null && avgWakeupRating <= 1.5)
-    return { avgHours, avgWakeupRating, hasWarning, recentCount: recent.length }
-  }, [sleepRecords])
+  // 直近7日の睡眠サマリー（メッセージ画面の睡眠引用と同じ計算）
+  const sleepSummary = useMemo(() => summarizeRecentSleep(sleepRecords), [sleepRecords])
 
   // 予測データ（30日固定）
   const predictionData = useMemo(() => {
@@ -247,13 +234,25 @@ export function SummaryTab({
 
         {/* 睡眠サマリー（直近7日） */}
         <div className="bg-white border border-[#E2E8F0] rounded-md p-4">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between gap-2 mb-3">
             <h3 className="text-sm font-semibold text-[#0F172A]">睡眠（直近7日）</h3>
-            {sleepSummary.hasWarning && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#FEF3C7] text-[#B45309]">
-                改善余地あり
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              {sleepSummary.hasWarning && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#FEF3C7] text-[#B45309]">
+                  改善余地あり
+                </span>
+              )}
+              {clientId && sleepSummary.recentCount > 0 && (
+                <Link
+                  href={recordQuoteHref(clientId, { kind: 'sleep_week' })}
+                  className="shrink-0 whitespace-nowrap inline-flex items-center gap-1 text-xs text-[#0F766E] hover:bg-[#F0FDFA] rounded-md px-2 py-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14B8A6]"
+                  title="直近7日の睡眠についてメッセージを書く"
+                >
+                  <MessageSquare className="h-3.5 w-3.5" aria-hidden="true" />
+                  メッセージで触れる
+                </Link>
+              )}
+            </div>
           </div>
           {sleepSummary.recentCount === 0 ? (
             <p className="text-sm text-[#94A3B8]">記録がありません</p>
