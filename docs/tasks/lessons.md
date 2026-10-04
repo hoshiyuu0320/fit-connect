@@ -603,3 +603,25 @@
 ### 全ページの layout から読まれる純関数に、重い依存を足さない
 - `describeAlert` は `(user_console)/layout.tsx` → `triageLabels` → `detectionStatus` 経由で全ページに載る。date-fns とロケールを読む `sleepQuote` / `recordQuoteRef` を import すると、/settings の First Load が 206 → 218 kB に増えた
 - 依存の無い小さなモジュール（`formatSleepMinutes.ts` / `recordQuoteLink.ts`）に分け、元のファイルから再 export して 207 kB に抑えた。`next build` の First Load を変更の前後で比べる
+
+## Web Push の土台（フェーズ9.1 拡張 push の PR1、2026-10-04）で得た知見
+
+### 手順書の「出力例」に本物の鍵を貼ると、それがそのまま本番の鍵になる
+- 2026-02 に書かれた `fit-connect/docs/SETUP_PUSH_NOTIFICATIONS.md` の「出力例」の VAPID の公開鍵・秘密鍵の組が、2026-10-04 に Edge Functions へ登録された鍵と同じだった。リポジトリは PUBLIC で、秘密鍵が develop / main と履歴に残っていた（PR1 で手順書から消し、オーナーに鍵の作り直しを依頼）
+- 手順書の例には、実際に生成した値を貼らない。`<公開鍵>` のような置き換え文字にする
+- secrets の値を見ずに「この値と同じか」を確かめるには、`supabase secrets list` の DIGEST（値の SHA-256）と、疑わしい値の `shasum -a 256` を比べる。どちらの値も画面に出さない
+- 漏れた鍵は作り直す。履歴を書き換えても、既に読まれた鍵は取り消せない。VAPID は購読がまだ無いうちなら、作り直しても誰も困らない
+
+### 通知の宛先を user_id だけで引くと、兼務アカウントで顧客宛とトレーナー宛が混ざる
+- 修正前の `_shared/push.ts` に同じデータ（同じ uid に trainer の web_push 行と client の ios 行）を流すと、顧客宛の通知がトレーナーのブラウザにも届いた（`sent=1/2`）。`device_tokens` は `user_type` でも絞る（PR1 で修正）
+
+### Web Push の通しの確認は、HTTPS の受け口とホストの Deno で行う
+- `npm:web-push` は URL のスキームを見ずに常に `https.request` で送るので、HTTP の受け口には届かない
+- Deno の `--unsafely-ignore-certificate-errors` は、`node:https` を通る web-push には効かない。自己署名証明書を `DENO_CERT=<PEM のパス>` で信頼させる（`--allow-sys` も要る）
+- macOS の LibreSSL で EC 鍵を作ると、曲線のパラメータが明示形式になって Deno に拒まれる。`openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -pkeyopt ec_param_enc:named_curve` で作る
+- `supabase functions serve` は Docker の中で動き、ホストの 127.0.0.1 の受け口に届かない。関数や `push.ts` を呼ぶスクリプトは、ホストで `npx -y deno run` で動かし、隔離スタックの URL とキーを環境変数で渡す
+
+### 内蔵ブラウザで通知まわりの画面を確かめるときの差し替え
+- 内蔵ブラウザは `Notification.permission` が最初から `'denied'` だが、`configurable` なので `Object.defineProperty(Notification, 'permission', { get: () => 'granted', configurable: true })` で差し替えられる。`navigator.serviceWorker` の `getRegistration` / `ready` も同様に差し替えられる
+- 差し替えはリロードで消えるので、サイドバー（`router.push`）で画面を移ってコンポーネントをマウントし直す
+- `window.fetch` を差し替えるときは、Next.js のルーターが `URL` オブジェクトを渡すので `String(input instanceof Request ? input.url : input)` で URL を取る。`input.url` だけだと RSC の取得が例外になり、ブラウザの通常の遷移（リロード）に落ちて差し替えが消える
