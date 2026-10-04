@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/features/messages/presentation/widgets/chat_input.dart';
 import 'package:fit_connect_mobile/features/messages/presentation/widgets/message_bubble.dart';
 import 'package:fit_connect_mobile/features/messages/presentation/widgets/quick_action_bar.dart';
@@ -11,9 +12,9 @@ import '../../messages_test_support.dart';
 
 const _phone = EdgeInsets.only(top: 47, bottom: 34);
 
-/// 絞り込みのチップ（下部ナビにも「記録」があるので、チップの中から探す）
-Finder _filterChip(String label) => find.descendant(
-      of: find.byType(FcChips<MessageFilter>),
+/// 絞り込みのタブ（下部ナビにも「記録」があるので、タブの中から探す）
+Finder _filterTab(String label) => find.descendant(
+      of: find.byType(FcSubTabs<MessageFilter>),
       matching: find.text(label),
     );
 
@@ -87,17 +88,48 @@ void main() {
       expect(find.text('あなたの運動記録 · 有酸素 · 18:20'), findsOneWidget);
       expect(find.text('あなたの体重記録 · 7:30'), findsOneWidget);
       expect(find.text('あなたの朝食記録 · 8:10'), findsOneWidget);
-      expect(find.text('あなたのメッセージ · 9:24'), findsOneWidget);
+      // タグの無い自分のメッセージは見出しを出さず、時刻を状態行に出す
+      expect(find.textContaining('あなたのメッセージ'), findsNothing);
       expect(find.text('ワークアウト完了 · 上半身 · 18:40'), findsOneWidget);
       expect(find.text('運動の記録に追加しました'), findsOneWidget);
       expect(find.text('体重の記録に追加しました'), findsOneWidget);
       expect(find.text('食事の記録に追加しました'), findsOneWidget);
       expect(find.text('プランの完了を報告しました'), findsOneWidget);
-      expect(find.text('編集済み'), findsOneWidget);
+      expect(find.text('9:24 · 編集済み'), findsOneWidget);
       expect(find.text('田中トレーナー · 19:12'), findsOneWidget);
       expect(find.textContaining('既読'), findsNothing);
       // 返信先がある記録カードの上に「{名前}への返信」
       expect(find.textContaining('田中トレーナーへの返信'), findsOneWidget);
+    });
+
+    testWidgets('自分の通常のメッセージ: 見出し行なし・本文の下に送信時刻（見出しのある記録カードは残る）',
+        (tester) async {
+      final today = DateTime.now();
+      await pumpMessageScreen(
+        tester,
+        overrides: messageScreenOverrides(messages: [
+          testMessage(
+            id: 'p',
+            mine: true,
+            content: 'あいうえお',
+            at: DateTime(today.year, today.month, today.day, 17, 4),
+          ),
+          testMessage(
+            id: 'w',
+            mine: true,
+            content: '#体重 62.4 kg',
+            tags: const ['#体重'],
+            at: DateTime(today.year, today.month, today.day, 17, 5),
+          ),
+        ]),
+        viewPadding: _phone,
+      );
+      expect(find.text('あいうえお'), findsOneWidget);
+      expect(find.text('17:04'), findsOneWidget);
+      expect(find.textContaining('あなたのメッセージ'), findsNothing);
+      expect(find.text('あなたの体重記録 · 17:05'), findsOneWidget);
+      expect(tester.getTopLeft(find.text('17:04')).dy,
+          greaterThan(tester.getBottomLeft(find.text('あいうえお')).dy));
     });
 
     testWidgets('日付の区切りは 13px・textSecondary・中央', (tester) async {
@@ -121,12 +153,12 @@ void main() {
       );
       expect(find.textContaining('お疲れさまでした。最後のセット'), findsOneWidget);
 
-      await tester.tap(_filterChip('記録'));
+      await tester.tap(_filterTab('記録'));
       await tester.pumpAndSettle();
       expect(find.textContaining('お疲れさまでした。最後のセット'), findsNothing);
       expect(find.text('あなたの体重記録 · 7:30'), findsOneWidget);
 
-      await tester.tap(_filterChip('すべて'));
+      await tester.tap(_filterTab('すべて'));
       await tester.pumpAndSettle();
       expect(find.textContaining('お疲れさまでした。最後のセット'), findsOneWidget);
     });
@@ -139,6 +171,154 @@ void main() {
         size: const Size(390, 1800),
       );
       expect(find.text('これ以上メッセージはありません'), findsOneWidget);
+    });
+  });
+
+  group('絞り込みのタブ（すべて / 記録）', () {
+    testWidgets('2 項目のタブが幅いっぱい（画面の左右余白の内側）に等分して広がり、ボタン（チップ）ではない',
+        (tester) async {
+      await pumpMessageScreen(
+        tester,
+        overrides: messageScreenOverrides(messages: sampleThread()),
+        viewPadding: _phone,
+      );
+      expect(find.byType(FcChips<MessageFilter>), findsNothing);
+      final tabs = find.byType(FcSubTabs<MessageFilter>);
+      expect(tabs, findsOneWidget);
+      // 390 - 左右 20
+      expect(tester.getSize(tabs).width, 350);
+      expect(tester.getTopLeft(tabs).dx, 20);
+      // 文言は「すべて」「記録」のまま
+      expect(_filterTab('すべて'), findsOneWidget);
+      expect(_filterTab('記録'), findsOneWidget);
+      // 2 つのタブは、外枠の中でほぼ半分ずつ（文字数の違いの分だけが差）
+      Rect faceOf(String label) => tester.getRect(find
+          .ancestor(
+            of: _filterTab(label),
+            matching: find.byType(AnimatedContainer),
+          )
+          .first);
+      final all = faceOf('すべて');
+      final records = faceOf('記録');
+      expect((all.width - records.width).abs(), lessThan(24));
+      expect(all.left, lessThan(records.left));
+      // 外枠の内側余白 4 と、タブの間隔 2 を除いて、ほぼ全幅を 2 つで使う
+      expect(all.width + records.width, closeTo(350 - 4 * 2 - 2, 1));
+    });
+
+    testWidgets('タップ領域は高さ 44 以上', (tester) async {
+      await pumpMessageScreen(
+        tester,
+        overrides: messageScreenOverrides(messages: sampleThread()),
+        viewPadding: _phone,
+      );
+      for (final label in ['すべて', '記録']) {
+        final size = tester.getSize(find
+            .ancestor(
+              of: _filterTab(label),
+              matching: find.byType(FcPressable),
+            )
+            .first);
+        expect(size.height, greaterThanOrEqualTo(44), reason: label);
+        expect(size.width, greaterThanOrEqualTo(44), reason: label);
+      }
+    });
+
+    for (final (name, brightness, colors) in [
+      ('ライト', Brightness.light, AppColorsExtension.light),
+      ('ダーク', Brightness.dark, AppColorsExtension.dark),
+    ]) {
+      testWidgets(
+          '$name: 選択中は面（surfaceSecondary）+ accent の文字 + 太字、未選択は面なし + textSecondary',
+          (tester) async {
+        await pumpMessageScreen(
+          tester,
+          overrides: messageScreenOverrides(messages: sampleThread()),
+          viewPadding: _phone,
+          brightness: brightness,
+        );
+
+        TextStyle styleOf(String label) =>
+            tester.widget<Text>(_filterTab(label)).style!;
+        Color? faceOf(String label) {
+          final box = tester.widget<AnimatedContainer>(find
+              .ancestor(
+                of: _filterTab(label),
+                matching: find.byType(AnimatedContainer),
+              )
+              .first);
+          return (box.decoration as BoxDecoration).color;
+        }
+
+        // 初めは「すべて」が選択中
+        expect(styleOf('すべて').color, colors.accent);
+        expect(styleOf('すべて').fontWeight, FontWeight.w500);
+        expect(faceOf('すべて'), colors.surfaceSecondary);
+        expect(styleOf('記録').color, colors.textSecondary);
+        expect(styleOf('記録').fontWeight, FontWeight.w400);
+        expect(faceOf('記録'), Colors.transparent);
+
+        // 「記録」に切り替えると入れ替わる
+        await tester.tap(_filterTab('記録'));
+        await tester.pumpAndSettle();
+        expect(styleOf('記録').color, colors.accent);
+        expect(styleOf('記録').fontWeight, FontWeight.w500);
+        expect(faceOf('記録'), colors.surfaceSecondary);
+        expect(styleOf('すべて').color, colors.textSecondary);
+        expect(faceOf('すべて'), Colors.transparent);
+      });
+    }
+
+    testWidgets('選択状態は読み上げにも伝わる（selected）', (tester) async {
+      final handle = tester.ensureSemantics();
+      await pumpMessageScreen(
+        tester,
+        overrides: messageScreenOverrides(messages: sampleThread()),
+        viewPadding: _phone,
+      );
+      expect(
+        tester.getSemantics(find.bySemanticsLabel('すべて').first),
+        matchesSemantics(
+          label: 'すべて',
+          isButton: true,
+          hasSelectedState: true,
+          isSelected: true,
+          hasEnabledState: true,
+          isEnabled: true,
+          hasTapAction: true,
+          isFocusable: false,
+        ),
+      );
+      handle.dispose();
+    });
+
+    testWidgets('文字 1.35 でも折り返さず、横にはみ出さない', (tester) async {
+      await pumpMessageScreen(
+        tester,
+        overrides: messageScreenOverrides(messages: sampleThread()),
+        viewPadding: _phone,
+        textScale: 1.35,
+      );
+      expect(tester.takeException(), isNull);
+      expect(tester.getSize(find.byType(FcSubTabs<MessageFilter>)).width, 350);
+    });
+
+    testWidgets('高さが足りないとき（キーボード + 記録フォーム）は、タブの行ごと畳んで会話に譲る', (tester) async {
+      await pumpMessageScreen(
+        tester,
+        overrides:
+            messageScreenOverrides(messages: sampleThread(), aiEnabled: true),
+        viewPadding: _phone,
+        keyboardHeight: 336,
+      );
+      // 入力だけのときは、キーボードを出していても会話の領域が足りるのでタブは出る
+      expect(find.byType(FcSubTabs<MessageFilter>), findsOneWidget);
+
+      await tester.tap(find.descendant(
+          of: find.byType(QuickActionBar), matching: find.text('食事')));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.byType(FcSubTabs<MessageFilter>), findsNothing);
     });
   });
 
@@ -166,7 +346,7 @@ void main() {
         ),
         viewPadding: _phone,
       );
-      await tester.tap(_filterChip('記録'));
+      await tester.tap(_filterTab('記録'));
       await tester.pumpAndSettle();
       expect(find.text('まだ記録がありません。'), findsOneWidget);
     });
@@ -288,7 +468,8 @@ void main() {
     testWidgets('キーボード表示中に記録フォームを開いても、はみ出さない', (tester) async {
       await pumpMessageScreen(
         tester,
-        overrides: messageScreenOverrides(messages: sampleThread(), aiEnabled: true),
+        overrides:
+            messageScreenOverrides(messages: sampleThread(), aiEnabled: true),
         viewPadding: _phone,
         keyboardHeight: 336,
       );

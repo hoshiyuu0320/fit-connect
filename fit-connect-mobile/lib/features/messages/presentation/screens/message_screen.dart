@@ -16,7 +16,6 @@ import 'package:fit_connect_mobile/features/messages/presentation/widgets/reply_
 import 'package:fit_connect_mobile/features/messages/presentation/widgets/trainer_avatar.dart';
 import 'package:fit_connect_mobile/features/auth/providers/auth_provider.dart';
 import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import 'package:fit_connect_mobile/features/subscription/providers/ai_features_enabled_provider.dart';
 import 'package:fit_connect_mobile/features/messages/utils/message_tag_parser.dart';
@@ -522,11 +521,14 @@ class _ChatHeader extends StatelessWidget {
   }
 }
 
-/// 会話の領域。上に絞り込み（すべて / 記録）の行、下に会話。
+/// 会話の領域。上に絞り込み（すべて / 記録）のタブ、下に会話。
 ///
 /// 正本の会話画面には絞り込みが無いが、現行の機能（記録だけに絞り込める）を残すため、
-/// ヘッダーの下に控えめなチップで置く。この領域の高さが足りないとき
-/// （キーボード表示中に記録フォームを開いたなど）は、行ごと畳んで会話に高さを譲る。
+/// ヘッダーの下に置く。記録画面と同じ [FcSubTabs]（カプセルの中で選択中だけ面と accent の文字）で、
+/// 2 項目なので幅いっぱいに等分して広がる。ボタンではなくタブに見えるようにするためで、
+/// 選択中はライト・ダークどちらでも面の違いと文字の色・太さの両方で分かる。
+/// この領域の高さが足りないとき（キーボード表示中に記録フォームを開いたなど）は、
+/// 行ごと畳んで会話に高さを譲る。
 class _ThreadArea extends StatelessWidget {
   const _ThreadArea({
     required this.filter,
@@ -534,8 +536,16 @@ class _ThreadArea extends StatelessWidget {
     required this.child,
   });
 
-  /// 絞り込みの行を出すのに必要な領域の高さ（チップ 44 + 上 4 + 会話に最低限の高さ）
-  static const double minHeightForFilter = 160;
+  /// タブの行の余白（上・下）。ヘッダーの下線とタブ、タブと会話の間を空ける
+  static const double filterTop = 12;
+  static const double filterBottom = 8;
+
+  /// タブの行の高さ（タブ 44 + カプセルの内側余白 4×2 + 上下の余白）
+  static const double filterRowHeight =
+      AppSizes.minTouch + FcSubTabs.inset * 2 + filterTop + filterBottom;
+
+  /// タブの行を出すのに必要な領域の高さ（タブの行 + 会話に最低限の高さ）
+  static const double minHeightForFilter = filterRowHeight + 112;
 
   final MessageFilter filter;
   final ValueChanged<MessageFilter> onFilterChanged;
@@ -550,22 +560,19 @@ class _ThreadArea extends StatelessWidget {
         children: [
           if (constraints.maxHeight >= minHeightForFilter)
             Padding(
-              padding: EdgeInsets.fromLTRB(horizontal, 4, horizontal, 0),
-              child: FcChips<MessageFilter>.single(
+              padding: EdgeInsets.fromLTRB(
+                horizontal,
+                filterTop,
+                horizontal,
+                filterBottom,
+              ),
+              child: FcSubTabs<MessageFilter>(
                 items: const [
-                  FcChipItem(
-                    value: MessageFilter.all,
-                    label: 'すべて',
-                    icon: LucideIcons.messagesSquare,
-                  ),
-                  FcChipItem(
-                    value: MessageFilter.recordsOnly,
-                    label: '記録',
-                    icon: LucideIcons.clipboardList,
-                  ),
+                  FcSubTabItem(value: MessageFilter.all, label: 'すべて'),
+                  FcSubTabItem(value: MessageFilter.recordsOnly, label: '記録'),
                 ],
                 selected: filter,
-                onSelected: onFilterChanged,
+                onChanged: onFilterChanged,
               ),
             ),
           Expanded(child: child),

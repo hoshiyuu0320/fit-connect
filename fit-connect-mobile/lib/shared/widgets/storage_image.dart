@@ -43,6 +43,11 @@ class StorageImage extends StatefulWidget {
   /// 解決失敗・読み込み失敗時の表示（省略時は imageOff アイコン）
   final Widget? errorWidget;
 
+  /// 読み込めた画像の組み立てを差し替える（省略時は [width] / [height] / [fit] で表示）。
+  /// 指定すると、画像の寸法（[width] / [height] / [fit]）は builder 側の責任になる
+  /// （画像の縦横比を知りたいときなどに使う）
+  final ImageWidgetBuilder? imageBuilder;
+
   const StorageImage({
     super.key,
     required this.value,
@@ -53,6 +58,7 @@ class StorageImage extends StatefulWidget {
     this.borderRadius,
     this.placeholder,
     this.errorWidget,
+    this.imageBuilder,
   });
 
   @override
@@ -151,6 +157,7 @@ class _StorageImageState extends State<StorageImage> {
           width: widget.width,
           height: widget.height,
           fit: widget.fit,
+          imageBuilder: widget.imageBuilder,
           placeholder: (context, _) => _buildPlaceholder(context),
           errorWidget: (context, _, __) => _buildError(context),
         );
