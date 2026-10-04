@@ -7,7 +7,8 @@ import 'package:lucide_icons/lucide_icons.dart';
 /// ログイン画面のマジックリンク送信後カード。
 ///
 /// 背景はテーマ追従の successTint（ダークでは濃緑）なので、テーマ追従の文字色がそのまま両モードで読める。
-/// 枠線は固定の emerald100 ではなく半透明の success オーバーレイにして、どちらの背景にも馴染ませる。
+/// アイコンと枠線もテーマ追従の success トークン（静的な AppColors.success はダークで読めない）。
+/// 枠線は半透明の success オーバーレイにして、どちらの背景にも馴染ませる。
 class EmailSentCard extends StatelessWidget {
   final String email;
 
@@ -22,14 +23,14 @@ class EmailSentCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.successTint,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+        border: Border.all(color: colors.success.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: [
-          const Icon(
+          Icon(
             LucideIcons.mailCheck,
             size: 48,
-            color: AppColors.success,
+            color: colors.success,
           ),
           const SizedBox(height: 16),
           Text(

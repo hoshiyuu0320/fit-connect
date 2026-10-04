@@ -2,11 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:fit_connect_mobile/core/theme/app_colors.dart';
+import 'package:fit_connect_mobile/core/theme/app_spacing.dart';
+import 'package:fit_connect_mobile/core/theme/app_text_styles.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
 import 'package:fit_connect_mobile/features/health/providers/health_provider.dart';
 import 'package:fit_connect_mobile/features/health/providers/health_sync_provider.dart';
+import 'package:fit_connect_mobile/shared/widgets/fc/fc.dart';
 
+/// ヘルスケア連携の設定画面（設定タブ › ヘルスケア連携 から push される）。
+///
+/// 正本に専用の画面は無いので、設定タブの文法（グループ名 ＋ `FcRowsCard` の `FcListRow.toggle`、
+/// 同期の失敗は `FcInlineNotice.warning` ＋ 再試行）で揃えている。
+/// AppBar をやめ、本文内の「戻る」＋ 見出しにした。機能・文言は現行のまま。
 class HealthSettingsScreen extends ConsumerWidget {
   const HealthSettingsScreen({super.key});
 
@@ -14,599 +21,316 @@ class HealthSettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settingsAsync = ref.watch(healthSettingsProvider);
     final syncAsync = ref.watch(healthSyncProvider);
-    final colors = AppColors.of(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('ヘルスケア連携'),
-        backgroundColor: colors.surface,
-        elevation: 0,
-        foregroundColor: colors.textPrimary,
-      ),
-      body: SafeArea(
-        child: settingsAsync.when(
-          data: (settings) => SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 16),
-
-                // Master Toggle Card
-                _buildMasterToggleCard(context, ref, settings, colors),
-
-                const SizedBox(height: 16),
-
-                // Data Sources Section
-                _buildDataSourcesSection(context, ref, settings, colors),
-
-                const SizedBox(height: 16),
-
-                // Notification Section
-                _buildNotificationSection(context, ref, settings, colors),
-
-                const SizedBox(height: 16),
-
-                // Sync Section
-                _buildSyncSection(
-                  context,
-                  ref,
-                  settings,
-                  syncAsync,
-                  colors,
+    return _HealthSettingsScaffold(
+      child: settingsAsync.when(
+        data: (settings) => _HealthSettingsContent(
+          settings: settings,
+          isSyncing: syncAsync.isLoading,
+          onMasterChanged: (value) async {
+            final granted = await ref
+                .read(healthSettingsProvider.notifier)
+                .toggleEnabled(value);
+            if (!granted && value && context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('設定アプリからヘルスケアの権限を許可してください'),
                 ),
-
-                const SizedBox(height: 24),
-
-                // Note
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    '手動入力の体重記録がある日はHealthKitからの取り込みをスキップします',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: colors.textHint,
-                    ),
-                  ),
+              );
+            }
+          },
+          onWeightChanged: (value) {
+            ref
+                .read(healthSettingsProvider.notifier)
+                .toggleWeightEnabled(value);
+          },
+          onSleepChanged: (value) async {
+            final granted = await ref
+                .read(healthSettingsProvider.notifier)
+                .toggleSleepEnabled(value);
+            if (!granted && value && context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('設定アプリから睡眠データの権限を許可してください'),
                 ),
-
-                const SizedBox(height: 100),
-              ],
-            ),
-          ),
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, _) => Center(
-            child: Text(
-              'エラー: $error',
-              style: const TextStyle(color: AppColors.rose800),
-            ),
-          ),
+              );
+            }
+          },
+          onMorningDialogChanged: (value) async {
+            await ref
+                .read(healthSettingsProvider.notifier)
+                .toggleMorningDialogEnabled(value);
+          },
+          onSync: () => _runManualSync(context, ref),
+        ),
+        loading: () => const _HealthSettingsLoading(),
+        error: (error, _) => FcStateMessage.error(
+          title: '設定を読み込めませんでした',
+          message: 'エラー: $error',
+          actionLabel: '再試行',
+          actionIcon: LucideIcons.refreshCw,
+          onAction: () => ref.invalidate(healthSettingsProvider),
         ),
       ),
     );
-  }
-
-  Widget _buildMasterToggleCard(
-    BuildContext context,
-    WidgetRef ref,
-    HealthSettingsState settings,
-    AppColorsExtension colors,
-  ) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.border),
-      ),
-      child: SwitchListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        secondary: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: AppColors.primary50,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Icon(
-            LucideIcons.heartPulse,
-            size: 20,
-            color: AppColors.primary500,
-          ),
-        ),
-        title: Text(
-          'ヘルスケア連携',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: colors.textPrimary,
-          ),
-        ),
-        subtitle: Text(
-          'お使いの端末のヘルスケア（iOS: ヘルスケア / Android: Health Connect）からデータを取得',
-          style: TextStyle(
-            fontSize: 13,
-            color: colors.textSecondary,
-          ),
-        ),
-        value: settings.isEnabled,
-        onChanged: (value) async {
-          final granted = await ref
-              .read(healthSettingsProvider.notifier)
-              .toggleEnabled(value);
-          if (!granted && value && context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('設定アプリからヘルスケアの権限を許可してください'),
-                backgroundColor: AppColors.orange600,
-              ),
-            );
-          }
-        },
-      ),
-    );
-  }
-
-  Widget _buildDataSourcesSection(
-    BuildContext context,
-    WidgetRef ref,
-    HealthSettingsState settings,
-    AppColorsExtension colors,
-  ) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Section Header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Text(
-              'データソース',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: colors.textSecondary,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ),
-
-          // Weight row
-          SwitchListTile(
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            secondary: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.primary50,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                LucideIcons.scale,
-                size: 20,
-                color: AppColors.primary500,
-              ),
-            ),
-            title: Text(
-              '体重',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: colors.textPrimary,
-              ),
-            ),
-            subtitle: Text(
-              '読み取りのみ',
-              style: TextStyle(
-                fontSize: 13,
-                color: colors.textSecondary,
-              ),
-            ),
-            value: settings.isWeightEnabled,
-            onChanged: settings.isEnabled
-                ? (value) {
-                    ref
-                        .read(healthSettingsProvider.notifier)
-                        .toggleWeightEnabled(value);
-                  }
-                : null,
-          ),
-
-          // Sleep row (active)
-          SwitchListTile(
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            secondary: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.indigo50,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                LucideIcons.moon,
-                size: 20,
-                color: AppColors.indigo600,
-              ),
-            ),
-            title: Row(
-              children: [
-                Text(
-                  '睡眠',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: colors.textPrimary,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppColors.indigo50,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const Text(
-                    'NEW',
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.indigo600,
-                      letterSpacing: 0.4,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            subtitle: Text(
-              'HealthKit/Health Connect から睡眠データを取得',
-              style: TextStyle(fontSize: 13, color: colors.textSecondary),
-            ),
-            value: settings.isSleepEnabled,
-            onChanged: settings.isEnabled
-                ? (value) async {
-                    final granted = await ref
-                        .read(healthSettingsProvider.notifier)
-                        .toggleSleepEnabled(value);
-                    if (!granted && value && context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('設定アプリから睡眠データの権限を許可してください'),
-                          backgroundColor: AppColors.orange600,
-                        ),
-                      );
-                    }
-                  }
-                : null,
-          ),
-
-          const SizedBox(height: 8),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNotificationSection(
-    BuildContext context,
-    WidgetRef ref,
-    HealthSettingsState settings,
-    AppColorsExtension colors,
-  ) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Text(
-              '通知',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: colors.textSecondary,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ),
-          SwitchListTile(
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            secondary: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.orange100,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                LucideIcons.sun,
-                size: 20,
-                color: AppColors.warning,
-              ),
-            ),
-            title: Row(
-              children: [
-                Text(
-                  '朝の目覚めダイアログ',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: colors.textPrimary,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppColors.indigo50,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const Text(
-                    'NEW',
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.indigo600,
-                      letterSpacing: 0.4,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            subtitle: Text(
-              '起床後（4:00-12:00）にアプリを開いた時、目覚めの記録を促します',
-              style: TextStyle(fontSize: 13, color: colors.textSecondary),
-            ),
-            value: settings.isMorningDialogEnabled,
-            onChanged: (value) async {
-              await ref
-                  .read(healthSettingsProvider.notifier)
-                  .toggleMorningDialogEnabled(value);
-            },
-          ),
-          const SizedBox(height: 8),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSyncSection(
-    BuildContext context,
-    WidgetRef ref,
-    HealthSettingsState settings,
-    AsyncValue<void> syncAsync,
-    AppColorsExtension colors,
-  ) {
-    final isSyncing = syncAsync.isLoading;
-    final hasError = settings.lastSyncStatus == HealthSyncStatus.error;
-    final isStatusSyncing =
-        settings.lastSyncStatus == HealthSyncStatus.syncing;
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Section Header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-            child: Text(
-              '同期',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: colors.textSecondary,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ),
-
-          // Periodic sync description
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Text(
-              'アプリ起動時と1時間ごとに自動同期します',
-              style: TextStyle(fontSize: 12, color: colors.textHint),
-            ),
-          ),
-
-          // Last sync row
-          ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-            title: Text(
-              '最終同期',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: colors.textPrimary,
-              ),
-            ),
-            trailing: _buildSyncStatusTrailing(
-              settings: settings,
-              colors: colors,
-              hasError: hasError,
-              isStatusSyncing: isStatusSyncing,
-            ),
-          ),
-
-          // Error detail row (only on error)
-          if (hasError && settings.lastSyncError != null)
-            HealthSyncErrorRow(message: settings.lastSyncError!),
-
-          // Manual sync button
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: settings.isEnabled && !isSyncing
-                    ? () async {
-                        await ref
-                            .read(healthSyncProvider.notifier)
-                            .syncManual();
-                        if (!context.mounted) return;
-                        final result =
-                            ref.read(healthSettingsProvider).valueOrNull;
-                        final isError = result?.lastSyncStatus ==
-                            HealthSyncStatus.error;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              isError
-                                  ? '同期に失敗しました: ${result?.lastSyncError ?? "原因不明"}'
-                                  : '同期が完了しました',
-                            ),
-                            backgroundColor: isError
-                                ? AppColors.error
-                                : AppColors.emerald600,
-                          ),
-                        );
-                      }
-                    : null,
-                icon: isSyncing
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(LucideIcons.refreshCw, size: 18),
-                label: Text(isSyncing ? '同期中...' : '今すぐ同期'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  side: BorderSide(
-                    color: settings.isEnabled
-                        ? AppColors.primary
-                        : colors.border,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSyncStatusTrailing({
-    required HealthSettingsState settings,
-    required AppColorsExtension colors,
-    required bool hasError,
-    required bool isStatusSyncing,
-  }) {
-    final timeText = Text(
-      _formatLastSync(settings.lastSyncAt),
-      style: TextStyle(
-        fontSize: 14,
-        color: hasError ? AppColors.error : colors.textSecondary,
-      ),
-    );
-
-    if (isStatusSyncing) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          timeText,
-          const SizedBox(width: 8),
-          const SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ],
-      );
-    }
-
-    if (hasError) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          timeText,
-          const SizedBox(width: 6),
-          const Icon(
-            LucideIcons.alertCircle,
-            size: 16,
-            color: AppColors.error,
-          ),
-        ],
-      );
-    }
-
-    return timeText;
-  }
-
-  String _formatLastSync(DateTime? lastSync) {
-    if (lastSync == null) return '未同期';
-    final diff = DateTime.now().difference(lastSync);
-    if (diff.inMinutes < 1) return 'たった今';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}分前';
-    if (diff.inHours < 24) return '${diff.inHours}時間前';
-    if (diff.inDays < 7) return '${diff.inDays}日前';
-    // 1週間以上は日付表記
-    final m = lastSync.month;
-    final d = lastSync.day;
-    final hh = lastSync.hour.toString().padLeft(2, '0');
-    final mm = lastSync.minute.toString().padLeft(2, '0');
-    return '$m月$d日 $hh:$mm';
   }
 }
 
-/// ヘルスケア同期エラー行（「同期エラー: …」）。
-/// 背景はテーマ追従の dangerTint（ダークでは濃赤）なので、テーマ追従の文字色がそのまま両モードで読める。
-class HealthSyncErrorRow extends StatelessWidget {
-  const HealthSyncErrorRow({super.key, required this.message});
+/// 手動同期（「今すぐ同期」と同期エラーの「再試行」で共用）。結果は SnackBar で伝える
+Future<void> _runManualSync(BuildContext context, WidgetRef ref) async {
+  await ref.read(healthSyncProvider.notifier).syncManual();
+  if (!context.mounted) return;
+  final result = ref.read(healthSettingsProvider).valueOrNull;
+  final isError = result?.lastSyncStatus == HealthSyncStatus.error;
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+        isError ? '同期に失敗しました: ${result?.lastSyncError ?? "原因不明"}' : '同期が完了しました',
+      ),
+    ),
+  );
+}
 
-  final String message;
+/// 画面の枠（戻る・見出し）と、その下の内容。Provider に依存させずプレビューでも使う
+class _HealthSettingsScaffold extends StatelessWidget {
+  const _HealthSettingsScaffold({required this.child});
+
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: colors.dangerTint,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Icon(
-              LucideIcons.alertTriangle,
-              size: 16,
-              color: AppColors.warning,
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                '同期エラー: $message',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: colors.textSecondary,
+    final pageH = AppSpacing.pageHorizontalOf(context);
+
+    return Scaffold(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(pageH, 4, pageH, AppSpacing.xxl),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: FcButton.back(
+                  label: '戻る',
+                  onPressed: () => Navigator.of(context).maybePop(),
                 ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              const FcPageHeading(title: 'ヘルスケア連携', bottomSpacing: 20),
+              child,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// グループ名（13・secondary）。設定タブの `GroupLabel` と同じ（前 16 + 10、後 16 - 8）
+class _GroupLabel extends StatelessWidget {
+  const _GroupLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        4,
+        AppSpacing.cardGap + 10,
+        4,
+        AppSpacing.cardGap - 8,
+      ),
+      child: Semantics(
+        header: true,
+        child: Text(text, style: AppTextStyles.supplement(context)),
+      ),
+    );
+  }
+}
+
+/// 読み込み中（カードの配置を保つ）
+class _HealthSettingsLoading extends StatelessWidget {
+  const _HealthSettingsLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: '読み込み中',
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          FcSkeleton.card(height: 88),
+          SizedBox(height: AppSpacing.cardGap),
+          FcSkeleton.card(height: 150),
+          SizedBox(height: AppSpacing.cardGap),
+          FcSkeleton.card(height: 110),
+        ],
+      ),
+    );
+  }
+}
+
+/// 設定の内容（連携 / データソース / 通知 / 同期）。Provider に依存させずプレビューでも使う
+class _HealthSettingsContent extends StatelessWidget {
+  const _HealthSettingsContent({
+    required this.settings,
+    required this.isSyncing,
+    this.onMasterChanged,
+    this.onWeightChanged,
+    this.onSleepChanged,
+    this.onMorningDialogChanged,
+    this.onSync,
+  });
+
+  final HealthSettingsState settings;
+
+  /// 手動同期の実行中（ボタンを「同期中…」にして押せなくする）
+  final bool isSyncing;
+  final ValueChanged<bool>? onMasterChanged;
+  final ValueChanged<bool>? onWeightChanged;
+  final ValueChanged<bool>? onSleepChanged;
+  final ValueChanged<bool>? onMorningDialogChanged;
+  final VoidCallback? onSync;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasError = settings.lastSyncStatus == HealthSyncStatus.error;
+    final isStatusSyncing = settings.lastSyncStatus == HealthSyncStatus.syncing;
+    final enabled = settings.isEnabled;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // マスターの連携スイッチ
+        FcRowsCard(
+          children: [
+            FcListRow.toggle(
+              icon: LucideIcons.heartPulse,
+              title: 'ヘルスケア連携',
+              caption:
+                  'お使いの端末のヘルスケア（iOS: ヘルスケア / Android: Health Connect）からデータを取得',
+              value: settings.isEnabled,
+              onChanged: onMasterChanged,
+            ),
+          ],
+        ),
+
+        const _GroupLabel('データソース'),
+        FcRowsCard(
+          children: [
+            // 連携が切れているあいだは操作できない（スイッチ自身が淡色になる。
+            // 行をさらに薄くすると二重に薄くなるので、ここでは何も被せない）
+            FcListRow.toggle(
+              icon: LucideIcons.scale,
+              title: '体重',
+              caption: '読み取りのみ',
+              value: settings.isWeightEnabled,
+              onChanged: enabled ? onWeightChanged : null,
+            ),
+            FcListRow.toggle(
+              icon: LucideIcons.moon,
+              title: '睡眠',
+              caption: 'HealthKit/Health Connect から睡眠データを取得',
+              value: settings.isSleepEnabled,
+              onChanged: enabled ? onSleepChanged : null,
+            ),
+          ],
+        ),
+
+        const _GroupLabel('通知'),
+        FcRowsCard(
+          children: [
+            FcListRow.toggle(
+              icon: LucideIcons.sun,
+              title: '朝の目覚めダイアログ',
+              caption: '起床後（4:00-12:00）にアプリを開いた時、目覚めの記録を促します',
+              value: settings.isMorningDialogEnabled,
+              onChanged: onMorningDialogChanged,
+            ),
+          ],
+        ),
+
+        const _GroupLabel('同期'),
+        FcRowsCard(
+          children: [
+            FcListRow(
+              title: '最終同期',
+              caption: 'アプリ起動時と1時間ごとに自動同期します',
+              trailing: FcRowValue.text(
+                isStatusSyncing ? '同期中…' : _formatLastSync(settings.lastSyncAt),
+                muted: true,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+              child: FcButton.pill(
+                label: '今すぐ同期',
+                icon: LucideIcons.refreshCw,
+                quiet: true,
+                expand: true,
+                loading: isSyncing,
+                loadingLabel: '同期中…',
+                onPressed: enabled ? onSync : null,
               ),
             ),
           ],
         ),
-      ),
+
+        // 同期に失敗したとき（取得済みの値はそのまま使われる）
+        if (hasError && settings.lastSyncError != null) ...[
+          const SizedBox(height: AppSpacing.cardGap),
+          HealthSyncErrorRow(
+            message: settings.lastSyncError!,
+            // 「今すぐ同期」と同じく、連携が切れているときは再試行できない
+            // （同期が走らないまま古い失敗を読んで「同期に失敗しました」を出してしまう）
+            onRetry: (isSyncing || !enabled) ? null : onSync,
+          ),
+        ],
+
+        const SizedBox(height: AppSpacing.xxl),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Text(
+            '手動入力の体重記録がある日はHealthKitからの取り込みをスキップします',
+            style: AppTextStyles.caption(context),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+String _formatLastSync(DateTime? lastSync) {
+  if (lastSync == null) return '未同期';
+  final diff = DateTime.now().difference(lastSync);
+  if (diff.inMinutes < 1) return 'たった今';
+  if (diff.inMinutes < 60) return '${diff.inMinutes}分前';
+  if (diff.inHours < 24) return '${diff.inHours}時間前';
+  if (diff.inDays < 7) return '${diff.inDays}日前';
+  // 1週間以上は日付表記
+  final m = lastSync.month;
+  final d = lastSync.day;
+  final hh = lastSync.hour.toString().padLeft(2, '0');
+  final mm = lastSync.minute.toString().padLeft(2, '0');
+  return '$m月$d日 $hh:$mm';
+}
+
+/// ヘルスケア同期エラー行（「同期エラー: …」）。
+/// 注意の色（warning）の `FcInlineNotice` で、文字とアイコンを併用する。
+/// [onRetry] を渡すと「再試行」の操作が付く（同期をもう一度走らせる）。
+class HealthSyncErrorRow extends StatelessWidget {
+  const HealthSyncErrorRow({super.key, required this.message, this.onRetry});
+
+  final String message;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return FcInlineNotice.warning(
+      message: '同期エラー: $message',
+      actionLabel: onRetry == null ? null : '再試行',
+      onAction: onRetry,
     );
   }
 }
@@ -615,328 +339,58 @@ class HealthSyncErrorRow extends StatelessWidget {
 // Previews
 // ============================================
 
+/// プレビュー用の設定（Riverpod を使わず、実画面と同じ内容の View を並べる）
 class _PreviewHealthSettings extends StatelessWidget {
-  final bool isConnected;
-  final HealthSyncStatus syncStatus;
-  final String? errorMessage;
+  final HealthSettingsState settings;
+  final bool isSyncing;
+
   const _PreviewHealthSettings({
-    this.isConnected = true,
-    this.syncStatus = HealthSyncStatus.idle,
-    this.errorMessage,
+    required this.settings,
+    this.isSyncing = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 16),
-
-          // Master Toggle Card
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: colors.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: colors.border),
-            ),
-            child: SwitchListTile(
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              secondary: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.primary50,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  LucideIcons.heartPulse,
-                  size: 20,
-                  color: AppColors.primary500,
-                ),
-              ),
-              title: Text(
-                'ヘルスケア連携',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: colors.textPrimary,
-                ),
-              ),
-              subtitle: Text(
-                'お使いの端末のヘルスケア（iOS: ヘルスケア / Android: Health Connect）からデータを取得',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: colors.textSecondary,
-                ),
-              ),
-              value: isConnected,
-              onChanged: (_) {},
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Data Sources Section
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: colors.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: colors.border),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: Text(
-                    'データソース',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: colors.textSecondary,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-                SwitchListTile(
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  secondary: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary50,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      LucideIcons.scale,
-                      size: 20,
-                      color: AppColors.primary500,
-                    ),
-                  ),
-                  title: Text(
-                    '体重',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: colors.textPrimary,
-                    ),
-                  ),
-                  subtitle: Text(
-                    '読み取りのみ',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: colors.textSecondary,
-                    ),
-                  ),
-                  value: isConnected,
-                  onChanged: isConnected ? (_) {} : null,
-                ),
-                Opacity(
-                  opacity: 0.5,
-                  child: ListTile(
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.indigo50,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        LucideIcons.moon,
-                        size: 20,
-                        color: AppColors.indigo600,
-                      ),
-                    ),
-                    title: Text(
-                      '睡眠',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: colors.textPrimary,
-                      ),
-                    ),
-                    subtitle: Text(
-                      '準備中',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: colors.textSecondary,
-                      ),
-                    ),
-                    trailing: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: colors.surfaceDim,
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: colors.border),
-                      ),
-                      child: Text(
-                        'Coming Soon',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: colors.textHint,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Sync Section
-          _buildPreviewSyncSection(colors),
-
-          const SizedBox(height: 24),
-
-          // Note
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text(
-              '手動入力の体重記録がある日はHealthKitからの取り込みをスキップします',
-              style: TextStyle(
-                fontSize: 12,
-                color: colors.textHint,
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 100),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPreviewSyncSection(AppColorsExtension colors) {
-    final hasError = syncStatus == HealthSyncStatus.error;
-    final isStatusSyncing = syncStatus == HealthSyncStatus.syncing;
-
-    Widget timeText = Text(
-      isConnected ? '5分前' : '未同期',
-      style: TextStyle(
-        fontSize: 14,
-        color: hasError ? AppColors.error : colors.textSecondary,
-      ),
-    );
-
-    Widget trailing;
-    if (isStatusSyncing) {
-      trailing = Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          timeText,
-          const SizedBox(width: 8),
-          const SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ],
-      );
-    } else if (hasError) {
-      trailing = Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          timeText,
-          const SizedBox(width: 6),
-          const Icon(
-            LucideIcons.alertCircle,
-            size: 16,
-            color: AppColors.error,
-          ),
-        ],
-      );
-    } else {
-      trailing = timeText;
-    }
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-            child: Text(
-              '同期',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: colors.textSecondary,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Text(
-              'アプリ起動時と1時間ごとに自動同期します',
-              style: TextStyle(fontSize: 12, color: colors.textHint),
-            ),
-          ),
-          ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-            title: Text(
-              '最終同期',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: colors.textPrimary,
-              ),
-            ),
-            trailing: trailing,
-          ),
-          if (hasError && errorMessage != null)
-            HealthSyncErrorRow(message: errorMessage!),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: isConnected ? () {} : null,
-                icon: const Icon(LucideIcons.refreshCw, size: 18),
-                label: const Text('今すぐ同期'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  side: BorderSide(
-                    color:
-                        isConnected ? AppColors.primary : colors.border,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
+    return _HealthSettingsScaffold(
+      child: _HealthSettingsContent(
+        settings: settings,
+        isSyncing: isSyncing,
+        onMasterChanged: (_) {},
+        onWeightChanged: (_) {},
+        onSleepChanged: (_) {},
+        onMorningDialogChanged: (_) {},
+        onSync: () {},
       ),
     );
   }
 }
 
+HealthSettingsState _previewConnected({
+  HealthSyncStatus status = HealthSyncStatus.idle,
+  String? error,
+}) =>
+    HealthSettingsState(
+      isEnabled: true,
+      isWeightEnabled: true,
+      isSleepEnabled: true,
+      isMorningDialogEnabled: true,
+      lastSyncAt: DateTime.now().subtract(const Duration(minutes: 5)),
+      lastSyncStatus: status,
+      lastSyncError: error,
+    );
+
+const _previewDisconnected = HealthSettingsState(
+  isEnabled: false,
+  isWeightEnabled: false,
+  isSleepEnabled: false,
+  isMorningDialogEnabled: true,
+);
+
 @Preview(name: 'HealthSettingsScreen - Connected')
 Widget previewHealthSettingsConnected() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
-    home: const Scaffold(
-      body: SafeArea(child: _PreviewHealthSettings(isConnected: true)),
-    ),
+    home: _PreviewHealthSettings(settings: _previewConnected()),
   );
 }
 
@@ -944,8 +398,17 @@ Widget previewHealthSettingsConnected() {
 Widget previewHealthSettingsDisconnected() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
-    home: const Scaffold(
-      body: SafeArea(child: _PreviewHealthSettings(isConnected: false)),
+    home: const _PreviewHealthSettings(settings: _previewDisconnected),
+  );
+}
+
+@Preview(name: 'HealthSettingsScreen - Syncing')
+Widget previewHealthSettingsSyncing() {
+  return MaterialApp(
+    theme: AppTheme.lightTheme,
+    home: _PreviewHealthSettings(
+      settings: _previewConnected(status: HealthSyncStatus.syncing),
+      isSyncing: true,
     ),
   );
 }
@@ -954,31 +417,52 @@ Widget previewHealthSettingsDisconnected() {
 Widget previewHealthSettingsSyncError() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
-    home: const Scaffold(
-      body: SafeArea(
-        child: _PreviewHealthSettings(
-          isConnected: true,
-          syncStatus: HealthSyncStatus.error,
-          errorMessage: 'HealthKitへのアクセスが拒否されました',
-        ),
+    home: _PreviewHealthSettings(
+      settings: _previewConnected(
+        status: HealthSyncStatus.error,
+        error: 'HealthKitへのアクセスが拒否されました',
       ),
     ),
   );
 }
 
-/// ダークモード: 同期エラー行の淡赤背景が濃赤に切り替わり、エラー文が読めることを確認する
+/// ダークモード: 同期エラーの帯（warning）が暗い配色で読めることを確認する
 @Preview(name: 'HealthSettingsScreen - Sync Error (Dark)')
 Widget previewHealthSettingsSyncErrorDark() {
   return MaterialApp(
     theme: AppTheme.darkTheme,
-    home: const Scaffold(
-      body: SafeArea(
-        child: _PreviewHealthSettings(
-          isConnected: true,
-          syncStatus: HealthSyncStatus.error,
-          errorMessage: 'HealthKitへのアクセスが拒否されました',
-        ),
+    home: _PreviewHealthSettings(
+      settings: _previewConnected(
+        status: HealthSyncStatus.error,
+        error: 'HealthKitへのアクセスが拒否されました',
       ),
     ),
+  );
+}
+
+@Preview(name: 'HealthSettingsScreen - Sync Error (Large Text 1.35)')
+Widget previewHealthSettingsLargeText() {
+  return MaterialApp(
+    theme: AppTheme.lightTheme,
+    builder: (context, child) => MediaQuery(
+      data: MediaQuery.of(context).copyWith(
+        textScaler: const TextScaler.linear(1.35),
+      ),
+      child: child!,
+    ),
+    home: _PreviewHealthSettings(
+      settings: _previewConnected(
+        status: HealthSyncStatus.error,
+        error: 'HealthKitへのアクセスが拒否されました',
+      ),
+    ),
+  );
+}
+
+@Preview(name: 'HealthSettingsScreen - Loading')
+Widget previewHealthSettingsLoading() {
+  return MaterialApp(
+    theme: AppTheme.lightTheme,
+    home: const _HealthSettingsScaffold(child: _HealthSettingsLoading()),
   );
 }

@@ -1,19 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fit_connect_mobile/core/theme/app_colors.dart';
+import 'package:fit_connect_mobile/core/theme/app_spacing.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
+import 'package:fit_connect_mobile/features/auth/models/client_model.dart';
 import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
 import 'package:fit_connect_mobile/features/goals/providers/goal_provider.dart';
-import 'package:fit_connect_mobile/features/weight_records/providers/weight_records_provider.dart';
-import 'package:fit_connect_mobile/features/home/presentation/widgets/goal_card.dart';
+import 'package:fit_connect_mobile/features/home/presentation/utils/home_formatting.dart';
+import 'package:fit_connect_mobile/features/home/presentation/widgets/coach_comment_card.dart';
 import 'package:fit_connect_mobile/features/home/presentation/widgets/daily_summary_card.dart';
+import 'package:fit_connect_mobile/features/home/presentation/widgets/goal_card.dart';
+import 'package:fit_connect_mobile/features/home/providers/latest_trainer_comment_provider.dart';
 import 'package:fit_connect_mobile/features/onboarding_flow/presentation/widgets/getting_started_card.dart';
-import 'package:fit_connect_mobile/features/schedules/providers/trainer_schedule_provider.dart';
-import 'package:fit_connect_mobile/features/schedules/presentation/widgets/trainer_status_card.dart';
+import 'package:fit_connect_mobile/features/sessions/models/session_model.dart';
 import 'package:fit_connect_mobile/features/sessions/presentation/widgets/next_session_card.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:fit_connect_mobile/features/sessions/utils/session_formatting.dart';
+import 'package:fit_connect_mobile/features/weight_records/models/weight_record_model.dart';
+import 'package:fit_connect_mobile/features/weight_records/providers/weight_records_provider.dart';
+import 'package:fit_connect_mobile/shared/utils/trainer_name.dart';
+import 'package:fit_connect_mobile/shared/widgets/fc/fc.dart';
 
+/// ホームタブ。
+///
+/// 正本: home-screens.js の `HomeScreen`。見出し（日付・挨拶）→（はじめて: はじめの3ステップ）→
+/// 目標 → 担当トレーナーの最新コメント → 次回のセッション → 今日のまとめ。カード間は 16。
 class HomeScreen extends ConsumerWidget {
   final void Function(int tabIndex)? onNavigateToRecordsTab;
   final VoidCallback? onNavigateToMessages;
@@ -33,80 +43,66 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final now = DateTime.now();
 
-    // Fetch client data
     final clientAsync = ref.watch(currentClientProvider);
     final goalAsync = ref.watch(currentGoalProvider);
     final latestWeightAsync = ref.watch(latestWeightRecordProvider);
-    final achievementRateAsync = ref.watch(achievementRateProvider);
-    final trainerProfile = ref.watch(trainerProfileProvider);
-    final trainerPresence = ref.watch(trainerPresenceNotifierProvider);
-    final isTrainerOnline = trainerPresence.isOnline;
+    final trainer = ref.watch(trainerProfileProvider).valueOrNull;
+    // メッセージ画面の購読（Realtime）は使わず、ホーム専用の軽い取得を使う
+    final commentAsync = ref.watch(latestTrainerCommentProvider);
+
+    final trainerLabel = trainerDisplayName(trainer?.name);
+    final horizontal = AppSpacing.pageHorizontalOf(context);
+    // ナビ（FcBottomNavLayout）が確保する下余白。内容はナビの下まで潜れるようにして、
+    // スクロールの終端でナビの上に収まる
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+
+    // Records tabs order: 0=サマリ, 1=体重, 2=食事, 3=運動, 4=睡眠, 5=ノート
+    void goToRecords(int tabIndex) => onNavigateToRecordsTab?.call(tabIndex);
+    final hasRecordsNav = onNavigateToRecordsTab != null;
+
+    final children = <Widget>[
+      // はじめの3ステップ（全達成 or 14日経過 or 手動クローズで非表示）。出るときだけ下に 16 を含む
+      GettingStartedCard(
+        onWeightTap: hasRecordsNav ? () => goToRecords(1) : null,
+        onMessageTap: onNavigateToMessages,
+      ),
+      _buildGoalCard(ref, goalAsync, latestWeightAsync, trainerLabel),
+      const SizedBox(height: AppSpacing.cardGap),
+      _buildCoachComment(
+        commentAsync,
+        trainerLabel,
+        trainer?.profileImageUrl,
+        now,
+      ),
+      const SizedBox(height: AppSpacing.cardGap),
+      NextSessionCard(
+        trainerName: trainerLabel,
+        onConsult: onConsultAboutSession,
+      ),
+      const SizedBox(height: AppSpacing.cardGap),
+      DailySummaryCard(
+        onMealsTap: hasRecordsNav ? () => goToRecords(2) : null,
+        onWeightTap: hasRecordsNav ? () => goToRecords(1) : null,
+        onActivityTap: hasRecordsNav ? () => goToRecords(3) : null,
+        onSleepTap: hasRecordsNav ? () => goToRecords(4) : null,
+      ),
+    ];
 
     return Scaffold(
       body: SafeArea(
+        bottom: false,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
+          padding: EdgeInsets.fromLTRB(
+            horizontal,
+            AppSpacing.xs,
+            horizontal,
+            bottomInset,
+          ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // はじめの3ステップカード（全達成 or 14日経過 or 手動クローズで非表示）
-              // Records tabs order: 0=サマリ, 1=体重, 2=食事, 3=運動, 4=睡眠, 5=ノート
-              GettingStartedCard(
-                onWeightTap: onNavigateToRecordsTab != null
-                    ? () => onNavigateToRecordsTab!(1)
-                    : null,
-                onMessageTap: onNavigateToMessages,
-              ),
-
-              // Greeting
-              _buildGreeting(context, now, clientAsync),
-
-              const SizedBox(height: 24),
-
-              // Goal Card
-              _buildGoalCard(
-                goalAsync,
-                latestWeightAsync,
-                achievementRateAsync,
-              ),
-
-              const SizedBox(height: 16),
-
-              // Trainer Status Card
-              TrainerStatusCard(
-                trainerName: trainerProfile.valueOrNull?.name ?? 'トレーナー',
-                isOnline: isTrainerOnline,
-                profileImageUrl: trainerProfile.valueOrNull?.profileImageUrl,
-                lastSeenAt: trainerPresence.lastSeenAt,
-              ),
-
-              const SizedBox(height: 16),
-
-              // Next Session Card
-              NextSessionCard(
-                onConsult: onConsultAboutSession,
-              ),
-
-              const SizedBox(height: 16),
-
-              // Daily Summary
-              // Records tabs order: 0=サマリ, 1=体重, 2=食事, 3=運動, 4=睡眠, 5=ノート
-              DailySummaryCard(
-                onMealsTap: onNavigateToRecordsTab != null
-                    ? () => onNavigateToRecordsTab!(2)
-                    : null,
-                onWeightTap: onNavigateToRecordsTab != null
-                    ? () => onNavigateToRecordsTab!(1)
-                    : null,
-                onActivityTap: onNavigateToRecordsTab != null
-                    ? () => onNavigateToRecordsTab!(3)
-                    : null,
-                onSleepTap: onNavigateToRecordsTab != null
-                    ? () => onNavigateToRecordsTab!(4)
-                    : null,
-              ),
-
-              const SizedBox(height: 100), // Bottom padding for FAB/Nav
+              _buildHeading(clientAsync, now),
+              ...children,
             ],
           ),
         ),
@@ -114,585 +110,340 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildGreeting(
-      BuildContext context, DateTime now, AsyncValue clientAsync) {
-    final colors = AppColors.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            _formatDateTop(now),
-            style: TextStyle(
-              color: colors.textSecondary,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 4),
-          clientAsync.when(
-            data: (client) => Text(
-              'こんにちは、${client?.name ?? ''}さん 👋',
-              style: TextStyle(
-                color: colors.textPrimary,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            loading: () => Text(
-              'こんにちは 👋',
-              style: TextStyle(
-                color: colors.textPrimary,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            error: (_, __) => Text(
-              'こんにちは 👋',
-              style: TextStyle(
-                color: colors.textPrimary,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '今日も頑張りましょう！',
-            style: TextStyle(
-              color: colors.textSecondary,
-              fontSize: 14,
-            ),
-          ),
-        ],
-      ),
+  /// 日付・挨拶・ひとこと。名前が取れる前は「こんにちは」
+  Widget _buildHeading(AsyncValue<Client?> clientAsync, DateTime now) {
+    final name = clientAsync.valueOrNull?.name.trim();
+    return FcPageHeading(
+      eyebrow: formatSessionDateDisplay(now, now: now),
+      title: (name == null || name.isEmpty) ? 'こんにちは' : 'こんにちは、$nameさん',
+      subtitle: '今日も、自分のペースで。',
     );
   }
 
   Widget _buildGoalCard(
-    AsyncValue goalAsync,
-    AsyncValue latestWeightAsync,
-    AsyncValue achievementRateAsync,
+    WidgetRef ref,
+    AsyncValue<Client?> goalAsync,
+    AsyncValue<WeightRecord?> latestWeightAsync,
+    String trainerLabel,
   ) {
     return goalAsync.when(
       data: (goal) {
-        if (goal == null) {
-          return _buildNoGoalCard();
+        // 目標体重が決まっていなければ「目標はまだ設定されていません」
+        if (goal == null || goal.targetWeight == null) {
+          return GoalNotSetCard(trainerName: trainerLabel);
         }
-
         return latestWeightAsync.when(
-          data: (latestWeight) {
-            final currentWeight =
-                latestWeight?.weight ?? goal.initialWeight ?? 0.0;
-            final targetWeight = goal.targetWeight ?? 0.0;
-            final initialWeight = goal.initialWeight ?? currentWeight;
-
-            // 達成判定: DBフラグ OR ローカル計算
-            // 減量目標: initialWeight > targetWeight → currentWeight <= targetWeight で達成
-            // 増量目標: initialWeight < targetWeight → currentWeight >= targetWeight で達成
-            final isAchievedLocally = initialWeight > targetWeight
-                ? currentWeight <= targetWeight
-                : currentWeight >= targetWeight;
-            final isAchieved = goal.goalAchievedAt != null || isAchievedLocally;
-
-            return GoalCard(
-              currentWeight: currentWeight,
-              targetWeight: targetWeight,
-              initialWeight: initialWeight,
-              targetDate: goal.goalDeadline,
-              isAchieved: isAchieved,
-            );
-          },
-          loading: () => GoalCard(
-            currentWeight: goal.initialWeight ?? 0.0,
-            targetWeight: goal.targetWeight ?? 0.0,
-            initialWeight: goal.initialWeight ?? 0.0,
-            targetDate: goal.goalDeadline,
-            isLoading: true,
-            isAchieved: goal.goalAchievedAt != null,
-          ),
-          error: (_, __) => GoalCard(
-            currentWeight: goal.initialWeight ?? 0.0,
-            targetWeight: goal.targetWeight ?? 0.0,
-            initialWeight: goal.initialWeight ?? 0.0,
-            targetDate: goal.goalDeadline,
-            isAchieved: goal.goalAchievedAt != null,
-          ),
+          data: (latestWeight) => _goalCardFor(goal, latestWeight?.weight),
+          loading: () => const GoalCard.loading(),
+          // 体重の取得に失敗しても、目標そのものは見せる（現在は開始時の体重で代用）
+          error: (_, __) => _goalCardFor(goal, null),
         );
       },
-      loading: () => _buildLoadingGoalCard(),
-      error: (_, __) => _buildNoGoalCard(),
-    );
-  }
-
-  Widget _buildNoGoalCard() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.slate400, AppColors.slate500],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '目標未設定',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'トレーナーに目標を設定してもらいましょう！',
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-            ),
-          ),
-        ],
+      loading: () => const GoalCard.loading(),
+      error: (_, __) => FcStateMessage.error(
+        title: '目標を読み込めませんでした',
+        actionLabel: '再試行',
+        onAction: () => ref.invalidate(currentGoalProvider),
       ),
     );
   }
 
-  Widget _buildLoadingGoalCard() {
-    return Container(
-      height: 200,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.primary600, AppColors.primary700],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: const Center(
-        child: CircularProgressIndicator(color: Colors.white),
-      ),
+  GoalCard _goalCardFor(Client goal, double? latestWeight) {
+    final targetWeight = goal.targetWeight!;
+    final currentWeight = latestWeight ?? goal.initialWeight;
+
+    // 達成判定: DBフラグ OR ローカル計算
+    // 減量目標: initialWeight > targetWeight → currentWeight <= targetWeight で達成
+    // 増量目標: initialWeight < targetWeight → currentWeight >= targetWeight で達成
+    var isAchievedLocally = false;
+    if (currentWeight != null) {
+      final initial = goal.initialWeight ?? currentWeight;
+      isAchievedLocally = initial > targetWeight
+          ? currentWeight <= targetWeight
+          : currentWeight >= targetWeight;
+    }
+    final isAchieved = goal.goalAchievedAt != null || isAchievedLocally;
+
+    return GoalCard(
+      currentWeight: currentWeight,
+      targetWeight: targetWeight,
+      initialWeight: goal.initialWeight,
+      targetDate: goal.goalDeadline,
+      isAchieved: isAchieved,
+      goalDescription: goal.goalDescription,
+      achievedAt: goal.goalAchievedAt,
     );
   }
 
-  String _formatDateTop(DateTime date) {
-    const days = ['日', '月', '火', '水', '木', '金', '土'];
-    const months = [
-      '1月',
-      '2月',
-      '3月',
-      '4月',
-      '5月',
-      '6月',
-      '7月',
-      '8月',
-      '9月',
-      '10月',
-      '11月',
-      '12月'
-    ];
-    return '${months[date.month - 1]}${date.day}日（${days[date.weekday % 7]}）';
+  Widget _buildCoachComment(
+    AsyncValue<LatestTrainerComment?> commentAsync,
+    String trainerLabel,
+    String? profileImageUrl,
+    DateTime now,
+  ) {
+    return commentAsync.when(
+      loading: () => const CoachCommentCard.loading(),
+      error: (_, __) => CoachCommentCard.unavailable(
+        coachName: trainerLabel,
+        profileImageUrl: profileImageUrl,
+        onOpenMessages: onNavigateToMessages,
+      ),
+      data: (latest) {
+        if (latest == null) {
+          return CoachCommentCard.empty(
+            coachName: trainerLabel,
+            profileImageUrl: profileImageUrl,
+            onSendMessage: onNavigateToMessages,
+          );
+        }
+        return CoachCommentCard(
+          coachName: trainerLabel,
+          profileImageUrl: profileImageUrl,
+          contextLine: latest.contextLine(now: now),
+          message: latest.body,
+          onTap: onNavigateToMessages,
+        );
+      },
+    );
   }
 }
 
 // ============================================
 // Previews
 // ============================================
+// ホームは Riverpod のデータで組み立てるので、プレビューは同じ部品を静的に並べて再現する
+// （正本の画面: 通常 / はじめて / 読込中 / 目標に届いた日）。
 
-@Preview(name: 'HomeScreen - Static Preview')
-Widget previewHomeScreenStatic() {
-  return MaterialApp(
-    theme: AppTheme.lightTheme,
-    home: Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Greeting Preview
-              _PreviewGreeting(),
-              const SizedBox(height: 24),
-              // Goal Card Preview
-              _PreviewGoalCard(),
-              const SizedBox(height: 16),
-              // Trainer Status Card Preview
-              const TrainerStatusCard(
-                trainerName: '山田トレーナー',
-                isOnline: true,
-              ),
-              const SizedBox(height: 16),
-              // Daily Summary Preview
-              _PreviewDailySummaryCard(),
-            ],
-          ),
-        ),
-      ),
-    ),
-  );
-}
+enum _HomePreviewVariant { normal, firstTime, loading, achieved }
 
-@Preview(name: 'HomeScreen - No Goal')
-Widget previewHomeScreenNoGoal() {
-  return MaterialApp(
-    theme: AppTheme.lightTheme,
-    home: Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _PreviewGreeting(),
-              const SizedBox(height: 24),
-              _PreviewNoGoalCard(),
-              const SizedBox(height: 16),
-              const TrainerStatusCard(
-                trainerName: '山田トレーナー',
-                isOnline: false,
-              ),
-              const SizedBox(height: 16),
-              _PreviewDailySummaryCard(),
-            ],
-          ),
-        ),
-      ),
-    ),
-  );
-}
+class _PreviewHome extends StatelessWidget {
+  const _PreviewHome(this.variant);
 
-// Preview helper widgets
-class _PreviewGreeting extends StatelessWidget {
+  final _HomePreviewVariant variant;
+
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
     final now = DateTime.now();
-    const days = ['日', '月', '火', '水', '木', '金', '土'];
-    const months = [
-      '1月',
-      '2月',
-      '3月',
-      '4月',
-      '5月',
-      '6月',
-      '7月',
-      '8月',
-      '9月',
-      '10月',
-      '11月',
-      '12月'
-    ];
-    final dateStr =
-        '${months[now.month - 1]}${now.day}日（${days[now.weekday % 7]}）';
+    final horizontal = AppSpacing.pageHorizontalOf(context);
+    final isNew = variant == _HomePreviewVariant.firstTime;
+    final isLoading = variant == _HomePreviewVariant.loading;
+    final isAchieved = variant == _HomePreviewVariant.achieved;
+    const trainer = '田中トレーナー';
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            dateStr,
-            style: TextStyle(
-              color: colors.textSecondary,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'こんにちは、太郎さん 👋',
-            style: TextStyle(
-              color: colors.textPrimary,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '今日も頑張りましょう！',
-            style: TextStyle(
-              color: colors.textSecondary,
-              fontSize: 14,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+    final Widget goal;
+    if (isLoading) {
+      goal = const GoalCard.loading();
+    } else if (isNew) {
+      goal = const GoalNotSetCard(trainerName: trainer);
+    } else if (isAchieved) {
+      goal = GoalCard(
+        currentWeight: 65.0,
+        targetWeight: 65.0,
+        initialWeight: 61.0,
+        isAchieved: true,
+        goalDescription: '筋肉をつけて体重を増やす',
+        achievedAt: DateTime(now.year, 12, 2),
+      );
+    } else {
+      goal = GoalCard(
+        currentWeight: 62.4,
+        targetWeight: 65.0,
+        initialWeight: 61.0,
+        targetDate: DateTime(now.year, 12, 31),
+        goalDescription: '筋肉をつけて体重を増やす',
+      );
+    }
 
-class _PreviewGoalCard extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return GoalCard(
-      currentWeight: 65.2,
-      targetWeight: 60.0,
-      initialWeight: 67.5,
-      targetDate: DateTime(2026, 3, 15),
-    );
-  }
-}
+    final Widget coach;
+    if (isLoading) {
+      coach = const CoachCommentCard.loading();
+    } else if (isNew) {
+      coach = CoachCommentCard.empty(coachName: trainer, onSendMessage: () {});
+    } else {
+      coach = CoachCommentCard(
+        coachName: trainer,
+        contextLine:
+            isAchieved ? '体重の記録へのコメント · 8:02' : '朝食の記録へのコメント · 9:10',
+        message: isAchieved
+            ? 'おめでとうございます。ここまで一緒に続けてきた成果ですね。次の目標は、次回のセッションで相談しましょう。'
+            : '朝食の記録、ありがとうございます。たんぱく質がとれていて良いですね。今日も自分のペースで。',
+        onTap: () {},
+      );
+    }
 
-class _PreviewNoGoalCard extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.slate400, AppColors.slate500],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+    final Widget session;
+    if (isLoading) {
+      session = const NextSessionCardView.loading();
+    } else if (isNew) {
+      session = NextSessionCardView.empty(
+        trainerName: trainer,
+        onTap: () {},
+        onConsult: () {},
+        onOpenList: () {},
+      );
+    } else {
+      final fromNow = Duration(days: isAchieved ? 6 : 2);
+      session = NextSessionCardView.session(
+        session: SessionModel(
+          id: 'preview',
+          trainerId: 't',
+          clientId: 'c',
+          sessionDate: DateTime(now.year, now.month, now.day, 19)
+              .add(fromNow),
+          durationMinutes: 60,
+          status: 'confirmed',
+          sessionType: 'パーソナル',
+          createdAt: now,
+          updatedAt: now,
         ),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '目標未設定',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'トレーナーに目標を設定してもらいましょう！',
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+        now: now,
+        onTap: () {},
+      );
+    }
 
-class _PreviewDailySummaryCard extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-    // Static preview without Riverpod
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: colors.border),
-      ),
-      child: Column(
-        children: [
-          // Header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '今日のまとめ',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: colors.textPrimary,
-                ),
-              ),
-              Icon(LucideIcons.chevronRight, color: colors.textHint, size: 20),
-            ],
-          ),
-          const SizedBox(height: 24),
-          // Meal Section (2/3)
-          _buildMealRow(context, 2),
-          const SizedBox(height: 16),
-          // Activity Section (3/7)
-          _buildActivityRow(context, 3),
-          Divider(height: 32, color: colors.surfaceDim),
-          // Weight Section
-          _buildWeightRow(context, 65.2, -0.6),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMealRow(BuildContext context, int count) {
-    final colors = AppColors.of(context);
-    final progress = count / 3;
-    final percentage = (progress * 100).toInt();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: const BoxDecoration(
-                    color: AppColors.orange100,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(LucideIcons.utensils,
-                      color: AppColors.orange500, size: 16),
-                ),
-                const SizedBox(width: 10),
-                Text('食事',
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: colors.textSecondary,
-                        fontSize: 14)),
-              ],
-            ),
-            RichText(
-              text: TextSpan(
-                children: [
-                  TextSpan(
-                      text: '$count',
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: colors.textPrimary,
-                          fontSize: 14)),
-                  TextSpan(
-                      text: '/3',
-                      style: TextStyle(color: colors.textHint, fontSize: 12)),
-                ],
-              ),
-            ),
-          ],
+    final DailySummaryCardBody summary;
+    if (isLoading) {
+      summary = DailySummaryCardBody(
+        meals: const SummaryRowData.loading(),
+        exercise: SummaryRowData.loading(sub: formatWeekStartLabel(now)),
+        weight: const SummaryRowData.loading(),
+        sleep: const SummaryRowData.loading(),
+      );
+    } else if (isNew) {
+      summary = DailySummaryCardBody(
+        meals: const SummaryRowData.missing(sub: 'メッセージから記録できます'),
+        exercise: SummaryRowData.missing(sub: formatWeekStartLabel(now)),
+        weight: const SummaryRowData.missing(),
+        sleep: const SummaryRowData.action(
+          '目覚めを記録',
+          sub: 'ヘルスケアと連携すると自動で入ります',
         ),
-        const SizedBox(height: 8),
-        Padding(
-          padding: const EdgeInsets.only(left: 42),
+        onMealsTap: () {},
+        onActivityTap: () {},
+        onWeightTap: () {},
+        onSleepTap: () {},
+        onSleepRecord: () {},
+      );
+    } else {
+      summary = DailySummaryCardBody(
+        meals: SummaryRowData.value([const FcValuePart('2', '回')]),
+        exercise: SummaryRowData.value(
+          [const FcValuePart('3', '日')],
+          sub: formatWeekStartLabel(now),
+        ),
+        weight: SummaryRowData.value(
+          [FcValuePart(isAchieved ? '65.0' : '62.4', 'kg')],
+          sub: '前回から +0.1 kg · 7:30',
+        ),
+        sleep: const SummaryRowData.value(
+          [FcValuePart('7', '時間'), FcValuePart('30', '分')],
+          sub: 'HealthKit',
+        ),
+        onMealsTap: () {},
+        onActivityTap: () {},
+        onWeightTap: () {},
+        onSleepTap: () {},
+      );
+    }
+
+    return Scaffold(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(
+            horizontal,
+            AppSpacing.xs,
+            horizontal,
+            AppSpacing.xxl,
+          ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: progress,
-                  backgroundColor: colors.border,
-                  valueColor:
-                      const AlwaysStoppedAnimation<Color>(AppColors.orange500),
-                  minHeight: 8,
+              FcPageHeading(
+                eyebrow: formatSessionDateDisplay(now, now: now),
+                title: isLoading ? 'こんにちは' : 'こんにちは、佐藤さん',
+                subtitle: '今日も、自分のペースで。',
+              ),
+              if (isNew) ...[
+                GettingStartedCardBody(
+                  doneCount: 1,
+                  totalCount: 3,
+                  onClose: () {},
+                  items: [
+                    GettingStartedItem(
+                      label: '最初の体重を記録する',
+                      isDone: true,
+                      onTap: () {},
+                    ),
+                    GettingStartedItem(
+                      label: 'トレーナーにメッセージを送る',
+                      isDone: false,
+                      onTap: () {},
+                    ),
+                    GettingStartedItem(
+                      label: 'ヘルスケアと連携する',
+                      isDone: false,
+                      onTap: () {},
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text('$percentage% 記録済み',
-                  style: TextStyle(color: colors.textHint, fontSize: 10)),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildActivityRow(BuildContext context, int count) {
-    final colors = AppColors.of(context);
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: const BoxDecoration(
-                color: AppColors.primary100,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(LucideIcons.dumbbell,
-                  color: AppColors.primary500, size: 16),
-            ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('運動',
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: colors.textSecondary,
-                        fontSize: 14)),
-                Text('今週',
-                    style: TextStyle(color: colors.textHint, fontSize: 10)),
+                const SizedBox(height: AppSpacing.cardGap),
               ],
-            ),
-          ],
-        ),
-        RichText(
-          text: TextSpan(
-            children: [
-              TextSpan(
-                  text: '$count ',
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: colors.textPrimary,
-                      fontSize: 14)),
-              TextSpan(
-                  text: '/ 7日',
-                  style: TextStyle(color: colors.textHint, fontSize: 12)),
+              goal,
+              const SizedBox(height: AppSpacing.cardGap),
+              coach,
+              const SizedBox(height: AppSpacing.cardGap),
+              session,
+              const SizedBox(height: AppSpacing.cardGap),
+              summary,
             ],
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _buildWeightRow(BuildContext context, double weight, double change) {
-    final colors = AppColors.of(context);
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: const BoxDecoration(
-                color: AppColors.emerald100,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(LucideIcons.scale,
-                  color: AppColors.emerald500, size: 16),
-            ),
-            const SizedBox(width: 10),
-            Text('体重',
-                style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: colors.textSecondary,
-                    fontSize: 14)),
-          ],
-        ),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text('${weight.toStringAsFixed(1)} kg',
-                style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: colors.textPrimary,
-                    fontSize: 14)),
-            const SizedBox(height: 4),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: change < 0 ? AppColors.emerald50 : AppColors.rose100,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                '${change > 0 ? '+' : ''}${change.toStringAsFixed(1)}kg 前日比',
-                style: TextStyle(
-                    color:
-                        change < 0 ? AppColors.emerald500 : AppColors.rose800,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-        ),
-      ],
+      ),
     );
   }
 }
+
+Widget _previewApp(
+  _HomePreviewVariant variant, {
+  Brightness brightness = Brightness.light,
+  double textScale = 1.0,
+}) {
+  return MaterialApp(
+    theme: AppTheme.lightTheme,
+    darkTheme: AppTheme.darkTheme,
+    themeMode:
+        brightness == Brightness.dark ? ThemeMode.dark : ThemeMode.light,
+    builder: (context, child) => MediaQuery(
+      data: MediaQuery.of(context)
+          .copyWith(textScaler: TextScaler.linear(textScale)),
+      child: child!,
+    ),
+    home: _PreviewHome(variant),
+  );
+}
+
+@Preview(name: 'HomeScreen - 通常（静的）')
+Widget previewHomeScreenNormal() => _previewApp(_HomePreviewVariant.normal);
+
+@Preview(name: 'HomeScreen - はじめて（静的）')
+Widget previewHomeScreenFirstTime() =>
+    _previewApp(_HomePreviewVariant.firstTime);
+
+@Preview(name: 'HomeScreen - 読み込み中（静的）')
+Widget previewHomeScreenLoading() => _previewApp(_HomePreviewVariant.loading);
+
+@Preview(name: 'HomeScreen - 目標に届いた日（静的）')
+Widget previewHomeScreenAchieved() =>
+    _previewApp(_HomePreviewVariant.achieved);
+
+@Preview(name: 'HomeScreen - ダーク（静的）')
+Widget previewHomeScreenDark() => _previewApp(
+      _HomePreviewVariant.normal,
+      brightness: Brightness.dark,
+    );
+
+@Preview(name: 'HomeScreen - 文字 1.35（静的）')
+Widget previewHomeScreenLargeText() => _previewApp(
+      _HomePreviewVariant.normal,
+      textScale: 1.35,
+    );

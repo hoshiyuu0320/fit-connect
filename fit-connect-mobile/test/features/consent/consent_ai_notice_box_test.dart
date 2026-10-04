@@ -7,7 +7,7 @@ import 'package:fit_connect_mobile/features/consent/presentation/consent_dialog.
 
 void main() {
   group('ConsentAiNoticeBox', () {
-    testWidgets('ダークテーマではテーマ追従の濃青トーンで背景・文字色が描画される', (tester) async {
+    testWidgets('ダークテーマではテーマ追従の濃い青緑トーンで背景・文字色が描画される', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.darkTheme,
@@ -29,7 +29,11 @@ void main() {
         AppColorsExtension.dark.primaryTint.withValues(alpha: 0.6),
       );
       final border = decoration.border as Border;
-      expect(border.top.color, AppColors.primary600.withValues(alpha: 0.3));
+      // 枠は静的な primary600 ではなくテーマ追従の accent（ダークで読める明るい青緑）
+      expect(
+        border.top.color,
+        AppColorsExtension.dark.accent.withValues(alpha: 0.3),
+      );
 
       final titleText = tester.widget<Text>(find.text('AI解析について'));
       expect(
@@ -41,8 +45,7 @@ void main() {
       expect(icon.color, AppColorsExtension.dark.primaryTintForeground);
     });
 
-    testWidgets(
-        'ライトテーマでは背景は従来の淡青のまま、見出しは primaryTintForeground（primary600）で描画される',
+    testWidgets('ライトテーマでは背景は淡い青緑、見出しは primaryTintForeground（accent）で描画される',
         (tester) async {
       await tester.pumpWidget(
         MaterialApp(

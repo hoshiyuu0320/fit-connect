@@ -190,8 +190,6 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
                   // ステップ1: 通知プライミング
                   OnboardingStepPage(
                     icon: LucideIcons.bell,
-                    iconColor: AppColors.primary600,
-                    iconBackgroundColor: AppColors.primary50,
                     title: '通知をオンにしましょう',
                     description: 'トレーナーからの返信やアドバイスを\nすぐ受け取れます。',
                     primaryLabel: '通知を許可する',
@@ -203,8 +201,6 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
                   // ステップ2（最終）: ヘルスケア連携提案
                   OnboardingStepPage(
                     icon: LucideIcons.heartPulse,
-                    iconColor: AppColors.emerald500,
-                    iconBackgroundColor: AppColors.emerald50,
                     title: 'ヘルスケアと連携しましょう',
                     description: '体重や睡眠のデータを自動で取り込み、\n記録の手間を減らせます。',
                     primaryLabel: '連携する',
@@ -236,21 +232,27 @@ class OnboardingProgressDots extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(stepCount, (index) {
-        final isActive = index == currentStep;
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          width: isActive ? 24 : 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: isActive ? AppColors.primary600 : colors.border,
-            borderRadius: BorderRadius.circular(4),
-          ),
-        );
-      }),
+    return Semantics(
+      label: 'ステップ ${currentStep + 1} / $stepCount',
+      excludeSemantics: true,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(stepCount, (index) {
+          final isActive = index == currentStep;
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            width: isActive ? 24 : 8,
+            height: 8,
+            decoration: BoxDecoration(
+              // 現在のステップは accent の細長い印、それ以外は textSecondary の点
+              // （どちらもページ背景の上で 3:1 以上。separator だとライトでほぼ見えない）
+              color: isActive ? colors.accent : colors.textSecondary,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          );
+        }),
+      ),
     );
   }
 }
@@ -274,8 +276,6 @@ Widget previewOnboardingFlowStep1() {
             Expanded(
               child: OnboardingStepPage(
                 icon: LucideIcons.bell,
-                iconColor: AppColors.primary600,
-                iconBackgroundColor: AppColors.primary50,
                 title: '通知をオンにしましょう',
                 description: 'トレーナーからの返信やアドバイスを\nすぐ受け取れます。',
                 primaryLabel: '通知を許可する',
@@ -305,8 +305,6 @@ Widget previewOnboardingFlowStep2() {
             Expanded(
               child: OnboardingStepPage(
                 icon: LucideIcons.heartPulse,
-                iconColor: AppColors.emerald500,
-                iconBackgroundColor: AppColors.emerald50,
                 title: 'ヘルスケアと連携しましょう',
                 description: '体重や睡眠のデータを自動で取り込み、\n記録の手間を減らせます。',
                 primaryLabel: '連携する',

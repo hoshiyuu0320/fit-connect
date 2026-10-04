@@ -56,7 +56,6 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('無効なQRコードです。トレーナーのQRコードをスキャンしてください。'),
-            backgroundColor: AppColors.rose800,
           ),
         );
         setState(() {
@@ -77,7 +76,6 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('トレーナーが見つかりませんでした。QRコードを確認してください。'),
-          backgroundColor: AppColors.rose800,
         ),
       );
       setState(() {
@@ -111,6 +109,7 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
         title: const Text('QRコードをスキャン'),
         actions: [
           IconButton(
+            tooltip: _torchEnabled ? 'ライトを消す' : 'ライトをつける',
             icon: Icon(
               _torchEnabled ? LucideIcons.zapOff : LucideIcons.zap,
               color: _torchEnabled ? AppColors.amber100 : Colors.white,

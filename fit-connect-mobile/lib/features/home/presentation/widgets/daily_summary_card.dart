@@ -1,17 +1,71 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fit_connect_mobile/core/theme/app_colors.dart';
-import 'package:fit_connect_mobile/core/theme/app_theme.dart';
-import 'package:fit_connect_mobile/features/meal_records/providers/meal_records_provider.dart';
-import 'package:fit_connect_mobile/features/exercise_records/providers/exercise_records_provider.dart';
-import 'package:fit_connect_mobile/features/weight_records/providers/weight_records_provider.dart';
-import 'package:fit_connect_mobile/features/sleep_records/models/sleep_record_model.dart';
-import 'package:fit_connect_mobile/features/sleep_records/providers/sleep_records_provider.dart';
-import 'package:fit_connect_mobile/features/sleep_records/presentation/widgets/wakeup_record_sheet.dart';
-import 'package:fit_connect_mobile/shared/models/period_filter.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import 'package:fit_connect_mobile/core/theme/app_spacing.dart';
+import 'package:fit_connect_mobile/core/theme/app_theme.dart';
+import 'package:fit_connect_mobile/features/exercise_records/providers/exercise_records_provider.dart';
+import 'package:fit_connect_mobile/features/home/presentation/utils/home_formatting.dart';
+import 'package:fit_connect_mobile/features/meal_records/providers/meal_records_provider.dart';
+import 'package:fit_connect_mobile/features/sleep_records/models/sleep_record_model.dart';
+import 'package:fit_connect_mobile/features/sleep_records/presentation/widgets/wakeup_record_sheet.dart';
+import 'package:fit_connect_mobile/features/sleep_records/providers/sleep_records_provider.dart';
+import 'package:fit_connect_mobile/features/weight_records/models/weight_record_model.dart';
+import 'package:fit_connect_mobile/features/weight_records/presentation/widgets/weight_format.dart';
+import 'package:fit_connect_mobile/features/weight_records/providers/weight_records_provider.dart';
+import 'package:fit_connect_mobile/shared/models/period_filter.dart';
+import 'package:fit_connect_mobile/shared/widgets/fc/fc.dart';
+
+// ============================================
+// 今日のまとめ
+// 正本: home-screens.js の `HomeSummary` / `SumRow`
+// 食事・運動・体重・睡眠を 4 行の一覧で示す。カテゴリごとの色・絵文字・進捗バーはやめ、
+// アイコンと言葉で区別する。各行は押すと記録タブの該当サブタブへ。
+// ============================================
+
+/// 「今日のまとめ」の 1 行の中身（右側の値と補足）。
+enum SummaryRowKind { loading, value, text, missing, action }
+
+@immutable
+class SummaryRowData {
+  const SummaryRowData._(
+    this.kind, {
+    this.parts = const [],
+    this.text,
+    this.sub,
+  });
+
+  /// 読み込み中（値はスケルトン。配置は保つ）
+  const SummaryRowData.loading({String? sub})
+      : this._(SummaryRowKind.loading, sub: sub);
+
+  /// 数値＋単位（`2 回`、`7 時間 30 分`）
+  const SummaryRowData.value(List<FcValuePart> parts, {String? sub})
+      : this._(SummaryRowKind.value, parts: parts, sub: sub);
+
+  /// 文字の値（目覚めの評価など）
+  const SummaryRowData.text(String text, {String? sub})
+      : this._(SummaryRowKind.text, text: text, sub: sub);
+
+  /// 値が無い（0 とは表示しない）。既定は「未記録」
+  const SummaryRowData.missing({String text = '未記録', String? sub})
+      : this._(SummaryRowKind.missing, text: text, sub: sub);
+
+  /// 右に accent の操作文字（睡眠の「目覚めを記録」）
+  const SummaryRowData.action(String label, {String? sub})
+      : this._(SummaryRowKind.action, text: label, sub: sub);
+
+  final SummaryRowKind kind;
+  final List<FcValuePart> parts;
+  final String? text;
+  final String? sub;
+}
+
+/// ホームの「今日のまとめ」カード（データを取得して [DailySummaryCardBody] に渡す）。
+///
+/// 操作（記録タブの各サブタブへの遷移・睡眠の「目覚めを記録」ダイアログ）は従来どおり。
 class DailySummaryCard extends ConsumerWidget {
   final VoidCallback? onMealsTap;
   final VoidCallback? onActivityTap;
@@ -26,654 +80,253 @@ class DailySummaryCard extends ConsumerWidget {
     this.onSleepTap,
   });
 
+  /// 「前回から」の差を出すために読む体重記録の期間
+  static const PeriodFilter weightHistoryPeriod = PeriodFilter.threeMonths;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colors = AppColors.of(context);
-    final todayMealCountAsync = ref.watch(todayMealCountProvider);
-    final weeklyExerciseCountAsync = ref.watch(weeklyExerciseCountProvider);
-    final latestWeightAsync = ref.watch(latestWeightRecordProvider);
-    final weightStatsAsync =
-        ref.watch(weightStatsProvider(period: PeriodFilter.week));
-    final todaySleepAsync = ref.watch(todaySleepRecordProvider);
+    final now = DateTime.now();
+    final mealCount = ref.watch(todayMealCountProvider);
+    final exerciseCount = ref.watch(weeklyExerciseCountProvider);
+    final latestWeight = ref.watch(latestWeightRecordProvider);
+    final weightHistory =
+        ref.watch(weightRecordsProvider(period: weightHistoryPeriod));
+    final todaySleep = ref.watch(todaySleepRecordProvider);
 
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: colors.border),
-        boxShadow: [
-          BoxShadow(
-            color: colors.shadow,
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Header
-          Text(
-            '今日のまとめ',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: colors.textPrimary,
-            ),
-          ),
-
-          const SizedBox(height: 24),
-
-          // Meal Section
-          _buildTappableSection(
-            context: context,
-            onTap: onMealsTap,
-            child: _buildMealSection(context, todayMealCountAsync),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Workout Section
-          _buildTappableSection(
-            context: context,
-            onTap: onActivityTap,
-            child: _buildWorkoutSection(context, weeklyExerciseCountAsync),
-          ),
-
-          Divider(height: 32, color: colors.surfaceDim),
-
-          // Weight Section
-          _buildTappableSection(
-            context: context,
-            onTap: onWeightTap,
-            child: _buildWeightSection(
-                context, latestWeightAsync, weightStatsAsync),
-          ),
-
-          Divider(height: 32, color: colors.surfaceDim),
-
-          // Sleep Section
-          _buildTappableSection(
-            context: context,
-            onTap: onSleepTap,
-            child: _buildSleepSection(context, ref, todaySleepAsync),
-          ),
-        ],
-      ),
+    return DailySummaryCardBody(
+      meals: _mealRow(mealCount),
+      exercise: _exerciseRow(exerciseCount, now),
+      weight: _weightRow(latestWeight, weightHistory.valueOrNull, now),
+      sleep: _sleepRow(todaySleep),
+      onMealsTap: onMealsTap,
+      onActivityTap: onActivityTap,
+      onWeightTap: onWeightTap,
+      onSleepTap: onSleepTap,
+      onSleepRecord: () => showWakeupRecordSheet(context, ref),
     );
   }
 
-  Widget _buildTappableSection({
-    required BuildContext context,
-    required VoidCallback? onTap,
-    required Widget child,
-  }) {
-    final colors = AppColors.of(context);
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        splashColor: AppColors.primary100,
-        highlightColor: colors.surfaceDim,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-          child: Row(
-            children: [
-              Expanded(child: child),
-              if (onTap != null)
-                Padding(
-                  padding: const EdgeInsets.only(left: 8),
-                  child: Icon(
-                    LucideIcons.chevronRight,
-                    color: colors.border,
-                    size: 18,
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
+  static SummaryRowData _mealRow(AsyncValue<int> async) {
+    return async.when(
+      data: (count) => count > 0
+          ? SummaryRowData.value([FcValuePart('$count', '回')])
+          : const SummaryRowData.missing(sub: 'メッセージから記録できます'),
+      loading: () => const SummaryRowData.loading(),
+      error: (_, __) => const SummaryRowData.missing(text: '未取得'),
     );
   }
 
-  Widget _buildMealSection(
-      BuildContext context, AsyncValue<int> todayMealCountAsync) {
-    return todayMealCountAsync.when(
-      data: (count) => _buildMealSectionData(context, count),
-      loading: () => _buildMealSectionLoading(context),
-      error: (_, __) => _buildMealSectionData(context, 0),
+  static SummaryRowData _exerciseRow(AsyncValue<int> async, DateTime now) {
+    final week = formatWeekStartLabel(now);
+    return async.when(
+      data: (count) => count > 0
+          ? SummaryRowData.value([FcValuePart('$count', '日')], sub: week)
+          : SummaryRowData.missing(sub: week),
+      loading: () => SummaryRowData.loading(sub: week),
+      error: (_, __) => SummaryRowData.missing(text: '未取得', sub: week),
     );
   }
 
-  Widget _buildMealSectionData(BuildContext context, int count) {
-    final colors = AppColors.of(context);
-    final progress = count / 3;
-    final percentage = (progress * 100).toInt();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: const BoxDecoration(
-                    color: AppColors.orange100,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(LucideIcons.utensils,
-                      color: AppColors.orange500, size: 16),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  '食事',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: colors.textSecondary,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-            RichText(
-              text: TextSpan(
-                children: [
-                  TextSpan(
-                    text: '$count',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: colors.textPrimary,
-                      fontSize: 14,
-                    ),
-                  ),
-                  TextSpan(
-                    text: '/3',
-                    style: TextStyle(
-                      color: colors.textHint,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Padding(
-          padding: const EdgeInsets.only(left: 42),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: progress.clamp(0.0, 1.0),
-                  backgroundColor: colors.border,
-                  valueColor:
-                      const AlwaysStoppedAnimation<Color>(AppColors.orange500),
-                  minHeight: 8,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '$percentage% 記録済み',
-                style: TextStyle(
-                  color: colors.textHint,
-                  fontSize: 10,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMealSectionLoading(BuildContext context) {
-    final colors = AppColors.of(context);
-    return Row(
-      children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: const BoxDecoration(
-            color: AppColors.orange100,
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(LucideIcons.utensils,
-              color: AppColors.orange500, size: 16),
-        ),
-        const SizedBox(width: 10),
-        Text(
-          '食事',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: colors.textSecondary,
-            fontSize: 14,
-          ),
-        ),
-        const Spacer(),
-        const SizedBox(
-          width: 16,
-          height: 16,
-          child: CircularProgressIndicator(strokeWidth: 2),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildWorkoutSection(
-      BuildContext context, AsyncValue<int> weeklyExerciseCountAsync) {
-    return weeklyExerciseCountAsync.when(
-      data: (count) => _buildWorkoutSectionData(context, count),
-      loading: () => _buildWorkoutSectionLoading(context),
-      error: (_, __) => _buildWorkoutSectionData(context, 0),
-    );
-  }
-
-  Widget _buildWorkoutSectionData(BuildContext context, int count) {
-    final colors = AppColors.of(context);
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: const BoxDecoration(
-                color: AppColors.primary100,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(LucideIcons.dumbbell,
-                  color: AppColors.primary500, size: 16),
-            ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '運動',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: colors.textSecondary,
-                    fontSize: 14,
-                    height: 1.2,
-                  ),
-                ),
-                Text(
-                  '今週',
-                  style: TextStyle(
-                    color: colors.textHint,
-                    fontSize: 10,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        RichText(
-          text: TextSpan(
-            children: [
-              TextSpan(
-                text: '$count ',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: colors.textPrimary,
-                  fontSize: 14,
-                ),
-              ),
-              TextSpan(
-                text: '/ 7日',
-                style: TextStyle(
-                  color: colors.textHint,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildWorkoutSectionLoading(BuildContext context) {
-    final colors = AppColors.of(context);
-    return Row(
-      children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: const BoxDecoration(
-            color: AppColors.primary100,
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(LucideIcons.dumbbell,
-              color: AppColors.primary500, size: 16),
-        ),
-        const SizedBox(width: 10),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '運動',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: colors.textSecondary,
-                fontSize: 14,
-                height: 1.2,
-              ),
-            ),
-            Text(
-              '今週',
-              style: TextStyle(
-                color: colors.textHint,
-                fontSize: 10,
-              ),
-            ),
-          ],
-        ),
-        const Spacer(),
-        const SizedBox(
-          width: 16,
-          height: 16,
-          child: CircularProgressIndicator(strokeWidth: 2),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildWeightSection(
-    BuildContext context,
-    AsyncValue latestWeightAsync,
-    AsyncValue<Map<String, double>> weightStatsAsync,
+  static SummaryRowData _weightRow(
+    AsyncValue<WeightRecord?> latestAsync,
+    List<WeightRecord>? history,
+    DateTime now,
   ) {
-    return latestWeightAsync.when(
-      data: (latestWeight) {
-        if (latestWeight == null) {
-          return _buildWeightSectionNoData(context);
-        }
-
-        final change = weightStatsAsync.whenOrNull(
-          data: (stats) => stats['change'],
+    return latestAsync.when(
+      data: (latest) {
+        if (latest == null) return const SummaryRowData.missing();
+        return SummaryRowData.value(
+          [FcValuePart(formatKg(latest.weight), 'kg')],
+          sub: weightSubLabel(latest: latest, history: history, now: now),
         );
-
-        return _buildWeightSectionData(context, latestWeight.weight, change);
       },
-      loading: () => _buildWeightSectionLoading(context),
-      error: (_, __) => _buildWeightSectionNoData(context),
+      loading: () => const SummaryRowData.loading(),
+      error: (_, __) => const SummaryRowData.missing(text: '未取得'),
     );
   }
 
-  Widget _buildWeightSectionData(
-      BuildContext context, double weight, double? change) {
-    final colors = AppColors.of(context);
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: const BoxDecoration(
-                color: AppColors.emerald100,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(LucideIcons.scale,
-                  color: AppColors.emerald500, size: 16),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              '体重',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: colors.textSecondary,
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              '${weight.toStringAsFixed(1)} kg',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: colors.textPrimary,
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 4),
-            if (change != null && change != 0)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: change < 0 ? AppColors.emerald50 : AppColors.rose100,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  '${change > 0 ? '+' : ''}${change.toStringAsFixed(1)}kg 今週',
-                  style: TextStyle(
-                    color:
-                        change < 0 ? AppColors.emerald500 : AppColors.rose800,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ],
-    );
+  /// 体重の補足。「前回から +0.1 kg · 7:30」。前回の記録が見つからなければ時刻だけ。
+  ///
+  /// 増減は符号だけで、色分けも良し悪しの言葉も付けない。
+  static String weightSubLabel({
+    required WeightRecord latest,
+    required List<WeightRecord>? history,
+    required DateTime now,
+  }) {
+    final time = formatHomeTime(latest.recordedAt, now: now);
+    WeightRecord? previous;
+    for (final r in history ?? const <WeightRecord>[]) {
+      if (r.id == latest.id || r.recordedAt.isAfter(latest.recordedAt)) {
+        continue;
+      }
+      if (previous == null || r.recordedAt.isAfter(previous.recordedAt)) {
+        previous = r;
+      }
+    }
+    if (previous == null) return time;
+    final signed = formatSignedKg(latest.weight - previous.weight);
+    final change = signed == '0.0' ? '前回と同じ' : '前回から $signed kg';
+    return '$change · $time';
   }
 
-  Widget _buildWeightSectionLoading(BuildContext context) {
-    final colors = AppColors.of(context);
-    return Row(
-      children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: const BoxDecoration(
-            color: AppColors.emerald100,
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(LucideIcons.scale,
-              color: AppColors.emerald500, size: 16),
-        ),
-        const SizedBox(width: 10),
-        Text(
-          '体重',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: colors.textSecondary,
-            fontSize: 14,
-          ),
-        ),
-        const Spacer(),
-        const SizedBox(
-          width: 16,
-          height: 16,
-          child: CircularProgressIndicator(strokeWidth: 2),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildWeightSectionNoData(BuildContext context) {
-    final colors = AppColors.of(context);
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: const BoxDecoration(
-                color: AppColors.emerald100,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(LucideIcons.scale,
-                  color: AppColors.emerald500, size: 16),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              '体重',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: colors.textSecondary,
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ),
-        Text(
-          'データなし',
-          style: TextStyle(
-            color: colors.textHint,
-            fontSize: 12,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSleepSection(
-    BuildContext context,
-    WidgetRef ref,
-    AsyncValue<SleepRecord?> todaySleepAsync,
-  ) {
-    return todaySleepAsync.when(
+  static SummaryRowData _sleepRow(AsyncValue<SleepRecord?> async) {
+    const hint = 'ヘルスケアと連携すると自動で入ります';
+    return async.when(
       data: (record) {
-        if (record == null) return _buildSleepEmpty(context, ref);
-        if (record.hasObjectiveData) {
-          return _buildSleepHealthkit(context, record);
+        if (record != null && record.hasObjectiveData) {
+          final minutes = record.totalSleepMinutes!;
+          final h = minutes ~/ 60;
+          final m = minutes % 60;
+          return SummaryRowData.value(
+            [
+              if (h > 0) FcValuePart('$h', '時間'),
+              FcValuePart('$m', '分'),
+            ],
+            sub: 'HealthKit',
+          );
         }
-        if (record.wakeupRating != null) {
-          return _buildSleepManual(context, record);
+        final rating = record?.wakeupRating;
+        if (rating != null) {
+          return SummaryRowData.text(rating.labelJa, sub: '目覚めの記録');
         }
-        return _buildSleepEmpty(context, ref);
+        return const SummaryRowData.action('目覚めを記録', sub: hint);
       },
-      loading: () => _buildSleepLoading(context),
-      error: (_, __) => _buildSleepEmpty(context, ref),
+      loading: () => const SummaryRowData.loading(),
+      error: (_, __) => const SummaryRowData.action('目覚めを記録', sub: hint),
     );
   }
+}
 
-  Widget _buildSleepLabel(BuildContext context) {
-    final colors = AppColors.of(context);
-    return Row(
+/// 「今日のまとめ」の見た目だけを担当する部分（プレビュー・テストでも使える）。
+class DailySummaryCardBody extends StatelessWidget {
+  const DailySummaryCardBody({
+    super.key,
+    required this.meals,
+    required this.exercise,
+    required this.weight,
+    required this.sleep,
+    this.onMealsTap,
+    this.onActivityTap,
+    this.onWeightTap,
+    this.onSleepTap,
+    this.onSleepRecord,
+  });
+
+  final SummaryRowData meals;
+  final SummaryRowData exercise;
+  final SummaryRowData weight;
+  final SummaryRowData sleep;
+
+  final VoidCallback? onMealsTap;
+  final VoidCallback? onActivityTap;
+  final VoidCallback? onWeightTap;
+  final VoidCallback? onSleepTap;
+
+  /// 睡眠が未記録のときの「目覚めを記録」
+  final VoidCallback? onSleepRecord;
+
+  @override
+  Widget build(BuildContext context) {
+    return FcRowsCard(
+      title: '今日のまとめ',
+      padding: FcRowsCard.summaryPadding,
       children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: const BoxDecoration(
-            color: AppColors.indigo100,
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(LucideIcons.moon,
-              color: AppColors.indigo600, size: 16),
+        _SummaryRow(
+          icon: LucideIcons.utensils,
+          title: '食事',
+          data: meals,
+          onTap: onMealsTap,
         ),
-        const SizedBox(width: 10),
-        Text(
-          '睡眠',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: colors.textSecondary,
-            fontSize: 14,
-          ),
+        _SummaryRow(
+          icon: LucideIcons.dumbbell,
+          title: '運動',
+          data: exercise,
+          onTap: onActivityTap,
+        ),
+        _SummaryRow(
+          icon: LucideIcons.scale,
+          title: '体重',
+          data: weight,
+          onTap: onWeightTap,
+        ),
+        _SummaryRow(
+          icon: LucideIcons.moon,
+          title: '睡眠',
+          data: sleep,
+          onTap: onSleepTap,
+          onAction: onSleepRecord,
         ),
       ],
     );
   }
+}
 
-  Widget _buildSleepHealthkit(BuildContext context, SleepRecord record) {
-    final colors = AppColors.of(context);
-    final mins = record.totalSleepMinutes!;
-    final h = mins ~/ 60;
-    final m = mins % 60;
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        _buildSleepLabel(context),
-        Text(
-          '$h時間$m分',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: colors.textPrimary,
-            fontSize: 14,
-          ),
-        ),
-      ],
-    );
-  }
+class _SummaryRow extends StatelessWidget {
+  const _SummaryRow({
+    required this.icon,
+    required this.title,
+    required this.data,
+    this.onTap,
+    this.onAction,
+  });
 
-  Widget _buildSleepManual(BuildContext context, SleepRecord record) {
-    final rating = record.wakeupRating!;
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        _buildSleepLabel(context),
-        Row(
-          children: [
-            wakeupRatingIcon(rating, size: 16),
-            const SizedBox(width: 6),
-            Text(
-              rating.labelJa,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: wakeupRatingColor(rating),
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
+  final IconData icon;
+  final String title;
+  final SummaryRowData data;
+  final VoidCallback? onTap;
 
-  Widget _buildSleepEmpty(BuildContext context, WidgetRef ref) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        _buildSleepLabel(context),
-        TextButton(
-          onPressed: () => showWakeupRecordSheet(context, ref),
-          style: TextButton.styleFrom(
-            backgroundColor: AppColors.primary50,
-            foregroundColor: AppColors.primary,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            minimumSize: Size.zero,
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(6),
-            ),
-            textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-          ),
-          child: const Text('記録'),
-        ),
-      ],
-    );
-  }
+  /// [SummaryRowKind.action] の操作
+  final VoidCallback? onAction;
 
-  Widget _buildSleepLoading(BuildContext context) {
-    return Row(
-      children: [
-        _buildSleepLabel(context),
-        const Spacer(),
-        const SizedBox(
-          width: 16,
-          height: 16,
-          child: CircularProgressIndicator(strokeWidth: 2),
-        ),
-      ],
+  @override
+  Widget build(BuildContext context) {
+    final isAction = data.kind == SummaryRowKind.action;
+    final Widget trailing;
+    switch (data.kind) {
+      case SummaryRowKind.loading:
+        trailing = const FcRowValue.loading();
+      case SummaryRowKind.value:
+        trailing = FcRowValue.metric(data.parts);
+      case SummaryRowKind.text:
+        trailing = FcRowValue.text(data.text!);
+      case SummaryRowKind.missing:
+        trailing = FcRowValue.missing(text: data.text!);
+      case SummaryRowKind.action:
+        final value = FcRowValue.action(data.text!);
+        // 行全体（記録タブへ）とは別に、右の文字だけを押して記録できる。
+        // 内側のタップが優先される。押せる範囲は 44×44 以上
+        trailing = onAction == null
+            ? value
+            : FcPressable(
+                onTap: onAction,
+                semanticLabel: data.text,
+                minSize: const Size.square(AppSizes.minTouch),
+                child: value,
+              );
+    }
+
+    final row = FcListRow(
+      density: FcRowDensity.summary,
+      icon: icon,
+      title: title,
+      caption: data.sub,
+      trailing: trailing,
+      onTap: onTap,
+      // 操作を含む行は、読み上げを「未記録」としてまとめ、記録の操作は別の操作として足す
+      semanticLabel: isAction
+          ? [title, if (data.sub != null) data.sub!, '未記録'].join('、')
+          : null,
     );
+
+    if (isAction && onAction != null && onTap != null) {
+      return Semantics(
+        customSemanticsActions: {
+          CustomSemanticsAction(label: data.text!): onAction!,
+        },
+        child: row,
+      );
+    }
+    return row;
   }
 }
 
@@ -681,557 +334,107 @@ class DailySummaryCard extends ConsumerWidget {
 // Previews
 // ============================================
 
-@Preview(name: 'DailySummaryCard - Static Preview')
-Widget previewDailySummaryCardStatic() {
+Widget _previewApp(
+  Widget child, {
+  Brightness brightness = Brightness.light,
+  double textScale = 1.0,
+}) {
   return MaterialApp(
     theme: AppTheme.lightTheme,
+    darkTheme: AppTheme.darkTheme,
+    themeMode:
+        brightness == Brightness.dark ? ThemeMode.dark : ThemeMode.light,
+    builder: (context, c) => MediaQuery(
+      data: MediaQuery.of(context)
+          .copyWith(textScaler: TextScaler.linear(textScale)),
+      child: c!,
+    ),
     home: Scaffold(
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: _PreviewDailySummaryCard(),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppSpacing.pageHorizontal),
+          child: child,
         ),
       ),
     ),
   );
 }
 
-@Preview(name: 'DailySummaryCard - Empty State')
-Widget previewDailySummaryCardEmpty() {
-  return MaterialApp(
-    theme: AppTheme.lightTheme,
-    home: Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: _PreviewDailySummaryCardEmpty(),
+DailySummaryCardBody _previewBody({
+  SummaryRowData? meals,
+  SummaryRowData? exercise,
+  SummaryRowData? weight,
+  SummaryRowData? sleep,
+}) {
+  return DailySummaryCardBody(
+    meals: meals ?? SummaryRowData.value([const FcValuePart('2', '回')]),
+    exercise: exercise ??
+        const SummaryRowData.value(
+          [FcValuePart('3', '日')],
+          sub: '今週（9/7〜）',
         ),
+    weight: weight ??
+        const SummaryRowData.value(
+          [FcValuePart('62.4', 'kg')],
+          sub: '前回から +0.1 kg · 7:30',
+        ),
+    sleep: sleep ??
+        const SummaryRowData.value(
+          [FcValuePart('7', '時間'), FcValuePart('30', '分')],
+          sub: 'HealthKit',
+        ),
+    onMealsTap: () {},
+    onActivityTap: () {},
+    onWeightTap: () {},
+    onSleepTap: () {},
+    onSleepRecord: () {},
+  );
+}
+
+@Preview(name: 'DailySummaryCard - 通常')
+Widget previewDailySummaryCardNormal() => _previewApp(_previewBody());
+
+@Preview(name: 'DailySummaryCard - はじめて（未記録）')
+Widget previewDailySummaryCardNew() {
+  return _previewApp(
+    _previewBody(
+      meals: const SummaryRowData.missing(sub: 'メッセージから記録できます'),
+      exercise: const SummaryRowData.missing(sub: '今週（9/7〜）'),
+      weight: const SummaryRowData.missing(),
+      sleep: const SummaryRowData.action(
+        '目覚めを記録',
+        sub: 'ヘルスケアと連携すると自動で入ります',
       ),
     ),
   );
 }
 
-@Preview(name: 'DailySummaryCard - Sleep Manual State')
+@Preview(name: 'DailySummaryCard - 読み込み中')
+Widget previewDailySummaryCardLoading() {
+  return _previewApp(
+    _previewBody(
+      meals: const SummaryRowData.loading(),
+      exercise: const SummaryRowData.loading(sub: '今週（9/7〜）'),
+      weight: const SummaryRowData.loading(),
+      sleep: const SummaryRowData.loading(),
+    ),
+  );
+}
+
+@Preview(name: 'DailySummaryCard - 睡眠は目覚めの記録')
 Widget previewDailySummaryCardSleepManual() {
-  return MaterialApp(
-    theme: AppTheme.lightTheme,
-    home: Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: _PreviewDailySummaryCardSleepManual(),
-        ),
-      ),
+  return _previewApp(
+    _previewBody(
+      sleep: const SummaryRowData.text('すっきり', sub: '目覚めの記録'),
     ),
   );
 }
 
-// Preview helper widget with mock data
-class _PreviewDailySummaryCard extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: colors.border),
-        boxShadow: [
-          BoxShadow(
-            color: colors.shadow,
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Header
-          Text(
-            '今日のまとめ',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: colors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Meal Section (2/3)
-          _buildTappableRow(context: context, child: _buildMealRow(context, 2)),
-          const SizedBox(height: 16),
-
-          // Activity Section (3/7)
-          _buildTappableRow(context: context, child: _buildActivityRow(context, 3)),
-
-          Divider(height: 32, color: colors.surfaceDim),
-
-          // Weight Section
-          _buildTappableRow(context: context, child: _buildWeightRow(context, 65.2, -0.6)),
-
-          Divider(height: 32, color: colors.surfaceDim),
-
-          // Sleep Section (HealthKit state)
-          _buildTappableRow(context: context, child: _buildSleepRowHealthkit(context, 450)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMealRow(BuildContext context, int count) {
-    final colors = AppColors.of(context);
-    final progress = count / 3;
-    final percentage = (progress * 100).toInt();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: const BoxDecoration(
-                    color: AppColors.orange100,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(LucideIcons.utensils,
-                      color: AppColors.orange500, size: 16),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  '食事',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: colors.textSecondary,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-            RichText(
-              text: TextSpan(
-                children: [
-                  TextSpan(
-                    text: '$count',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: colors.textPrimary,
-                      fontSize: 14,
-                    ),
-                  ),
-                  TextSpan(
-                    text: '/3',
-                    style: TextStyle(
-                      color: colors.textHint,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Padding(
-          padding: const EdgeInsets.only(left: 42),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: progress,
-                  backgroundColor: colors.border,
-                  valueColor:
-                      const AlwaysStoppedAnimation<Color>(AppColors.orange500),
-                  minHeight: 8,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '$percentage% 記録済み',
-                style: TextStyle(
-                  color: colors.textHint,
-                  fontSize: 10,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildActivityRow(BuildContext context, int count) {
-    final colors = AppColors.of(context);
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: const BoxDecoration(
-                color: AppColors.primary100,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(LucideIcons.dumbbell,
-                  color: AppColors.primary500, size: 16),
-            ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '運動',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: colors.textSecondary,
-                    fontSize: 14,
-                    height: 1.2,
-                  ),
-                ),
-                Text(
-                  '今週',
-                  style: TextStyle(
-                    color: colors.textHint,
-                    fontSize: 10,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        RichText(
-          text: TextSpan(
-            children: [
-              TextSpan(
-                text: '$count ',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: colors.textPrimary,
-                  fontSize: 14,
-                ),
-              ),
-              TextSpan(
-                text: '/ 7日',
-                style: TextStyle(
-                  color: colors.textHint,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildWeightRow(BuildContext context, double weight, double change) {
-    final colors = AppColors.of(context);
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: const BoxDecoration(
-                color: AppColors.emerald100,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(LucideIcons.scale,
-                  color: AppColors.emerald500, size: 16),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              '体重',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: colors.textSecondary,
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              '${weight.toStringAsFixed(1)} kg',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: colors.textPrimary,
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: change < 0 ? AppColors.emerald50 : AppColors.rose100,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                '${change > 0 ? '+' : ''}${change.toStringAsFixed(1)}kg vs yest.',
-                style: TextStyle(
-                  color: change < 0 ? AppColors.emerald500 : AppColors.rose800,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSleepLabel(BuildContext context) {
-    final colors = AppColors.of(context);
-    return Row(
-      children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: const BoxDecoration(
-            color: AppColors.indigo100,
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(LucideIcons.moon,
-              color: AppColors.indigo600, size: 16),
-        ),
-        const SizedBox(width: 10),
-        Text(
-          '睡眠',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: colors.textSecondary,
-            fontSize: 14,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSleepRowHealthkit(BuildContext context, int totalMinutes) {
-    final colors = AppColors.of(context);
-    final h = totalMinutes ~/ 60;
-    final m = totalMinutes % 60;
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        _buildSleepLabel(context),
-        Text(
-          '$h時間$m分',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: colors.textPrimary,
-            fontSize: 14,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSleepRowManual(BuildContext context, WakeupRating rating) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        _buildSleepLabel(context),
-        Row(
-          children: [
-            wakeupRatingIcon(rating, size: 16),
-            const SizedBox(width: 6),
-            Text(
-              rating.labelJa,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: wakeupRatingColor(rating),
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSleepRowEmpty(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        _buildSleepLabel(context),
-        TextButton(
-          onPressed: () {},
-          style: TextButton.styleFrom(
-            backgroundColor: AppColors.primary50,
-            foregroundColor: AppColors.primary,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            minimumSize: Size.zero,
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(6),
-            ),
-            textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-          ),
-          child: const Text('記録'),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTappableRow({required BuildContext context, required Widget child}) {
-    final colors = AppColors.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-      child: Row(
-        children: [
-          Expanded(child: child),
-          Padding(
-            padding: const EdgeInsets.only(left: 8),
-            child: Icon(
-              LucideIcons.chevronRight,
-              color: colors.border,
-              size: 18,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// Preview helper widget with empty data
-class _PreviewDailySummaryCardEmpty extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: colors.border),
-        boxShadow: [
-          BoxShadow(
-            color: colors.shadow,
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Header
-          Text(
-            '今日のまとめ',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: colors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Meal Section (0/3)
-          _PreviewDailySummaryCard()._buildTappableRow(
-            context: context,
-            child: _PreviewDailySummaryCard()._buildMealRow(context, 0),
-          ),
-          const SizedBox(height: 16),
-
-          // Activity Section (0/7)
-          _PreviewDailySummaryCard()._buildTappableRow(
-            context: context,
-            child: _PreviewDailySummaryCard()._buildActivityRow(context, 0),
-          ),
-
-          Divider(height: 32, color: colors.surfaceDim),
-
-          // Weight Section - No data
-          _PreviewDailySummaryCard()._buildTappableRow(
-            context: context,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: const BoxDecoration(
-                        color: AppColors.emerald100,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(LucideIcons.scale,
-                          color: AppColors.emerald500, size: 16),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      '体重',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: colors.textSecondary,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-                Text(
-                  'データなし',
-                  style: TextStyle(
-                    color: colors.textHint,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          Divider(height: 32, color: colors.surfaceDim),
-
-          // Sleep Section - Empty
-          _PreviewDailySummaryCard()._buildTappableRow(
-            context: context,
-            child: _PreviewDailySummaryCard()._buildSleepRowEmpty(context),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// Preview helper widget for sleep row - manual (wakeup rating) state
-class _PreviewDailySummaryCardSleepManual extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: colors.border),
-        boxShadow: [
-          BoxShadow(
-            color: colors.shadow,
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: _PreviewDailySummaryCard()._buildTappableRow(
-        context: context,
-        child: _PreviewDailySummaryCard()
-            ._buildSleepRowManual(context, WakeupRating.okay),
-      ),
-    );
-  }
+@Preview(name: 'DailySummaryCard - ダーク / 文字 1.35')
+Widget previewDailySummaryCardDarkLarge() {
+  return _previewApp(
+    _previewBody(),
+    brightness: Brightness.dark,
+    textScale: 1.35,
+  );
 }

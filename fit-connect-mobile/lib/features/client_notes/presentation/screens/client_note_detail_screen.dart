@@ -1,22 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:fit_connect_mobile/features/client_notes/models/client_note_model.dart';
-import 'package:fit_connect_mobile/features/client_notes/presentation/widgets/linked_session_line.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
+import 'package:fit_connect_mobile/core/theme/app_spacing.dart';
+import 'package:fit_connect_mobile/core/theme/app_text_styles.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
+import 'package:fit_connect_mobile/features/client_notes/models/client_note_model.dart';
+import 'package:fit_connect_mobile/features/sessions/utils/session_formatting.dart';
 import 'package:fit_connect_mobile/shared/storage/signed_url_cache.dart';
 import 'package:fit_connect_mobile/shared/storage/storage_buckets.dart';
 import 'package:fit_connect_mobile/shared/storage/storage_value_resolver.dart';
+import 'package:fit_connect_mobile/shared/utils/trainer_name.dart';
+import 'package:fit_connect_mobile/shared/widgets/fc/fc.dart';
 import 'package:fit_connect_mobile/shared/widgets/full_screen_image_viewer.dart';
 import 'package:fit_connect_mobile/shared/widgets/storage_image.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 /// カルテ詳細画面（読み取り専用）。
 ///
+/// 正本: Claude Design の `more-screens.js` `NoteDetailScreen`。
+/// AppBar をやめ、本文内の「戻る」→ セッション行（紐づくときだけ）→ タイトル → 作成者と作成日 →
+/// 本文カード → 添付ファイル（写真カード・ファイルカード）の順に縦に並べる。
+///
 /// 紐づくセッションがあるノートは、ヘッダーの先頭に**セッション日時（+種別）**を出す
-/// （廃止した「第N回セッション」の代わり）。紐づけの無いノートは従来どおり
-/// タイトルから始まる（作成日のみ）。
+/// （廃止した「第N回セッション」の代わり）。紐づけの無いノートはタイトルから始まる。
 class ClientNoteDetailScreen extends StatelessWidget {
   final ClientNote note;
   final String? trainerName;
@@ -67,330 +74,366 @@ class ClientNoteDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-
-    String formatDate(DateTime dt) {
-      return '${dt.year}年${dt.month}月${dt.day}日 ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-    }
-
     // 画像URLリストを抽出（FullScreenImageViewer用）
     final imageUrls = note.fileUrls.where(_isImage).toList();
 
+    final attachments = <Widget>[
+      for (final url in note.fileUrls)
+        if (_isImage(url))
+          NoteDetailPhotoCard(
+            // 同じ文言の「写真」が並んでも区別できるよう、番号を付けて読み上げる
+            number: imageUrls.indexOf(url) + 1,
+            total: imageUrls.length,
+            imageBuilder: (failedPlaceholder) => StorageImage(
+              value: url,
+              bucket: StorageBuckets.clientNotes,
+              height: _photoHeight,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              placeholder: const FcSkeleton(height: _photoHeight, radius: 0),
+              errorWidget: failedPlaceholder,
+            ),
+            onTap: () {
+              final imageIndex = imageUrls.indexOf(url);
+              FullScreenImageViewer.show(
+                context: context,
+                values: imageUrls,
+                bucket: StorageBuckets.clientNotes,
+                initialIndex: imageIndex,
+              );
+            },
+          )
+        else if (_isPdf(url))
+          _PdfAttachmentCard(
+            fileName: _getFileName(url),
+            onTap: () => _openPdf(url),
+          )
+        else
+          // その他のファイル（サポート外）
+          _OtherFileCard(fileName: _getFileName(url)),
+    ];
+
+    return _NoteDetailView(
+      note: note,
+      trainerName: trainerName,
+      attachmentCount: note.fileUrls.length,
+      attachments: attachments,
+    );
+  }
+}
+
+/// 写真の高さ（正本 `Photo height={190}`）
+const double _photoHeight = 190;
+
+/// 画面本体。添付のカードは呼び出し側が組む（プレビューではネットワークに出ない代替を渡す）
+class _NoteDetailView extends StatelessWidget {
+  final ClientNote note;
+  final String? trainerName;
+  final int attachmentCount;
+  final List<Widget> attachments;
+
+  const _NoteDetailView({
+    required this.note,
+    required this.trainerName,
+    required this.attachmentCount,
+    required this.attachments,
+  });
+
+  /// 本文を空行で段落に分ける（段落の間は 12。段落内の改行はそのまま残す）
+  List<String> _paragraphs() {
+    return note.content
+        .split(RegExp(r'\n\s*\n'))
+        .map((p) => p.trim())
+        .where((p) => p.isNotEmpty)
+        .toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final pageH = AppSpacing.pageHorizontalOf(context);
     // get_my_sessions（または親セッションからの補完）で取れた場合だけ入る
     final session = note.session;
+    final now = DateTime.now();
+    final paragraphs = _paragraphs();
+
+    // 「9月8日（火）19:00 · パーソナル」。種別が無ければ日時だけ
+    String? sessionLine;
+    if (session != null) {
+      final typeLabel = sessionTypeLabel(session.sessionType);
+      sessionLine = [
+        formatSessionDateTimeDisplay(session.sessionDate, now: now),
+        if (typeLabel != null) typeLabel,
+      ].join(' · ');
+    }
+
+    // 「田中トレーナー · 9月8日（火）作成」。名前が取れていなければ日付だけ
+    final trainerLabel = trainerName?.trim();
+    final meta = [
+      if (trainerLabel != null && trainerLabel.isNotEmpty)
+        trainerDisplayName(trainerLabel),
+      '${formatSessionDateDisplay(note.createdAt, now: now)}作成',
+    ].join(' · ');
 
     return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(LucideIcons.chevronLeft, color: colors.textPrimary),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // ============================================
-            // ヘッダーカード
-            // ============================================
-            // 淡青カード。ダークでは濃青に切り替わるので、上のテーマ追従の文字色
-            // （textPrimary / textSecondary / textHint）がそのまま両モードで読める
-            Container(
-              margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: colors.primaryTint,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 紐づくセッション（日時 + 種別）。
-                  // 単票で前後の文脈が無いので年は常に付ける。
-                  // 淡青カード上なので、日時の色はカード用の強調色にする
-                  if (session != null) ...[
-                    LinkedSessionLine(
-                      session: session,
-                      now: DateTime.now(),
-                      includeYear: true,
-                      color: colors.primaryTintForeground,
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-
-                  // タイトル
-                  Text(
-                    note.title,
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: colors.textPrimary,
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // トレーナー名 + 日付
-                  Row(
-                    children: [
-                      if (trainerName != null) ...[
-                        Icon(
-                          LucideIcons.user,
-                          size: 16,
-                          color: colors.textSecondary,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          trainerName!,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: colors.textSecondary,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                      ],
-                      Icon(
-                        LucideIcons.calendar,
-                        size: 14,
-                        color: colors.textHint,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        formatDate(note.createdAt),
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: colors.textHint,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // ============================================
-            // 内容カード
-            // ============================================
-            Container(
-              margin: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: colors.surface,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ラベル
-                  Text(
-                    '内容',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: colors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // 本文
-                  Text(
-                    note.content,
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: colors.textPrimary,
-                      height: 1.6,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // ============================================
-            // 添付ファイルカード
-            // ============================================
-            if (note.fileUrls.isNotEmpty)
-              Container(
-                margin: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: colors.surface,
-                  borderRadius: BorderRadius.circular(16),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(pageH, 4, pageH, AppSpacing.xxl),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: FcButton.back(
+                  label: '戻る',
+                  onPressed: () => Navigator.of(context).maybePop(),
                 ),
+              ),
+              const SizedBox(height: 10),
+              if (sessionLine != null) ...[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 文字の 1 行目（13 × 1.5）の中央にアイコン（15）を合わせる
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: ExcludeSemantics(
+                        child: Icon(
+                          LucideIcons.calendarDays,
+                          size: 15,
+                          color: colors.accent,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        sessionLine,
+                        style: AppTextStyles.supplement(context)
+                            .copyWith(color: colors.accent),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.sm),
+              ],
+              Semantics(
+                header: true,
+                child: Text(
+                  note.title,
+                  style: AppTextStyles.planName(context),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.xs),
+                child: Text(meta, style: AppTextStyles.supplement(context)),
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              FcCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ラベル
-                    Text(
-                      '添付ファイル (${note.fileUrls.length})',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: colors.textSecondary,
+                    for (var i = 0; i < paragraphs.length; i++) ...[
+                      if (i > 0) const SizedBox(height: AppSpacing.md),
+                      Text(
+                        paragraphs[i],
+                        style:
+                            AppTextStyles.body(context).copyWith(height: 1.75),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // ファイル一覧
-                    ...note.fileUrls.asMap().entries.map((entry) {
-                      final index = entry.key;
-                      final url = entry.value;
-
-                      if (_isImage(url)) {
-                        // 画像プレビュー
-                        return Padding(
-                          padding: EdgeInsets.only(
-                            bottom: index < note.fileUrls.length - 1 ? 12 : 0,
-                          ),
-                          child: GestureDetector(
-                            onTap: () {
-                              final imageIndex = imageUrls.indexOf(url);
-                              FullScreenImageViewer.show(
-                                context: context,
-                                values: imageUrls,
-                                bucket: StorageBuckets.clientNotes,
-                                initialIndex: imageIndex,
-                              );
-                            },
-                            child: StorageImage(
-                              value: url,
-                              bucket: StorageBuckets.clientNotes,
-                              height: 200,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                              borderRadius: BorderRadius.circular(12),
-                              placeholder: Container(
-                                height: 200,
-                                color: colors.border,
-                                child: const Center(
-                                  child: CircularProgressIndicator(),
-                                ),
-                              ),
-                              errorWidget: Container(
-                                height: 200,
-                                color: colors.border,
-                                child: Center(
-                                  child: Icon(
-                                    LucideIcons.imageOff,
-                                    color: colors.textHint,
-                                    size: 48,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      } else if (_isPdf(url)) {
-                        // PDFアイテム
-                        return Padding(
-                          padding: EdgeInsets.only(
-                            bottom: index < note.fileUrls.length - 1 ? 12 : 0,
-                          ),
-                          child: InkWell(
-                            onTap: () => _openPdf(url),
-                            borderRadius: BorderRadius.circular(12),
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: colors.surfaceDim,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                children: [
-                                  // PDFアイコン
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFDC2626),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: const Icon(
-                                      LucideIcons.fileText,
-                                      color: Colors.white,
-                                      size: 24,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-
-                                  // ファイル名 + ヒント
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          _getFileName(url),
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w500,
-                                            color: colors.textPrimary,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          'タップして表示',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: colors.textSecondary,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-
-                                  // 矢印アイコン
-                                  Icon(
-                                    LucideIcons.chevronRight,
-                                    size: 16,
-                                    color: colors.textHint,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
-                      } else {
-                        // その他のファイル（サポート外）
-                        return Padding(
-                          padding: EdgeInsets.only(
-                            bottom: index < note.fileUrls.length - 1 ? 12 : 0,
-                          ),
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: colors.surfaceDim,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  LucideIcons.file,
-                                  color: colors.textSecondary,
-                                  size: 24,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    _getFileName(url),
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: colors.textSecondary,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      }
-                    }).toList(),
+                    ],
                   ],
                 ),
               ),
-          ],
+              // 添付が無ければセクションごと出さない
+              if (attachments.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.cardGap),
+                FcSectionTitle('添付ファイル（$attachmentCount件）'),
+                for (final card in attachments) ...[
+                  const SizedBox(height: AppSpacing.cardGap),
+                  card,
+                ],
+              ],
+            ],
+          ),
         ),
+      ),
+    );
+  }
+}
+
+/// 写真カード（写真 190・角丸 0 をカードでクリップ ＋「写真 · タップで拡大」）。タップで拡大表示。
+///
+/// 読み上げは「写真 1/2 を拡大して表示」。読み込みに失敗したときは「写真 1/2 を読み込めませんでした」
+/// （代替の面にも同じ文言を出す）。画像そのものは [imageBuilder] で組む
+/// （失敗時に出す代替の面が渡される。プレビュー・テストではネットワークに出ない面を返す）
+@visibleForTesting
+class NoteDetailPhotoCard extends StatefulWidget {
+  /// 写真の番号（1 始まり）と枚数
+  final int number;
+  final int total;
+
+  final Widget Function(Widget failedPlaceholder) imageBuilder;
+  final VoidCallback onTap;
+
+  const NoteDetailPhotoCard({
+    super.key,
+    required this.number,
+    required this.total,
+    required this.imageBuilder,
+    required this.onTap,
+  });
+
+  @override
+  State<NoteDetailPhotoCard> createState() => _NoteDetailPhotoCardState();
+}
+
+class _NoteDetailPhotoCardState extends State<NoteDetailPhotoCard> {
+  /// 代替の面（読み込み失敗）が出ているあいだ true
+  bool _failed = false;
+
+  void _setFailed(bool value) {
+    if (!mounted || _failed == value) return;
+    setState(() => _failed = value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final label = '写真 ${widget.number}/${widget.total}';
+    final failedLabel = '$label を読み込めませんでした';
+
+    return FcCard(
+      padding: FcCardPadding.none,
+      onTap: widget.onTap,
+      semanticLabel: _failed ? failedLabel : '$label を拡大して表示',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          widget.imageBuilder(
+            _PhotoLoadFailed(label: failedLabel, onChanged: _setFailed),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.xl,
+              AppSpacing.md,
+              AppSpacing.xl,
+              14,
+            ),
+            child: Text(
+              '写真 · タップで拡大',
+              style: AppTextStyles.supplement(context),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 写真を読み込めなかったときの代替の面。表示されているあいだ、親のカードへ失敗を伝える
+class _PhotoLoadFailed extends StatefulWidget {
+  final String label;
+  final ValueChanged<bool> onChanged;
+
+  const _PhotoLoadFailed({required this.label, required this.onChanged});
+
+  @override
+  State<_PhotoLoadFailed> createState() => _PhotoLoadFailedState();
+}
+
+class _PhotoLoadFailedState extends State<_PhotoLoadFailed> {
+  late final ValueChanged<bool> _onChanged = widget.onChanged;
+
+  @override
+  void initState() {
+    super.initState();
+    // ビルド中に親を setState しないよう、次のフレームで伝える
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onChanged(true));
+  }
+
+  @override
+  void dispose() {
+    // 再取得に成功して面が消えたときは、失敗の表示を戻す
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onChanged(false));
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FcPhotoPlaceholder(
+      height: _photoHeight,
+      radius: 0,
+      label: widget.label,
+    );
+  }
+}
+
+/// PDF のカード（file-text 22 ＋ ファイル名 ＋「PDF · 外部のアプリで開きます」＋ external-link）
+class _PdfAttachmentCard extends StatelessWidget {
+  final String fileName;
+  final VoidCallback onTap;
+
+  const _PdfAttachmentCard({required this.fileName, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    return FcCard(
+      onTap: onTap,
+      semanticLabel: '$fileName、PDF、外部のアプリで開きます',
+      child: Row(
+        children: [
+          Icon(LucideIcons.fileText, size: 22, color: colors.accent),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  fileName,
+                  style: AppTextStyles.body(context)
+                      .copyWith(fontWeight: FontWeight.w500),
+                ),
+                Text(
+                  'PDF · 外部のアプリで開きます',
+                  style: AppTextStyles.caption(context),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Icon(
+            LucideIcons.externalLink,
+            size: 16,
+            color: colors.textSecondary,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// その他のファイル（アプリ内で開けない。ファイル名だけ表示）
+class _OtherFileCard extends StatelessWidget {
+  final String fileName;
+
+  const _OtherFileCard({required this.fileName});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    return FcCard(
+      child: Row(
+        children: [
+          Icon(LucideIcons.file, size: 22, color: colors.textSecondary),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Text(
+              fileName,
+              style: AppTextStyles.body(context)
+                  .copyWith(color: colors.textSecondary),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -406,47 +449,85 @@ ClientNote _previewNoteWithLinkedSession() {
     id: '1',
     clientId: 'client-1',
     trainerId: 'trainer-1',
-    title: '初回トレーニングセッション',
-    content:
-        '本日は初回セッションを実施しました。\n\n【実施内容】\n・ボディチェック\n・目標設定\n・基礎トレーニング（スクワット、プランク）\n\n【所感】\nフォームは良好。次回から負荷を上げていきます。',
+    title: '上半身のフォーム確認',
+    content: '本日はダンベルプレスとラットプルダウンのフォームを確認しました。\n\n'
+        'ダンベルプレスは、肩甲骨を寄せたまま下ろせていました。次回は12 kgで10回×3セットを目安にします。\n\n'
+        'ラットプルダウンは最後のセットで反動が出やすいので、重さを保ったまま回数を優先しましょう。\n\n'
+        '次回までは、朝食の記録と週2回のプランを自分のペースで続けてください。',
     fileUrls: [
-      'https://example.com/image1.jpg',
-      'https://example.com/image2.png',
-      'https://example.com/report.pdf',
+      'https://example.com/form.jpg',
+      'https://example.com/plan.pdf',
     ],
     isShared: true,
     sharedAt: DateTime.now(),
     sessionId: 'session-1',
-    // 紐づけあり: ヘッダー先頭にセッション日時（年付き）+ 種別が出る
+    // 紐づけあり: ヘッダー先頭にセッション日時 + 種別が出る
     session: LinkedSession(
-      sessionDate: DateTime.now().subtract(const Duration(hours: 3)),
+      sessionDate: DateTime.now().subtract(const Duration(days: 2)),
       sessionType: 'パーソナルトレーニング',
     ),
-    createdAt: DateTime.now(),
-    updatedAt: DateTime.now(),
+    createdAt: DateTime.now().subtract(const Duration(days: 2)),
+    updatedAt: DateTime.now().subtract(const Duration(days: 2)),
   );
 }
+
+/// プレビュー用の添付（ネットワークに出ないよう、写真は代替面にする）
+List<Widget> _previewAttachments() => [
+      NoteDetailPhotoCard(
+        number: 1,
+        total: 1,
+        imageBuilder: (_) => const FcPhotoPlaceholder(
+          height: _photoHeight,
+          radius: 0,
+          label: 'フォームの写真',
+        ),
+        onTap: () {},
+      ),
+      _PdfAttachmentCard(fileName: 'トレーニング計画.pdf', onTap: () {}),
+    ];
 
 @Preview(name: 'NoteDetail - With Files (Linked Session)')
 Widget previewClientNoteDetailWithFiles() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
-    home: ClientNoteDetailScreen(
+    home: _NoteDetailView(
       note: _previewNoteWithLinkedSession(),
-      trainerName: '山田太郎',
+      trainerName: '田中トレーナー',
+      attachmentCount: 2,
+      attachments: _previewAttachments(),
     ),
   );
 }
 
-/// ダークモード: ヘッダーの淡青カードが濃青に切り替わり、
-/// セッション日時・タイトル・トレーナー名・日付が読めることを確認する
+/// ダークモード: カード・文字・アクセントがダークの配色で読めることを確認する
 @Preview(name: 'NoteDetail - With Files (Linked Session, Dark)')
 Widget previewClientNoteDetailWithFilesDark() {
   return MaterialApp(
     theme: AppTheme.darkTheme,
-    home: ClientNoteDetailScreen(
+    home: _NoteDetailView(
       note: _previewNoteWithLinkedSession(),
-      trainerName: '山田太郎',
+      trainerName: '田中トレーナー',
+      attachmentCount: 2,
+      attachments: _previewAttachments(),
+    ),
+  );
+}
+
+@Preview(name: 'NoteDetail - With Files (Large Text 1.35)')
+Widget previewClientNoteDetailLargeText() {
+  return MaterialApp(
+    theme: AppTheme.lightTheme,
+    builder: (context, child) => MediaQuery(
+      data: MediaQuery.of(context).copyWith(
+        textScaler: const TextScaler.linear(1.35),
+      ),
+      child: child!,
+    ),
+    home: _NoteDetailView(
+      note: _previewNoteWithLinkedSession(),
+      trainerName: '田中トレーナー',
+      attachmentCount: 2,
+      attachments: _previewAttachments(),
     ),
   );
 }
@@ -463,7 +544,7 @@ Widget previewClientNoteDetailTextOnly() {
     fileUrls: [],
     isShared: true,
     sharedAt: DateTime.now(),
-    // 紐づけ無し: 従来どおりタイトルから始まる
+    // 紐づけ無し: タイトルから始まる。添付が無いので添付セクションも出ない
     createdAt: DateTime.now(),
     updatedAt: DateTime.now(),
   );

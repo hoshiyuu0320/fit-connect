@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
-import 'package:fit_connect_mobile/core/theme/app_colors.dart';
-import 'package:fit_connect_mobile/core/theme/app_theme.dart';
+import 'package:fit_connect_mobile/core/theme/app_spacing.dart';
+import 'package:fit_connect_mobile/shared/widgets/fc/fc.dart';
+import 'package:fit_connect_mobile/shared/widgets/fc/fc_previews.dart';
 
+/// プランの日付を変えるときの日付選択ダイアログ（今日から 30 日先まで）。
+///
+/// 色・角丸は新しいテーマ（`DatePickerTheme` / `DialogTheme` / ボタンのテーマ）がそのまま当たる。
 class RescheduleDatePicker extends StatefulWidget {
   const RescheduleDatePicker({super.key});
 
@@ -39,10 +43,6 @@ class _RescheduleDatePickerState extends State<RescheduleDatePicker> {
         ),
         ElevatedButton(
           onPressed: () => Navigator.of(context).pop(_selectedDate),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary500,
-            foregroundColor: Colors.white,
-          ),
           child: const Text('変更する'),
         ),
       ],
@@ -55,21 +55,19 @@ class _RescheduleDatePickerState extends State<RescheduleDatePicker> {
 // ============================================
 
 class _RescheduleDatePickerPreviewWrapper extends StatelessWidget {
+  const _RescheduleDatePickerPreviewWrapper();
+
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: ElevatedButton(
+      child: FcButton.pill(
+        label: '日付変更ダイアログを開く',
         onPressed: () {
           showDialog<DateTime>(
             context: context,
             builder: (_) => const RescheduleDatePicker(),
           );
         },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary500,
-          foregroundColor: Colors.white,
-        ),
-        child: const Text('日付変更ダイアログを開く'),
       ),
     );
   }
@@ -77,12 +75,29 @@ class _RescheduleDatePickerPreviewWrapper extends StatelessWidget {
 
 @Preview(name: 'RescheduleDatePicker - Dialog')
 Widget previewRescheduleDatePicker() {
-  return MaterialApp(
-    theme: AppTheme.lightTheme,
-    home: Scaffold(
-      backgroundColor: AppColors.background,
+  return FcPreviewApp(
+    brightness: Brightness.light,
+    home: const Scaffold(
       body: SafeArea(
-        child: _RescheduleDatePickerPreviewWrapper(),
+        child: Padding(
+          padding: EdgeInsets.all(AppSpacing.pageHorizontal),
+          child: _RescheduleDatePickerPreviewWrapper(),
+        ),
+      ),
+    ),
+  );
+}
+
+@Preview(name: 'RescheduleDatePicker - Dialog (Dark)')
+Widget previewRescheduleDatePickerDark() {
+  return FcPreviewApp(
+    brightness: Brightness.dark,
+    home: const Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.all(AppSpacing.pageHorizontal),
+          child: _RescheduleDatePickerPreviewWrapper(),
+        ),
       ),
     ),
   );
