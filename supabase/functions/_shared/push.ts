@@ -301,7 +301,10 @@ type ResolveResult = { ok: true; targets: PushTarget[] } | { ok: false }
 
 /**
  * 宛先トークンを解決する。
- * device_tokens の全行を優先し、0件のときのみ clients/trainers.fcm_token を読む。
+ * device_tokens のうち user_type が宛先の種別（userType）と同じ行を優先し、0件のときのみ clients/trainers.fcm_token を読む。
+ * user_type で絞るのは、顧客とトレーナーを兼務するアカウント（同じ auth uid に clients 行と trainers 行がある）で、
+ * トレーナー宛の通知が顧客用のスマホ（Mobile は常に user_type='client' で登録）に、
+ * 顧客宛の通知がトレーナーのブラウザ（Web は常に user_type='trainer' で登録）に届かないようにするため。
  * どちらの読み取りも一時障害は再試行し（readRetry）、それでも読めなかった場合は
  * 「端末なし」と区別して ok: false を返す:
  *   - device_tokens が読めず、fcm_token も空 → ok: false（device_tokens に端末があるかもしれない）
@@ -324,6 +327,7 @@ async function resolveTargets(
         .from('device_tokens')
         .select('id, platform, token, web_push_p256dh, web_push_auth')
         .eq('user_id', userId)
+        .eq('user_type', userType)
         .retry(false),
     readRetry('device_tokens select'),
   )

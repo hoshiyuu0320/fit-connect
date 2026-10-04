@@ -142,12 +142,12 @@
   - **DBマイグレーション**: `push_subscriptions` テーブル新規作成（RLS、trainer_idインデックス）
   - **Service Worker**: `public/sw.js` 新規作成（push受信→通知表示、notificationclick→メッセージ画面遷移）
   - **Supabaseクエリ関数**: `savePushSubscription.ts`（upsert）、`deletePushSubscription.ts`（削除）
-  - **API Routes**: `POST/DELETE /api/push-subscriptions`（購読登録・解除）、`POST /api/push-notify`（web-pushライブラリで通知送信）
+  - **API Routes**: `POST/DELETE /api/push-subscriptions`（購読登録・解除）、`POST /api/push-notify`（web-pushライブラリで通知送信） ※ /api/push-notify はフェーズ7.3（2026/07/19）で削除。送信は Edge Functions の _shared/push.ts に統一（docs: fit-connect/docs/SETUP_PUSH_NOTIFICATIONS.md）
   - **NotificationSection全面書き換え**: ブラウザ対応確認、通知許可フロー（requestPermission→SW登録→pushManager.subscribe→API保存）、解除フロー、denied時のガイダンス表示
   - **設定ページ更新**: `settings/page.tsx` から `trainerId` propを渡すよう変更
-  - **Edge Function拡張**: `parse-message-tags/index.ts` に `sendWebPushToTrainer()` 関数追加。INSERT時にトレーナー受信者へWeb Push送信（`/api/push-notify` API Route経由）
-  - **パッケージ追加**: `web-push`, `@types/web-push`
-  - **必要な環境変数**: `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`（Next.js）、`APP_URL`, `PUSH_API_KEY`（Edge Function Secrets）
+  - **Edge Function拡張**: `parse-message-tags/index.ts` に `sendWebPushToTrainer()` 関数追加。INSERT時にトレーナー受信者へWeb Push送信（`/api/push-notify` API Route経由） ※ フェーズ7.3 で _shared/push.ts の sendNotification に置き換え。/api/push-notify は削除
+  - **パッケージ追加**: `web-push`, `@types/web-push` ※ フェーズ7.3 で Web の依存から削除（送信は Edge Functions の npm:web-push）
+  - **必要な環境変数**: `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`（Next.js）、`APP_URL`, `PUSH_API_KEY`（Edge Function Secrets） ※ 2026/10/04 時点: Vercel は NEXT_PUBLIC_VAPID_PUBLIC_KEY だけ、Edge Functions の secrets に VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY / VAPID_SUBJECT（docs/tasks/2026-07-19-webpush-vapid-setup.md）
 
 ### 2026年2月22日
 
@@ -747,9 +747,9 @@ import QRCode from 'qrcode.react';
 | 7.1.3 | Push Subscription保存関数 | ✅ | `savePushSubscription.ts` - upsert on conflict endpoint |
 | 7.1.4 | Push Subscription削除関数 | ✅ | `deletePushSubscription.ts` |
 | 7.1.5 | Push Subscription API Route | ✅ | `POST/DELETE /api/push-subscriptions` |
-| 7.1.6 | Push通知送信API Route | ✅ | `POST /api/push-notify` - web-pushライブラリ使用 |
+| 7.1.6 | Push通知送信API Route | ✅ | `POST /api/push-notify` - web-pushライブラリ使用（フェーズ7.3 で削除） |
 | 7.2.1 | 通知許可UI（NotificationSection） | ✅ | 許可/解除/denied状態の3パターン分岐 |
-| 7.3.1 | Edge Function Web Push連携 | ✅ | `sendWebPushToTrainer()` - API Route経由で通知送信 |
+| 7.3.1 | Edge Function Web Push連携 | ✅ | `sendWebPushToTrainer()` - API Route経由で通知送信（フェーズ7.3 で _shared/push.ts の sendNotification に置き換え） |
 | 7.4.1 | 通知クリック時のナビゲーション | ✅ | `/message?clientId=XXX` に遷移 |
 
 ---
