@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
+import 'package:fit_connect_mobile/core/theme/app_spacing.dart';
+import 'package:fit_connect_mobile/core/theme/app_text_styles.dart';
 import 'package:fit_connect_mobile/features/auth/data/auth_repository.dart';
 import 'package:fit_connect_mobile/features/auth/presentation/widgets/email_sent_card.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -77,20 +79,15 @@ class _LoginScreenState extends State<LoginScreen> {
         _isEmailSent = true;
       });
       if (mounted) {
+        // 色の区別は付けない（既定のテーマの SnackBar）。成功は文言で伝える
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('認証リンクをメールで送信しました'),
-            backgroundColor: AppColors.success,
-          ),
+          const SnackBar(content: Text('認証リンクをメールで送信しました')),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('エラー: ${e.toString()}'),
-            backgroundColor: AppColors.rose800,
-          ),
+          SnackBar(content: Text('エラー: ${e.toString()}')),
         );
       }
     } finally {
@@ -117,10 +114,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Google認証エラー: ${e.toString()}'),
-            backgroundColor: AppColors.rose800,
-          ),
+          SnackBar(content: Text('Google認証エラー: ${e.toString()}')),
         );
       }
     } finally {
@@ -147,10 +141,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Apple認証エラー: ${e.toString()}'),
-            backgroundColor: AppColors.rose800,
-          ),
+          SnackBar(content: Text('Apple認証エラー: ${e.toString()}')),
         );
       }
     } finally {
@@ -201,15 +192,16 @@ class _LoginScreenState extends State<LoginScreen> {
                             width: 80,
                             height: 80,
                             decoration: BoxDecoration(
-                              color: AppColors.primary50,
-                              borderRadius: BorderRadius.circular(20),
+                              color: colors.surface,
+                              borderRadius:
+                                  BorderRadius.circular(AppRadius.card),
                             ),
                             child: Icon(
                               widget.isRegistration
                                   ? LucideIcons.mail
                                   : LucideIcons.activity,
                               size: 40,
-                              color: AppColors.primary600,
+                              color: colors.accent,
                             ),
                           ),
                         ),
@@ -249,52 +241,49 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ] else ...[
                           // Email Input
-                          Container(
-                            decoration: BoxDecoration(
-                              color: colors.surfaceDim,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: colors.border),
-                            ),
-                            child: TextField(
-                              controller: _emailController,
-                              keyboardType: TextInputType.emailAddress,
-                              style: TextStyle(color: colors.textPrimary),
-                              decoration: InputDecoration(
-                                hintText: 'メールアドレスを入力',
-                                hintStyle: TextStyle(color: colors.textHint),
-                                border: InputBorder.none,
-                                prefixIcon: Icon(
-                                  LucideIcons.mail,
-                                  color: colors.textHint,
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 16,
-                                ),
+                          // 枠・フォーカス色はテーマの InputDecoration（1px separator・フォーカス accent）。
+                          // 面だけ surface にする（自前の Container で二重に囲まない）
+                          TextField(
+                            controller: _emailController,
+                            keyboardType: TextInputType.emailAddress,
+                            style: TextStyle(color: colors.textPrimary),
+                            decoration: InputDecoration(
+                              filled: true,
+                              fillColor: colors.surface,
+                              hintText: 'メールアドレスを入力',
+                              hintStyle: TextStyle(color: colors.textHint),
+                              prefixIcon: Icon(
+                                LucideIcons.mail,
+                                color: colors.textHint,
                               ),
-                              onSubmitted: (_) => _handleLogin(),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 16,
+                              ),
                             ),
+                            onSubmitted: (_) => _handleLogin(),
                           ),
                           const SizedBox(height: 16),
 
                           // Login Button
+                          // 色・形（actionFill・角丸 24・最小高さ 48）はテーマの ElevatedButton
+                          // （IntrinsicHeight の中では FcButton.block を置けない）。
+                          // 送信中は無効でも塗りのまま（actionFill + onAction）スピナーを見せる。
+                          // Google / Apple の処理中だけテーマの無効表示になる
                           ElevatedButton(
                             onPressed: _isAnyLoading ? null : _handleLogin,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary600,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              elevation: 0,
-                            ),
+                            style: _isLoading
+                                ? ElevatedButton.styleFrom(
+                                    disabledBackgroundColor: colors.actionFill,
+                                    disabledForegroundColor: colors.onAction,
+                                  )
+                                : null,
                             child: _isLoading
-                                ? const SizedBox(
+                                ? SizedBox(
                                     width: 20,
                                     height: 20,
                                     child: CircularProgressIndicator(
-                                      color: Colors.white,
+                                      color: colors.onAction,
                                       strokeWidth: 2,
                                     ),
                                   )
@@ -302,10 +291,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                     widget.isRegistration
                                         ? '認証メールを送信'
                                         : 'ログインリンクを送信',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
                                   ),
                           ),
                           const SizedBox(height: 24),
@@ -342,18 +327,13 @@ class _LoginScreenState extends State<LoginScreen> {
                           ],
 
                           // Googleでログインボタン
+                          // 形（角丸 24・最小高さ 48）はテーマの OutlinedButton に任せる
                           OutlinedButton(
                             onPressed:
                                 _isAnyLoading ? null : _handleGoogleLogin,
                             style: OutlinedButton.styleFrom(
                               foregroundColor: colors.textPrimary,
                               side: BorderSide(color: colors.border),
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              elevation: 0,
                             ),
                             child: _isGoogleLoading
                                 ? SizedBox(
@@ -373,12 +353,15 @@ class _LoginScreenState extends State<LoginScreen> {
                                         height: 20,
                                       ),
                                       const SizedBox(width: 12),
-                                      Text(
-                                        'Googleでログイン',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w500,
-                                          color: colors.textPrimary,
+                                      Flexible(
+                                        child: Text(
+                                          'Googleでログイン',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                            color: colors.textPrimary,
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -394,10 +377,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ? 'メールが届かない場合は\n迷惑メールフォルダをご確認ください'
                               : '続行することで利用規約とプライバシーポリシーに同意したものとみなされます',
                           textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: colors.textHint,
-                          ),
+                          style: AppTextStyles.caption(context),
                         ),
                       ],
                     ),
@@ -412,7 +392,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   /// Appleデザインガイドライン準拠のサインインボタン。
-  /// 高さ（padding vertical 16）・角丸（12）は既存のGoogleボタンと揃える。
+  /// 高さ・角丸はテーマのボタン（Google ボタンも同じ）に揃える。
   /// ライトテーマでは黒ボタン、ダークテーマでは白ボタン（Appleの推奨スタイル）。
   Widget _buildAppleSignInButton(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -421,14 +401,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return ElevatedButton(
       onPressed: _isAnyLoading ? null : _handleAppleLogin,
+      // 黒/白は Apple のガイドライン。形（角丸 24・最小高さ 48）はテーマの ElevatedButton に任せる
       style: ElevatedButton.styleFrom(
         backgroundColor: backgroundColor,
         foregroundColor: foregroundColor,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        elevation: 0,
       ),
       child: _isAppleLoading
           ? SizedBox(
@@ -448,12 +424,15 @@ class _LoginScreenState extends State<LoginScreen> {
                   color: foregroundColor,
                 ),
                 const SizedBox(width: 12),
-                Text(
-                  'Appleでサインイン',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: foregroundColor,
+                Flexible(
+                  child: Text(
+                    'Appleでサインイン',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: foregroundColor,
+                    ),
                   ),
                 ),
               ],

@@ -1,122 +1,261 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
-import 'package:fit_connect_mobile/core/theme/app_theme.dart';
 import 'package:fit_connect_mobile/features/workout/models/workout_assignment_model.dart';
 import 'package:fit_connect_mobile/features/workout/presentation/widgets/weekly_mini_calendar.dart';
+import 'package:fit_connect_mobile/shared/widgets/fc/fc.dart';
 
-/// 今週の月曜日を返す（WeeklyMiniCalendar内部の _getThisMonday と同じ計算）。
-/// 下記フィクスチャは完了済みアサインメントを月曜日そのもの（インデックス0）に置くため、
-/// `monday.add(Duration(days: 0))` は恒等写像になり、ウィジェット内部のDST依存な
-/// `DateTime.add(Duration(days: n))` 経路は実際には通らない。フィクスチャを他の曜日に
-/// 移した場合、DSTで時刻がずれるタイムゾーンに限り DateTime キーの等価比較が壊れうる。
-DateTime _getThisMonday() {
-  final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
-  final offset = today.weekday - 1;
-  return today.subtract(Duration(days: offset));
-}
+import '../workout_test_helpers.dart';
 
-/// assignedDate文字列 "YYYY-MM-DD" を組み立てるヘルパー
-String _fmtDate(DateTime d) =>
-    '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+/// 正本の見本と同じ週（9/7 月 〜 9/13 日）。今日は 9/13（日）
+final _today = DateTime(2026, 9, 13);
 
-/// 完了ステータスの WorkoutAssignment を1件持つ weeklyData を組み立てる
-/// (今週の月曜日を完了扱いにする)
-Map<DateTime, List<WorkoutAssignment>> _buildWeeklyDataWithCompleted() {
-  final monday = _getThisMonday();
-  return {
-    monday: [
-      WorkoutAssignment(
-        id: 'test-completed-1',
-        clientId: 'client-1',
-        trainerId: 'trainer-1',
-        planId: 'plan-1',
-        assignedDate: _fmtDate(monday),
-        status: 'completed',
+WorkoutAssignment _assignment(DateTime day, String status, {String title = '上半身'}) {
+  return WorkoutAssignment(
+    id: 'a-${day.day}',
+    clientId: 'client-1',
+    trainerId: 'trainer-1',
+    planId: 'plan-1',
+    assignedDate: fmtDate(day),
+    status: status,
+    planInfo: WorkoutPlanInfo(title: title, category: '筋トレ', estimatedMinutes: 45),
+    exercises: [
+      makeExercise(
+        id: 'e-${day.day}',
+        assignmentId: 'a-${day.day}',
+        name: 'ダンベルプレス',
+        weight: 12,
+        done: status == 'completed',
       ),
     ],
-  };
-}
-
-Future<void> _pumpCalendar(WidgetTester tester, ThemeData theme) async {
-  final weeklyData = _buildWeeklyDataWithCompleted();
-  await tester.pumpWidget(
-    MaterialApp(
-      theme: theme,
-      home: Scaffold(
-        body: WeeklyMiniCalendar(weeklyData: weeklyData),
-      ),
-    ),
   );
 }
 
+/// 水 9/9 = 完了、金 9/11 = 日付が過ぎた、土 9/12 = スキップ、日 9/13（今日）= 予定
+Map<DateTime, List<WorkoutAssignment>> _week() {
+  final wed = DateTime(2026, 9, 9);
+  final fri = DateTime(2026, 9, 11);
+  final sat = DateTime(2026, 9, 12);
+  return {
+    wed: [_assignment(wed, 'completed')],
+    fri: [_assignment(fri, 'pending', title: '下半身')],
+    sat: [_assignment(sat, 'skipped', title: '全身')],
+    _today: [_assignment(_today, 'pending')],
+  };
+}
+
+Future<void> _pumpCalendar(
+  WidgetTester tester, {
+  Map<DateTime, List<WorkoutAssignment>>? data,
+  Brightness brightness = Brightness.light,
+  double textScale = 1.0,
+  Size size = const Size(390, 844),
+}) {
+  return pumpWorkout(
+    tester,
+    Scaffold(
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: WeeklyMiniCalendar(weeklyData: data ?? _week(), today: _today),
+        ),
+      ),
+    ),
+    brightness: brightness,
+    textScale: textScale,
+    size: size,
+  );
+}
+
+Finder _stripDots() => find.descendant(
+      of: find.byType(FcWeekStrip),
+      matching: find.byType(FcDot),
+    );
+
 void main() {
-  group('WeeklyMiniCalendar - completed cell background', () {
-    testWidgets(
-      'ダークモードで完了セルの背景が successTint(dark) になり、固定のemerald50は使われない',
-      (tester) async {
-        await _pumpCalendar(tester, AppTheme.darkTheme);
+  group('WeeklyMiniCalendar（週ストリップ）', () {
+    testWidgets('曜日と日付が 7 日ぶん並び、今日は選択中の見た目', (tester) async {
+      await _pumpCalendar(tester);
 
-        final containers = tester
-            .widgetList<Container>(
-              find.descendant(
-                of: find.byType(WeeklyMiniCalendar),
-                matching: find.byType(Container),
-              ),
-            )
-            .toList();
+      for (final label in ['月', '火', '水', '木', '金', '土', '日']) {
+        expect(find.text(label), findsOneWidget);
+      }
+      for (var d = 7; d <= 13; d++) {
+        expect(find.text('$d'), findsOneWidget);
+      }
 
-        final hasSuccessTintDark = containers.any((c) {
-          final decoration = c.decoration;
-          if (decoration is! BoxDecoration) return false;
-          return decoration.color == AppColorsExtension.dark.successTint;
-        });
-        final hasFixedEmerald50 = containers.any((c) {
-          final decoration = c.decoration;
-          if (decoration is! BoxDecoration) return false;
-          return decoration.color == AppColors.emerald50;
-        });
+      // 今日（13）だけ surfaceSecondary の円 + accent の文字
+      final colors = AppColorsExtension.light;
+      final todayText = tester.widget<Text>(find.text('13'));
+      expect(todayText.style!.color, colors.accent);
+      expect(todayText.style!.fontWeight, FontWeight.w500);
+      final otherText = tester.widget<Text>(find.text('10'));
+      expect(otherText.style!.color, colors.textPrimary);
+      final circle = tester
+          .widgetList<Container>(find.descendant(
+            of: find.ancestor(of: find.text('13'), matching: find.byType(Column)).first,
+            matching: find.byType(Container),
+          ))
+          .map((c) => c.decoration)
+          .whereType<BoxDecoration>()
+          .where((d) => d.shape == BoxShape.circle && d.color == colors.surfaceSecondary);
+      expect(circle, isNotEmpty);
+    });
 
-        expect(
-          hasSuccessTintDark,
-          isTrue,
-          reason: 'ダークモードでは successTint(dark) の背景セルが存在するべき',
+    testWidgets('印: 完了 = 完了マーク（16）、予定 = 塗りの点、日付が過ぎた = 中抜きの点', (tester) async {
+      await _pumpCalendar(tester);
+
+      // 完了マーク（ストリップ内の 16）は水曜の 1 つだけ。凡例の 12 は別
+      final doneMarks = find.descendant(
+        of: find.byType(FcWeekStrip),
+        matching: find.byType(FcDoneMark),
+      );
+      expect(doneMarks, findsOneWidget);
+      expect(tester.widget<FcDoneMark>(doneMarks).size, 16);
+      expect(tester.widget<FcDoneMark>(doneMarks).done, isTrue);
+
+      // 点は 金（中抜き）と 今日（塗り）の 2 つ。スキップの土曜には印がない
+      final dots = tester.widgetList<FcDot>(_stripDots()).toList();
+      expect(dots, hasLength(2));
+      expect(dots.where((d) => d.filled), hasLength(1));
+      expect(dots.where((d) => !d.filled), hasLength(1));
+    });
+
+    testWidgets('今日にプランがない週は、今日の印が出ない', (tester) async {
+      final wed = DateTime(2026, 9, 9);
+      await _pumpCalendar(tester, data: {
+        wed: [_assignment(wed, 'completed')],
+      });
+
+      expect(_stripDots(), findsNothing);
+    });
+
+    testWidgets('凡例「完了 / 予定 / 日付が過ぎた」が下に並ぶ', (tester) async {
+      await _pumpCalendar(tester);
+
+      expect(find.text('完了'), findsOneWidget);
+      expect(find.text('予定'), findsOneWidget);
+      expect(find.text('日付が過ぎた'), findsOneWidget);
+      // 凡例は週の下（日付より下）にある
+      expect(
+        tester.getTopLeft(find.text('完了')).dy,
+        greaterThan(tester.getTopLeft(find.text('13')).dy),
+      );
+    });
+
+    testWidgets('カード内余白は 上14・左右10・下10', (tester) async {
+      await _pumpCalendar(tester);
+
+      final card = tester.widget<FcCard>(find.byType(FcCard));
+      expect(card.paddingOverride, const EdgeInsets.fromLTRB(10, 14, 10, 10));
+    });
+
+    testWidgets('プランのある日を押すと詳細シートが開く（完了の日）', (tester) async {
+      await _pumpCalendar(tester);
+
+      await tester.tap(find.text('9'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('9月9日（水）'), findsOneWidget);
+      expect(find.text('上半身'), findsOneWidget);
+      // 状態は色ではなく文字で示す
+      expect(find.text('完了'), findsNWidgets(2)); // 凡例 + シートの状態
+      expect(find.text('ダンベルプレス'), findsOneWidget);
+      expect(find.text('3セット × 10回 · 12 kg'), findsOneWidget);
+      // 旧デザインの英字表記・固定色は使わない
+      expect(find.textContaining('Set'), findsNothing);
+    });
+
+    testWidgets('スキップした日も押すと詳細で「スキップ」と分かる', (tester) async {
+      await _pumpCalendar(tester);
+
+      await tester.tap(find.text('12'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('9月12日（土）'), findsOneWidget);
+      expect(find.text('全身'), findsOneWidget);
+      expect(find.text('スキップ'), findsOneWidget);
+    });
+
+    testWidgets('プランのない日を押しても何も開かない', (tester) async {
+      await _pumpCalendar(tester);
+
+      await tester.tap(find.text('8'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(BottomSheet), findsNothing);
+    });
+
+    testWidgets('読み上げ: 日付・今日・状態を 1 つにまとめる', (tester) async {
+      final handle = tester.ensureSemantics();
+      await _pumpCalendar(tester);
+
+      expect(find.bySemanticsLabel('9月9日 水曜日、完了'), findsOneWidget);
+      expect(find.bySemanticsLabel('9月11日 金曜日、日付が過ぎた'), findsOneWidget);
+      expect(find.bySemanticsLabel('9月13日 日曜日、今日、予定'), findsOneWidget);
+      handle.dispose();
+    });
+
+    testWidgets('読み上げ: 押して詳細が開く日（プランのある日）だけボタン。プランのない日はボタンにしない', (tester) async {
+      final handle = tester.ensureSemantics();
+      await _pumpCalendar(tester);
+
+      bool isButton(String label) => tester
+          .getSemantics(find.bySemanticsLabel(label))
+          .getSemanticsData()
+          .flagsCollection
+          .isButton;
+
+      // プランのある日: 完了（水）・日付が過ぎた（金）・スキップ（土）・今日（日）
+      expect(isButton('9月9日 水曜日、完了'), isTrue);
+      expect(isButton('9月11日 金曜日、日付が過ぎた'), isTrue);
+      expect(isButton('9月12日 土曜日、スキップ'), isTrue);
+      expect(isButton('9月13日 日曜日、今日、予定'), isTrue);
+      // プランのない日（月・火・木）は、日付と曜日だけを読む（押しても何も起きない）
+      expect(isButton('9月7日 月曜日'), isFalse);
+      expect(isButton('9月8日 火曜日'), isFalse);
+      expect(isButton('9月10日 木曜日'), isFalse);
+      handle.dispose();
+    });
+
+    testWidgets('7 日は等幅のまま並び、列の位置・高さはそろっている', (tester) async {
+      await _pumpCalendar(tester);
+
+      final xs = [
+        for (var d = 7; d <= 13; d++) tester.getCenter(find.text('$d')).dx,
+      ];
+      final gaps = [for (var i = 1; i < xs.length; i++) xs[i] - xs[i - 1]];
+      for (final g in gaps) {
+        expect(g, closeTo(gaps.first, 0.5));
+      }
+      final ys = {
+        for (var d = 7; d <= 13; d++) tester.getCenter(find.text('$d')).dy,
+      };
+      expect(ys, hasLength(1));
+    });
+
+    for (final brightness in Brightness.values) {
+      testWidgets('${brightness.name}・文字 1.35 倍でもはみ出さない（320 幅）', (tester) async {
+        await _pumpCalendar(
+          tester,
+          brightness: brightness,
+          textScale: 1.35,
+          size: const Size(320, 700),
         );
-        expect(
-          hasFixedEmerald50,
-          isFalse,
-          reason: 'ダークモードで固定色 emerald50 の背景が使われてはいけない',
-        );
-      },
-    );
 
-    testWidgets(
-      'ライトモードで完了セルの背景が successTint(light) になる',
-      (tester) async {
-        await _pumpCalendar(tester, AppTheme.lightTheme);
+        expect(tester.takeException(), isNull);
+      });
+    }
 
-        final containers = tester
-            .widgetList<Container>(
-              find.descendant(
-                of: find.byType(WeeklyMiniCalendar),
-                matching: find.byType(Container),
-              ),
-            )
-            .toList();
+    testWidgets('詳細シートも文字 1.35 倍でもはみ出さない', (tester) async {
+      await _pumpCalendar(tester, textScale: 1.35, size: const Size(390, 1200));
 
-        final hasSuccessTintLight = containers.any((c) {
-          final decoration = c.decoration;
-          if (decoration is! BoxDecoration) return false;
-          return decoration.color == AppColorsExtension.light.successTint;
-        });
+      await tester.tap(find.text('9'));
+      await tester.pumpAndSettle();
 
-        expect(
-          hasSuccessTintLight,
-          isTrue,
-          reason: 'ライトモードでは successTint(light) の背景セルが存在するべき',
-        );
-      },
-    );
+      expect(tester.takeException(), isNull);
+      expect(find.text('9月9日（水）'), findsOneWidget);
+    });
   });
 }

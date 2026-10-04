@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
+import 'package:fit_connect_mobile/core/theme/app_text_styles.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
 import 'package:fit_connect_mobile/features/meal_records/providers/meal_records_provider.dart';
-import 'package:intl/intl.dart';
+import 'package:fit_connect_mobile/shared/widgets/fc/fc.dart';
+import 'record_date_format.dart';
 
-/// 週カレンダー（横一列7日）
+/// 今週の食事の回数（Riverpod から日別の件数を取る）。見た目は [MealWeekCard]。
 class MealWeekCalendar extends ConsumerWidget {
   final void Function(DateTime date, int mealCount)? onDayTap;
 
@@ -17,167 +21,129 @@ class MealWeekCalendar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colors = AppColors.of(context);
     final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
+    final today = recordDayOf(now);
+    final weekStart = recordWeekStartOf(today);
 
-    // Calculate the week range (Monday to Sunday)
-    final daysFromMonday = (today.weekday - 1) % 7;
-    final startOfWeek = today.subtract(Duration(days: daysFromMonday));
-    final endOfWeek = startOfWeek.add(const Duration(days: 6));
-
-    final mealCountsAsync = ref.watch(
-      mealRecordCountsProvider(startDate: startOfWeek, endDate: endOfWeek),
-    );
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(25),
-            blurRadius: 3,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header with date range
-          Text(
-            '${DateFormat('M月d日').format(startOfWeek)}〜${DateFormat('M月d日').format(endOfWeek)}',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: colors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Week days grid
-          mealCountsAsync.when(
-            data: (mealCounts) =>
-                _buildWeekGrid(context, today, startOfWeek, mealCounts),
-            loading: () => const SizedBox(
-              height: 80,
-              child: Center(child: CircularProgressIndicator()),
-            ),
-            error: (e, _) => Text('エラー: $e'),
-          ),
-        ],
+    // 日曜の 23:59:59 までを問い合わせる（日曜 0:00 までだと日曜の記録が落ちる）
+    final countsAsync = ref.watch(
+      mealRecordCountsProvider(
+        startDate: weekStart,
+        endDate: recordWeekEndOf(weekStart),
       ),
     );
-  }
 
-  Widget _buildWeekGrid(
-    BuildContext context,
-    DateTime today,
-    DateTime startOfWeek,
-    Map<DateTime, int> mealCounts,
-  ) {
-    const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-
-    return Row(
-      children: List.generate(7, (index) {
-        final date = startOfWeek.add(Duration(days: index));
-        final count = mealCounts[date] ?? 0;
-        final isToday = date == today;
-        final isFuture = date.isAfter(today);
-
-        return Expanded(
-          child: _buildDayCell(
-            context: context,
-            dayLabel: dayLabels[index],
-            date: date,
-            mealCount: count,
-            isToday: isToday,
-            isFuture: isFuture,
-          ),
-        );
-      }),
+    return MealWeekCard(
+      today: today,
+      counts: countsAsync.valueOrNull,
+      hasError: countsAsync.hasError && !countsAsync.hasValue,
+      onRetry: () => ref.invalidate(mealRecordCountsProvider),
+      onDayTap: onDayTap,
     );
   }
+}
 
-  Widget _buildDayCell({
-    required BuildContext context,
-    required String dayLabel,
-    required DateTime date,
-    required int mealCount,
-    required bool isToday,
-    required bool isFuture,
-  }) {
+/// 「今週の記録」カード。月曜から日曜までの 7 日を並べ、各日の下に食事の回数を「3回」と書く。
+/// 正本は `record-screens.js` の `MealsTab` の 2 枚目のカード。
+///
+/// - 余白は上 16・左右 10・下 8（`FcWeekStrip` を端まで広げるため）。見出しは左右 10 を足して他のカードと揃える
+/// - 印は回数の文字（textPrimary・tabular）。記録のない日・未来の日は何も出さない
+/// - 今日の日付は surfaceSecondary の円 + accent
+/// - [counts] が null のあいだは、各日の印をスケルトンにして配置を保つ
+class MealWeekCard extends StatelessWidget {
+  const MealWeekCard({
+    super.key,
+    required this.today,
+    required this.counts,
+    this.hasError = false,
+    this.onRetry,
+    this.onDayTap,
+  });
+
+  /// 今日（日付だけ）
+  final DateTime today;
+
+  /// 日付ごとの食事の件数。null は読込中
+  final Map<DateTime, int>? counts;
+
+  /// 取得に失敗したとき
+  final bool hasError;
+  final VoidCallback? onRetry;
+
+  /// 日付を押したとき（未来の日は呼ばれない）。null なら表示専用
+  final void Function(DateTime date, int mealCount)? onDayTap;
+
+  @override
+  Widget build(BuildContext context) {
     final colors = AppColors.of(context);
-    final color = isFuture ? colors.calendarEmpty : _getGrassColor(mealCount, colors);
-    final textColor =
-        mealCount >= 2 && !isFuture ? Colors.white : colors.textSecondary;
+    final weekStart = recordWeekStartOf(today);
+    final markStyle = AppTextStyles.caption(context).copyWith(
+      color: colors.textPrimary,
+      fontFeatures: AppTextStyles.tabularFigures,
+    );
 
-    return GestureDetector(
-      onTap: !isFuture && onDayTap != null
-          ? () => onDayTap!(date, mealCount)
-          : null,
+    final days = <FcWeekDay>[];
+    for (var i = 0; i < 7; i++) {
+      final date = DateTime(weekStart.year, weekStart.month, weekStart.day + i);
+      final isFuture = date.isAfter(today);
+      final count = counts?[date] ?? 0;
+
+      Widget? mark;
+      if (counts == null) {
+        mark = hasError ? null : const FcSkeleton(width: 20, height: 12);
+      } else if (!isFuture && count > 0) {
+        mark = Text('$count回', style: markStyle);
+      }
+
+      days.add(
+        FcWeekDay(
+          date: date,
+          selected: date == today,
+          markWidget: mark,
+          semanticLabel: '${date.month}月${date.day}日 '
+              '${FcWeekStrip.weekdayLabel(date)}曜日'
+              '${date == today ? '、今日' : ''}'
+              '${counts == null || isFuture ? '' : count > 0 ? '、$count回' : '、記録なし'}',
+        ),
+      );
+    }
+
+    return FcCard(
+      paddingOverride: const EdgeInsets.fromLTRB(10, 16, 10, 8),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Day label (M, T, W...)
-          Text(
-            dayLabel,
-            style: TextStyle(
-              fontSize: 11,
-              color: colors.textHint,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: FcCardHead(
+              icon: LucideIcons.calendarDays,
+              label: '今週の記録',
+              note: recordWeekRangeLabel(weekStart),
+              bottomSpacing: 10,
             ),
           ),
-          const SizedBox(height: 6),
-          // Day cell
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(12),
-              border: isToday
-                  ? Border.all(color: AppColors.primary600, width: 3)
-                  : null,
+          if (hasError && counts == null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+              child: FcInlineNotice.error(
+                message: '今週の記録を読み込めませんでした',
+                actionLabel: onRetry == null ? null : '再試行',
+                onAction: onRetry,
+              ),
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  '${date.day}',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: isFuture ? colors.textHint : textColor,
-                  ),
-                ),
-                if (mealCount > 0 && !isFuture)
-                  Text(
-                    '$mealCount食',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: textColor,
-                    ),
-                  ),
-              ],
-            ),
+          FcWeekStrip(
+            days: days,
+            onSelect: onDayTap == null
+                ? null
+                : (date) {
+                    if (date.isAfter(today)) return;
+                    onDayTap!(date, counts?[date] ?? 0);
+                  },
           ),
         ],
       ),
     );
-  }
-
-  Color _getGrassColor(int mealCount, AppColorsExtension colors) {
-    switch (mealCount) {
-      case 0:
-        return colors.calendarEmpty;
-      case 1:
-        return AppColors.grassLevel1;
-      case 2:
-        return AppColors.grassLevel2;
-      default:
-        return AppColors.grassLevel3;
-    }
   }
 }
 
@@ -185,138 +151,72 @@ class MealWeekCalendar extends ConsumerWidget {
 // Previews
 // ============================================
 
-@Preview(name: 'MealWeekCalendar - Static Preview')
-Widget previewMealWeekCalendarStatic() {
+Widget _previewApp(Brightness brightness, double textScale, Widget child) {
   return MaterialApp(
+    debugShowCheckedModeBanner: false,
     theme: AppTheme.lightTheme,
+    darkTheme: AppTheme.darkTheme,
+    themeMode: brightness == Brightness.dark ? ThemeMode.dark : ThemeMode.light,
+    builder: (context, c) => MediaQuery(
+      data: MediaQuery.of(context)
+          .copyWith(textScaler: TextScaler.linear(textScale)),
+      child: c!,
+    ),
     home: Scaffold(
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: _PreviewMealWeekCalendar(),
-        ),
+        child: Padding(padding: const EdgeInsets.all(20), child: child),
       ),
     ),
   );
 }
 
-class _PreviewMealWeekCalendar extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final daysFromMonday = (today.weekday - 1) % 7;
-    final startOfWeek = today.subtract(Duration(days: daysFromMonday));
-    final endOfWeek = startOfWeek.add(const Duration(days: 6));
+Map<DateTime, int> _previewCounts(DateTime today) {
+  final weekStart = recordWeekStartOf(today);
+  const sample = [3, 2, 3, 2, 1, 3, 2];
+  return {
+    for (var i = 0; i < 7; i++)
+      if (!DateTime(weekStart.year, weekStart.month, weekStart.day + i)
+          .isAfter(today))
+        DateTime(weekStart.year, weekStart.month, weekStart.day + i): sample[i],
+  };
+}
 
-    // Mock data
-    final mockMealCounts = <DateTime, int>{};
-    for (int i = 0; i < 7; i++) {
-      final date = startOfWeek.add(Duration(days: i));
-      if (date.isBefore(today) || date == today) {
-        mockMealCounts[date] = (date.day + i) % 4;
-      }
-    }
-    // Ensure today has some meals
-    mockMealCounts[today] = 2;
+@Preview(name: 'MealWeekCard - 通常')
+Widget previewMealWeekCard() {
+  final today = recordDayOf(DateTime.now());
+  return _previewApp(
+    Brightness.light,
+    1,
+    MealWeekCard(today: today, counts: _previewCounts(today)),
+  );
+}
 
-    const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+@Preview(name: 'MealWeekCard - ダーク')
+Widget previewMealWeekCardDark() {
+  final today = recordDayOf(DateTime.now());
+  return _previewApp(
+    Brightness.dark,
+    1,
+    MealWeekCard(today: today, counts: _previewCounts(today)),
+  );
+}
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(25),
-            blurRadius: 3,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '${DateFormat('M月d日').format(startOfWeek)}〜${DateFormat('M月d日').format(endOfWeek)}',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: colors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: List.generate(7, (index) {
-              final date = startOfWeek.add(Duration(days: index));
-              final count = mockMealCounts[date] ?? 0;
-              final isToday = date == today;
-              final isFuture = date.isAfter(today);
-              final color =
-                  isFuture ? colors.calendarEmpty : _getGrassColor(count, colors);
-              final textColor =
-                  count >= 2 && !isFuture ? Colors.white : colors.textSecondary;
+@Preview(name: 'MealWeekCard - 読込中')
+Widget previewMealWeekCardLoading() {
+  final today = recordDayOf(DateTime.now());
+  return _previewApp(
+    Brightness.light,
+    1,
+    MealWeekCard(today: today, counts: null),
+  );
+}
 
-              return Expanded(
-                child: Column(
-                  children: [
-                    Text(
-                      dayLabels[index],
-                      style: TextStyle(fontSize: 11, color: colors.textHint),
-                    ),
-                    const SizedBox(height: 6),
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: color,
-                        borderRadius: BorderRadius.circular(12),
-                        border: isToday
-                            ? Border.all(color: AppColors.primary600, width: 3)
-                            : null,
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            '${date.day}',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: isFuture ? colors.textHint : textColor,
-                            ),
-                          ),
-                          if (count > 0 && !isFuture)
-                            Text(
-                              '$count食',
-                              style: TextStyle(fontSize: 10, color: textColor),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Color _getGrassColor(int count, AppColorsExtension colors) {
-    switch (count) {
-      case 0:
-        return colors.calendarEmpty;
-      case 1:
-        return AppColors.grassLevel1;
-      case 2:
-        return AppColors.grassLevel2;
-      default:
-        return AppColors.grassLevel3;
-    }
-  }
+@Preview(name: 'MealWeekCard - 文字拡大 1.35')
+Widget previewMealWeekCardLargeText() {
+  final today = recordDayOf(DateTime.now());
+  return _previewApp(
+    Brightness.light,
+    1.35,
+    MealWeekCard(today: today, counts: _previewCounts(today)),
+  );
 }

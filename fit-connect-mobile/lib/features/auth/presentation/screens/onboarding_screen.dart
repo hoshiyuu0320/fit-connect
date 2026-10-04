@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
+import 'package:fit_connect_mobile/core/theme/app_spacing.dart';
 import 'package:fit_connect_mobile/features/auth/presentation/screens/qr_scan_screen.dart';
 import 'package:fit_connect_mobile/features/auth/presentation/screens/invite_code_screen.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -15,6 +16,7 @@ class OnboardingScreen extends StatelessWidget {
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
         leading: IconButton(
+          tooltip: '戻る',
           icon: Icon(LucideIcons.arrowLeft, color: colors.textPrimary),
           onPressed: () => Navigator.of(context).pop(),
         ),
@@ -41,13 +43,13 @@ class OnboardingScreen extends StatelessWidget {
                           width: 100,
                           height: 100,
                           decoration: BoxDecoration(
-                            color: AppColors.primary50,
-                            borderRadius: BorderRadius.circular(24),
+                            color: colors.surface,
+                            borderRadius: BorderRadius.circular(AppRadius.card),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             LucideIcons.userPlus,
                             size: 50,
-                            color: AppColors.primary600,
+                            color: colors.accent,
                           ),
                         ),
                       ),
@@ -80,6 +82,8 @@ class OnboardingScreen extends StatelessWidget {
                       const SizedBox(height: 64),
 
                       // QR Scan Button
+                      // 色・形（actionFill・角丸 24・最小高さ 48）はテーマの ElevatedButton。
+                      // IntrinsicHeight の中では FcButton.block（LayoutBuilder を使う）を置けない
                       ElevatedButton.icon(
                         onPressed: () {
                           Navigator.of(context).push(
@@ -89,22 +93,7 @@ class OnboardingScreen extends StatelessWidget {
                           );
                         },
                         icon: const Icon(LucideIcons.qrCode, size: 20),
-                        label: const Text(
-                          'QRコードをスキャン',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary600,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 0,
-                        ),
+                        label: const Text('QRコードをスキャン'),
                       ),
                       const SizedBox(height: 16),
 
@@ -117,13 +106,8 @@ class OnboardingScreen extends StatelessWidget {
                             ),
                           );
                         },
-                        child: const Text(
-                          '招待コードを手動入力',
-                          style: TextStyle(
-                            color: AppColors.primary600,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
+                        // 色・太さ・タッチ領域はテーマの TextButton（accent・500・44 以上）
+                        child: const Text('招待コードを手動入力'),
                       ),
 
                       const Spacer(),

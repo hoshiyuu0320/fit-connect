@@ -1,149 +1,72 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fit_connect_mobile/core/theme/app_theme.dart';
-import 'package:fit_connect_mobile/features/workout/models/workout_assignment_exercise_model.dart';
-import 'package:fit_connect_mobile/features/workout/models/workout_assignment_model.dart';
 import 'package:fit_connect_mobile/features/workout/models/workout_screen_state.dart';
 import 'package:fit_connect_mobile/features/workout/presentation/screens/workout_screen.dart';
 import 'package:fit_connect_mobile/features/workout/presentation/widgets/reschedule_date_picker.dart';
+import 'package:fit_connect_mobile/features/workout/presentation/workout_format.dart';
 import 'package:fit_connect_mobile/features/workout/providers/workout_provider.dart';
 
-/// 固定の WorkoutScreenState を返すテスト用Notifier
-///
-/// WorkoutScreenNotifier.build は Supabase への4クエリを並列実行するため、
-/// テストでは build をオーバーライドして固定状態を返す。
-class _FakeWorkoutScreenNotifier extends WorkoutScreenNotifier {
-  _FakeWorkoutScreenNotifier(this._fixedState);
+import '../workout_test_helpers.dart';
 
-  final WorkoutScreenState _fixedState;
-
-  @override
-  Future<WorkoutScreenState> build() async => _fixedState;
-}
-
-/// DateTime を assigned_date 形式（yyyy-MM-dd）に整形するヘルパー
-String _fmtDate(DateTime d) =>
-    '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-
-/// 日付チップの期待表示（M/d(E) 形式）を生成するヘルパー
-String _dateChipLabel(DateTime d) {
-  const labels = ['月', '火', '水', '木', '金', '土', '日'];
-  return '${d.month}/${d.day}(${labels[d.weekday - 1]})';
-}
-
-/// テスト用の今後の予定アサインメント（未来日・pending）を生成するヘルパー
-WorkoutAssignment _makeUpcomingAssignment({
-  required int daysAhead,
-  required String title,
-}) {
-  final assignedDate = DateTime.now().add(Duration(days: daysAhead));
-  final id = 'upcoming-$daysAhead';
-  return WorkoutAssignment(
-    id: id,
-    clientId: 'client-1',
-    trainerId: 'trainer-1',
-    planId: 'plan-1',
-    assignedDate: _fmtDate(assignedDate),
-    status: 'pending',
-    planInfo: WorkoutPlanInfo(
-      title: title,
-      category: 'strength',
-      estimatedMinutes: 45,
-      planType: 'self_guided',
-    ),
-    exercises: [
-      WorkoutAssignmentExercise(
-        id: '$id-ex-1',
-        assignmentId: id,
-        exerciseName: 'ベンチプレス',
-        targetSets: 3,
-        targetReps: 10,
-        orderIndex: 0,
-        isCompleted: false,
-      ),
-      WorkoutAssignmentExercise(
-        id: '$id-ex-2',
-        assignmentId: id,
-        exerciseName: 'スクワット',
-        targetSets: 3,
-        targetReps: 12,
-        orderIndex: 1,
-        isCompleted: false,
-      ),
-    ],
-  );
-}
-
-/// 固定状態で WorkoutScreen をポンプするヘルパー
-Future<void> _pumpWorkoutScreen(
+/// 固定状態で WorkoutScreen をポンプする
+Future<WorkoutCalls> _pumpWorkoutScreen(
   WidgetTester tester,
   WorkoutScreenState state,
 ) async {
-  // ListView 内の今後の予定セクションまで表示されるよう縦長ビューポートにする
-  tester.view.physicalSize = const Size(800, 1600);
-  tester.view.devicePixelRatio = 1.0;
-  addTearDown(tester.view.resetPhysicalSize);
-  addTearDown(tester.view.resetDevicePixelRatio);
-
-  await tester.pumpWidget(
-    ProviderScope(
-      overrides: [
-        workoutScreenNotifierProvider.overrideWith(
-          () => _FakeWorkoutScreenNotifier(state),
-        ),
-      ],
-      child: MaterialApp(
-        theme: AppTheme.lightTheme,
-        home: const WorkoutScreen(),
+  final calls = WorkoutCalls();
+  await pumpWorkout(
+    tester,
+    const WorkoutScreen(),
+    // ListView 内の今後の予定セクションまで表示されるよう縦長のビューポートにする
+    size: const Size(390, 1800),
+    overrides: [
+      workoutScreenNotifierProvider.overrideWith(
+        () => FakeWorkoutScreenNotifier(state, calls: calls),
       ),
-    ),
+    ],
   );
-  // AsyncNotifier の Future 解決（ローディング → データ表示）を待つ
-  await tester.pumpAndSettle();
+  return calls;
 }
 
 void main() {
   group('WorkoutScreen 今後の予定セクション', () {
-    testWidgets('upcomingAssignments が2件ある場合、ヘッダーと2枚のカードが表示される',
+    testWidgets('upcomingAssignments が2件ある場合、ヘッダーと2行が表示される',
         (WidgetTester tester) async {
-      final upcoming1 = _makeUpcomingAssignment(
-        daysAhead: 3,
-        title: '上半身トレーニング',
-      );
-      final upcoming2 = _makeUpcomingAssignment(
-        daysAhead: 10,
-        title: '下半身トレーニング',
-      );
-
       await _pumpWorkoutScreen(
         tester,
         WorkoutScreenState(
           overdueAssignments: const [],
           todayAssignments: const [],
-          upcomingAssignments: [upcoming1, upcoming2],
+          upcomingAssignments: [
+            makeUpcomingPlan(daysAhead: 3, title: '上半身トレーニング'),
+            makeUpcomingPlan(daysAhead: 10, title: '下半身トレーニング'),
+          ],
           weeklyData: const {},
         ),
       );
 
-      // ヘッダー（件数付き）
-      expect(find.text('今後の予定 (2件)'), findsOneWidget);
+      // 見出し（件数つき・全角かっこ）
+      expect(find.text('今後の予定（2件）'), findsOneWidget);
 
-      // カードのタイトル
+      // 行のタイトル
       expect(find.text('上半身トレーニング'), findsOneWidget);
       expect(find.text('下半身トレーニング'), findsOneWidget);
 
-      // M/d(E) 形式の日付チップ
-      final date1 = DateTime.now().add(const Duration(days: 3));
-      final date2 = DateTime.now().add(const Duration(days: 10));
-      expect(find.text(_dateChipLabel(date1)), findsOneWidget);
-      expect(find.text(_dateChipLabel(date2)), findsOneWidget);
+      // 日付は「9/16（水）」の形
+      expect(
+        find.text(formatWorkoutShortDate(dayFromToday(3))),
+        findsOneWidget,
+      );
+      expect(
+        find.text(formatWorkoutShortDate(dayFromToday(10))),
+        findsOneWidget,
+      );
 
-      // 種目数表示（各カード2種目）
-      expect(find.text('2種目'), findsNWidgets(2));
+      // 種目数（各行 4 種目）
+      expect(find.text('4種目'), findsNWidgets(2));
     });
 
-    testWidgets('upcomingAssignments が空の場合、「今後の予定」テキストが表示されない',
+    testWidgets('upcomingAssignments が空の場合、「今後の予定」が表示されない',
         (WidgetTester tester) async {
       await _pumpWorkoutScreen(
         tester,
@@ -158,37 +81,67 @@ void main() {
       expect(find.textContaining('今後の予定'), findsNothing);
     });
 
-    testWidgets('各カードに「日付変更」ボタンが表示され、タップで日付ピッカーが開く',
+    testWidgets('各行に「日付を変更」が表示され、押すと日付ピッカーが開く',
         (WidgetTester tester) async {
-      await _pumpWorkoutScreen(
+      final calls = await _pumpWorkoutScreen(
         tester,
         WorkoutScreenState(
           overdueAssignments: const [],
           todayAssignments: const [],
           upcomingAssignments: [
-            _makeUpcomingAssignment(daysAhead: 3, title: '上半身トレーニング'),
-            _makeUpcomingAssignment(daysAhead: 10, title: '下半身トレーニング'),
+            makeUpcomingPlan(daysAhead: 3, title: '上半身トレーニング'),
+            makeUpcomingPlan(daysAhead: 10, title: '下半身トレーニング'),
           ],
           weeklyData: const {},
         ),
       );
 
-      // 各カードに「日付変更」ボタンがある
-      expect(find.text('日付変更'), findsNWidgets(2));
+      // 各行に「日付を変更」がある
+      expect(find.text('日付を変更'), findsNWidgets(2));
 
-      // タップで RescheduleDatePicker ダイアログが開く
-      await tester.tap(find.text('日付変更').first);
+      // 押すと RescheduleDatePicker ダイアログが開く（ダイアログの見出しも「日付を変更」）
+      await tester.tap(find.text('日付を変更').first);
       await tester.pumpAndSettle();
       expect(find.byType(RescheduleDatePicker), findsOneWidget);
-      expect(find.text('日付を変更'), findsOneWidget);
+      expect(find.text('日付を変更'), findsNWidgets(3));
 
-      // キャンセルで閉じる
+      // キャンセルで閉じる（変更は起きない）
       await tester.tap(find.text('キャンセル'));
       await tester.pumpAndSettle();
       expect(find.byType(RescheduleDatePicker), findsNothing);
+      expect(calls.rescheduled, isEmpty);
     });
 
-    testWidgets('today も overdue も空で upcoming のみの場合、全空ヒントが表示されない',
+    testWidgets('日付ピッカーで「変更する」を押すと、その行のプランの日付変更が呼ばれる',
+        (WidgetTester tester) async {
+      final calls = await _pumpWorkoutScreen(
+        tester,
+        WorkoutScreenState(
+          overdueAssignments: const [],
+          todayAssignments: const [],
+          upcomingAssignments: [
+            makeUpcomingPlan(daysAhead: 3, title: '上半身トレーニング'),
+          ],
+          weeklyData: const {},
+        ),
+      );
+
+      await tester.tap(find.text('日付を変更').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('変更する'));
+      await tester.pumpAndSettle();
+
+      expect(calls.rescheduled, hasLength(1));
+      expect(calls.rescheduled.single.assignmentId, 'upcoming-3');
+      // 日付ピッカーは明日が初期値（時刻は気にしない）
+      final picked = calls.rescheduled.single.date;
+      expect(
+        DateTime(picked.year, picked.month, picked.day),
+        dayFromToday(1),
+      );
+    });
+
+    testWidgets('today も overdue も空で upcoming のみの場合も「今日のプランはありません」を示す',
         (WidgetTester tester) async {
       await _pumpWorkoutScreen(
         tester,
@@ -196,18 +149,19 @@ void main() {
           overdueAssignments: const [],
           todayAssignments: const [],
           upcomingAssignments: [
-            _makeUpcomingAssignment(daysAhead: 3, title: '上半身トレーニング'),
+            makeUpcomingPlan(daysAhead: 3, title: '上半身トレーニング'),
           ],
           weeklyData: const {},
         ),
       );
 
-      // 全空状態のヒント（_EmptyState）は表示されない
-      expect(find.textContaining('トレーナーがプランを設定すると'), findsNothing);
-
-      // 代わりに「今日のプランはありません」ヒント + 今後の予定セクションが表示される
+      // 今日のプランが無い日は、今後の予定があっても同じメッセージ
       expect(find.text('今日のプランはありません'), findsOneWidget);
-      expect(find.text('今後の予定 (1件)'), findsOneWidget);
+      expect(
+        find.text('田中トレーナーがプランを設定すると、ここに表示されます。'),
+        findsOneWidget,
+      );
+      expect(find.text('今後の予定（1件）'), findsOneWidget);
     });
   });
 }

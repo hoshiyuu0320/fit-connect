@@ -1,104 +1,175 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
-import 'package:fit_connect_mobile/core/theme/app_colors.dart';
-import 'package:fit_connect_mobile/core/theme/app_theme.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-class MealSummaryCard extends StatelessWidget {
-  final String title;
-  final String meals;
-  final String photos;
-  final String calories;
+import 'package:fit_connect_mobile/core/theme/app_spacing.dart';
+import 'package:fit_connect_mobile/core/theme/app_text_styles.dart';
+import 'package:fit_connect_mobile/core/theme/app_theme.dart';
+import 'package:fit_connect_mobile/features/meal_records/models/meal_record_model.dart';
+import 'package:fit_connect_mobile/shared/widgets/fc/fc.dart';
+import 'meal_type.dart';
+import 'record_date_format.dart';
 
+/// 「今日の食事」の 1 区分（朝食・昼食・夕食・間食）
+class MealSlot {
+  const MealSlot({
+    required this.label,
+    required this.mealType,
+    this.firstRecordedAt,
+    this.count = 0,
+  });
+
+  /// 朝食 / 昼食 / 夕食 / 間食
+  final String label;
+
+  /// breakfast / lunch / dinner / snack
+  final String mealType;
+
+  /// その区分で最初に記録した日時（記録なしなら null）
+  final DateTime? firstRecordedAt;
+
+  /// その区分の記録の件数
+  final int count;
+
+  bool get recorded => count > 0;
+
+  /// 読み上げ用（例:「朝食、記録あり、8:10」）
+  String get semanticLabel {
+    if (!recorded) return '$label、未記録';
+    final time =
+        firstRecordedAt == null ? '' : '、${recordTimeLabel(firstRecordedAt!)}';
+    final more = count > 1 ? '、ほか${count - 1}件' : '';
+    return '$label、記録あり$time$more';
+  }
+}
+
+/// 「今日の食事」カード。朝食・昼食・夕食・間食のそれぞれが、記録済みか未記録かを示す。
+/// 正本は `record-screens.js` の `MealsTab` の先頭のカード。
+///
+/// - 見出し: utensils「今日の食事」＋ 右に今日の日付「9月13日（日）」
+/// - 4 列: ラベル（14）→ 完了マーク 24（記録あり = 塗り + チェック / 未記録 = 枠だけ）→ 時刻（12・tabular）または「未記録」
+/// - 色や絵文字で区分を塗り分けない。記録の有無は形（チェックの有無）と文言でも伝える
+/// - [loading] のあいだはマークと時刻をスケルトンにして配置を保つ（未取得を「未記録」と見せない）
+class MealSummaryCard extends StatelessWidget {
   const MealSummaryCard({
     super.key,
-    required this.title,
-    required this.meals,
-    required this.photos,
-    required this.calories,
+    required this.date,
+    required this.slots,
+    this.loading = false,
+    this.hasError = false,
+    this.onRetry,
   });
+
+  /// 今日の日付（見出しの右に出す）
+  final DateTime date;
+
+  /// 4 区分（`MealSummaryCard.slotsFrom` で作れる）
+  final List<MealSlot> slots;
+
+  final bool loading;
+
+  /// 取得に失敗したとき（4 区分を「未記録」と見せず、失敗したことを伝える）
+  final bool hasError;
+  final VoidCallback? onRetry;
+
+  /// 1 日分の食事記録から 4 区分を作る（朝食・昼食・夕食・間食の順。ほかの区分は含めない）
+  static List<MealSlot> slotsFrom(List<MealRecord> records) {
+    return [
+      for (final slot in mealTypeSlots)
+        () {
+          final matching = records
+              .where((r) => r.mealType.toLowerCase() == slot.type)
+              .toList()
+            ..sort((a, b) => a.recordedAt.compareTo(b.recordedAt));
+          return MealSlot(
+            label: slot.label,
+            mealType: slot.type,
+            firstRecordedAt:
+                matching.isEmpty ? null : matching.first.recordedAt,
+            count: matching.length,
+          );
+        }(),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-    // グラデーション両端はテーマ追従（primaryTint / accentIndigo）。ダークでは両端とも濃色になる。
-    // 枠線は固定の primary100 ではなく半透明の primary600 オーバーレイにして、どちらの背景にも馴染ませる
-    return Container(
-      padding: const EdgeInsets.all(20),
-      margin: const EdgeInsets.only(bottom: 24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [colors.primaryTint, colors.accentIndigo],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.primary600.withValues(alpha: 0.3)),
-      ),
+    return FcCard(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            children: [
-              const Text('📊 ', style: TextStyle(fontSize: 14)),
-              Text(
-                title,
-                style: TextStyle(
-                  color: colors.textPrimary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
+          FcCardHead(
+            icon: LucideIcons.utensils,
+            label: '今日の食事',
+            note: recordDateLabel(date),
+          ),
+          if (hasError)
+            FcInlineNotice.error(
+              message: '今日の食事を読み込めませんでした',
+              actionLabel: onRetry == null ? null : '再試行',
+              onAction: onRetry,
+            )
+          else
+            Semantics(
+              label: loading ? '読み込み中' : null,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (var i = 0; i < slots.length; i++) ...[
+                    if (i > 0) const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: _SlotColumn(slot: slots[i], loading: loading),
+                    ),
+                  ],
+                ],
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildRow(context, LucideIcons.utensils, '食事', meals),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Divider(
-                height: 1, color: AppColors.primary200.withOpacity(0.5)),
-          ),
-          _buildRow(context, LucideIcons.image, '写真', photos),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Divider(
-                height: 1, color: AppColors.primary200.withOpacity(0.5)),
-          ),
-          _buildRow(context, LucideIcons.flame, 'カロリー', calories),
+            ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildRow(
-      BuildContext context, IconData icon, String label, String value) {
-    final colors = AppColors.of(context);
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Row(
-          children: [
-            Icon(icon, size: 14, color: colors.textSecondary),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                color: colors.textSecondary,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-        Text(
-          value,
-          style: TextStyle(
-            color: colors.textPrimary,
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
+class _SlotColumn extends StatelessWidget {
+  const _SlotColumn({required this.slot, required this.loading});
+
+  final MealSlot slot;
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    final time = slot.firstRecordedAt;
+
+    return Semantics(
+      container: true,
+      label: loading ? slot.label : slot.semanticLabel,
+      excludeSemantics: true,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            slot.label,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.label(context),
           ),
-        ),
-      ],
+          const SizedBox(height: 6),
+          if (loading)
+            const FcSkeleton.circle(size: 24)
+          else
+            FcDoneMark(done: slot.recorded, size: 24),
+          const SizedBox(height: 6),
+          if (loading)
+            const FcSkeleton.line(width: 32, height: 12)
+          else
+            Text(
+              slot.recorded && time != null ? recordTimeLabel(time) : '未記録',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.caption(context)
+                  .copyWith(fontFeatures: AppTextStyles.tabularFigures),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -107,83 +178,83 @@ class MealSummaryCard extends StatelessWidget {
 // Previews
 // ============================================
 
-@Preview(name: 'MealSummaryCard - Today')
-Widget previewMealSummaryCardToday() {
+Widget _previewApp(Brightness brightness, double textScale, Widget child) {
   return MaterialApp(
+    debugShowCheckedModeBanner: false,
     theme: AppTheme.lightTheme,
+    darkTheme: AppTheme.darkTheme,
+    themeMode: brightness == Brightness.dark ? ThemeMode.dark : ThemeMode.light,
+    builder: (context, c) => MediaQuery(
+      data: MediaQuery.of(context)
+          .copyWith(textScaler: TextScaler.linear(textScale)),
+      child: c!,
+    ),
     home: Scaffold(
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: MealSummaryCard(
-            title: "今日のサマリー",
-            meals: '2/3',
-            photos: '4',
-            calories: '1,250 kcal',
-          ),
-        ),
+        child: Padding(padding: const EdgeInsets.all(20), child: child),
       ),
     ),
   );
 }
 
-/// ダークモード: グラデーション両端が濃色に切り替わり、見出し・数値が読めることを確認する
-@Preview(name: 'MealSummaryCard - Today (Dark)')
-Widget previewMealSummaryCardTodayDark() {
-  return MaterialApp(
-    theme: AppTheme.darkTheme,
-    home: Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: MealSummaryCard(
-            title: "今日のサマリー",
-            meals: '2/3',
-            photos: '4',
-            calories: '1,250 kcal',
-          ),
-        ),
-      ),
+List<MealSlot> _previewSlots() {
+  final today = DateTime.now();
+  return [
+    MealSlot(
+      label: '朝食',
+      mealType: 'breakfast',
+      firstRecordedAt: DateTime(today.year, today.month, today.day, 8, 10),
+      count: 1,
     ),
-  );
+    MealSlot(
+      label: '昼食',
+      mealType: 'lunch',
+      firstRecordedAt: DateTime(today.year, today.month, today.day, 12, 30),
+      count: 1,
+    ),
+    const MealSlot(label: '夕食', mealType: 'dinner'),
+    const MealSlot(label: '間食', mealType: 'snack'),
+  ];
 }
 
-@Preview(name: 'MealSummaryCard - Week')
-Widget previewMealSummaryCardWeek() {
-  return MaterialApp(
-    theme: AppTheme.lightTheme,
-    home: Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: MealSummaryCard(
-            title: "今週のサマリー",
-            meals: '18/21',
-            photos: '24',
-            calories: '12,500 kcal',
-          ),
-        ),
-      ),
-    ),
-  );
-}
+@Preview(name: 'MealSummaryCard - 今日の食事')
+Widget previewMealSummaryCard() => _previewApp(
+      Brightness.light,
+      1,
+      MealSummaryCard(date: DateTime.now(), slots: _previewSlots()),
+    );
 
-@Preview(name: 'MealSummaryCard - Empty')
-Widget previewMealSummaryCardEmpty() {
-  return MaterialApp(
-    theme: AppTheme.lightTheme,
-    home: Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: MealSummaryCard(
-            title: "今日のサマリー",
-            meals: '0/3',
-            photos: '0',
-            calories: '0 kcal',
-          ),
-        ),
+@Preview(name: 'MealSummaryCard - ダーク')
+Widget previewMealSummaryCardDark() => _previewApp(
+      Brightness.dark,
+      1,
+      MealSummaryCard(date: DateTime.now(), slots: _previewSlots()),
+    );
+
+@Preview(name: 'MealSummaryCard - まだ記録なし')
+Widget previewMealSummaryCardEmpty() => _previewApp(
+      Brightness.light,
+      1,
+      MealSummaryCard(
+        date: DateTime.now(),
+        slots: MealSummaryCard.slotsFrom(const []),
       ),
-    ),
-  );
-}
+    );
+
+@Preview(name: 'MealSummaryCard - 読込中')
+Widget previewMealSummaryCardLoading() => _previewApp(
+      Brightness.light,
+      1,
+      MealSummaryCard(
+        date: DateTime.now(),
+        slots: MealSummaryCard.slotsFrom(const []),
+        loading: true,
+      ),
+    );
+
+@Preview(name: 'MealSummaryCard - 文字拡大 1.35')
+Widget previewMealSummaryCardLargeText() => _previewApp(
+      Brightness.light,
+      1.35,
+      MealSummaryCard(date: DateTime.now(), slots: _previewSlots()),
+    );

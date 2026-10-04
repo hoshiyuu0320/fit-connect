@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 
-import 'package:fit_connect_mobile/core/theme/app_theme.dart';
+import 'package:fit_connect_mobile/core/theme/app_colors.dart';
+import 'package:fit_connect_mobile/core/theme/app_spacing.dart';
 import 'package:fit_connect_mobile/shared/models/period_filter.dart';
-import 'package:fit_connect_mobile/shared/widgets/segmented_control.dart';
+import 'package:fit_connect_mobile/shared/widgets/fc/fc.dart';
+import 'package:fit_connect_mobile/shared/widgets/fc/fc_previews.dart';
 
-/// 期間フィルタを iOS 風セグメンテッドコントロールで切り替える Widget。
+/// 期間フィルタ（今週 / 今月 / 3ヶ月）。単独の行のセグメント（[FcSegmentedControl]）。
 ///
-/// 見た目・挙動は共通の [SegmentedControl] に集約済み
-/// （SessionsScreen の「今後 / 過去」と同じ実装を使う）。
-/// ここは選択肢（週 / 月 / 3ヶ月 / 全期間）の定義だけを持つ。
+/// サマリは正本どおり 3 択。ラベルは [PeriodFilter.label]。
 class PeriodFilterChips extends StatelessWidget {
   final PeriodFilter selected;
   final ValueChanged<PeriodFilter> onChanged;
@@ -20,57 +20,63 @@ class PeriodFilterChips extends StatelessWidget {
     required this.onChanged,
   });
 
-  static const _items = <SegmentedControlItem<PeriodFilter>>[
-    SegmentedControlItem(value: PeriodFilter.week, label: '週'),
-    SegmentedControlItem(value: PeriodFilter.month, label: '月'),
-    SegmentedControlItem(value: PeriodFilter.threeMonths, label: '3ヶ月'),
-    SegmentedControlItem(value: PeriodFilter.all, label: '全期間'),
+  /// サマリで選べる期間
+  static const List<PeriodFilter> periods = [
+    PeriodFilter.week,
+    PeriodFilter.month,
+    PeriodFilter.threeMonths,
   ];
 
   @override
   Widget build(BuildContext context) {
-    return SegmentedControl<PeriodFilter>(
-      items: _items,
-      selected: selected,
-      onChanged: onChanged,
+    return Semantics(
+      container: true,
+      explicitChildNodes: true,
+      label: '期間',
+      child: FcSegmentedControl<PeriodFilter>(
+        items: [
+          for (final p in periods)
+            FcSegmentedItem<PeriodFilter>(value: p, label: p.label),
+        ],
+        selected: selected,
+        onChanged: onChanged,
+      ),
     );
   }
 }
 
-@Preview(name: 'PeriodFilterChips - Month Selected')
-Widget previewPeriodFilterChipsMonth() {
-  return MaterialApp(
-    theme: AppTheme.lightTheme,
-    home: Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+class _PreviewPeriod extends StatelessWidget {
+  const _PreviewPeriod({required this.selected});
+
+  final PeriodFilter selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    return Scaffold(
+      backgroundColor: colors.background,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: PeriodFilterChips(
-            selected: PeriodFilter.month,
-            onChanged: (_) {},
-          ),
+          padding: EdgeInsets.all(AppSpacing.pageHorizontalOf(context)),
+          child: PeriodFilterChips(selected: selected, onChanged: (_) {}),
         ),
       ),
-    ),
+    );
+  }
+}
+
+@Preview(name: 'PeriodFilterChips - 今月')
+Widget previewPeriodFilterChipsMonth() {
+  return const FcPreviewApp(
+    brightness: Brightness.light,
+    home: _PreviewPeriod(selected: PeriodFilter.month),
   );
 }
 
-@Preview(name: 'PeriodFilterChips - Week Selected')
-Widget previewPeriodFilterChipsWeek() {
-  return MaterialApp(
-    theme: AppTheme.lightTheme,
-    home: Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: PeriodFilterChips(
-            selected: PeriodFilter.week,
-            onChanged: (_) {},
-          ),
-        ),
-      ),
-    ),
+@Preview(name: 'PeriodFilterChips - 今週（ダーク）')
+Widget previewPeriodFilterChipsWeekDark() {
+  return const FcPreviewApp(
+    brightness: Brightness.dark,
+    home: _PreviewPeriod(selected: PeriodFilter.week),
   );
 }

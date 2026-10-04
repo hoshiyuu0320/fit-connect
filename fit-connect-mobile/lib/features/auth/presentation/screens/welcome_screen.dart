@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
+import 'package:fit_connect_mobile/core/theme/app_spacing.dart';
+import 'package:fit_connect_mobile/core/theme/app_text_styles.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
 import 'package:fit_connect_mobile/features/auth/presentation/screens/onboarding_screen.dart';
 import 'package:fit_connect_mobile/features/auth/presentation/screens/login_screen.dart';
+import 'package:fit_connect_mobile/shared/widgets/fc/fc.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 class WelcomeScreen extends StatelessWidget {
@@ -35,13 +38,13 @@ class WelcomeScreen extends StatelessWidget {
                           width: 100,
                           height: 100,
                           decoration: BoxDecoration(
-                            color: AppColors.primary50,
-                            borderRadius: BorderRadius.circular(24),
+                            color: colors.surface,
+                            borderRadius: BorderRadius.circular(AppRadius.card),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             LucideIcons.activity,
                             size: 50,
-                            color: AppColors.primary600,
+                            color: colors.accent,
                           ),
                         ),
                       ),
@@ -98,6 +101,8 @@ class WelcomeScreen extends StatelessWidget {
                       const SizedBox(height: 48),
 
                       // Sign Up Button
+                      // 色・形（actionFill・角丸 24・最小高さ 48）はテーマの ElevatedButton。
+                      // IntrinsicHeight の中では FcButton.block（LayoutBuilder を使う）を置けない
                       ElevatedButton(
                         onPressed: () {
                           Navigator.of(context).push(
@@ -106,38 +111,28 @@ class WelcomeScreen extends StatelessWidget {
                             ),
                           );
                         },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary600,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Text(
-                          '新規登録',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        child: const Text('新規登録'),
                       ),
 
                       const SizedBox(height: 16),
 
                       // Login Link
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      // 文字拡大では折り返して縦に積む（Row だと横にはみ出す）
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: AppSpacing.sm,
                         children: [
                           Text(
-                            'すでにアカウントをお持ちの方　',
-                            style: TextStyle(
-                              fontSize: 14,
+                            'すでにアカウントをお持ちの方',
+                            textAlign: TextAlign.center,
+                            style: AppTextStyles.label(context).copyWith(
                               color: colors.textSecondary,
                             ),
                           ),
-                          TextButton(
+                          FcButton.text(
+                            label: 'ログインはこちら',
+                            expand: false,
                             onPressed: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute(
@@ -147,19 +142,6 @@ class WelcomeScreen extends StatelessWidget {
                                 ),
                               );
                             },
-                            style: TextButton.styleFrom(
-                              padding: EdgeInsets.zero,
-                              minimumSize: const Size(0, 0),
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                            child: const Text(
-                              'ログインはこちら',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: AppColors.primary600,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
                           ),
                         ],
                       ),
@@ -183,48 +165,37 @@ class WelcomeScreen extends StatelessWidget {
     required String description,
   }) {
     final colors = AppColors.of(context);
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colors.surfaceDim,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.border),
-      ),
+    return FcCard(
+      paddingOverride: const EdgeInsets.all(AppSpacing.lg),
       child: Row(
         children: [
           Container(
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: AppColors.primary100,
-              borderRadius: BorderRadius.circular(10),
+              color: colors.surfaceSecondary,
+              borderRadius: BorderRadius.circular(AppRadius.input),
             ),
             child: Icon(
               icon,
-              color: AppColors.primary600,
+              color: colors.accent,
               size: 22,
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: AppSpacing.lg),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: colors.textPrimary,
-                    fontSize: 14,
-                  ),
+                  style: AppTextStyles.label(context)
+                      .copyWith(fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   description,
-                  style: TextStyle(
-                    color: colors.textSecondary,
-                    fontSize: 12,
-                  ),
+                  style: AppTextStyles.caption(context),
                 ),
               ],
             ),
@@ -243,6 +214,29 @@ class WelcomeScreen extends StatelessWidget {
 Widget previewWelcomeScreenDefault() {
   return MaterialApp(
     theme: AppTheme.lightTheme,
+    home: const WelcomeScreen(),
+  );
+}
+
+@Preview(name: 'WelcomeScreen - Dark')
+Widget previewWelcomeScreenDark() {
+  return MaterialApp(
+    theme: AppTheme.darkTheme,
+    home: const WelcomeScreen(),
+  );
+}
+
+/// 文字拡大 1.35: ログイン導線が折り返して積み直され、横にはみ出さない
+@Preview(name: 'WelcomeScreen - Large Text')
+Widget previewWelcomeScreenLargeText() {
+  return MaterialApp(
+    theme: AppTheme.lightTheme,
+    builder: (context, child) => MediaQuery(
+      data: MediaQuery.of(context).copyWith(
+        textScaler: const TextScaler.linear(1.35),
+      ),
+      child: child!,
+    ),
     home: const WelcomeScreen(),
   );
 }

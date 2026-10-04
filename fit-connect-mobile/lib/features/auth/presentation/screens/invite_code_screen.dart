@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
+import 'package:fit_connect_mobile/core/theme/app_spacing.dart';
 import 'package:fit_connect_mobile/features/auth/providers/registration_provider.dart';
 import 'package:fit_connect_mobile/features/auth/presentation/screens/trainer_confirm_screen.dart';
+import 'package:fit_connect_mobile/shared/widgets/fc/fc.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 class InviteCodeScreen extends ConsumerStatefulWidget {
@@ -38,10 +40,7 @@ class _InviteCodeScreenState extends ConsumerState<InviteCodeScreen> {
     if (trainerId == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('無効な招待コードです。'),
-            backgroundColor: AppColors.rose800,
-          ),
+          const SnackBar(content: Text('無効な招待コードです。')),
         );
         setState(() {
           _isLoading = false;
@@ -61,7 +60,6 @@ class _InviteCodeScreenState extends ConsumerState<InviteCodeScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('トレーナーが見つかりませんでした。招待コードを確認してください。'),
-          backgroundColor: AppColors.rose800,
         ),
       );
       setState(() {
@@ -142,13 +140,14 @@ class _InviteCodeScreenState extends ConsumerState<InviteCodeScreen> {
                               width: 80,
                               height: 80,
                               decoration: BoxDecoration(
-                                color: AppColors.primary50,
-                                borderRadius: BorderRadius.circular(20),
+                                color: colors.surface,
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.card),
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 LucideIcons.keyRound,
                                 size: 40,
-                                color: AppColors.primary600,
+                                color: colors.accent,
                               ),
                             ),
                           ),
@@ -187,35 +186,14 @@ class _InviteCodeScreenState extends ConsumerState<InviteCodeScreen> {
                               fontSize: 18,
                               letterSpacing: 2,
                             ),
+                            // 枠（通常 separator・フォーカス accent・エラー error）はテーマの
+                            // InputDecoration。面だけ surface にする
                             decoration: InputDecoration(
                               labelText: '招待コード',
                               hintText: 'コードを入力',
                               prefixIcon: const Icon(LucideIcons.hash),
                               filled: true,
-                              fillColor: colors.surfaceDim,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide.none,
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(
-                                  color: colors.border,
-                                ),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(
-                                  color: AppColors.primary500,
-                                  width: 2,
-                                ),
-                              ),
-                              errorBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(
-                                  color: AppColors.rose800,
-                                ),
-                              ),
+                              fillColor: colors.surface,
                             ),
                             validator: (value) {
                               if (value == null || value.trim().isEmpty) {
@@ -232,52 +210,41 @@ class _InviteCodeScreenState extends ConsumerState<InviteCodeScreen> {
                           const SizedBox(height: 24),
 
                           // 送信ボタン
+                          // 色・形（actionFill・角丸 24・最小高さ 48）はテーマの ElevatedButton
+                          // （IntrinsicHeight の中では FcButton.block を置けない）。
+                          // 送信中は無効でも塗りのまま（actionFill + onAction）スピナーを見せる
                           ElevatedButton(
                             onPressed: _isLoading ? null : _submitCode,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary600,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              elevation: 0,
-                              disabledBackgroundColor: colors.textHint,
-                            ),
+                            style: _isLoading
+                                ? ElevatedButton.styleFrom(
+                                    disabledBackgroundColor: colors.actionFill,
+                                    disabledForegroundColor: colors.onAction,
+                                  )
+                                : null,
                             child: _isLoading
-                                ? const SizedBox(
+                                ? SizedBox(
                                     width: 24,
                                     height: 24,
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
-                                      color: Colors.white,
+                                      color: colors.onAction,
                                     ),
                                   )
-                                : const Text(
-                                    '確認する',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
+                                : const Text('確認する'),
                           ),
 
                           const Spacer(),
 
                           // ヘルプテキスト
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: colors.surfaceDim,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: colors.border),
-                            ),
+                          FcCard(
+                            paddingOverride:
+                                const EdgeInsets.all(AppSpacing.lg),
                             child: Row(
                               children: [
                                 Icon(
                                   LucideIcons.helpCircle,
                                   size: 20,
-                                  color: colors.textHint,
+                                  color: colors.textSecondary,
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
