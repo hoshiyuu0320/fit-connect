@@ -21,15 +21,70 @@ import 'package:fit_connect_mobile/shared/widgets/storage_image.dart';
 // ============================================
 // 会話の 1 件（正本 `message-screens.js` の `RecordMessage` / `CoachReply` / `DateDivider` / `ReplyTo`）
 //
-// - 自分のメッセージ = 記録カード（surface・角丸 20・余白 17・左に 22 のインデント）。
+// - 自分のメッセージ = 吹き出し（surface・**右上だけ角丸 0**・他 20・余白 15・本文の行高 1.65・左に 22 のインデント）。
+//   トレーナーの吹き出しの鏡写し（しっぽは自分が右上・トレーナーが左上。面の色で「自分／相手」を分ける）。
+//   正本の `RecordMessage` は全角丸 20・余白 17 のカードだが、「トレーナー側に合わせて吹き出しっぽく」
+//   という要望で、形・余白・行高をトレーナー側と同じにしている（記録カードも通常のメッセージも同じ形）
 //   見出し行（アイコン 14 + 「あなたの体重記録 · 7:30」13px accent）・本文 16・状態行 12px
 //   （タグのあるものだけ「体重の記録に追加しました」。**既読は出さない**）
 //   タグの無い通常のメッセージは見出し行を出さず、本文 + 状態行（送信時刻「9:24」）だけ
 //   （正本は「あなたのメッセージ · 9:24」の見出しを持つが、記録カードと区別が要らないので省く）
 // - トレーナーのメッセージ = 小アバター 29 + surfaceSecondary の吹き出し（左上だけ角丸 0・他 20・余白 15）
 //   + 「{名前} · 19:05」12px
-// - 写真は記録カード（吹き出し）の下に角丸 20 の画像。タップで全画面表示
+// - 写真は吹き出しの下に角丸 20 の画像（幅は最大 240）。**自分は吹き出しの右端・トレーナーは左端へ寄せる**。
+//   タップで全画面表示
 // ============================================
+
+/// 吹き出し（自分・トレーナー共通）の形と余白。対に見えるよう、同じ値を両方に使う
+class _BubbleMetrics {
+  const _BubbleMetrics._();
+
+  /// 角丸（しっぽの隅以外の 3 隅）
+  static const double radius = AppRadius.chatRecordCard;
+
+  /// 内側の余白
+  static const double padding = 15;
+
+  /// 本文の行高（正本 `--fc-type-bubble-line-height`）
+  static const double bodyLineHeight = 1.65;
+}
+
+/// 吹き出しの面。**しっぽの隅（話し手に近い上の隅）だけ角丸 0**、ほかの 3 隅は 20。
+/// トレーナーは左上（アバターから話している形）、自分は右上（画面の右端から話している形）
+class _BubbleSurface extends StatelessWidget {
+  const _BubbleSurface({
+    required this.color,
+    required this.tailOnRight,
+    required this.child,
+  });
+
+  final Color color;
+
+  /// しっぽを右上に付けるか（自分 = true、トレーナー = false で左上）
+  final bool tailOnRight;
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    const round = Radius.circular(_BubbleMetrics.radius);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.only(
+          topLeft: tailOnRight ? round : Radius.zero,
+          topRight: tailOnRight ? Radius.zero : round,
+          bottomLeft: round,
+          bottomRight: round,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(_BubbleMetrics.padding),
+        child: child,
+      ),
+    );
+  }
+}
 
 /// 日付の区切り（「9月13日（日）」。13px・textSecondary・中央・下 13）
 class MessageDateDivider extends StatelessWidget {
@@ -348,11 +403,13 @@ class MessageBubble extends StatelessWidget {
   }
 }
 
-/// 自分のメッセージの記録カード（正本 `RecordMessage`）。
+/// 自分のメッセージの吹き出し（正本 `RecordMessage` を、トレーナーの [CoachReplyBubble] と対になる形にしたもの）。
 ///
-/// surface・角丸 20・余白 17・左に 22 のインデント。見出し行 → 本文 → 状態行の順。
-/// 通常のメッセージ（見出しなし）は 本文 → 状態行（送信時刻）だけ。
-/// 返信先がある場合はカードの上に「{名前}への返信」、写真はカードの下に出す。
+/// surface の面・**右上だけ角丸 0（しっぽ）・他 3 隅は 20**・余白 15・本文の行高 1.65・左に 22 のインデント
+/// （右端は画面の右余白に揃う）。トレーナー側（surfaceSecondary・左上が角丸 0）の鏡写しで、
+/// 面の色で「自分／相手」を分ける。通常のメッセージも、記録カード（体重・食事・運動・ワークアウト完了）も同じ形。
+/// 見出し行 → 本文 → 状態行の順。通常のメッセージ（見出しなし）は 本文 → 状態行（送信時刻）だけ。
+/// 返信先がある場合は吹き出しの上に「{名前}への返信」、写真は吹き出しの下（右端寄せ）に出す。
 class RecordMessageCard extends StatelessWidget {
   const RecordMessageCard({
     super.key,
@@ -397,56 +454,58 @@ class RecordMessageCard extends StatelessWidget {
           ),
         Padding(
           padding: const EdgeInsets.only(left: indent),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: colors.surface,
-              borderRadius: BorderRadius.circular(AppRadius.chatRecordCard),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.coachCardPadding),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // 見出し行: アイコン 14 + 13px accent（記録カードだけ）
-                  if (hasHeading)
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        ExcludeSemantics(
-                          child: Icon(icon, size: 14, color: colors.accent),
+          child: _BubbleSurface(
+            color: colors.surface,
+            tailOnRight: true,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 見出し行: アイコン 14 + 13px accent（記録カードだけ）
+                if (hasHeading)
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      ExcludeSemantics(
+                        child: Icon(icon, size: 14, color: colors.accent),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          heading,
+                          style: AppTextStyles.supplement(context)
+                              .copyWith(color: colors.accent),
                         ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            heading,
-                            style: AppTextStyles.supplement(context)
-                                .copyWith(color: colors.accent),
-                          ),
-                        ),
-                      ],
-                    ),
-                  if (shownBody.isNotEmpty) ...[
-                    if (hasHeading) const SizedBox(height: 6),
-                    _MessageText(
-                      shownBody,
-                      style: AppTextStyles.body(context),
-                    ),
-                  ],
-                  if (descriptor.status != null) ...[
-                    if (hasHeading || shownBody.isNotEmpty)
-                      const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      descriptor.status!,
-                      style: AppTextStyles.caption(context),
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
+                if (shownBody.isNotEmpty) ...[
+                  if (hasHeading) const SizedBox(height: 6),
+                  _MessageText(
+                    shownBody,
+                    style: AppTextStyles.body(context)
+                        .copyWith(height: _BubbleMetrics.bodyLineHeight),
+                  ),
                 ],
-              ),
+                if (descriptor.status != null) ...[
+                  if (hasHeading || shownBody.isNotEmpty)
+                    const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    descriptor.status!,
+                    style: AppTextStyles.caption(context),
+                  ),
+                ],
+              ],
             ),
           ),
         ),
-        if (hasImages) MessageImages(images: images!, leftInset: indent),
+        if (hasImages)
+          MessageImages(
+            images: images!,
+            leftInset: indent,
+            // 吹き出しの右端（画面の右余白）に揃える
+            alignment: Alignment.centerRight,
+          ),
       ],
     );
   }
@@ -508,39 +567,36 @@ class CoachReplyBubble extends StatelessWidget {
             ),
             const SizedBox(width: 9),
             Expanded(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: colors.surfaceSecondary,
-                  // 左上だけ 0（アバターから話している形）
-                  borderRadius: const BorderRadius.only(
-                    topRight: Radius.circular(20),
-                    bottomLeft: Radius.circular(20),
-                    bottomRight: Radius.circular(20),
-                  ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(15),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (body.isNotEmpty) ...[
-                        _MessageText(
-                          body,
-                          style: AppTextStyles.body(context)
-                              .copyWith(height: 1.65),
-                        ),
-                        const SizedBox(height: 6),
-                      ],
-                      Text(caption, style: AppTextStyles.caption(context)),
+              // 左上だけ角丸 0（アバターから話している形）。自分の吹き出しの鏡写し
+              child: _BubbleSurface(
+                color: colors.surfaceSecondary,
+                tailOnRight: false,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (body.isNotEmpty) ...[
+                      _MessageText(
+                        body,
+                        style: AppTextStyles.body(context)
+                            .copyWith(height: _BubbleMetrics.bodyLineHeight),
+                      ),
+                      const SizedBox(height: 6),
                     ],
-                  ),
+                    Text(caption, style: AppTextStyles.caption(context)),
+                  ],
                 ),
               ),
             ),
           ],
         ),
-        if (hasImages) MessageImages(images: images!, leftInset: bubbleInset),
+        if (hasImages)
+          MessageImages(
+            images: images!,
+            leftInset: bubbleInset,
+            // 吹き出しの左端（アバターの右）に揃える
+            alignment: Alignment.centerLeft,
+          ),
       ],
     );
   }
@@ -591,32 +647,52 @@ class _MessageText extends StatelessWidget {
   }
 }
 
-/// 記録カード（吹き出し）の下に並べる写真。角丸 20・上 6。タップで全画面表示。
+/// 吹き出しの下に並べる写真。角丸 20・上 6。タップで全画面表示。
 ///
 /// **写真は切り取らない**（`BoxFit.cover` にしない。全体が写る）。
-/// - 1 枚: 写真の縦横比のまま、幅いっぱいに表示する。縦長の写真は高さに上限
-///   （幅 × [maxHeightFactor]）を設け、上限に収まる大きさへ縦横比を保ったまま縮めて全体を見せる
-///   （角丸は写真そのものに付く。左寄せ）。
+/// 大きくなりすぎないよう、幅は最大 [maxWidth]（利用できる幅がそれより狭ければその幅）。
+/// 寄せる側は [alignment] で決める（自分の吹き出しは右端、トレーナーの吹き出しは左端）。
+/// - 1 枚: 写真の縦横比のまま、幅いっぱい（[maxWidth] まで）に表示する。縦長の写真は高さに上限
+///   （その幅 × [maxHeightFactor]）を設け、上限に収まる大きさへ縦横比を保ったまま縮めて全体を見せる
+///   （角丸は写真そのものに付く）。
 ///   読み込んだ写真の縦横比は覚えておき（[MessagePhotoRatios]）、スクロールで戻ってきたときも
 ///   最初から正しい大きさで確保する。初めて見る写真は 4:3（[placeholderAspectRatio]）の大きさで
 ///   読み込み中を確保し、読み込めたら本来の比率へ滑らかに合わせる
-/// - 複数枚: 等分（間隔 6）して横に並べ、高さは 132 の固定。各写真は `contain` で全体を見せる
-///   （余った所は面の色。切り取らない）
+/// - 複数枚: 等分（間隔 6）して横に並べ、高さは [height] の固定。各写真は `contain` で全体を見せる
+///   （余った所は面の色。切り取らない）。読み込み中・読み込めない面は、文字拡大で縦に溢れないよう
+///   文字を出さずアイコンだけにする（[_PhotoTileFace]）
 class MessageImages extends StatelessWidget {
   const MessageImages({
     super.key,
     required this.images,
     required this.leftInset,
+    this.alignment = Alignment.centerLeft,
   });
 
   final List<String> images;
   final double leftInset;
 
-  /// 複数枚のときの高さ（正本の `Photo`）
-  static const double height = 132;
+  /// 写真を寄せる側。自分の吹き出しは [Alignment.centerRight]、トレーナーは [Alignment.centerLeft]
+  final Alignment alignment;
+
+  /// 写真の幅の上限（画面幅 390 のとき、吹き出しの幅 約 328 の 7 割強）
+  static const double maxWidth = 240;
+
+  /// 複数枚のときの高さ（正本の `Photo` は 132。1 枚が小さくなった分、横並びも下げた）
+  static const double height = 112;
   static const double radius = 20;
 
-  /// 1 枚のときの高さの上限 = 幅 × この値（縦長の写真が画面を占めないように）
+  /// 複数枚の写真どうしの間隔
+  static const double gap = 6;
+
+  /// 複数枚を横に並べたときの全体の幅（利用できる幅で頭打ちにする前）。
+  /// 各写真が正方形に近い（幅 ≒ [height]）大きさになる幅。ただし 1 枚のときの上限 [maxWidth] は下回らない
+  /// （3 枚で 1 枚が細くなりすぎない）
+  static double multiWidth(int count) =>
+      math.max(maxWidth, count * height + (count - 1) * gap);
+
+  /// 1 枚のときの高さの上限 = 写真の幅 × この値（縦長の写真が画面を占めないように。
+  /// 幅 240 なら 288）
   static const double maxHeightFactor = 1.2;
 
   /// 初めて見る写真の、読み込み前に確保する比率（幅 / 高さ。4:3）
@@ -634,41 +710,57 @@ class MessageImages extends StatelessWidget {
     if (images.isEmpty) return const SizedBox.shrink();
     return Padding(
       padding: EdgeInsets.only(left: leftInset, top: 6),
-      child: images.length == 1
-          ? _SinglePhoto(value: images.first, onTap: () => _open(context, 0))
-          : Row(
-              children: [
-                for (var i = 0; i < images.length; i++) ...[
-                  if (i > 0) const SizedBox(width: 6),
-                  Expanded(
-                    child: FcPressable(
-                      semanticLabel: '写真 ${i + 1} を拡大して見る',
-                      onTap: () => _open(context, i),
-                      child: _PhotoFrame(
-                        height: height,
-                        child: StorageImage(
-                          value: images[i],
-                          bucket: StorageBuckets.messagePhotos,
-                          width: double.infinity,
-                          height: height,
-                          fit: BoxFit.contain,
-                          placeholder: const FcPhotoPlaceholder(
-                            height: height,
-                            radius: 0,
-                            label: '写真',
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = math.min(
+            constraints.maxWidth,
+            images.length == 1 ? maxWidth : multiWidth(images.length),
+          );
+          return Align(
+            alignment: alignment,
+            child: SizedBox(
+              width: width,
+              child: images.length == 1
+                  ? _SinglePhoto(
+                      value: images.first,
+                      alignment: alignment,
+                      onTap: () => _open(context, 0),
+                    )
+                  : Row(
+                      children: [
+                        for (var i = 0; i < images.length; i++) ...[
+                          if (i > 0) const SizedBox(width: gap),
+                          Expanded(
+                            child: FcPressable(
+                              semanticLabel: '写真 ${i + 1} を拡大して見る',
+                              onTap: () => _open(context, i),
+                              child: _PhotoFrame(
+                                height: height,
+                                child: StorageImage(
+                                  value: images[i],
+                                  bucket: StorageBuckets.messagePhotos,
+                                  width: double.infinity,
+                                  height: height,
+                                  fit: BoxFit.contain,
+                                  placeholder: const _PhotoTileFace(
+                                    icon: LucideIcons.image,
+                                    label: '写真',
+                                  ),
+                                  errorWidget: const _PhotoTileFace(
+                                    icon: LucideIcons.imageOff,
+                                    label: '写真を読み込めませんでした',
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
-                          errorWidget: const FcPhotoPlaceholder(
-                            height: height,
-                            radius: 0,
-                            label: '写真を読み込めませんでした',
-                          ),
-                        ),
-                      ),
+                        ],
+                      ],
                     ),
-                  ),
-                ],
-              ],
             ),
+          );
+        },
+      ),
     );
   }
 }
@@ -720,11 +812,53 @@ class _PhotoFrame extends StatelessWidget {
   }
 }
 
-/// 1 枚の写真。写真の縦横比のまま、幅いっぱい（高さの上限に収まる大きさまで）。左寄せ。
+/// 複数枚の 1 枚が、読み込み中・読み込めないときの面。surfaceSecondary の面にアイコンだけを出す。
+///
+/// 複数枚の枠は高さ固定（[MessageImages.height]）で、枚数が増えると幅が狭くなる。そこへ文言
+/// （「写真を読み込めませんでした」）を積むと、文字を拡大したときに折り返して縦に溢れる
+/// （枠の下端で切れる）。そのため文字は出さず、見た目はアイコンで区別する
+/// （読み込み中 = image、読み込めない = imageOff）。
+/// 枠は `FcPressable`（「写真 N を拡大して見る」）で包まれ、読み上げはそちらが担う。
+/// [label] は面だけで使われたときの読み上げ（画面には出さない）。
+/// 1 枚のときの面（高さに余裕があり、文言が収まる）は共通部品の `FcPhotoPlaceholder`
+class _PhotoTileFace extends StatelessWidget {
+  const _PhotoTileFace({required this.icon, required this.label});
+
+  final IconData icon;
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    return Semantics(
+      image: true,
+      label: label,
+      excludeSemantics: true,
+      child: SizedBox(
+        height: MessageImages.height,
+        child: ColoredBox(
+          color: colors.surfaceSecondary,
+          child: Center(
+            child: Icon(icon, size: 22, color: colors.textSecondary),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 1 枚の写真。写真の縦横比のまま、与えられた幅いっぱい（高さの上限に収まる大きさまで）。
+/// 縦長で幅が余るときは [alignment] の側へ寄せる。
 class _SinglePhoto extends StatefulWidget {
-  const _SinglePhoto({required this.value, required this.onTap});
+  const _SinglePhoto({
+    required this.value,
+    required this.alignment,
+    required this.onTap,
+  });
 
   final String value;
+  final Alignment alignment;
   final VoidCallback onTap;
 
   @override
@@ -756,7 +890,8 @@ class _SinglePhotoState extends State<_SinglePhoto> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // 幅いっぱいが基本。高さが上限（幅 × 1.2）を超える縦長の写真は、比率を保ったまま上限へ縮める
+        // 幅いっぱい（親が [MessageImages.maxWidth] までに絞っている）が基本。
+        // 高さが上限（幅 × 1.2）を超える縦長の写真は、比率を保ったまま上限へ縮める
         final maxWidth = constraints.maxWidth;
         final height = math.min(
           maxWidth / _ratio,
@@ -764,7 +899,7 @@ class _SinglePhotoState extends State<_SinglePhoto> {
         );
         final width = height * _ratio;
         return Align(
-          alignment: Alignment.centerLeft,
+          alignment: widget.alignment,
           child: FcPressable(
             semanticLabel: '写真 1 を拡大して見る',
             onTap: widget.onTap,
@@ -1023,8 +1158,8 @@ Widget previewMessageBubbleSystem() {
   );
 }
 
-/// 写真（1 枚は縦横比のまま・縦長は高さの上限で止める / 複数枚は等分）。
-/// 画像は外部 URL（署名なしでそのまま表示される）
+/// 写真（幅は最大 240。1 枚は縦横比のまま・縦長は高さの上限で止める / 複数枚は等分）。
+/// 自分は吹き出しの右端、トレーナーは左端に寄る。画像は外部 URL（署名なしでそのまま表示される）
 Widget _previewPhotos(Brightness brightness) {
   const base = 'https://picsum.photos/seed';
   return _previewApp(
@@ -1059,6 +1194,25 @@ Widget _previewPhotos(Brightness brightness) {
           message: '2 枚',
           isUser: true,
           timestamp: '13:10',
+          images: ['$base/a/800/600', '$base/b/600/800'],
+        ),
+        SizedBox(height: 14),
+        MessageBubble(
+          message: '3 枚',
+          isUser: true,
+          timestamp: '13:12',
+          images: [
+            '$base/a/800/600',
+            '$base/b/600/800',
+            '$base/c/600/600',
+          ],
+        ),
+        SizedBox(height: 14),
+        MessageBubble(
+          message: '2 枚',
+          isUser: false,
+          timestamp: '13:20',
+          trainerName: '田中トレーナー',
           images: ['$base/a/800/600', '$base/b/600/800'],
         ),
       ],

@@ -28,7 +28,8 @@ import 'package:fit_connect_mobile/shared/widgets/fc/fc.dart';
 ///
 /// 正本 `message-screens.js` の `ChatScreen`: 上から コーチのヘッダー → 会話 → クイック操作 + 入力。
 /// 固定高さの会話で、入力欄は下に固定する（キーボードの真上 / ナビの上）。
-/// 自分のメッセージは記録カード、トレーナーのメッセージは吹き出し（[MessageBubble]）。
+/// 自分のメッセージもトレーナーのメッセージも吹き出し（[MessageBubble]。自分は surface・右上が角丸 0、
+/// トレーナーは surfaceSecondary・左上が角丸 0 の鏡写し）。
 /// オンライン表示・最終ログイン・既読・未読の数字は出さない。
 class MessageScreen extends ConsumerStatefulWidget {
   /// 外部から流し込む定型文（セッションの「変更を相談」など）。
