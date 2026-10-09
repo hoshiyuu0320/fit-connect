@@ -1,0 +1,709 @@
+{
+  "dataset": "screenshots-synthetic-v1",
+  "input_kind": "screenshot",
+  "description": "Synthetic screenshots of fictional meal-tracking apps (ごはんログ / ミールノート / MealDiary) with exactly-known on-screen nutrition values, plus non-meal hard negatives. Covers single meals (light/dark, dense, one-decimal grams), day views (totals = day total, alt = largest meal), consistent two-image pairs (list+kcal / PFC chart), mismatched pairs (expect_warning=true) and non-meal apps (is_meal=false). Ground truth = on-screen totals truncated to integers, as SCREENSHOT_SYSTEM_PROMPT instructs.",
+  "source": "Synthetic screenshots rendered by generators/screenshots (fictional apps; HTML rendered with headless Chromium)",
+  "preprocessing": "iPhone 390x844pt @3x = 1170x2532 PNG -> fit inside 1920x1080, no enlargement (=> 499x1080), JPEG q80 (same as StorageService.pickImage: maxWidth 1920, maxHeight 1080, imageQuality 80)",
+  "cases": [
+    {
+      "id": "ss-001",
+      "images": [
+        "images/ss-001-1.jpg"
+      ],
+      "meal_type": "lunch",
+      "content": "",
+      "expected": {
+        "is_meal": true,
+        "totals": {
+          "calories": 514,
+          "protein_g": 38,
+          "fat_g": 12,
+          "carbs_g": 63
+        },
+        "foods_count": 4,
+        "expect_warning": null,
+        "app_name": "ごはんログ"
+      },
+      "tags": [
+        "layout-a",
+        "single",
+        "distractor-target"
+      ]
+    },
+    {
+      "id": "ss-002",
+      "images": [
+        "images/ss-002-1.jpg"
+      ],
+      "meal_type": "breakfast",
+      "content": "朝ごはんのスクショです",
+      "expected": {
+        "is_meal": true,
+        "totals": {
+          "calories": 561,
+          "protein_g": 25,
+          "fat_g": 24,
+          "carbs_g": 60
+        },
+        "foods_count": 4,
+        "expect_warning": null,
+        "app_name": "ごはんログ"
+      },
+      "tags": [
+        "layout-a",
+        "single",
+        "with-note"
+      ]
+    },
+    {
+      "id": "ss-003",
+      "images": [
+        "images/ss-003-1.jpg"
+      ],
+      "meal_type": "dinner",
+      "content": "",
+      "expected": {
+        "is_meal": true,
+        "totals": {
+          "calories": 556,
+          "protein_g": 37,
+          "fat_g": 15,
+          "carbs_g": 68
+        },
+        "foods_count": 5,
+        "expect_warning": null,
+        "app_name": "ごはんログ"
+      },
+      "tags": [
+        "layout-a",
+        "single",
+        "dark",
+        "distractor-target"
+      ]
+    },
+    {
+      "id": "ss-004",
+      "images": [
+        "images/ss-004-1.jpg"
+      ],
+      "meal_type": "snack",
+      "content": "",
+      "expected": {
+        "is_meal": true,
+        "totals": {
+          "calories": 413,
+          "protein_g": 30,
+          "fat_g": 22,
+          "carbs_g": 24
+        },
+        "foods_count": 3,
+        "expect_warning": null,
+        "app_name": "ごはんログ"
+      },
+      "tags": [
+        "layout-a",
+        "single"
+      ]
+    },
+    {
+      "id": "ss-005",
+      "images": [
+        "images/ss-005-1.jpg"
+      ],
+      "meal_type": "lunch",
+      "content": "",
+      "expected": {
+        "is_meal": true,
+        "totals": {
+          "calories": 688,
+          "protein_g": 32,
+          "fat_g": 17,
+          "carbs_g": 100
+        },
+        "foods_count": 3,
+        "expect_warning": null,
+        "app_name": "ミールノート"
+      },
+      "tags": [
+        "layout-b",
+        "single",
+        "totals-top"
+      ]
+    },
+    {
+      "id": "ss-006",
+      "images": [
+        "images/ss-006-1.jpg"
+      ],
+      "meal_type": "dinner",
+      "content": "",
+      "expected": {
+        "is_meal": true,
+        "totals": {
+          "calories": 719,
+          "protein_g": 25,
+          "fat_g": 26,
+          "carbs_g": 97
+        },
+        "foods_count": 4,
+        "expect_warning": null,
+        "app_name": "ミールノート"
+      },
+      "tags": [
+        "layout-b",
+        "single",
+        "totals-bottom"
+      ]
+    },
+    {
+      "id": "ss-007",
+      "images": [
+        "images/ss-007-1.jpg"
+      ],
+      "meal_type": "breakfast",
+      "content": "",
+      "expected": {
+        "is_meal": true,
+        "totals": {
+          "calories": 442,
+          "protein_g": 37,
+          "fat_g": 17,
+          "carbs_g": 37
+        },
+        "foods_count": 4,
+        "expect_warning": null,
+        "app_name": "ミールノート"
+      },
+      "tags": [
+        "layout-b",
+        "single",
+        "dark",
+        "totals-top"
+      ]
+    },
+    {
+      "id": "ss-008",
+      "images": [
+        "images/ss-008-1.jpg"
+      ],
+      "meal_type": "lunch",
+      "content": "",
+      "expected": {
+        "is_meal": true,
+        "totals": {
+          "calories": 506,
+          "protein_g": 41,
+          "fat_g": 14,
+          "carbs_g": 53
+        },
+        "foods_count": 4,
+        "expect_warning": null,
+        "app_name": "ミールノート"
+      },
+      "tags": [
+        "layout-b",
+        "single",
+        "decimal",
+        "totals-top"
+      ]
+    },
+    {
+      "id": "ss-009",
+      "images": [
+        "images/ss-009-1.jpg"
+      ],
+      "meal_type": "dinner",
+      "content": "",
+      "expected": {
+        "is_meal": true,
+        "totals": {
+          "calories": 857,
+          "protein_g": 44,
+          "fat_g": 32,
+          "carbs_g": 98
+        },
+        "foods_count": 7,
+        "expect_warning": null,
+        "app_name": "ミールノート"
+      },
+      "tags": [
+        "layout-b",
+        "single",
+        "dense",
+        "totals-bottom"
+      ]
+    },
+    {
+      "id": "ss-010",
+      "images": [
+        "images/ss-010-1.jpg"
+      ],
+      "meal_type": "lunch",
+      "content": "アプリの画面です",
+      "expected": {
+        "is_meal": true,
+        "totals": {
+          "calories": 623,
+          "protein_g": 40,
+          "fat_g": 18,
+          "carbs_g": 76
+        },
+        "foods_count": 4,
+        "expect_warning": null,
+        "app_name": "MealDiary"
+      },
+      "tags": [
+        "layout-c",
+        "single",
+        "english",
+        "with-note",
+        "distractor-goal"
+      ]
+    },
+    {
+      "id": "ss-011",
+      "images": [
+        "images/ss-011-1.jpg"
+      ],
+      "meal_type": "dinner",
+      "content": "",
+      "expected": {
+        "is_meal": true,
+        "totals": {
+          "calories": 891,
+          "protein_g": 32,
+          "fat_g": 38,
+          "carbs_g": 103
+        },
+        "foods_count": 4,
+        "expect_warning": null,
+        "app_name": "MealDiary"
+      },
+      "tags": [
+        "layout-c",
+        "single",
+        "dark",
+        "english",
+        "jp-food-names"
+      ]
+    },
+    {
+      "id": "ss-012",
+      "images": [
+        "images/ss-012-1.jpg"
+      ],
+      "meal_type": "breakfast",
+      "content": "",
+      "expected": {
+        "is_meal": true,
+        "totals": {
+          "calories": 347,
+          "protein_g": 27,
+          "fat_g": 11,
+          "carbs_g": 33
+        },
+        "foods_count": 5,
+        "expect_warning": null,
+        "app_name": "MealDiary"
+      },
+      "tags": [
+        "layout-c",
+        "single",
+        "decimal",
+        "english"
+      ]
+    },
+    {
+      "id": "ss-013",
+      "images": [
+        "images/ss-013-1.jpg"
+      ],
+      "meal_type": "lunch",
+      "content": "",
+      "expected": {
+        "is_meal": true,
+        "totals": {
+          "calories": 969,
+          "protein_g": 37,
+          "fat_g": 37,
+          "carbs_g": 123
+        },
+        "foods_count": 10,
+        "expect_warning": null,
+        "app_name": "MealDiary"
+      },
+      "tags": [
+        "layout-c",
+        "single",
+        "dense",
+        "english"
+      ]
+    },
+    {
+      "id": "ss-014",
+      "images": [
+        "images/ss-014-1.jpg"
+      ],
+      "meal_type": "dinner",
+      "content": "",
+      "expected": {
+        "is_meal": true,
+        "totals": {
+          "calories": 1947,
+          "protein_g": 78,
+          "fat_g": 80,
+          "carbs_g": 228
+        },
+        "alt_totals": [
+          {
+            "calories": 772,
+            "protein_g": 27,
+            "fat_g": 35,
+            "carbs_g": 87
+          }
+        ],
+        "foods_count": null,
+        "expect_warning": null,
+        "app_name": "ごはんログ"
+      },
+      "tags": [
+        "layout-a",
+        "day-view"
+      ]
+    },
+    {
+      "id": "ss-015",
+      "images": [
+        "images/ss-015-1.jpg"
+      ],
+      "meal_type": "lunch",
+      "content": "",
+      "expected": {
+        "is_meal": true,
+        "totals": {
+          "calories": 1895,
+          "protein_g": 112,
+          "fat_g": 58,
+          "carbs_g": 229
+        },
+        "alt_totals": [
+          {
+            "calories": 752,
+            "protein_g": 31,
+            "fat_g": 27,
+            "carbs_g": 94
+          }
+        ],
+        "foods_count": null,
+        "expect_warning": null,
+        "app_name": "ミールノート"
+      },
+      "tags": [
+        "layout-b",
+        "day-view",
+        "totals-top"
+      ]
+    },
+    {
+      "id": "ss-016",
+      "images": [
+        "images/ss-016-1.jpg"
+      ],
+      "meal_type": "dinner",
+      "content": "",
+      "expected": {
+        "is_meal": true,
+        "totals": {
+          "calories": 1622,
+          "protein_g": 99,
+          "fat_g": 53,
+          "carbs_g": 190
+        },
+        "alt_totals": [
+          {
+            "calories": 562,
+            "protein_g": 33,
+            "fat_g": 15,
+            "carbs_g": 73
+          }
+        ],
+        "foods_count": null,
+        "expect_warning": null,
+        "app_name": "MealDiary"
+      },
+      "tags": [
+        "layout-c",
+        "day-view",
+        "english",
+        "distractor-goal"
+      ]
+    },
+    {
+      "id": "ss-017",
+      "images": [
+        "images/ss-017-1.jpg"
+      ],
+      "meal_type": "dinner",
+      "content": "",
+      "expected": {
+        "is_meal": true,
+        "totals": {
+          "calories": 1647,
+          "protein_g": 85,
+          "fat_g": 45,
+          "carbs_g": 224
+        },
+        "alt_totals": [
+          {
+            "calories": 659,
+            "protein_g": 23,
+            "fat_g": 25,
+            "carbs_g": 85
+          }
+        ],
+        "foods_count": null,
+        "expect_warning": null,
+        "app_name": "ミールノート"
+      },
+      "tags": [
+        "layout-b",
+        "day-view",
+        "dark",
+        "totals-bottom"
+      ]
+    },
+    {
+      "id": "ss-018",
+      "images": [
+        "images/ss-018-1.jpg",
+        "images/ss-018-2.jpg"
+      ],
+      "meal_type": "lunch",
+      "content": "",
+      "expected": {
+        "is_meal": true,
+        "totals": {
+          "calories": 825,
+          "protein_g": 19,
+          "fat_g": 28,
+          "carbs_g": 123
+        },
+        "foods_count": 3,
+        "expect_warning": false,
+        "app_name": "ごはんログ"
+      },
+      "tags": [
+        "layout-a",
+        "two-image",
+        "consistent"
+      ]
+    },
+    {
+      "id": "ss-019",
+      "images": [
+        "images/ss-019-1.jpg",
+        "images/ss-019-2.jpg"
+      ],
+      "meal_type": "dinner",
+      "content": "",
+      "expected": {
+        "is_meal": true,
+        "totals": {
+          "calories": 890,
+          "protein_g": 34,
+          "fat_g": 36,
+          "carbs_g": 109
+        },
+        "foods_count": 5,
+        "expect_warning": false,
+        "app_name": "ミールノート"
+      },
+      "tags": [
+        "layout-b",
+        "two-image",
+        "consistent",
+        "distractor-extra-nutrients"
+      ]
+    },
+    {
+      "id": "ss-020",
+      "images": [
+        "images/ss-020-1.jpg",
+        "images/ss-020-2.jpg"
+      ],
+      "meal_type": "dinner",
+      "content": "",
+      "expected": {
+        "is_meal": true,
+        "totals": {
+          "calories": 574,
+          "protein_g": 40,
+          "fat_g": 19,
+          "carbs_g": 60
+        },
+        "foods_count": 4,
+        "expect_warning": false,
+        "app_name": "MealDiary"
+      },
+      "tags": [
+        "layout-c",
+        "two-image",
+        "consistent",
+        "english"
+      ]
+    },
+    {
+      "id": "ss-021",
+      "images": [
+        "images/ss-021-1.jpg",
+        "images/ss-021-2.jpg"
+      ],
+      "meal_type": "breakfast",
+      "content": "",
+      "expected": {
+        "is_meal": true,
+        "totals": {
+          "calories": 596,
+          "protein_g": 40,
+          "fat_g": 17,
+          "carbs_g": 71
+        },
+        "foods_count": 5,
+        "expect_warning": false,
+        "app_name": "ごはんログ"
+      },
+      "tags": [
+        "layout-a",
+        "two-image",
+        "consistent",
+        "dark"
+      ]
+    },
+    {
+      "id": "ss-022",
+      "images": [
+        "images/ss-022-1.jpg",
+        "images/ss-022-2.jpg"
+      ],
+      "meal_type": "lunch",
+      "content": "",
+      "expected": {
+        "is_meal": true,
+        "totals": null,
+        "foods_count": null,
+        "expect_warning": true,
+        "app_name": "ごはんログ"
+      },
+      "tags": [
+        "layout-a",
+        "two-image",
+        "mismatch",
+        "diff-meal-label"
+      ]
+    },
+    {
+      "id": "ss-023",
+      "images": [
+        "images/ss-023-1.jpg",
+        "images/ss-023-2.jpg"
+      ],
+      "meal_type": "breakfast",
+      "content": "",
+      "expected": {
+        "is_meal": true,
+        "totals": null,
+        "foods_count": null,
+        "expect_warning": true,
+        "app_name": "ミールノート"
+      },
+      "tags": [
+        "layout-b",
+        "two-image",
+        "mismatch",
+        "same-label",
+        "distractor-extra-nutrients"
+      ]
+    },
+    {
+      "id": "ss-024",
+      "images": [
+        "images/ss-024-1.jpg",
+        "images/ss-024-2.jpg"
+      ],
+      "meal_type": "dinner",
+      "content": "",
+      "expected": {
+        "is_meal": true,
+        "totals": null,
+        "foods_count": null,
+        "expect_warning": true,
+        "app_name": "MealDiary"
+      },
+      "tags": [
+        "layout-c",
+        "two-image",
+        "mismatch",
+        "english",
+        "diff-date"
+      ]
+    },
+    {
+      "id": "ss-025",
+      "images": [
+        "images/ss-025-1.jpg"
+      ],
+      "meal_type": "lunch",
+      "content": "",
+      "expected": {
+        "is_meal": false,
+        "totals": null,
+        "foods_count": 0,
+        "expect_warning": null,
+        "app_name": "そらもよう"
+      },
+      "tags": [
+        "non-meal",
+        "weather"
+      ]
+    },
+    {
+      "id": "ss-026",
+      "images": [
+        "images/ss-026-1.jpg"
+      ],
+      "meal_type": "lunch",
+      "content": "",
+      "expected": {
+        "is_meal": false,
+        "totals": null,
+        "foods_count": 0,
+        "expect_warning": null,
+        "app_name": "トークル"
+      },
+      "tags": [
+        "non-meal",
+        "chat",
+        "food-words"
+      ]
+    },
+    {
+      "id": "ss-027",
+      "images": [
+        "images/ss-027-1.jpg"
+      ],
+      "meal_type": "snack",
+      "content": "",
+      "expected": {
+        "is_meal": false,
+        "totals": null,
+        "foods_count": 0,
+        "expect_warning": null,
+        "app_name": "てくてくメーター"
+      },
+      "tags": [
+        "non-meal",
+        "burned-kcal"
+      ]
+    }
+  ]
+}

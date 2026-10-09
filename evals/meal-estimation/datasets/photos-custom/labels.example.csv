@@ -1,0 +1,5 @@
+id,files,meal_type,content,calories,protein_g,fat_g,carbs_g,note
+conv-001,IMG_0001.jpg,lunch,,498,18,15,72,コンビニ 幕の内弁当（パッケージの栄養成分表示・1包装あたり）
+conv-002,IMG_0002.jpg;IMG_0003.jpg,lunch,おにぎり2個とサラダ,520,14,9,95,鮭おにぎり×2 + グリーンサラダ（表示値の合計・ドレッシング込み）
+conv-003,IMG_0004.jpg,breakfast,"ヨーグルトは半分だけ食べた, パンは全部",310,12,9,45,表示値から食べた量で按分（ヨーグルト 0.5 倍）
+home-001,IMG_0010.jpg,dinner,ご飯大盛り,,,,,手料理（正解値が無いので採点しない。EMPTY 判定と所要時間だけ見る）

@@ -1,0 +1,96 @@
+{
+  "dataset": "photos-fixture",
+  "input_kind": "photo",
+  "description": "ハーネスのテスト用フィクスチャ（単色画像・架空の期待値）。評価データではない",
+  "source": "src/__fixtures__/make-fixtures.ts で生成",
+  "preprocessing": "モバイルアプリ相当: 1920x1080 の枠に収まるよう縮小（拡大なし）、JPEG 品質 80",
+  "cases": [
+    {
+      "id": "p-landscape",
+      "images": [
+        "images/landscape.jpg"
+      ],
+      "meal_type": "lunch",
+      "content": "",
+      "expected": {
+        "is_meal": true,
+        "totals": {
+          "calories": 650,
+          "protein_g": 25,
+          "fat_g": 20,
+          "carbs_g": 90
+        }
+      },
+      "tags": [
+        "fixture"
+      ]
+    },
+    {
+      "id": "p-three-images",
+      "images": [
+        "images/landscape.jpg",
+        "images/portrait.jpg",
+        "images/square.jpg"
+      ],
+      "meal_type": "dinner",
+      "content": "ご飯大盛り",
+      "expected": {
+        "is_meal": true,
+        "totals": {
+          "calories": 900,
+          "protein_g": 35,
+          "fat_g": 30,
+          "carbs_g": 120
+        },
+        "alt_totals": [
+          {
+            "calories": 1000,
+            "protein_g": 36,
+            "fat_g": 31,
+            "carbs_g": 140
+          }
+        ]
+      },
+      "tags": [
+        "fixture",
+        "multi-image"
+      ]
+    },
+    {
+      "id": "p-portrait",
+      "images": [
+        "images/portrait.jpg"
+      ],
+      "meal_type": "breakfast",
+      "content": "",
+      "expected": {
+        "is_meal": true,
+        "totals": {
+          "calories": 400,
+          "protein_g": 15,
+          "fat_g": 12,
+          "carbs_g": 55
+        }
+      },
+      "tags": [
+        "fixture"
+      ]
+    },
+    {
+      "id": "p-not-meal",
+      "images": [
+        "images/not-meal.jpg"
+      ],
+      "meal_type": "snack",
+      "content": "",
+      "expected": {
+        "is_meal": false,
+        "totals": null
+      },
+      "tags": [
+        "fixture",
+        "non-meal"
+      ]
+    }
+  ]
+}

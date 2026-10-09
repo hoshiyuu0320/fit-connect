@@ -1,0 +1,74 @@
+{
+  "dataset": "screenshots-fixture",
+  "input_kind": "screenshot",
+  "description": "ハーネスのテスト用フィクスチャ（単色画像・架空の期待値）。評価データではない",
+  "source": "src/__fixtures__/make-fixtures.ts で生成",
+  "preprocessing": "モバイルアプリ相当: 1920x1080 の枠に収まるよう縮小（拡大なし）、JPEG 品質 80",
+  "cases": [
+    {
+      "id": "s-single",
+      "images": [
+        "images/app-a.jpg"
+      ],
+      "meal_type": "lunch",
+      "content": "",
+      "expected": {
+        "is_meal": true,
+        "totals": {
+          "calories": 712,
+          "protein_g": 31,
+          "fat_g": 24,
+          "carbs_g": 93
+        },
+        "foods_count": 3,
+        "expect_warning": false,
+        "app_name": "あすけん"
+      },
+      "tags": [
+        "fixture"
+      ]
+    },
+    {
+      "id": "s-two-mismatch",
+      "images": [
+        "images/app-a.jpg",
+        "images/app-b.jpg"
+      ],
+      "meal_type": "dinner",
+      "content": "",
+      "expected": {
+        "is_meal": true,
+        "totals": {
+          "calories": 845,
+          "protein_g": 40,
+          "fat_g": 28,
+          "carbs_g": 105
+        },
+        "foods_count": null,
+        "expect_warning": true,
+        "app_name": null
+      },
+      "tags": [
+        "fixture",
+        "mismatch"
+      ]
+    },
+    {
+      "id": "s-not-app",
+      "images": [
+        "images/not-app.jpg"
+      ],
+      "meal_type": "snack",
+      "content": "",
+      "expected": {
+        "is_meal": false,
+        "totals": null,
+        "expect_warning": null
+      },
+      "tags": [
+        "fixture",
+        "non-app"
+      ]
+    }
+  ]
+}

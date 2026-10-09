@@ -1,0 +1,8 @@
+node_modules/
+runs/
+datasets/**/raw/
+datasets/photos-nutrition5k/
+# オーナー提供の写真（raw/・images/・labels.csv・cases.json）はローカル専用。説明とサンプルだけコミットする
+datasets/photos-custom/*
+!datasets/photos-custom/README.md
+!datasets/photos-custom/labels.example.csv

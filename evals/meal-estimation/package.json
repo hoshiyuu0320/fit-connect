@@ -1,0 +1,26 @@
+{
+  "name": "fit-connect-meal-estimation-eval",
+  "private": true,
+  "type": "module",
+  "description": "A/B eval harness for the estimate-meal-nutrition Edge Function (model comparison)",
+  "scripts": {
+    "gen:screenshots": "tsx generators/screenshots/generate.ts",
+    "fetch:nutrition5k": "tsx src/fetch-nutrition5k.ts",
+    "import:custom": "tsx src/import-custom-photos.ts",
+    "selftest": "tsx src/selftest.ts",
+    "estimate": "tsx src/run.ts --estimate",
+    "run": "tsx src/run.ts",
+    "report": "tsx src/report.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.132.1",
+    "playwright-core": "^1.56.1",
+    "sharp": "^0.35.5"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}

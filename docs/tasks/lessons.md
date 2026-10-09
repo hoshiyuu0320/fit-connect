@@ -625,3 +625,19 @@
 - 内蔵ブラウザは `Notification.permission` が最初から `'denied'` だが、`configurable` なので `Object.defineProperty(Notification, 'permission', { get: () => 'granted', configurable: true })` で差し替えられる。`navigator.serviceWorker` の `getRegistration` / `ready` も同様に差し替えられる
 - 差し替えはリロードで消えるので、サイドバー（`router.push`）で画面を移ってコンポーネントをマウントし直す
 - `window.fetch` を差し替えるときは、Next.js のルーターが `URL` オブジェクトを渡すので `String(input instanceof Request ? input.url : input)` で URL を取る。`input.url` だけだと RSC の取得が例外になり、ブラウザの通常の遷移（リロード）に落ちて差し替えが消える
+
+## 画像推定モデルの A/B 評価（タスク 2.6、2026-10-09）
+
+### Node の標準 fetch は HTTPS_PROXY を無視する — クラウド環境のネットワークポリシーをすり抜ける
+
+- **症状**: クラウド環境で `curl` は `storage.googleapis.com` に 403（プロキシが CONNECT を拒否）なのに、Node 22 の `fetch` では 200 で取得できてしまった
+- **原因**: Node の組み込み `fetch`（undici）は既定で `HTTPS_PROXY` を見ずに直接接続する。プロキシ側の許可リストが適用されない
+- **対策**: 外部取得スクリプトは `NODE_USE_ENV_PROXY=1` で実行し、プロキシ経由に揃える（`evals/meal-estimation/src/fetch-nutrition5k.ts` は自身をこのフラグ付きで再起動する）。遮断されたホストは抜け道を使わず、環境設定の Allowed domains に追加して取得する
+- **関連**: `evals/meal-estimation/src/fetch-nutrition5k.ts`
+
+### image_picker の maxWidth/maxHeight は「枠に収める」縮小 — 縦長スクショは 499×1080 になる
+
+- **事実**: `StorageService` の `maxWidth: 1920, maxHeight: 1080` はアスペクト比を保って両方の上限に収める。縦長の iPhone スクショ 1170×2532 は高さ 1080 に合わせて **499×1080** まで縮む。縦向きの料理写真も 810×1080
+- **影響**: 他アプリ取込（スクショ OCR）では文字が小さくなり、モデルの高解像度対応の恩恵も受けにくい。コスト試算で 1920×1080 を仮定すると画像トークンを多めに見積もる
+- **教訓**: 画像系 AI 機能の評価・試算は、Mobile 側の前処理後の実寸で行う。スクショ取込の精度改善を検討するときは、縦長画像の上限を別に設定する案が候補になる
+- **関連**: `fit-connect-mobile/lib/services/storage_service.dart`、`evals/meal-estimation/generators/screenshots/`

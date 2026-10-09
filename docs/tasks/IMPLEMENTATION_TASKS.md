@@ -152,6 +152,14 @@
   - **バックログ（v1スコープ外）**: 1日サマリーからの複数記録一括生成 / スクショからの日付・食事区分自動読み取り（過去日付記録）
   - 補足: 他アプリユーザーの流入導線として位置付け（`docs/tasks/2026-04-29-feature-backlog.md` 1. AI機能より昇格）
 
+- [ ] **2.6 画像推定モデルの Haiku 5.5 移行検証**（料金提案書 §8 決定事項 7 の実施。2026-10-08 着手）
+  - [x] 実現性・コスト調査 → `docs/tasks/2026-10-08-haiku-5-5-photo-estimation-feasibility.md`（約1/15、100K超過レートも影響なし）
+  - [x] A/B 評価ハーネス `evals/meal-estimation/`（4アーム: sonnet-4-6-prod / haiku-5-5-low / haiku-5-5-medium / sonnet-5-5-low。本番と同一プロンプト・同一パース処理。selftest 29/29、2026-10-09）
+  - [x] 評価データ: 合成スクショ 27 件（正解値は描画データから導出、本番と同じ 499x1080 前処理）
+  - [ ] 評価データ: Nutrition5k 料理写真（実測カロリー。取得スクリプト済み、要 `storage.googleapis.com` 許可）/ オーナー撮影の栄養成分表示つき市販食（任意、`datasets/photos-custom/README.md`）
+  - [ ] 評価実行（要 Anthropic API キー。費用目安は README）→ 判定ルール（§7）で Go/No-Go
+  - [ ] Go の場合: Edge Function 改修（model / temperature 削除 / refusal 処理 / effort・max_tokens / content 文字数上限）＋ `ai_estimation_logs` に model・usage 列追加
+
 ---
 
 ## フェーズ3: オンボーディングフロー（Mobile）
