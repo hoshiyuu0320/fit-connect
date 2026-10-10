@@ -4,12 +4,10 @@
             "command": "npx",
             "args": [
                 "-y",
-                "@supabase/mcp-server-supabase@latest",
-                "--access-token",
-                "sbp_acf0b770bae6eb77f8ce90de37fed029f3cf07de"
+                "@supabase/mcp-server-supabase@latest"
             ],
             "env": {
-                "PATH": "/Users/hoshidayuuya/.nodebrew/current/bin:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+                "SUPABASE_ACCESS_TOKEN": "${SUPABASE_ACCESS_TOKEN}"
             }
         }
     }
