@@ -97,3 +97,38 @@ input[type="number"]::-webkit-outer-spin-button {
   width: 1.5em;
   cursor: pointer;
 }
+
+/* iPad / タッチデバイス対応 */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* タッチデバイスではダブルタップズームを抑制し、ドラッグ操作を安定化 */
+  body {
+    touch-action: manipulation;
+  }
+
+  /* iOS Safari でフォーム要素が自動ズームされないよう16px以上を確保 */
+  @supports (-webkit-touch-callout: none) {
+    input,
+    textarea,
+    select {
+      font-size: 16px;
+    }
+  }
+}
+
+/* ホバー効果をホバー可能デバイスに限定（iPadでホバー残留を防ぐ） */
+@media (hover: none) {
+  .hover\:bg-gray-50:hover,
+  .hover\:bg-gray-100:hover,
+  .hover\:bg-\[\#F8FAFC\]:hover,
+  .hover\:bg-\[\#fff\]:hover,
+  .hover\:text-gray-600:hover,
+  .hover\:text-\[\#475569\]:hover {
+    background-color: revert;
+    color: revert;
+  }
+}

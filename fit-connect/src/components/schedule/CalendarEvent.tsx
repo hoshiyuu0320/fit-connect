@@ -72,6 +72,7 @@ export const CalendarEvent: React.FC<CalendarEventProps> = ({ event, onClick, vi
                     color: colors.text,
                     opacity: statusStyle.opacity,
                     borderRadius: '4px',
+                    touchAction: 'none',
                 }}
                 {...(!isDragOverlay ? listeners : {})}
                 {...(!isDragOverlay ? attributes : {})}
@@ -97,6 +98,7 @@ export const CalendarEvent: React.FC<CalendarEventProps> = ({ event, onClick, vi
                 color: colors.text,
                 opacity: statusStyle.opacity,
                 borderRadius: '6px',
+                touchAction: 'none',
             }}
             {...(!isDragOverlay ? listeners : {})}
             {...(!isDragOverlay ? attributes : {})}

@@ -29,6 +29,7 @@ function DraggableTemplateCard({
   const style = {
     transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.5 : 1,
+    touchAction: 'none' as const,
   }
 
   const categoryLabel =

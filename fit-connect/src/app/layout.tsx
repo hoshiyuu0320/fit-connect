@@ -46,6 +46,9 @@ export default function RootLayout({
 
   return (
     <html lang="ja" className={`${jakarta.variable} ${noto.variable}`}>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+      </head>
       <body className="font-sans antialiased">
         {children}
         {gaMeasurementId && <GoogleAnalytics gaId={gaMeasurementId} />}
