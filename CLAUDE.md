@@ -94,8 +94,9 @@ Web/Mobile は **同じ Supabase プロジェクト**を共有しています。
 ### 共通スキル（親 .claude/skills/）
 | スキル          | 用途                                        |
 | --------------- | ------------------------------------------- |
-| chrome-web-qa   | Web側コード変更後の Chrome ブラウザ動作確認 |
+| chrome-web-qa   | Web側コード変更後の内蔵ブラウザでの動作確認（テストログイン） |
 | ios-simulator-qa| Mobile側コード変更後の iOS Simulator 動作確認 |
+| android-emulator-qa | Mobile側コード変更後の Android Emulator 動作確認（adb） |
 | ui-ux-pro-max   | UI実装前のデザインシステム生成              |
 
 ## Design Tokens — Web (fit-connect) 用
@@ -138,8 +139,9 @@ UIサブエージェント（`nextjs-ui` / `flutter-ui`）は `Skill` ツール�
 
 サブエージェントによるコード変更が完了したら、**必ず対応するQAスキルを実行**すること:
 
-- **fit-connect（Web）のコード変更後** → `chrome-web-qa` スキルを実行（Chromeブラウザで動作確認）
-- **fit-connect-mobile（Mobile）のコード変更後** → `ios-simulator-qa` スキルを実行（iOSシミュレータで動作確認）
+- **fit-connect（Web）のコード変更後** → `chrome-web-qa` スキルを実行（内蔵ブラウザで動作確認）
+- **fit-connect-mobile（Mobile）のコード変更後** → iOS は `ios-simulator-qa`、Android は `android-emulator-qa` スキルを実行
+  - Mobile の動作確認は常に `dev_login.json` 付きビルドで行う（`fit-connect-mobile/` で `fvm flutter run -d <device> --dart-define-from-file=dev_login.json`）
 
 ユーザーから「確認不要」「スキップして」と指示された場合を除き、実装完了報告前に必ずQAを通すこと。
 
