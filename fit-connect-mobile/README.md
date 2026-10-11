@@ -10,9 +10,9 @@ FIT-CONNECT のクライアント向け Flutter アプリ。
 | --- | --- | --- |
 | **Flutter** | **3.41.9（固定）** | fvm でピン留め（`.fvmrc`）。最新版は使わないこと（下記参照） |
 | Dart | 3.11.5 | Flutter 3.41.9 に同梱 |
-| **Xcode** | **26.x 推奨** | iOSビルドに必須。実機ビルドは端末のiOSに対応した版が必要（下記参照） |
+| **Xcode** | **26.x / 27.x** | iOSビルドに必須。実機ビルドは端末のiOSに対応した版が必要（下記参照）。27.x は下記「Xcode 27 の注意点」参照 |
 | CocoaPods | 1.16.x | iOSビルド用（`brew install cocoapods`） |
-| OpenJDK | 21 | Android/Gradle用（`brew install openjdk@21`） |
+| **OpenJDK** | **21** | Android/Gradle用（`brew install openjdk@21`）。Android Studio 同梱の JDK（25）では Gradle 8.14 が動かないため必須。下記参照 |
 | Android SDK | platform 36 / build-tools 36 | Androidビルド用 |
 
 ### ⚠️ Flutter は 3.41.9 に固定（fvm 管理）
@@ -50,8 +50,10 @@ fvm flutter run
    ```
    SUPABASE_URL=...
    SUPABASE_ANON_KEY=...
+   GOOGLE_WEB_CLIENT_ID=...
    ```
    これが無いとアセット束ね処理でビルドが失敗する。
+   - `GOOGLE_WEB_CLIENT_ID` は Google ログイン用（`lib/features/auth/data/auth_repository.dart` で参照）。Google Cloud Console の認証情報にある **Web クライアント ID** を記載する。
 3. **iOS依存（CocoaPods）** は `flutter build/run` 時に自動で `pod install` される。
 
 ### ビルド & 実行
@@ -80,6 +82,63 @@ fvm flutter run -d <device-id>
    sudo softwareupdate --install-rosetta --agree-to-license
    ```
 4. **Xcodeのバージョン**: 実機の iOS に対応した Xcode が必要（例: iOS 26.5 の端末には Xcode 26.x）。古すぎる Xcode では新しい iOS 実機に流せない。
+
+### Xcode 27 の注意点
+
+- **Simulator.app が廃止**され、Device Hub（`Xcode.app/Contents/Applications/DeviceHub.app`）に置き換わった。`open -a Simulator` は失敗するので `open -a DeviceHub` を使う。
+- Flutter 3.41.9 の `flutter emulators --launch` も旧 Simulator を探すため失敗する。先に simctl で起動しておく:
+  ```bash
+  xcrun simctl list devices available
+  xcrun simctl boot "iPhone 18 Pro"
+  open -a DeviceHub
+  fvm flutter devices
+  fvm flutter run -d <device-id>
+  ```
+- deployment target 15.0 未満の Pods はエラーになるが、`ios/Podfile` の `post_install` で 15.0 に揃えて対応済み。
+- iOS シミュレータランタイムは Xcode → Settings → Components から、または以下で取得:
+  ```bash
+  xcodebuild -downloadPlatform iOS
+  ```
+
+### Android ビルドの準備
+
+1. **Android Studio と JDK 21 をインストール**
+   ```bash
+   brew install --cask android-studio
+   brew install openjdk@21
+   ```
+2. **SDK Manager で取得**
+   - SDK Platforms: Android 16.0 (API 36.0)
+   - SDK Tools: Build-Tools 36.0.0 / Command-line Tools (latest) / Android Emulator
+   - NDK は初回ビルド時に Gradle が自動取得するので手動インストール不要。
+3. **Flutter に JDK 21 を指定（必須）**
+   ```bash
+   fvm flutter config --jdk-dir "$(brew --prefix openjdk@21)/libexec/openjdk.jdk/Contents/Home"
+   ```
+   - 未指定だと Android Studio 同梱の JDK 25 が使われ、`What went wrong: 25.0.3` のような意味不明なエラーでビルド失敗する。
+   - JDK を切り替えた後は Gradle デーモンを止める:
+     ```bash
+     pkill -f GradleDaemon
+     ```
+4. **エミュレータは API 36 で作成**（arm64-v8a）。API 37 (Android 17) のエミュレータは Flutter 3.41.9 では `flutter run` の対象外になった（原因未特定）（`flutter devices` には出るが `No supported devices found`）。
+
+- `minSdk` は health プラグインの要求で **26 固定**（`android/app/build.gradle.kts`）。
+- 既知の無害な警告:
+  - Command-line Tools 23 以降では `flutter doctor` が `Android license status unknown` を出すが、`~/Library/Android/sdk/licenses/` にファイルがあれば同意済みでビルドに影響なし。
+  - `SDK XML versions up to 3 but ... version 4` 警告も無害。
+
+### Android で Google ログインを使う（debug 署名の SHA-1）
+
+Android の Google ログインは、Google Cloud Console の **Android 用 OAuth クライアント**に登録された「パッケージ名 `com.fitconnect.fit_connect_mobile` + 署名鍵の SHA-1」と一致しないと失敗する（`PlatformException(sign_in_failed, ... 10: ...)` / DEVELOPER_ERROR）。debug ビルドはマシンごとの `~/.android/debug.keystore` で署名されるため、**新しいマシンではそのままでは失敗する**。
+
+- **対処A（推奨）**: 既存マシンの `~/.android/debug.keystore` を新マシンの同じパスへコピーする（Git には入れない）。
+- **対処B**: 新マシンの SHA-1 を取得し、Google Cloud Console → APIs とサービス → 認証情報 で、同じパッケージ名・新しい SHA-1 の Android OAuth クライアントを**追加作成**する（既存クライアントの SHA-1 を書き換えると旧マシンで使えなくなる）。
+  ```bash
+  keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android | grep SHA1
+  ```
+  反映まで数分〜数十分かかることがある。
+- 初回セットアップ手順の詳細は [`docs/superpowers/GOOGLE_AUTH_MANUAL_SETUP.md`](docs/superpowers/GOOGLE_AUTH_MANUAL_SETUP.md) を参照。
+- 本番リリース時は本番署名鍵（Play App Signing 使用時は Play Console の「アプリの署名鍵」）の SHA-1 も登録が必要。
 
 ### マシン間でビルドを揃えるには
 
