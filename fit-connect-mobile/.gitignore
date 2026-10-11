@@ -48,3 +48,6 @@ assets/.env
 # FVM Version Cache
 .fvm/third_party/lucide_icons/.dart_tool/
 .fvm/
+
+# 開発用テストログインの認証情報（--dart-define-from-file で使用）
+dev_login.json

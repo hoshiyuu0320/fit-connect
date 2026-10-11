@@ -71,6 +71,16 @@ fvm flutter run -d <device-id>
 
 開発中はアプリを起動したまま、ターミナルで `r`（hot reload）/ `R`（hot restart）で反映するのが最速。
 
+### 開発用テストログイン
+
+マジックリンクを使わずに検証用クライアントでログインするためのボタン（デバッグビルド限定）。
+
+1. `dev_login.example.json` を `dev_login.json` にコピーし、検証用アカウントのメールアドレス・パスワードを記入（Git管理外）
+2. `fvm flutter run -d <device> --dart-define-from-file=dev_login.json` で起動
+3. ログイン画面に「テストログイン（開発用）」ボタンが表示される
+
+認証情報は `assets/.env` に書かないこと（アセットとしてリリースビルドに同梱されるため）。dart-define 未指定時やリリースビルドではボタンは表示されない。
+
 ### 実機（iPhone）ビルド時の注意
 
 実機ビルドはシミュレータより手順が多い。初回に以下が必要:

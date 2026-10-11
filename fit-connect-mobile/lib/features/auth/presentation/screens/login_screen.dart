@@ -3,6 +3,7 @@ import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/features/auth/data/auth_repository.dart';
+import 'package:fit_connect_mobile/features/auth/data/dev_login_config.dart';
 import 'package:fit_connect_mobile/features/auth/presentation/widgets/email_sent_card.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -37,6 +38,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   bool _isGoogleLoading = false;
   bool _isAppleLoading = false;
+  bool _isDevLoading = false;
   bool _isEmailSent = false;
   final _authRepository = AuthRepository();
 
@@ -162,8 +164,36 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  /// 開発用テストログイン（デバッグビルド + dart-define 指定時のみ表示）
+  Future<void> _handleDevLogin() async {
+    setState(() {
+      _isDevLoading = true;
+    });
+
+    try {
+      await _authRepository.signInWithPasswordForDev();
+      // 認証成功 → _authSubscription が検知してナビゲーション
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('テストログインエラー: ${e.toString()}'),
+            backgroundColor: AppColors.rose800,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isDevLoading = false;
+        });
+      }
+    }
+  }
+
   /// いずれかの認証処理が実行中か
-  bool get _isAnyLoading => _isLoading || _isGoogleLoading || _isAppleLoading;
+  bool get _isAnyLoading =>
+      _isLoading || _isGoogleLoading || _isAppleLoading || _isDevLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -384,6 +414,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ],
                                   ),
                           ),
+
+                          // 開発用テストログイン（リリースビルドでは表示されない）
+                          if (DevLoginConfig.isDevLoginAvailable) ...[
+                            const SizedBox(height: 24),
+                            _buildDevLoginButton(context),
+                          ],
                         ],
 
                         const Spacer(),
@@ -408,6 +444,71 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  /// 開発用テストログインボタン。
+  /// 本番の導線と混同しないよう、グレーの控えめなアウトラインと
+  /// 「開発用」ラベルで明確に区別する。
+  Widget _buildDevLoginButton(BuildContext context) {
+    final colors = AppColors.of(context);
+    return OutlinedButton(
+      onPressed: _isAnyLoading ? null : _handleDevLogin,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: colors.textSecondary,
+        side: BorderSide(color: colors.textHint),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        elevation: 0,
+      ),
+      child: _isDevLoading
+          ? SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                color: colors.textSecondary,
+                strokeWidth: 2,
+              ),
+            )
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: colors.surfaceDim,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: colors.textHint),
+                  ),
+                  child: Text(
+                    '開発用',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  LucideIcons.wrench,
+                  size: 16,
+                  color: colors.textSecondary,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'テストログイン（開発用）',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: colors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
     );
   }
 

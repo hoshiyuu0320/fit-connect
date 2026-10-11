@@ -4,6 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
+import DevLoginButton from '@/components/auth/DevLoginButton';
 
 export default function LoginPage() {
     const [password, setPassword] = useState("")
@@ -126,6 +127,9 @@ export default function LoginPage() {
                         </svg>
                         Googleでログイン
                     </button>
+
+                    {/* Dev-only test login (next dev のみ表示) */}
+                    <DevLoginButton />
 
                     {/* Forgot password */}
                     <div className="mt-6 text-center">

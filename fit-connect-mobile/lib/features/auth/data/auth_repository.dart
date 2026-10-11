@@ -6,6 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:fit_connect_mobile/features/auth/data/dev_login_config.dart';
 import 'package:fit_connect_mobile/services/supabase_service.dart';
 
 class AuthRepository {
@@ -22,6 +23,19 @@ class AuthRepository {
     await _client.auth.signInWithOtp(
       email: email,
       emailRedirectTo: 'fitconnectmobile://login-callback',
+    );
+  }
+
+  /// 開発用テストログイン（メール+パスワード）。
+  /// デバッグビルドかつ `--dart-define-from-file=dev_login.json` で
+  /// 認証情報が渡されている場合のみ使用可能。
+  Future<AuthResponse> signInWithPasswordForDev() async {
+    if (!DevLoginConfig.isDevLoginAvailable) {
+      throw StateError('開発用テストログインは利用できません');
+    }
+    return _client.auth.signInWithPassword(
+      email: DevLoginConfig.email,
+      password: DevLoginConfig.password,
     );
   }
 
