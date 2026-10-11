@@ -134,6 +134,9 @@ cd ..
 
 ```bash
 flutter run -d <DEVICE_UDID>
+
+# fit-connect-mobile/dev_login.json がある場合（開発用テストログインを有効化）
+flutter run -d <DEVICE_UDID> --dart-define-from-file=dev_login.json
 ```
 
 **flutter run が失敗する場合（Xcode 26 互換性問題）:**
@@ -141,6 +144,9 @@ flutter run -d <DEVICE_UDID>
 xcodebuildで直接ビルドしてから手動インストールする:
 
 ```bash
+# dev_login.json がある場合は、先に Generated.xcconfig へ DART_DEFINES を書き出しておく
+flutter build ios --simulator --debug --config-only --dart-define-from-file=dev_login.json
+
 cd ios
 
 # ビルド（-sdk iphonesimulator のみ、-destination なし）
@@ -199,6 +205,7 @@ xcrun simctl launch <DEVICE_UDID> com.fitconnect.fitConnectMobile
 
 **対応手順:**
 
+0. ログイン画面に「テストログイン（開発用）」ボタンが表示されている場合（`dev_login.json` 指定ビルド）は、それをタップしてログインし、ホーム画面を確認したら → Step 4 へ進む（以下の Google 手順は不要）
 1. Googleログインボタンをタップしてフローを開始する
 2. Google OAuth のダイアログ（「"fit_connect_mobile" がサインインのために "google.com" を使用しようとしています」）が出たら「続ける」をタップ
 3. **Google のログインフォームが表示されたら、ユーザーに手動入力を依頼する:**
