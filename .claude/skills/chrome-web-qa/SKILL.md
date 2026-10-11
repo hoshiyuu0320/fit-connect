@@ -1,9 +1,11 @@
 ---
 name: chrome-web-qa
 description: |
-  Chrome Web QA - コード変更後のWebアプリ動作確認スキル。
+  Web QA - コード変更後のWebアプリ動作確認スキル。
   fit-connect（Next.js Trainer Web App）の実装タスク完了後に、
-  devサーバーを起動し、claude-in-chrome MCP を使ってブラウザ上で画面操作・動作検証を行う。
+  Claude デスクトップアプリの内蔵ブラウザ（mcp__Claude_Browser__*）で devサーバーを起動・表示し、
+  開発用「テストログイン」ボタンでログインして、ブラウザ上で画面操作・動作検証を行う。
+  ユーザーの Chrome やそのログイン状態には触れない（Chrome での確認を明示的に頼まれた時のみ Claude in Chrome を使う）。
 
   以下の場面で必ず使用すること:
   - Next.jsコードの実装・修正が完了した時（ユーザーの指示を待たず自動実行）
@@ -12,26 +14,37 @@ description: |
   - 実装タスクの完了報告前の最終チェック
   - 「devサーバーで確認」「画面確認して」と言われた時
   - fit-connect（Web側）に関する動作検証全般
-  
+
   重要: サブエージェントによるコード変更完了後は、ユーザーから「確認不要」「スキップして」と
   指示されない限り、自動的にこのスキルを実行すること。
 ---
 
-# Chrome Web QA Skill
+# Web QA Skill（内蔵ブラウザ）
 
-コード変更後にNext.js devサーバーを起動し、claude-in-chrome MCPでブラウザ上の動作確認を行うスキル。
-不具合発見時はスクリーンショットを保存し、exploreエージェントに調査を委託する。
+コード変更後に Claude デスクトップアプリの **内蔵ブラウザ**（`mcp__Claude_Browser__*`）で Next.js devサーバーを起動・表示し、
+開発用「テストログイン」でログインして動作確認を行うスキル。
+不具合発見時はスクリーンショット・コンソールログを記録し、Explore エージェントに調査を委託する。
 
 ## 全体フロー
 
 ```
 1. テスト計画の作成（変更内容に基づく）
-2. devサーバー起動 & ブラウザでアクセス
-3. ログイン状態の判定 & 対応
-4. claude-in-chromeで各テスト項目を実行
-5. 不具合発見時 → スクリーンショット保存 → explore エージェントに調査委託
+2. devサーバー起動 & 内蔵ブラウザで表示（preview_start name: "web"）
+3. ログイン状態の判定 & テストログイン
+4. 内蔵ブラウザで各テスト項目を実行
+5. 不具合発見時 → スクリーンショット + コンソールログ → Explore エージェントに調査委託
 6. 結果レポート
 ```
+
+## 前提・共通ルール
+
+- 作業ディレクトリ: リポジトリルート。Webアプリはリポジトリルート直下の `fit-connect/`
+- devサーバーはリポジトリルートの `.claude/launch.json` の構成 **`web`**（`npm --prefix fit-connect run dev`、ポート 3000）で起動する
+- 既定のブラウザは **内蔵ブラウザ**（Claude デスクトップアプリのブラウザペイン）。ユーザーの Chrome とは分離されており、Chrome のログイン状態・Cookie には触れない
+- 内蔵ブラウザのツール（`mcp__Claude_Browser__*`）は最初からロード済み。**ToolSearch は不要**
+- 内蔵ブラウザは **セッション（ログイン状態）を実行間で保持する**。毎回ログインする前に、まずログイン状態を確認する
+- `.env*` ファイルは **読まない**（`fit-connect/.env.local` も含む）
+- パスワード等の認証情報は **絶対に自分で入力しない**。ログインは「テストログイン」ボタンのクリックのみで行う
 
 ## Step 1: テスト計画の作成
 
@@ -68,153 +81,150 @@ description: |
 ### 回帰テスト
 - [ ] T-R01: サイドバーメニュー全項目（ダッシュボード→顧客管理→メッセージ→レポート→チケット→スケジュール→設定）の遷移確認
 - [ ] T-R02: ページがクラッシュ（エラー画面）せず安定表示されること
+- [ ] T-R03: （レイアウト変更時）モバイル幅（resize_window preset: mobile）で崩れないこと
 ```
 
-## Step 2: devサーバー起動 & ブラウザでアクセス
+## Step 2: devサーバー起動 & 内蔵ブラウザで表示
 
-### 前提条件
-
-プロジェクトルート: `/Users/hoshidayuuya/Documents/FIT-CONNECT/fit-connect`
-
-### 2-1. devサーバーの起動
-
-まず既にdevサーバーが起動していないか確認する:
-
-```bash
-# ポート3000が使われているか確認
-lsof -ti:3000
-```
-
-起動していなければ、バックグラウンドで起動:
-
-```bash
-cd /Users/hoshidayuuya/Documents/FIT-CONNECT/fit-connect
-npm run dev
-```
-
-`run_in_background: true` で実行し、数秒後にサーバーが `Ready` になったことを確認する。
-
-### 2-2. サーバーの応答確認
-
-```bash
-curl -s -o /dev/null -w "%{http_code}" http://localhost:3000
-```
-
-200が返ればOK。
-
-### 2-3. Chrome拡張の接続確認 & タブ作成
-
-claude-in-chromeツールを使う前に、必ずToolSearchでツールをロードすること:
+### 2-1. preview_start で起動（既に起動済みなら再利用）
 
 ```
-ToolSearch: select:mcp__claude-in-chrome__tabs_context_mcp
+mcp__Claude_Browser__preview_start:
+  name: "web"
 ```
 
-接続確認:
+- `.claude/launch.json` の `web` 構成で devサーバーを起動し（起動済みなら再利用）、内蔵ブラウザで `http://localhost:3000` のタブを開く
+- 結果に含まれる **serverId** を記録しておく（ログ確認・停止に使う）
+- 手動の `npm run dev` / `curl` による起動確認は不要。Bash で devサーバーを起動しないこと
+
+### 2-2. サーバーログの確認
+
+ビルドエラーやサーバー側の例外を確認したい時:
 
 ```
-mcp__claude-in-chrome__tabs_context_mcp:
-  createIfEmpty: true
+mcp__Claude_Browser__preview_logs:
+  serverId: <serverId>
+  level: error        # エラー行のみ。全体を見るなら all
 ```
 
-「No Chrome extension connected.」エラーが出た場合は、ユーザーに以下を依頼:
+起動済みサーバー一覧は `mcp__Claude_Browser__preview_list` で確認できる。
+
+### 2-3. 停止（必要な場合のみ）
 
 ```
-「Chrome拡張機能（Claude in Chrome）が接続されていません。
-Chromeを起動して拡張機能が有効になっているか確認してください。」
+mcp__Claude_Browser__preview_stop:
+  serverId: <serverId>
 ```
 
-### 2-4. localhost:3000 を開く
+通常は QA 後も起動したままでよい（次回の preview_start で再利用される）。
 
-新しいタブを作成するか、既存タブでナビゲート:
+## Step 3: ログイン状態の判定 & テストログイン
 
-```
-# ツールのロード
-ToolSearch: select:mcp__claude-in-chrome__navigate
-
-# ナビゲート
-mcp__claude-in-chrome__navigate:
-  url: "http://localhost:3000"
-  tabId: <取得したtabId>
-```
-
-## Step 3: ログイン状態の判定と対応
-
-ページ読み込み後、`read_page` でページ内容を確認する。
-
-### ツールのロード
-
-初回は必ずToolSearchでツールをロード:
-
-```
-ToolSearch: select:mcp__claude-in-chrome__read_page
-ToolSearch: select:mcp__claude-in-chrome__computer
-ToolSearch: select:mcp__claude-in-chrome__find
-```
+ページ表示後、`read_page`（`filter: "interactive"`）または `get_page_text` で画面を確認する。
 
 ### 判定基準
 
 | 表示内容 | 状態 | 対応 |
 |----------|------|------|
 | サイドバーに「ダッシュボード」「顧客管理」等のメニュー | **ログイン済み** | → Step 4 へ進む |
-| 「おかえりなさい」+ メール/パスワード入力フォーム | **ログイン画面**（未ログイン） | → 下記「ログイン対応」へ |
-| その他のエラー画面 | **エラー** | → 原因調査 |
+| 「おかえりなさい」+ 「Googleでログイン」等のログインフォーム | **ログイン画面**（未ログイン） | → 下記「テストログイン」へ |
+| ランディングページ（マーケティング画面） | **未ログイン** | → `/login` へ遷移してテストログイン |
+| その他のエラー画面 | **エラー** | → `preview_logs` / `read_console_messages` で原因調査 |
 
-### ログイン対応
+### A) テスト対象がログイン不要の画面の場合
 
-#### A) テスト対象がログイン不要の画面の場合
+ログイン画面やランディングページ自体が変更対象であれば、そのままテストを実行できる。
+ログイン済みでログイン画面を確認したい場合は、設定画面等からログアウトしてから確認する。
 
-ログイン画面自体が変更対象であれば、そのままテストを実行できる。
+### B) テストログイン（ログイン必須の画面の場合）
 
-#### B) テスト対象がログイン必須の画面の場合
+`/login` の開発用「**テストログイン**」ボタンを使う（`fit-connect/src/components/auth/DevLoginButton.tsx`）。
 
-Googleログインを使用する:
+1. `navigate` で `http://localhost:3000/login` を開く
+2. `find` で「テストログイン」を検索し、ref を取得
+3. `computer` の `left_click`（ref 指定）でクリック
+4. `computer` の `wait` で 2 秒程度待機
+5. URL が `/dashboard` になり、挨拶（現在のテストデータでは「こんにちは、テストトレーナーさん！」。時間帯により「おはようございます」「こんばんは」に変わる）が表示されることを `get_page_text` 等で確認
+6. → Step 4 へ進む
 
-1. `find` ツールで「Googleでログイン」ボタンを探す
-2. `computer` ツールの `left_click` でボタンをクリック
-3. Googleアカウント選択画面が表示されたら:
-   - `find` ツールでユーザー名（「星田優哉」）を検索
-   - 該当アカウントを `left_click` でクリック
-4. OAuth同意画面が表示されたら「次へ」をクリック
-5. **パスワード入力画面が表示された場合は、ユーザーに手動入力を依頼:**
+`browser_batch` でまとめて実行する例:
+
+```
+mcp__Claude_Browser__browser_batch:
+  actions:
+    - name: navigate
+      input: { url: "http://localhost:3000/login" }
+    - name: find
+      input: { query: "テストログイン" }
+```
+
+→ 返った ref で:
+
+```
+mcp__Claude_Browser__browser_batch:
+  actions:
+    - name: computer
+      input: { action: left_click, ref: <ref_N>, action_summary: "テストログインボタンをクリック" }
+    - name: computer
+      input: { action: wait, duration: 2 }
+    - name: get_page_text
+      input: {}
+```
+
+### 「テストログイン」ボタンが表示されない場合
+
+このボタンは `next dev`（development）かつ `fit-connect/.env.local` に
+`NEXT_PUBLIC_DEV_LOGIN_EMAIL` と `NEXT_PUBLIC_DEV_LOGIN_PASSWORD` の両方が設定されている時のみ表示される。
+`.env.local` は読まずに、ユーザーへ設定を依頼する:
 
 ```
 ユーザーへのメッセージ:
-「Googleログインのパスワード入力画面が表示されました。セキュリティ上、
-パスワードの入力はご自身でお願いします。ブラウザ上でパスワードを入力して
-ログインしてください。完了したら教えてください。」
+「ログイン画面に開発用『テストログイン』ボタンが表示されていません。
+fit-connect/.env.local に、テスト用トレーナーアカウントの
+NEXT_PUBLIC_DEV_LOGIN_EMAIL と NEXT_PUBLIC_DEV_LOGIN_PASSWORD を設定してください。
+設定後は devサーバーの再起動が必要です。完了したら教えてください。」
 ```
 
-6. ダッシュボード（`/dashboard`）にリダイレクトされたことを確認
-7. → Step 4 へ進む
+設定後は `preview_stop` → `preview_start`（name: "web"）で devサーバーを再起動する。
 
-**ポイント:** パスワード等の認証情報は絶対に自分で入力しない。アカウント選択や同意ボタンなど、認証情報を含まない操作のみ行う。
+### 禁止事項
 
-## Step 4: claude-in-chrome による動作確認
+- **Googleログインを既定のログイン手段として使わない**（Googleログイン自体のテストをユーザーに明示的に頼まれた場合を除く。その場合もパスワード入力はユーザーに依頼する）
+- メールアドレス・パスワードをフォームに入力しない
+- `.env*` ファイルを読まない
 
-### 使用ツールの概要
+## Step 4: 内蔵ブラウザによる動作確認
+
+### 使用ツールの概要（`mcp__Claude_Browser__` プレフィックス）
 
 | ツール | 用途 |
 |--------|------|
-| `read_page` | ページのアクセシビリティツリーを取得。要素の確認に使う |
-| `find` | 自然言語でページ上の要素を検索（ボタン、リンク等） |
-| `computer` (screenshot) | 現在の画面をスクリーンショット撮影 |
-| `computer` (left_click) | 要素をクリック（ref指定またはcoordinate指定） |
-| `computer` (type) | テキスト入力 |
-| `computer` (scroll) | スクロール操作 |
-| `computer` (wait) | 画面遷移やデータ読み込みの待機 |
-| `form_input` | フォーム要素への入力（テキスト、セレクト、チェックボックス等） |
+| `navigate` | URL を開く。`"back"` / `"forward"` で履歴移動。同じ URL でリロード |
+| `read_page` | アクセシビリティツリーを取得（`filter: "interactive"`、`depth` で絞り込み）。各要素に `ref_N` が付く |
+| `find` | テキスト・ロールで要素を検索し `ref_N` を返す |
+| `get_page_text` | ページの表示テキストを取得（表示内容の照合に便利） |
+| `computer` (screenshot) | スクリーンショット撮影。通常は `scale: 0.5` でトークン節約 |
+| `computer` (left_click) | 要素をクリック（`ref` 指定推奨。`action_summary` を必ず付ける） |
+| `computer` (type) | フォーカス中の要素へテキスト入力（`action_summary` 付き） |
+| `computer` (scroll) | スクロール操作（`coordinate` + `scroll_direction`） |
+| `computer` (wait) | 画面遷移やデータ読み込みの待機（`duration` 秒） |
+| `form_input` | フォーム要素への入力（テキスト、セレクト、チェックボックス等。`ref` 指定） |
+| `read_console_messages` | ブラウザのコンソール出力（`onlyErrors: true` でエラーのみ） |
+| `read_network_requests` | ネットワークリクエスト一覧（`urlPattern` で絞り込み、`requestId` でレスポンス本文） |
+| `resize_window` | `preset: mobile` / `tablet` でレスポンシブ確認。**終わったら必ず `preset: desktop` に戻す** |
+| `javascript_tool` | `action: javascript_exec` でページ内 JS を実行。**状態の調査専用**（UI を書き換える用途に使わない） |
+| `browser_batch` | 上記ツールを複数ステップ 1 回の呼び出しで順次実行（途中でエラーなら停止） |
 
 ### サイドバーナビゲーション
 
-アプリの左サイドバーには以下のメニューがある:
+アプリの左サイドバーには以下のメニューがある（`fit-connect/src/app/(user_console)/layout.tsx`）:
 
 | メニュー | パス |
 |----------|------|
 | ダッシュボード | /dashboard |
 | 顧客管理 | /clients |
-| メッセージ | /messages |
-| レポート | /reports |
+| メッセージ | /message |
+| レポート | /report |
 | チケット | /tickets |
 | スケジュール | /schedule |
 | 設定 | /settings |
@@ -223,11 +233,13 @@ Googleログインを使用する:
 
 ### 操作のコツ
 
-- **操作前にread_pageまたはscreenshot** — 必ず最新の状態を確認してから操作
-- **find + ref で要素を特定** — テキストやロールで要素を検索し、ref_idでクリックするのが確実
-- **画面遷移後は1-2秒待機** — `computer` の `wait` アクションで待ってから次の操作
-- **大きなページはdepthを制限** — `read_page` の depth パラメータを5程度に設定してコンテキスト節約
-- **インタラクティブ要素のフィルタ** — `read_page` の filter を "interactive" にするとボタン・リンク・入力のみ取得
+- **操作前に read_page / get_page_text / screenshot** — 必ず最新の状態を確認してから操作
+- **find + ref で要素を特定** — 座標クリックより ref 指定のほうが確実。座標で押す場合は直前のスクリーンショットの座標系を使う
+- **画面遷移後は1-2秒待機** — `computer` の `wait` で待ってから次の操作
+- **大きなページはdepthを制限** — `read_page` の `depth` を5程度にしてコンテキスト節約
+- **インタラクティブ要素のフィルタ** — `read_page` の `filter: "interactive"` でボタン・リンク・入力のみ取得
+- **先が読める操作は browser_batch でまとめる** — 例: navigate → wait → get_page_text → screenshot
+- **テキスト確認は get_page_text / read_page を優先** — スクリーンショットは見た目（レイアウト・色・崩れ）の確認時に使う
 
 ### テスト実行の進め方
 
@@ -235,8 +247,8 @@ Googleログインを使用する:
 
 1. 対象ページに遷移（サイドバークリック or navigate）
 2. 1-2秒待機（`computer` wait）
-3. `read_page` または `screenshot` で画面状態を確認
-4. 期待結果と照合
+3. `read_page` / `get_page_text` / `screenshot` で画面状態を確認
+4. 期待結果と照合（必要に応じて `read_console_messages` でエラーが無いことも確認）
 5. 問題なければ次のテスト項目へ
 6. 問題があれば → Step 5 へ
 
@@ -244,26 +256,28 @@ Googleログインを使用する:
 
 ### 5-1. 証拠の保存
 
-不具合を発見したら、スクリーンショットを保存する:
+不具合を発見したら、スクリーンショットを撮影する:
 
 ```
-mcp__claude-in-chrome__computer:
+mcp__Claude_Browser__computer:
   action: screenshot
-  tabId: <tabId>
+  scale: 0.5
 ```
 
-スクリーンショットIDを記録しておく。
+どのテスト項目・どの画面のスクリーンショットかを記録しておく。
 
-### 5-2. コンソールログの確認
-
-ブラウザのコンソールにエラーが出ていないか確認:
+### 5-2. コンソールログ・ネットワーク・サーバーログの確認
 
 ```
-ToolSearch: select:mcp__claude-in-chrome__read_console_messages
+mcp__Claude_Browser__read_console_messages:
+  onlyErrors: true
 
-mcp__claude-in-chrome__read_console_messages:
-  tabId: <tabId>
-  pattern: "error|Error|ERROR"
+mcp__Claude_Browser__read_network_requests:
+  urlPattern: "supabase"     # API 失敗が疑われる場合。例: "/api/" や "supabase"
+
+mcp__Claude_Browser__preview_logs:
+  serverId: <serverId>
+  level: error
 ```
 
 ### 5-3. 不具合の記録
@@ -277,17 +291,18 @@ mcp__claude-in-chrome__read_console_messages:
 - **操作手順**: [再現手順]
 - **期待結果**: [本来表示されるべき内容]
 - **実際の結果**: [実際に起きたこと]
-- **スクリーンショット**: [スクリーンショットID]
+- **スクリーンショット**: [どの画面で撮影したか]
 - **コンソールエラー**: [エラーがあれば]
+- **ネットワーク/サーバーログ**: [失敗したリクエスト・サーバー例外があれば]
 ```
 
 ### 5-4. Explore エージェントに調査を委託
 
-不具合の原因調査をexploreエージェントに委託する。
+不具合の原因調査を Explore エージェントに委託する。
 
 ```
 Agent:
-  subagent_type: explore
+  subagent_type: Explore
   prompt: |
     fit-connect Webアプリで以下の不具合が発生しています。原因を調査してください。
 
@@ -304,22 +319,24 @@ Agent:
     - 期待: [...]
     - 実際: [...]
 
-    ## コンソールエラー
+    ## コンソールエラー / サーバーログ
     [あれば記載]
 
     ## 調査のヒント
     - 変更されたファイル: [git diff で確認した変更ファイル一覧]
     - 関連しそうなComponent/Store: [推測される関連コード]
 
-    プロジェクトルート: /Users/hoshidayuuya/Documents/FIT-CONNECT/fit-connect
+    プロジェクトルート: fit-connect/（リポジトリルート相対）
+    共有Supabase設定: supabase/（リポジトリルート相対）
+    .env* ファイルは読まないこと。
 ```
 
 ### 5-5. 調査結果に基づく修正
 
-exploreエージェントの調査結果を受けて:
+Explore エージェントの調査結果を受けて:
 1. 原因箇所を特定
 2. 修正が必要なら適切なサブエージェント（nextjs-ui, zustand等）に修正を委託
-3. 修正後、ブラウザをリロードして再テスト
+3. 修正後、`navigate` でページをリロードして再テスト（ホットリロードで反映されない場合は `preview_stop` → `preview_start`）
 
 ## Step 6: 結果レポート
 
@@ -329,9 +346,10 @@ exploreエージェントの調査結果を受けて:
 ## QA結果レポート
 
 ### テスト環境
-- ブラウザ: Chrome
+- ブラウザ: Claude 内蔵ブラウザ（Chrome で確認した場合は Chrome）
 - URL: http://localhost:3000
 - ビルド: Development (next dev)
+- ログイン: テストログイン（開発用）
 
 ### テスト結果サマリー
 - 合格: X / Y 項目
@@ -344,48 +362,61 @@ exploreエージェントの調査結果を受けて:
 | T-001 | ... | FAIL | [不具合内容] |
 
 ### スクリーンショット
-- [スクリーンショットID一覧]
+- [撮影した画面の一覧]
 ```
+
+## 代替: Claude in Chrome（ユーザーが Chrome での確認を明示的に求めた場合のみ）
+
+ユーザーが「Chromeで確認して」等と明示した場合に限り、Claude in Chrome（`mcp__claude-in-chrome__*`、ユーザーの実際の Chrome とそのログイン状態を使う）で確認する。
+
+- ツールは遅延ロード。必要なものを **1 回の ToolSearch でまとめてロード**する:
+  `select:mcp__claude-in-chrome__tabs_context_mcp,mcp__claude-in-chrome__tabs_create_mcp,mcp__claude-in-chrome__navigate,mcp__claude-in-chrome__computer,mcp__claude-in-chrome__read_page,mcp__claude-in-chrome__find,mcp__claude-in-chrome__read_console_messages`
+- `tabs_context_mcp` で接続確認後、**新しいタブを作成**して作業し、ユーザーの既存タブは操作しない
+- devサーバーは Step 2 と同じく `preview_start`（name: "web"）で起動しておき、Chrome で `http://localhost:3000` を開く
+- ログインは同じく「テストログイン」ボタンを使う（パスワード入力はしない）
+- 「No Chrome extension connected.」の場合は、Chrome の起動と拡張機能「Claude in Chrome」が有効かをユーザーに確認してもらう
 
 ## トラブルシューティング
 
-### Chrome拡張が接続されない
+### preview_start で devサーバーが起動しない
 
-ユーザーに以下を依頼:
-1. Chromeが起動しているか確認
-2. `chrome://extensions` で「Claude in Chrome」が有効か確認
-3. 拡張機能を一度無効→有効にしてリロード
-
-### devサーバーが起動しない
+1. `preview_logs`（serverId 指定）でエラー内容を確認
+2. 依存関係が無い場合はインストール（リポジトリルートから）:
 
 ```bash
-cd /Users/hoshidayuuya/Documents/FIT-CONNECT/fit-connect
+ls fit-connect/node_modules/.package-lock.json || npm --prefix fit-connect install
+```
 
-# node_modulesが存在するか確認
-ls node_modules/.package-lock.json
+3. ポート3000が別プロセスに使われていないか確認:
 
-# なければインストール
-npm install
-
-# ポート3000が既に使われていたらプロセスを確認
+```bash
 lsof -ti:3000
 ```
 
+`preview_start` 以外で起動した devサーバーが残っている場合は、ユーザーに確認してから停止する。
+
 ### ページが真っ白 / エラー画面
 
-1. `read_console_messages` でJSエラーを確認
-2. devサーバーのターミナル出力を確認
-3. `navigate` でページをリロード
+1. `read_console_messages`（`onlyErrors: true`）でJSエラーを確認
+2. `preview_logs` で devサーバー側のエラーを確認
+3. `navigate` で同じURLを開き直してリロード
 
-### Googleログインが別アカウントになる
+### 「テストログイン」ボタンが表示されない
 
-Google OAuthのアカウント選択画面で:
-1. `find` ツールで正しいユーザー名を検索
-2. アカウント切り替えリンクがあれば使用
-3. 同意画面のアカウント変更ドロップダウンを確認
+Step 3「テストログインボタンが表示されない場合」を参照。`.env.local` 設定後は devサーバーの再起動が必要。
+
+### テストログインが失敗する（「テストログインに失敗しました」アラート）
+
+`read_console_messages` で `[DevLoginButton]` のエラーを確認し、設定されたテストアカウントが Supabase に存在するか・メール/パスワードが正しいかをユーザーに確認してもらう（値は聞き出さない・入力しない）。
+
+### 内蔵ブラウザが別ユーザーでログインしている
+
+内蔵ブラウザはセッションを保持する。ダッシュボードの挨拶（「〜、テストトレーナーさん！」）でユーザーを確認し、
+テストトレーナー以外であればログアウトしてからテストログインし直す。
 
 ### read_page の出力が大きすぎる
 
 - `depth` パラメータを3-5に制限
 - `filter: "interactive"` でインタラクティブ要素のみ取得
 - `ref_id` で特定の部分ツリーのみ取得
+- 表示テキストだけで足りる場合は `get_page_text`（`max_chars` で上限指定）
