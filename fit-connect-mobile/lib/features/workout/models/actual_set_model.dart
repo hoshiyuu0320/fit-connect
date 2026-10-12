@@ -37,4 +37,15 @@ class ActualSet {
         weight: weight ?? this.weight,
         done: done ?? this.done,
       );
+
+  @override
+  bool operator ==(Object other) =>
+      other is ActualSet &&
+      other.setNumber == setNumber &&
+      other.reps == reps &&
+      other.weight == weight &&
+      other.done == done;
+
+  @override
+  int get hashCode => Object.hash(setNumber, reps, weight, done);
 }
