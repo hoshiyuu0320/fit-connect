@@ -559,7 +559,7 @@ where dedup_key = 'client_alert_digest:<trainer_id>:<D>';
 - アラートごとの個別通知、未返信をまとめに含めること
 - 静かな時間帯の設定 UI
 - 顧客詳細の `?tab=` のクエリ追従（個別通知を作るときに必要）
-- メッセージ通知のクリックで、その顧客の会話を開くこと（`parse-message-tags` の `data` に `url` を足す）
+- メッセージ通知のクリックで、その顧客の会話を開くこと（`parse-message-tags` の `data` に `url` を足す）→ 2026-10-12 に実装（`docs/superpowers/specs/2026-10-12-message-notification-open-chat-design.md`。sw.js は変えず、メッセージ画面が `notification-clicked` の `url` を見て選び直す。書きかけがあれば切り替えず案内を出す）
 - `pushsubscriptionchange`（ブラウザが購読を作り直したときの自動更新）
 - トレーナーの「目標達成のお知らせ」トグル（実際の送信先は顧客で、トレーナー宛には何も送られていない）の整理
 - `push_subscriptions` 表と両書きの廃止（判断1 の移行 stage3）
@@ -569,7 +569,7 @@ where dedup_key = 'client_alert_digest:<trainer_id>:<D>';
 - 再送用の2つ目の cron スロット（06:40 など）。監視の PR で、検知が遅れた日の自動の回復として検討する（§13-16）
 - `fetchNotificationLogs` / `isResendable` の `_shared` への切り出し（`send-session-reminders` と共有する。§5.4）
 - Web Push の宛先 URL の検査（`https` と、既知の push サービスのホストに限る）と、`device_tokens` の RLS の絞り込み（顧客が任意の `platform` / `token` を書ける）。既存の問題で、本書で悪化はしない。`push.ts` で検査すると §10.4 の通しの確認（127.0.0.1 の受け口）と衝突するので、本書では `timeout`（§6.2）で被害を時間で打ち切るだけにする。直すなら、RLS の `WITH CHECK` か migration での `token` の検査として別の変更にする。購読の鍵データが不正で、`web-push` が送る前に例外にする行の掃除（今は `failed` のまま残る）も、同じ変更で扱う
-- メッセージ通知を会話ごとの tag にすること（`parse-message-tags` の `data` に送信者を入れる。クリック先 URL の変更と同じ時期。§7.1）。`renotify` を `data.tag` を持つ種別（朝のまとめ）だけにして、メッセージは従来の無音の置き換えのままにする選択（§13-9）
+- メッセージ通知を会話ごとの tag にすること（`parse-message-tags` の `data` に送信者を入れる。クリック先 URL の変更と同じ時期。§7.1）。2026-10-12 のオーナー決定で、クリック先 URL の変更（上）には含めなかった（tag は `message` の1枚のまま）。`renotify` を `data.tag` を持つ種別（朝のまとめ）だけにして、メッセージは従来の無音の置き換えのままにする選択（§13-9）
 - ダッシュボードにプッシュ通知の有効化の案内を出すこと、失効した購読をトレーナーに知らせること（§13-14）
 - 送信の並列化・打ち切り（トレーナーが数十人を超える規模になったら。§13-19）
 

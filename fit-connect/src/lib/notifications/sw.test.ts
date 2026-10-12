@@ -142,7 +142,7 @@ describe('sw.js: push の URL', () => {
     expect(shown(sw).options.data).toEqual({ url: '/dashboard' })
   })
 
-  it('URL が無ければ /message（今のメッセージ通知の形）', async () => {
+  it('URL が無ければ /message（url の無い古いメッセージ通知の形）', async () => {
     const sw = loadSw()
     await sw.push(JSON.stringify({ title: '新着', body: 'x', data: { type: 'message', messageId: 'm1' } }))
     expect(shown(sw).options.data).toEqual({ url: '/message' })
@@ -357,7 +357,7 @@ describe('sw.js: notificationclick', () => {
     ['外部オリジン', { url: 'https://evil.example.com/' }],
     ['//', { url: '//evil.com' }],
     ['自オリジンの後ろに //', { url: `${ORIGIN}//evil.com` }],
-    ['url 無し（今のメッセージ通知）', { type: 'message', messageId: 'm1' }],
+    ['url 無し（古いメッセージ通知）', { type: 'message', messageId: 'm1' }],
     ['data 無し', null],
   ])('notification.data.url が %s なら /message', async (_label, data) => {
     const sw = loadSw()
@@ -372,5 +372,57 @@ describe('sw.js: notificationclick', () => {
     expect(message.focus).toHaveBeenCalledTimes(1)
     expect(message.postMessage.mock.calls[0][0]).toEqual({ type: 'notification-clicked', url: '/message' })
     expect(sw.clients.openWindow).not.toHaveBeenCalled()
+  })
+})
+
+describe('sw.js: メッセージ通知のクリックでその顧客の会話を開く', () => {
+  // 設計書 docs/superpowers/specs/2026-10-12-message-notification-open-chat-design.md §5
+  const CLIENT_ID = '11111111-2222-4333-8444-555555555555'
+  const OTHER_CLIENT_ID = '66666666-7777-4888-9999-aaaaaaaaaaaa'
+  const MESSAGE_URL = `/message?clientId=${CLIENT_ID}`
+
+  it('push の data.url（/message?clientId=…）を通知の data に載せ、tag は message', async () => {
+    const sw = loadSw()
+    await sw.push(
+      JSON.stringify({ title: 't', body: 'b', data: { type: 'message', messageId: 'm1', url: MESSAGE_URL } })
+    )
+    const { options } = shown(sw)
+    expect(options.data).toEqual({ url: MESSAGE_URL })
+    expect(options.tag).toBe('message')
+  })
+
+  it('タブが無ければ /message?clientId=… を新しいタブで開く', async () => {
+    const sw = loadSw()
+    await sw.click({ url: MESSAGE_URL })
+    expect(sw.clients.openWindow).toHaveBeenCalledWith(MESSAGE_URL)
+  })
+
+  it('/message のタブがあれば、前面に出して url 付きの notification-clicked を送るだけ（移動しない）', async () => {
+    const message = windowClient('/message')
+    const sw = loadSw({ windows: [message] })
+    await sw.click({ url: MESSAGE_URL })
+    expect(message.focus).toHaveBeenCalledTimes(1)
+    expect(message.postMessage).toHaveBeenCalledTimes(1)
+    expect(message.postMessage.mock.calls[0][0]).toEqual({ type: 'notification-clicked', url: MESSAGE_URL })
+    expect(sw.clients.openWindow).not.toHaveBeenCalled()
+  })
+
+  it('別の顧客の /message?clientId=… のタブでも同じ（パス名だけで照合し、クエリが違っても移動しない）', async () => {
+    const message = windowClient(`/message?clientId=${OTHER_CLIENT_ID}`)
+    const sw = loadSw({ windows: [message] })
+    await sw.click({ url: MESSAGE_URL })
+    expect(message.focus).toHaveBeenCalledTimes(1)
+    expect(message.postMessage).toHaveBeenCalledTimes(1)
+    expect(message.postMessage.mock.calls[0][0]).toEqual({ type: 'notification-clicked', url: MESSAGE_URL })
+    expect(sw.clients.openWindow).not.toHaveBeenCalled()
+  })
+
+  it('/dashboard のタブだけなら /message?clientId=… を新しいタブで開き、dashboard のタブは動かさない', async () => {
+    const dashboard = windowClient('/dashboard')
+    const sw = loadSw({ windows: [dashboard] })
+    await sw.click({ url: MESSAGE_URL })
+    expect(sw.clients.openWindow).toHaveBeenCalledWith(MESSAGE_URL)
+    expect(dashboard.focus).not.toHaveBeenCalled()
+    expect(dashboard.postMessage).not.toHaveBeenCalled()
   })
 })

@@ -40,4 +40,35 @@ describe('subscribeNotificationClicked', () => {
     target.dispatchEvent(new MessageEvent('message', { data: { type: 'notification-clicked' } }))
     expect(onClicked).toHaveBeenCalledTimes(1)
   })
+
+  it('メッセージの url を渡す', () => {
+    const target = new EventTarget()
+    vi.stubGlobal('navigator', { serviceWorker: target })
+    const onClicked = vi.fn()
+    const unsubscribe = subscribeNotificationClicked(onClicked)
+
+    target.dispatchEvent(
+      new MessageEvent('message', { data: { type: 'notification-clicked', url: '/message?clientId=x' } })
+    )
+    expect(onClicked).toHaveBeenCalledTimes(1)
+    expect(onClicked).toHaveBeenCalledWith('/message?clientId=x')
+    unsubscribe()
+  })
+
+  it.each([
+    ['url 無し', { type: 'notification-clicked' }],
+    ['url が null', { type: 'notification-clicked', url: null }],
+    ['url が数値', { type: 'notification-clicked', url: 123 }],
+    ['url がオブジェクト', { type: 'notification-clicked', url: { pathname: '/message' } }],
+  ])('%s なら null を渡す', (_label, data) => {
+    const target = new EventTarget()
+    vi.stubGlobal('navigator', { serviceWorker: target })
+    const onClicked = vi.fn()
+    const unsubscribe = subscribeNotificationClicked(onClicked)
+
+    target.dispatchEvent(new MessageEvent('message', { data }))
+    expect(onClicked).toHaveBeenCalledTimes(1)
+    expect(onClicked).toHaveBeenCalledWith(null)
+    unsubscribe()
+  })
 })

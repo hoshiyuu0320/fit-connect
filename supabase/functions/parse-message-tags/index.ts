@@ -8,6 +8,7 @@
 //   各フィールドは service role で messages から取り直す（payload の値は信用しない）。
 // - 記録の作成・削除は送信者が顧客（sender_type = 'client'）のメッセージのときだけ行う。
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { buildMessageNotificationData } from '../_shared/message_notification.ts'
 import { sendNotification } from '../_shared/push.ts'
 import { isServiceRequest } from '../_shared/service_auth.ts'
 
@@ -427,6 +428,8 @@ async function createExerciseRecord(supabase, commonData, tagData) {
  * 実送信は統一ディスパッチャ（_shared/push.ts）に委譲。
  * 冪等化・通知設定・トークン解決（device_tokens 優先 + fcm_token フォールバック）・
  * FCM / Web Push 送信・無効トークン掃除・notification_logs 記録はディスパッチャが担う。
+ * data は _shared/message_notification.ts で作る。顧客→トレーナーは data.url（/message?clientId=<顧客>）で
+ * その顧客の会話を開く（顧客宛ては Mobile 向けなので url を付けない）。
  */
 async function sendMessageNotification(
   supabase: any,
@@ -464,7 +467,7 @@ async function sendMessageNotification(
       kind: 'message',
       title: `${senderName}からのメッセージ`,
       body: bodyText,
-      data: { type: 'message', messageId: message.id },
+      data: buildMessageNotificationData(message),
       dedupKey: `message:${message.id}`,
     })
   } catch (e) {
