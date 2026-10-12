@@ -650,3 +650,26 @@
 
 ### zsh ではコマンドを入れた変数が単語分割されない — 負の対照は bash スクリプトで流す
 - `DB="docker exec -i <container> psql -U postgres -d postgres"; $DB -f ...` は、zsh では `$DB` が単語分割されず、全体が1つのコマンド名として扱われて失敗する。負の対照のように同じコマンドを何度も流すものは、scratch の bash スクリプトに書いて `bash <script>` で実行する
+
+## メッセージ通知のクリックで会話を開く（フェーズ9.1 拡張 push の続き、2026-10-12）で得た知見
+
+### 「同じパス名のタブは移動しない」の下では、クエリの違いはページ側で読む
+- sw.js はパス名だけでタブを照合し、前面に出したタブへ `notification-clicked` の `url`（クエリ付き）を送る。`/message?clientId=…` の違いは移動では反映されないので、ページが `url` を読んで選び直す。sw.js は変えずに済んだ（タブが無いときは `openWindow` の `?clientId=` で開く）
+- 新しい payload を出す前に、古いクライアントがそれをどう読むかを確かめる。本番 main の古い sw.js は `payload.url` しか読まないので、`data.url` を足しても今と同じ `/message` が開く。だから Edge Function を先にデプロイしても退行しない
+
+### 自動で会話を切り替えるなら、先に書きかけを数える
+- メッセージ画面のサイドバーの切り替えは、入力欄の文字・添付画像・返信先を次の顧客へ持ち越す（引用だけ捨てる）。通知のクリックで自動に切り替えると、別の顧客宛ての書きかけをそのまま送りやすいので、書きかけがあれば切り替えず案内を出した（オーナー決定）
+- URL から導いた「準備中」（`record` が URL にあって引用のチップがまだ無い）は書きかけに入れない。取得に失敗すると `record` が URL に残り、ずっと書きかけの扱いになる
+
+### ヘッダー直下のバーは、細いチャット欄で確かめる
+- メッセージ画面は左の顧客一覧（288px）と右の記録パネル（384px）が既定で開くので、ウィンドウ幅 1024px でチャット欄は 272px しかない。ボタンの組を `shrink-0` で横に並べると、文言が数十 px に押しつぶされて1文字ずつ縦に折り返された
+- `flex-wrap` + 文言に `basis-48 grow min-w-0`（基準 12rem）+ ボタンの組に `ml-auto` にすると、狭いときはボタンが次の行に回る。内蔵ブラウザの既定の幅（1024px）と 1440px の両方で見る
+
+### Web Push の受け口の復号は Node の標準の crypto だけで書ける
+- aes128gcm（RFC 8188 / 8291）: 本文の先頭（salt 16 バイト・rs 4・idlen 1・送信側の公開鍵 65）を読み、`hkdfSync('sha256', ECDH の共有鍵, auth, 'WebPush: info\0' + 受信側の公開鍵 + 送信側の公開鍵, 32)` で IKM、`hkdfSync('sha256', IKM, salt, 'Content-Encoding: aes128gcm\0', 16)` で CEK、`'Content-Encoding: nonce\0'` で 12 バイトの NONCE を作る。`aes-128-gcm` で復号し、末尾の 0 を落として区切りの `0x02` の前までが本文。追加のパッケージ無しで、通しの確認で data の中身（今回は `url` の有無）を確かめられた
+- 鍵は `createECDH('prime256v1')` で作る（秘密鍵が 32 バイトでなければ作り直す。web-push は 32 バイト以外の VAPID の秘密鍵を拒む）
+- メッセージ通知は `ttlSeconds` を渡していないので、受け口で見た `TTL` は web-push の既定の 2419200 秒（4週間）だった（朝のまとめは 12 時間）。ブラウザを長く閉じていると、古いメッセージ通知が後から届きうる（今回は変えていない）
+
+### プレビューの launch.json は、セッションを開いたフォルダのものが読まれる
+- このセッションのフォルダ（git ルートの親の `~/Documents/FIT-CONNECT`）の `.claude/launch.json` が読まれた。git ルートの `.claude/launch.json` に足した構成は見つからず、既定の `web`（`.env.local` を読む＝本番の Supabase）が起動した（操作する前に止めた）。隔離スタック向けの構成は読まれる側（追跡されていない親）に一時的に足し、終わったら元に戻す
+- dev server を隔離スタックへ向けるには、`runtimeExecutable: "env"` で `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` / `NEXT_PUBLIC_DEV_LOGIN_EMAIL` / `NEXT_PUBLIC_DEV_LOGIN_PASSWORD` を渡す（Next は既にある環境変数を `.env.local` で上書きしない）。テストログインのボタンもそのまま使える。起動したら、通信先が `127.0.0.1:<ポート>` だけであることを `performance.getEntriesByType('resource')` で確かめてから操作する

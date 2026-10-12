@@ -16,10 +16,13 @@ import { ImageUploader } from '@/components/message/ImageUploader';
 import { ImageModal } from '@/components/message/ImageModal';
 import { ReplyPreview } from '@/components/message/ReplyPreview';
 import { RecordQuotePreview } from '@/components/message/RecordQuotePreview';
+import { NotificationHoldNotice } from '@/components/message/NotificationHoldNotice';
 import { getSleepRecordsInRange } from '@/lib/supabase/getSleepRecordsInRange';
 import { parseRecordQuoteRef, recordQuoteDateRange } from '@/lib/message/recordQuoteRef';
 import { buildSleepQuote, type RecordQuote } from '@/lib/sleep/sleepQuote';
 import { composeMessageContent } from '@/lib/message/composeMessageContent';
+import { clientIdFromNotificationUrl, decideNotificationOpen, hasMessageDraft } from '@/lib/message/notificationOpen';
+import { subscribeNotificationClicked } from '@/lib/notifications/notificationClicked';
 import { MessageBubble } from '@/components/message/MessageBubble';
 import { ClientListItem } from '@/components/message/ClientListItem';
 import { ChatHeader } from '@/components/message/ChatHeader';
@@ -70,6 +73,8 @@ function MessageContent() {
     const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
     // 記録の引用（顧客詳細の睡眠カード等から ?record=sleep:… で着地したとき）。送信時に本文の先頭へ付く
     const [recordQuote, setRecordQuote] = useState<RecordQuote | null>(null);
+    // 書きかけがあるため切り替えなかった通知の顧客（ヘッダーの下に案内を出す）
+    const [heldNotificationClient, setHeldNotificationClient] = useState<Client | null>(null);
     const [unreadCounts, setUnreadCounts] = useState<Map<string, number>>(new Map());
     const [lastMessages, setLastMessages] = useState<Map<string, LastMessageInfo>>(new Map());
     const [isRecordPanelOpen, setIsRecordPanelOpen] = useState(true);
@@ -298,9 +303,49 @@ function MessageContent() {
         fetchClientInfo();
     }, [client_id]);
 
-    // 顧客を切り替えたら引用を捨てる（別の顧客の睡眠を引用しない）
+    // 通知（顧客からのメッセージ）のクリックで、その顧客の会話を開く（設計書 docs/superpowers/specs/2026-10-12-message-notification-open-chat-design.md §5）。
+    // sw.js は /message のタブを移動させず notification-clicked（url 付き）を送るだけなので、ここで選び直す。
+    // 書きかけがあれば消さないよう切り替えず、案内を出す。最新の state を読むためハンドラは ref に入れ、購読は1回だけにする
+    const notificationClickedHandlerRef = useRef<(url: string | null) => void>(() => {});
+    useEffect(() => {
+        notificationClickedHandlerRef.current = (url) => {
+            const targetClientId = clientIdFromNotificationUrl(url);
+            const target = clientList.find((c) => c.client_id === targetClientId) ?? null;
+            const decision = decideNotificationOpen({
+                targetClientId,
+                selectedClientId: selectedClient?.client_id ?? null,
+                isKnownClient: target !== null,
+                // 引用の取得中（URL に record があってチップがまだ無い）は含めない（取得に失敗すると record が URL に残り、ずっと書きかけ扱いになる）
+                hasDraft: hasMessageDraft({
+                    input,
+                    imageCount: selectedImages.length,
+                    hasReply: replyToMessage !== null,
+                    hasRecordQuote: recordQuote !== null,
+                    isEditing: editingMessageId !== null,
+                    isSending: loading,
+                }),
+            });
+            if (decision.action === 'none') {
+                // 表示中の顧客・対象外の url なら何もしない（案内もそのまま）
+                if (decision.reason === 'unknown_client') console.warn('通知の顧客が一覧にありません:', targetClientId);
+                return;
+            }
+            if (!target) return; // select / hold は一覧にある顧客のときだけ
+            if (decision.action === 'select') {
+                // サイドバーのクリックと同じ（URL の ?clientId= は変えない）
+                setSelectedClient(target);
+            } else {
+                // 保留中に別の顧客の通知が来たら置き換える
+                setHeldNotificationClient(target);
+            }
+        };
+    });
+    useEffect(() => subscribeNotificationClicked((url) => notificationClickedHandlerRef.current(url)), []);
+
+    // 顧客を切り替えたら引用と通知の案内を捨てる（別の顧客の睡眠を引用しない。案内はどの方法で切り替えても消す）
     useEffect(() => {
         setRecordQuote(null);
+        setHeldNotificationClient(null);
     }, [selectedClient?.client_id]);
 
     // ?record=sleep:… の引用を用意する（顧客の自動選択が済んでから）
@@ -578,6 +623,13 @@ function MessageContent() {
                         gender: selectedClient.gender,
                         age: selectedClient.age,
                     } : null}
+                />
+
+                {/* 書きかけがあるため通知の顧客に切り替えなかったときの案内 */}
+                <NotificationHoldNotice
+                    heldClientName={heldNotificationClient?.name ?? null}
+                    onOpen={() => { if (heldNotificationClient) setSelectedClient(heldNotificationClient); }}
+                    onDismiss={() => setHeldNotificationClient(null)}
                 />
 
                 {!isRecordPanelOpen && selectedClient && (
