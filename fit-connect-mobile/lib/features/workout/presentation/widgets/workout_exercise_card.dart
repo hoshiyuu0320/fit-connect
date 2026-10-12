@@ -1,10 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widget_previews.dart';
-import 'package:fit_connect_mobile/core/theme/app_colors.dart';
-import 'package:fit_connect_mobile/core/theme/app_theme.dart';
-import 'package:fit_connect_mobile/features/workout/models/actual_set_model.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:fit_connect_mobile/core/theme/app_colors.dart';
+import 'package:fit_connect_mobile/core/theme/app_spacing.dart';
+import 'package:fit_connect_mobile/core/theme/app_text_styles.dart';
+import 'package:fit_connect_mobile/features/workout/models/actual_set_model.dart';
+import 'package:fit_connect_mobile/features/workout/presentation/workout_format.dart';
+import 'package:fit_connect_mobile/shared/utils/trainer_name.dart';
+import 'package:fit_connect_mobile/shared/widgets/fc/fc.dart';
+import 'package:fit_connect_mobile/shared/widgets/fc/fc_previews.dart';
 
+/// 今日のプランの種目カード（正本 `plan-screens.js` の `ExerciseCard`）。
+///
+/// - 閉じているとき: 完了マーク（26）・種目名・「3セット × 10回 · 12 kg」・chevron-down
+/// - 開くと（chevron は 180 度）: セットごとの行（セット名・重量欄・回数欄・セット完了）と、
+///   トレーナーのメモ（あれば）
+/// - 重量・回数の入力は、欄を離れたとき（フォーカスが外れたとき）と、セット完了を切り替えたときに
+///   [onSetsUpdated] で保存する。種目の完了は、全セットが完了したときに親（プロバイダー）が決める
+/// - 文字を拡大すると、セットの行は欄を折り返して縦に積み直す（縮めない）
 class WorkoutExerciseCard extends StatefulWidget {
   const WorkoutExerciseCard({
     super.key,
@@ -16,6 +30,8 @@ class WorkoutExerciseCard extends StatefulWidget {
     required this.isCompleted,
     this.actualSets,
     required this.onSetsUpdated,
+    this.trainerName,
+    this.initiallyExpanded = false,
   });
 
   final String exerciseName;
@@ -27,21 +43,32 @@ class WorkoutExerciseCard extends StatefulWidget {
   final List<ActualSet>? actualSets;
   final void Function(List<ActualSet>) onSetsUpdated;
 
+  /// トレーナーの名前（メモの見出し「{名前}トレーナーのメモ」に使う。null なら「トレーナーのメモ」）
+  final String? trainerName;
+
+  /// 最初から開いておくか（画面側で、いま取り組む種目だけ開く）
+  final bool initiallyExpanded;
+
   @override
   State<WorkoutExerciseCard> createState() => _WorkoutExerciseCardState();
 }
 
 class _WorkoutExerciseCardState extends State<WorkoutExerciseCard> {
-  bool _isExpanded = false;
+  late bool _isExpanded;
   late List<ActualSet> _localSets;
   late List<TextEditingController> _repsControllers;
   late List<TextEditingController> _weightControllers;
   late List<FocusNode> _repsFocusNodes;
   late List<FocusNode> _weightFocusNodes;
 
+  /// カードの余白（正本: 16 × 20。トークンの標準余白 20 と異なるのでここだけの定数）
+  static const EdgeInsets _cardPadding =
+      EdgeInsets.symmetric(horizontal: 20, vertical: 16);
+
   @override
   void initState() {
     super.initState();
+    _isExpanded = widget.initiallyExpanded;
     _initLocalSets();
     _initControllers();
   }
@@ -72,7 +99,7 @@ class _WorkoutExerciseCardState extends State<WorkoutExerciseCard> {
 
     _weightControllers = _localSets.map((s) {
       final controller = TextEditingController(
-        text: s.weight == 0 ? '' : _formatWeight(s.weight),
+        text: s.weight == 0 ? '' : formatWorkoutWeight(s.weight),
       );
       return controller;
     }).toList();
@@ -135,17 +162,11 @@ class _WorkoutExerciseCardState extends State<WorkoutExerciseCard> {
     super.dispose();
   }
 
-  String _formatWeight(double weight) {
-    if (weight == weight.truncateToDouble()) {
-      return weight.toInt().toString();
-    }
-    return weight.toString();
-  }
-
-  String _buildSetsRepsText() {
-    final base = '${widget.targetSets} セット × ${widget.targetReps} 回';
+  /// 「3セット × 10回 · 12 kg」（重量の目標が無いときは回数まで）
+  String _buildDetailText() {
+    final base = '${widget.targetSets}セット × ${widget.targetReps}回';
     if (widget.targetWeight != null) {
-      return '$base / ${_formatWeight(widget.targetWeight!)}kg';
+      return '$base · ${formatWorkoutWeight(widget.targetWeight!)} kg';
     }
     return base;
   }
@@ -170,9 +191,10 @@ class _WorkoutExerciseCardState extends State<WorkoutExerciseCard> {
     });
   }
 
-  void _onDoneChanged(int index, bool? value) {
+  void _onDoneToggled(int index) {
     setState(() {
-      _localSets[index] = _localSets[index].copyWith(done: value ?? false);
+      _localSets[index] =
+          _localSets[index].copyWith(done: !_localSets[index].done);
     });
     widget.onSetsUpdated(_localSets);
   }
@@ -180,338 +202,324 @@ class _WorkoutExerciseCardState extends State<WorkoutExerciseCard> {
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
-    final card = Card(
-      elevation: 1,
-      color: colors.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      clipBehavior: Clip.antiAlias,
+    final reduceMotion = AppMotion.reduceOf(context);
+    final detail = _buildDetailText();
+
+    return FcCard(
+      paddingOverride: _cardPadding,
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Header row
-          InkWell(
-            onTap: _toggleExpanded,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+          // ヘッダー（押すと開閉）
+          Semantics(
+            expanded: _isExpanded,
+            child: FcPressable(
+              onTap: _toggleExpanded,
+              minSize: const Size(0, AppSizes.minTouch),
+              semanticLabel:
+                  '${widget.exerciseName}、$detail、${widget.isCompleted ? '完了' : '未完了'}',
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Left: completion indicator
-                  Icon(
-                    widget.isCompleted
-                        ? LucideIcons.checkCircle2
-                        : LucideIcons.circle,
-                    size: 24,
-                    color: widget.isCompleted
-                        ? AppColors.emerald500
-                        : colors.textHint,
-                  ),
-                  const SizedBox(width: 8),
-
-                  // Center: exercise info
+                  FcDoneMark(done: widget.isCompleted, size: 26),
+                  const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           widget.exerciseName,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: colors.textPrimary,
-                            decoration: widget.isCompleted
-                                ? TextDecoration.lineThrough
-                                : TextDecoration.none,
-                            decorationColor: colors.textPrimary,
+                          style: AppTextStyles.exerciseName(context),
+                        ),
+                        Padding(
+                          // 正本の meta は 1px 空ける
+                          padding: const EdgeInsets.only(top: 1),
+                          child: Text(
+                            detail,
+                            style: AppTextStyles.supplement(context),
                           ),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          _buildSetsRepsText(),
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: colors.textSecondary,
-                            decoration: widget.isCompleted
-                                ? TextDecoration.lineThrough
-                                : TextDecoration.none,
-                            decorationColor: colors.textSecondary,
-                          ),
-                        ),
-                        if (widget.memo != null && widget.memo!.isNotEmpty) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            widget.memo!,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: colors.textHint,
-                              fontStyle: FontStyle.italic,
-                              decoration: widget.isCompleted
-                                  ? TextDecoration.lineThrough
-                                  : TextDecoration.none,
-                              decorationColor: colors.textHint,
-                            ),
-                          ),
-                        ],
                       ],
                     ),
                   ),
-
-                  // Right: dumbbell + chevron
-                  Padding(
-                    padding: const EdgeInsets.only(left: 4),
+                  const SizedBox(width: AppSpacing.md),
+                  AnimatedRotation(
+                    turns: _isExpanded ? 0.5 : 0,
+                    duration: reduceMotion ? Duration.zero : AppMotion.select,
+                    curve: Curves.easeInOut,
                     child: Icon(
-                      LucideIcons.dumbbell,
+                      LucideIcons.chevronDown,
                       size: 18,
-                      color: colors.textHint,
+                      color: colors.textSecondary,
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  Icon(
-                    _isExpanded
-                        ? LucideIcons.chevronUp
-                        : LucideIcons.chevronDown,
-                    size: 20,
-                    color: colors.textHint,
-                  ),
-                  const SizedBox(width: 4),
                 ],
               ),
             ),
           ),
 
-          // Expanded set rows
+          // セットの行・トレーナーのメモ
           AnimatedSize(
-            duration: const Duration(milliseconds: 200),
+            duration: reduceMotion ? Duration.zero : AppMotion.select,
             curve: Curves.easeInOut,
+            alignment: Alignment.topCenter,
             child: _isExpanded
-                ? Container(
-                    color: colors.surfaceDim,
-                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-                    child: Column(
-                      children: [
-                        // Column header
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
-                          child: Row(
-                            children: [
-                              const SizedBox(width: 50),
-                              SizedBox(
-                                width: 60,
-                                child: Text(
-                                  '回数',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: colors.textSecondary,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              const SizedBox(width: 12),
-                              const SizedBox(width: 8),
-                              SizedBox(
-                                width: 70,
-                                child: Text(
-                                  '重量',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: colors.textSecondary,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                              const Spacer(),
-                              Text(
-                                '完了',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: colors.textSecondary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                            ],
-                          ),
-                        ),
-
-                        // Set rows
-                        ...List.generate(_localSets.length, (i) {
-                          final set = _localSets[i];
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 6),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                // Set number label
-                                SizedBox(
-                                  width: 50,
-                                  child: Text(
-                                    'Set ${set.setNumber}',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: colors.textSecondary,
-                                    ),
-                                  ),
-                                ),
-
-                                // Reps input
-                                SizedBox(
-                                  width: 60,
-                                  height: 40,
-                                  child: TextFormField(
-                                    controller: _repsControllers[i],
-                                    focusNode: _repsFocusNodes[i],
-                                    keyboardType: TextInputType.number,
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: colors.textPrimary,
-                                    ),
-                                    decoration: InputDecoration(
-                                      suffixText: '回',
-                                      suffixStyle: TextStyle(
-                                        fontSize: 11,
-                                        color: colors.textSecondary,
-                                      ),
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                        horizontal: 4,
-                                        vertical: 8,
-                                      ),
-                                      isDense: true,
-                                      filled: true,
-                                      fillColor: colors.surface,
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                        borderSide: BorderSide(
-                                          color: colors.border,
-                                        ),
-                                      ),
-                                      enabledBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                        borderSide: BorderSide(
-                                          color: colors.border,
-                                        ),
-                                      ),
-                                      focusedBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                        borderSide: const BorderSide(
-                                          color: AppColors.primary,
-                                          width: 1.5,
-                                        ),
-                                      ),
-                                    ),
-                                    onChanged: (v) => _onRepsChanged(i, v),
-                                  ),
-                                ),
-
-                                const SizedBox(width: 8),
-
-                                Text(
-                                  '×',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: colors.textSecondary,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-
-                                const SizedBox(width: 8),
-
-                                // Weight input
-                                SizedBox(
-                                  width: 70,
-                                  height: 40,
-                                  child: TextFormField(
-                                    controller: _weightControllers[i],
-                                    focusNode: _weightFocusNodes[i],
-                                    keyboardType:
-                                        const TextInputType.numberWithOptions(
-                                      decimal: true,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: colors.textPrimary,
-                                    ),
-                                    decoration: InputDecoration(
-                                      suffixText: 'kg',
-                                      suffixStyle: TextStyle(
-                                        fontSize: 11,
-                                        color: colors.textSecondary,
-                                      ),
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                        horizontal: 4,
-                                        vertical: 8,
-                                      ),
-                                      isDense: true,
-                                      filled: true,
-                                      fillColor: colors.surface,
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                        borderSide: BorderSide(
-                                          color: colors.border,
-                                        ),
-                                      ),
-                                      enabledBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                        borderSide: BorderSide(
-                                          color: colors.border,
-                                        ),
-                                      ),
-                                      focusedBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                        borderSide: const BorderSide(
-                                          color: AppColors.primary,
-                                          width: 1.5,
-                                        ),
-                                      ),
-                                    ),
-                                    onChanged: (v) => _onWeightChanged(i, v),
-                                  ),
-                                ),
-
-                                const Spacer(),
-
-                                // Done checkbox
-                                SizedBox(
-                                  width: 32,
-                                  height: 32,
-                                  child: Checkbox(
-                                    value: set.done,
-                                    onChanged: (val) => _onDoneChanged(i, val),
-                                    activeColor: AppColors.emerald500,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    materialTapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
-                                    visualDensity: VisualDensity.compact,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }),
-                      ],
-                    ),
+                ? Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.md),
+                    child: _buildExpandedBody(context),
                   )
-                : const SizedBox.shrink(),
+                : const SizedBox(width: double.infinity),
           ),
         ],
       ),
     );
+  }
 
-    if (widget.isCompleted) {
-      return Opacity(opacity: 0.5, child: card);
-    }
-    return card;
+  Widget _buildExpandedBody(BuildContext context) {
+    final colors = AppColors.of(context);
+    final memo = widget.memo;
+    final hasMemo = memo != null && memo.isNotEmpty;
+    final memoStyle = AppTextStyles.supplement(context)
+        .copyWith(color: colors.textPrimary, height: 1.6);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < _localSets.length; i++) ...[
+          if (i > 0) const FcSeparator(),
+          _SetRow(
+            set: _localSets[i],
+            repsController: _repsControllers[i],
+            weightController: _weightControllers[i],
+            repsFocusNode: _repsFocusNodes[i],
+            weightFocusNode: _weightFocusNodes[i],
+            onRepsChanged: (v) => _onRepsChanged(i, v),
+            onWeightChanged: (v) => _onWeightChanged(i, v),
+            onDoneToggled: () => _onDoneToggled(i),
+          ),
+        ],
+        if (hasMemo)
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: FcInfoBox(
+              // 正本のメモは 11 × 14
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${trainerDisplayName(widget.trainerName)}のメモ',
+                    style: memoStyle.copyWith(fontWeight: FontWeight.w500),
+                  ),
+                  Text(memo, style: memoStyle),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// 1 セット分の行: 「セット1」＋ 重量欄 ＋ 回数欄 ＋ セット完了。
+class _SetRow extends StatelessWidget {
+  const _SetRow({
+    required this.set,
+    required this.repsController,
+    required this.weightController,
+    required this.repsFocusNode,
+    required this.weightFocusNode,
+    required this.onRepsChanged,
+    required this.onWeightChanged,
+    required this.onDoneToggled,
+  });
+
+  final ActualSet set;
+  final TextEditingController repsController;
+  final TextEditingController weightController;
+  final FocusNode repsFocusNode;
+  final FocusNode weightFocusNode;
+  final ValueChanged<String> onRepsChanged;
+  final ValueChanged<String> onWeightChanged;
+  final VoidCallback onDoneToggled;
+
+  /// 「セット1」の最小幅（正本 52）
+  static const double _labelMinWidth = 52;
+
+  /// 行の上下余白。正本は 9。欄の押せる範囲を 44 にするために欄の上下へ 2 ずつ足すので、その分を引く
+  static const double _verticalPadding = 7;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: _verticalPadding),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: _labelMinWidth),
+            child: Text(
+              'セット${set.setNumber}',
+              softWrap: false,
+              style: AppTextStyles.supplement(context),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          // 欄は 2 つ並べる。文字を大きくして収まらなければ、2 つ目が次の行へ折り返す
+          Expanded(
+            child: Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.xs,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                _SetField(
+                  controller: weightController,
+                  focusNode: weightFocusNode,
+                  unit: 'kg',
+                  semanticLabel: 'セット${set.setNumber} 重量（kg）',
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                  ],
+                  onChanged: onWeightChanged,
+                ),
+                _SetField(
+                  controller: repsController,
+                  focusNode: repsFocusNode,
+                  unit: '回',
+                  semanticLabel: 'セット${set.setNumber} 回数',
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  onChanged: onRepsChanged,
+                ),
+              ],
+            ),
+          ),
+          // 見た目は 28 の丸。押せる範囲は 44×44（右端に寄せて本文の右端と揃える）
+          FcPressable(
+            onTap: onDoneToggled,
+            // 何セット目かが分かるよう番号を含める（例:「セット1 完了」）
+            semanticLabel: 'セット${set.setNumber} ${set.done ? '完了' : '未完了'}',
+            child: SizedBox(
+              width: AppSizes.minTouch,
+              height: AppSizes.minTouch,
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: FcDoneMark(done: set.done, size: 28),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 重量・回数の小さな数値入力（正本 `SetField`）。
+///
+/// 最小高さ 40・surface の面・1px の separator の枠・角丸 12・文字 16・単位 13（textSecondary）。
+/// 空のときは「—」。編集中は枠が accent になる（どこを入力しているか分かるように。正本にはない）。
+/// 入力欄の外側の上下 2 も押すと入力欄に移るので、押せる範囲は 44。
+class _SetField extends StatelessWidget {
+  const _SetField({
+    required this.controller,
+    required this.focusNode,
+    required this.unit,
+    required this.semanticLabel,
+    required this.keyboardType,
+    required this.inputFormatters,
+    required this.onChanged,
+  });
+
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final String unit;
+  final String semanticLabel;
+  final TextInputType keyboardType;
+  final List<TextInputFormatter> inputFormatters;
+  final ValueChanged<String> onChanged;
+
+  /// 正本の最小幅は 74。小数（22.5）や 3 桁が欄の中で切れないよう、単位の分を含めて 80 にした
+  static const double _baseWidth = 80;
+
+  /// 欄の最小高さ（正本 40）
+  static const double _minHeight = 40;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    // 文字を拡大したら欄も同じ割合で広げる（数字と単位が切れないように）
+    final width = MediaQuery.textScalerOf(context).scale(_baseWidth);
+    final valueStyle = AppTextStyles.bodyNumber(context);
+
+    return AnimatedBuilder(
+      animation: focusNode,
+      builder: (context, _) {
+        final focused = focusNode.hasFocus;
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: focusNode.requestFocus,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: Container(
+              width: width,
+              constraints: const BoxConstraints(minHeight: _minHeight),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: BorderRadius.circular(AppRadius.input),
+                border: Border.all(
+                  color: focused ? colors.accent : colors.separator,
+                  width: focused ? 1.5 : 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Semantics(
+                      label: semanticLabel,
+                      textField: true,
+                      child: TextField(
+                        controller: controller,
+                        focusNode: focusNode,
+                        keyboardType: keyboardType,
+                        inputFormatters: inputFormatters,
+                        style: valueStyle,
+                        cursorColor: colors.accent,
+                        decoration: InputDecoration(
+                          isCollapsed: true,
+                          filled: false,
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          contentPadding: EdgeInsets.zero,
+                          hintText: '—',
+                          hintStyle: valueStyle.copyWith(
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                        onChanged: onChanged,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  ExcludeSemantics(
+                    child: Text(
+                      unit,
+                      softWrap: false,
+                      style: AppTextStyles.numUnit(context),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 }
 
@@ -519,187 +527,126 @@ class _WorkoutExerciseCardState extends State<WorkoutExerciseCard> {
 // Previews
 // ============================================
 
-final _sampleSetsPartial = [
-  const ActualSet(setNumber: 1, reps: 8, weight: 40, done: true),
-  const ActualSet(setNumber: 2, reps: 10, weight: 40, done: true),
-  const ActualSet(setNumber: 3, reps: 8, weight: 40, done: false),
+const _sampleSetsPartial = [
+  ActualSet(setNumber: 1, reps: 12, weight: 30, done: true),
+  ActualSet(setNumber: 2, reps: 12, weight: 30, done: true),
+  ActualSet(setNumber: 3, reps: 0, weight: 30, done: false),
 ];
 
-final _sampleSetsAll = [
-  const ActualSet(setNumber: 1, reps: 8, weight: 40, done: true),
-  const ActualSet(setNumber: 2, reps: 10, weight: 40, done: true),
-  const ActualSet(setNumber: 3, reps: 8, weight: 40, done: true),
+const _sampleSetsAll = [
+  ActualSet(setNumber: 1, reps: 12, weight: 25, done: true),
+  ActualSet(setNumber: 2, reps: 12, weight: 25, done: true),
+  ActualSet(setNumber: 3, reps: 12, weight: 25, done: true),
 ];
 
-class _ExpandedUncompletedPreview extends StatefulWidget {
+class _PreviewCard extends StatefulWidget {
+  const _PreviewCard({
+    required this.name,
+    required this.sets,
+    required this.completed,
+    required this.expanded,
+    this.memo,
+    this.targetWeight,
+  });
+
+  final String name;
+  final List<ActualSet>? sets;
+  final bool completed;
+  final bool expanded;
+  final String? memo;
+  final double? targetWeight;
+
   @override
-  State<_ExpandedUncompletedPreview> createState() =>
-      _ExpandedUncompletedPreviewState();
+  State<_PreviewCard> createState() => _PreviewCardState();
 }
 
-class _ExpandedUncompletedPreviewState
-    extends State<_ExpandedUncompletedPreview> {
-  List<ActualSet> _sets = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _sets = [];
-  }
+class _PreviewCardState extends State<_PreviewCard> {
+  late List<ActualSet>? _sets = widget.sets;
 
   @override
   Widget build(BuildContext context) {
     return WorkoutExerciseCard(
-      exerciseName: 'ベンチプレス',
+      exerciseName: widget.name,
       targetSets: 3,
-      targetReps: 10,
-      targetWeight: 40.0,
-      isCompleted: false,
-      actualSets: _sets.isEmpty ? null : _sets,
-      onSetsUpdated: (sets) => setState(() => _sets = sets),
-    );
-  }
-}
-
-class _PartiallyCompletedPreview extends StatefulWidget {
-  @override
-  State<_PartiallyCompletedPreview> createState() =>
-      _PartiallyCompletedPreviewState();
-}
-
-class _PartiallyCompletedPreviewState
-    extends State<_PartiallyCompletedPreview> {
-  late List<ActualSet> _sets;
-
-  @override
-  void initState() {
-    super.initState();
-    _sets = List.from(_sampleSetsPartial);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return WorkoutExerciseCard(
-      exerciseName: 'ベンチプレス',
-      targetSets: 3,
-      targetReps: 10,
-      targetWeight: 40.0,
-      isCompleted: false,
+      targetReps: 12,
+      targetWeight: widget.targetWeight,
+      memo: widget.memo,
+      isCompleted: widget.completed,
       actualSets: _sets,
+      trainerName: '田中',
+      initiallyExpanded: widget.expanded,
       onSetsUpdated: (sets) => setState(() => _sets = sets),
     );
   }
 }
 
-class _AllCompletedPreview extends StatefulWidget {
-  @override
-  State<_AllCompletedPreview> createState() => _AllCompletedPreviewState();
-}
-
-class _AllCompletedPreviewState extends State<_AllCompletedPreview> {
-  late List<ActualSet> _sets;
-
-  @override
-  void initState() {
-    super.initState();
-    _sets = List.from(_sampleSetsAll);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return WorkoutExerciseCard(
-      exerciseName: 'ベンチプレス',
-      targetSets: 3,
-      targetReps: 10,
-      targetWeight: 40.0,
-      isCompleted: true,
-      actualSets: _sets,
-      onSetsUpdated: (sets) => setState(() => _sets = sets),
-    );
-  }
-}
-
-class _CollapsedPreview extends StatefulWidget {
-  @override
-  State<_CollapsedPreview> createState() => _CollapsedPreviewState();
-}
-
-class _CollapsedPreviewState extends State<_CollapsedPreview> {
-  List<ActualSet> _sets = [];
-
-  @override
-  Widget build(BuildContext context) {
-    return WorkoutExerciseCard(
-      exerciseName: 'スクワット',
-      targetSets: 4,
-      targetReps: 8,
-      targetWeight: 60.0,
-      memo: 'フォームに注意',
-      isCompleted: false,
-      actualSets: _sets.isEmpty ? null : _sets,
-      onSetsUpdated: (sets) => setState(() => _sets = sets),
-    );
-  }
-}
-
-@Preview(name: 'WorkoutExerciseCard - Expanded Uncompleted')
-Widget previewWorkoutExerciseCardExpandedUncompleted() {
-  return MaterialApp(
-    theme: AppTheme.lightTheme,
+Widget _previewExerciseCards(Brightness brightness, {double textScale = 1.0}) {
+  return FcPreviewApp(
+    brightness: brightness,
+    textScale: textScale,
     home: Scaffold(
-      backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: _ExpandedUncompletedPreview(),
+        child: ListView(
+          padding: const EdgeInsets.all(AppSpacing.pageHorizontal),
+          children: const [
+            _PreviewCard(
+              name: 'ダンベルプレス',
+              sets: _sampleSetsAll,
+              completed: true,
+              expanded: false,
+              targetWeight: 12,
+            ),
+            SizedBox(height: AppSpacing.cardGap),
+            _PreviewCard(
+              name: 'ラットプルダウン',
+              sets: _sampleSetsPartial,
+              completed: false,
+              expanded: true,
+              memo: '肘を後ろに引く意識で、反動を使わずに。',
+              targetWeight: 30,
+            ),
+            SizedBox(height: AppSpacing.cardGap),
+            _PreviewCard(
+              name: 'シーテッドロー',
+              sets: null,
+              completed: false,
+              expanded: false,
+              targetWeight: 25,
+            ),
+          ],
         ),
       ),
     ),
   );
 }
 
-@Preview(name: 'WorkoutExerciseCard - Partially Completed')
-Widget previewWorkoutExerciseCardPartiallyCompleted() {
-  return MaterialApp(
-    theme: AppTheme.lightTheme,
-    home: Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: _PartiallyCompletedPreview(),
-        ),
-      ),
-    ),
-  );
-}
+@Preview(name: 'WorkoutExerciseCard - 開いている・途中')
+Widget previewWorkoutExerciseCardExpandedPartial() =>
+    _previewExerciseCards(Brightness.light);
 
-@Preview(name: 'WorkoutExerciseCard - All Completed')
+@Preview(name: 'WorkoutExerciseCard - ダーク')
+Widget previewWorkoutExerciseCardDark() =>
+    _previewExerciseCards(Brightness.dark);
+
+@Preview(name: 'WorkoutExerciseCard - 文字特大 (1.35)')
+Widget previewWorkoutExerciseCardLargeText() =>
+    _previewExerciseCards(Brightness.light, textScale: 1.35);
+
+@Preview(name: 'WorkoutExerciseCard - 全セット完了（閉じている）')
 Widget previewWorkoutExerciseCardAllCompleted() {
-  return MaterialApp(
-    theme: AppTheme.lightTheme,
-    home: Scaffold(
-      backgroundColor: AppColors.background,
+  return FcPreviewApp(
+    brightness: Brightness.light,
+    home: const Scaffold(
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: _AllCompletedPreview(),
-        ),
-      ),
-    ),
-  );
-}
-
-@Preview(name: 'WorkoutExerciseCard - Collapsed')
-Widget previewWorkoutExerciseCardCollapsed() {
-  return MaterialApp(
-    theme: AppTheme.lightTheme,
-    home: Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: _CollapsedPreview(),
+          padding: EdgeInsets.all(AppSpacing.pageHorizontal),
+          child: _PreviewCard(
+            name: 'ベンチプレス',
+            sets: _sampleSetsAll,
+            completed: true,
+            expanded: false,
+            targetWeight: 40,
+          ),
         ),
       ),
     ),

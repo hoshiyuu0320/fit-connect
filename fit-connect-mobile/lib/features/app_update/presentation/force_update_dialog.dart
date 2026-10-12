@@ -42,10 +42,7 @@ class ForceUpdateDialog extends StatelessWidget {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('ストアを開けませんでした'),
-          backgroundColor: AppColors.rose800,
-        ),
+        const SnackBar(content: Text('ストアを開けませんでした')),
       );
     }
   }
@@ -58,15 +55,16 @@ class ForceUpdateDialog extends StatelessWidget {
     return PopScope(
       canPop: false,
       child: AlertDialog(
-        title: const Row(
+        // アイコンはテーマ追従の accent。文字拡大では見出しが折り返す（Expanded）
+        title: Row(
           children: [
             Icon(
               LucideIcons.arrowUpCircle,
               size: 22,
-              color: AppColors.primary600,
+              color: colors.accent,
             ),
-            SizedBox(width: 8),
-            Text('アップデートのお願い'),
+            const SizedBox(width: 8),
+            const Expanded(child: Text('アップデートのお願い')),
           ],
         ),
         content: Column(
@@ -100,22 +98,10 @@ class ForceUpdateDialog extends StatelessWidget {
               // ストアへの誘導ボタン（アプリはこの画面のまま維持される）
               SizedBox(
                 width: double.infinity,
+                // 形・色はテーマの FilledButton（actionFill・onAction・角丸 24・最小高さ 48）
                 child: FilledButton(
                   onPressed: () => _openStore(context),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    'アップデート',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  child: const Text('アップデート'),
                 ),
               ),
             ],
@@ -136,6 +122,25 @@ Widget previewForceUpdateDialogWithStoreUrl() {
     theme: AppTheme.lightTheme,
     home: const Scaffold(
       backgroundColor: AppColors.background,
+      body: Center(
+        child: ForceUpdateDialog(
+          config: AppConfig(
+            minSupportedVersion: '1.1.0',
+            latestVersion: '1.2.0',
+            iosStoreUrl: 'https://apps.apple.com/jp/app/id0000000000',
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/// ダークモード: 見出しのアイコンが accent で読める
+@Preview(name: 'ForceUpdateDialog - ストアURLあり（Dark）')
+Widget previewForceUpdateDialogWithStoreUrlDark() {
+  return MaterialApp(
+    theme: AppTheme.darkTheme,
+    home: const Scaffold(
       body: Center(
         child: ForceUpdateDialog(
           config: AppConfig(

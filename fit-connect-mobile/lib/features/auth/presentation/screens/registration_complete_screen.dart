@@ -1,72 +1,24 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/widget_previews.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:confetti/confetti.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
+import 'package:fit_connect_mobile/core/theme/app_spacing.dart';
+import 'package:fit_connect_mobile/core/theme/app_text_styles.dart';
+import 'package:fit_connect_mobile/core/theme/app_theme.dart';
 import 'package:fit_connect_mobile/features/auth/providers/registration_provider.dart';
 import 'package:fit_connect_mobile/features/onboarding_flow/presentation/screens/onboarding_flow_screen.dart';
+import 'package:fit_connect_mobile/shared/widgets/fc/fc.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 /// 登録完了画面
 ///
-/// 紙吹雪アニメーションでお祝いを表示し、ホーム画面への遷移を促す
-class RegistrationCompleteScreen extends ConsumerStatefulWidget {
+/// 演出（紙吹雪・グラデーション・光る影）は使わず、ページ背景の上に
+/// チェックのアイコン・見出し・説明のカード・主要ボタンを静かに並べる。
+/// 「トレーニングを始める」でオンボーディング後段フロー（通知・ヘルスケア）へ進む。
+class RegistrationCompleteScreen extends ConsumerWidget {
   const RegistrationCompleteScreen({super.key});
 
-  @override
-  ConsumerState<RegistrationCompleteScreen> createState() =>
-      _RegistrationCompleteScreenState();
-}
-
-class _RegistrationCompleteScreenState
-    extends ConsumerState<RegistrationCompleteScreen>
-    with TickerProviderStateMixin {
-  late ConfettiController _confettiController;
-  late AnimationController _scaleController;
-  late Animation<double> _scaleAnimation;
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-
-    // Confetti controller
-    _confettiController = ConfettiController(
-      duration: const Duration(seconds: 5),
-    );
-
-    // Scale animation
-    _scaleController = AnimationController(
-      duration: const Duration(milliseconds: 400),
-      vsync: this,
-    );
-    _scaleAnimation = CurvedAnimation(
-      parent: _scaleController,
-      curve: Curves.elasticOut,
-    );
-
-    // 登録はProfileSetupScreenで完了済み
-    // ここではアニメーションを開始するのみ
-    _startAnimations();
-  }
-
-  void _startAnimations() {
-    setState(() {
-      _isLoading = false;
-    });
-    // アニメーション開始
-    _confettiController.play();
-    _scaleController.forward();
-  }
-
-  @override
-  void dispose() {
-    _confettiController.dispose();
-    _scaleController.dispose();
-    super.dispose();
-  }
-
-  void _startOnboardingFlow() {
+  void _startOnboardingFlow(BuildContext context) {
     // オンボーディング後段フロー（通知プライミング・ヘルスケア提案）へ進む。
     // 登録状態のクリアと currentClientProvider の無効化はフロー完了時に
     // OnboardingFlowScreen 側で行う（完了後に app.dart が MainScreen を表示）。
@@ -78,215 +30,176 @@ class _RegistrationCompleteScreenState
   }
 
   @override
-  Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+  Widget build(BuildContext context, WidgetRef ref) {
     final registrationState = ref.watch(registrationNotifierProvider);
 
-    if (_isLoading) {
-      return Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(
-                color: AppColors.primary600,
-              ),
-              const SizedBox(height: 24),
-              Text(
-                '登録を完了しています...',
-                style: TextStyle(
-                  color: colors.textSecondary,
-                  fontSize: 16,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
+    return _RegistrationCompleteView(
+      trainerName: registrationState.trainerName,
+      onStart: () => _startOnboardingFlow(context),
+    );
+  }
+}
+
+/// 登録完了画面の見た目（プロバイダーに依存しない。プレビューでも使う）
+class _RegistrationCompleteView extends StatelessWidget {
+  const _RegistrationCompleteView({
+    required this.trainerName,
+    required this.onStart,
+  });
+
+  final String? trainerName;
+  final VoidCallback onStart;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final name = trainerName;
+    final hasTrainer = name != null;
+    final horizontal = AppSpacing.pageHorizontalOf(context);
 
     return Scaffold(
-      backgroundColor: AppColors.primary600,
-      body: Stack(
-        children: [
-          // 紙吹雪（上から）
-          Align(
-            alignment: Alignment.topCenter,
-            child: ConfettiWidget(
-              confettiController: _confettiController,
-              blastDirection: pi / 2, // 下向き
-              blastDirectionality: BlastDirectionality.explosive,
-              maxBlastForce: 20,
-              minBlastForce: 5,
-              emissionFrequency: 0.03,
-              numberOfParticles: 30,
-              gravity: 0.1,
-              shouldLoop: false,
-              colors: const [
-                Colors.white,
-                AppColors.amber100,
-                AppColors.rose100,
-                AppColors.emerald500,
-                AppColors.indigo600,
-                AppColors.purple500,
-              ],
-            ),
-          ),
-
-          // メインコンテンツ
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Spacer(),
-
-                  // お祝いカード
-                  ScaleTransition(
-                    scale: _scaleAnimation,
-                    child: Container(
-                      padding: const EdgeInsets.all(32),
-                      decoration: BoxDecoration(
-                        color: colors.surface,
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withAlpha(51),
-                            blurRadius: 30,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
+      body: SafeArea(
+        child: Column(
+          children: [
+            // 文字拡大・小さい画面ではスクロールで収める（縮めない）
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    padding: EdgeInsets.fromLTRB(
+                      horizontal,
+                      AppSpacing.xl,
+                      horizontal,
+                      AppSpacing.lg,
+                    ),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight -
+                            AppSpacing.xl -
+                            AppSpacing.lg,
                       ),
                       child: Column(
-                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          // トロフィーアイコン
-                          Container(
-                            width: 100,
-                            height: 100,
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [
-                                  Color(0xFFFFD700), // Gold
-                                  Color(0xFFFFA500), // Orange
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFFFFD700).withAlpha(102),
-                                  blurRadius: 20,
-                                  offset: const Offset(0, 8),
-                                ),
-                              ],
-                            ),
-                            child: const Icon(
-                              LucideIcons.partyPopper,
-                              size: 48,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-
-                          // タイトル
-                          Text(
-                            '登録完了！',
-                            style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              color: colors.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-
-                          // トレーナー情報
-                          if (registrationState.trainerName != null) ...[
-                            Container(
-                              padding: const EdgeInsets.all(16),
+                          // チェックのアイコン（accent）。面は surface（青緑で塗らない）
+                          Center(
+                            child: Container(
+                              width: 80,
+                              height: 80,
                               decoration: BoxDecoration(
-                                color: AppColors.primary50,
-                                borderRadius: BorderRadius.circular(12),
+                                color: colors.surface,
+                                shape: BoxShape.circle,
                               ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(
-                                    LucideIcons.userCheck,
-                                    size: 20,
-                                    color: AppColors.primary600,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    '${registrationState.trainerName}トレーナーと\nつながりました！',
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
-                                      color: AppColors.primary700,
-                                      height: 1.4,
-                                    ),
-                                  ),
-                                ],
+                              child: ExcludeSemantics(
+                                child: Icon(
+                                  LucideIcons.check,
+                                  size: 40,
+                                  color: colors.accent,
+                                ),
                               ),
                             ),
-                            const SizedBox(height: 16),
-                          ],
+                          ),
+                          const SizedBox(height: AppSpacing.xxl),
 
-                          // 説明テキスト
-                          Text(
-                            'トレーニングを始める準備ができました。\n一緒に目標を達成しましょう！',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: colors.textSecondary,
-                              height: 1.6,
+                          // 見出し
+                          if (hasTrainer) ...[
+                            Text(
+                              '登録完了！',
+                              textAlign: TextAlign.center,
+                              style: AppTextStyles.eyebrow(context),
+                            ),
+                            const SizedBox(height: AppSpacing.xs),
+                          ],
+                          Semantics(
+                            header: true,
+                            child: Text(
+                              // 改行位置は従来の文言どおり（「…トレーナーと／つながりました！」）
+                              hasTrainer ? '$nameトレーナーと\nつながりました！' : '登録完了！',
+                              textAlign: TextAlign.center,
+                              style: AppTextStyles.planName(context),
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.xxl),
+
+                          // 要点（説明）
+                          FcCard(
+                            child: Text(
+                              'トレーニングを始める準備ができました。\n一緒に目標を達成しましょう！',
+                              textAlign: TextAlign.center,
+                              style: AppTextStyles.body(context)
+                                  .copyWith(height: 1.6),
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ),
-
-                  const Spacer(),
-
-                  // スタートボタン
-                  ElevatedButton(
-                    onPressed: _startOnboardingFlow,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: AppColors.primary600,
-                      padding: const EdgeInsets.symmetric(vertical: 18),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'トレーニングを始める',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(width: 8),
-                        Icon(LucideIcons.arrowRight, size: 20),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-                ],
+                  );
+                },
               ),
             ),
-          ),
-        ],
+
+            // スタートボタン（下部）
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                horizontal,
+                0,
+                horizontal,
+                AppSpacing.xxl,
+              ),
+              child: FcButton.block(
+                label: 'トレーニングを始める',
+                icon: LucideIcons.arrowRight,
+                onPressed: onStart,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
+}
+
+// ============================================
+// Previews
+// ============================================
+
+@Preview(name: 'RegistrationComplete - Light')
+Widget previewRegistrationCompleteLight() {
+  return MaterialApp(
+    theme: AppTheme.lightTheme,
+    home: _RegistrationCompleteView(trainerName: '田中', onStart: () {}),
+  );
+}
+
+@Preview(name: 'RegistrationComplete - Dark')
+Widget previewRegistrationCompleteDark() {
+  return MaterialApp(
+    theme: AppTheme.darkTheme,
+    home: _RegistrationCompleteView(trainerName: '田中', onStart: () {}),
+  );
+}
+
+/// トレーナー名が取れていない場合は「登録完了！」を見出しにする
+@Preview(name: 'RegistrationComplete - No Trainer Name')
+Widget previewRegistrationCompleteNoTrainerName() {
+  return MaterialApp(
+    theme: AppTheme.lightTheme,
+    home: _RegistrationCompleteView(trainerName: null, onStart: () {}),
+  );
+}
+
+/// 文字拡大 1.35: 見出し・カードが折り返して縦に伸び、横にはみ出さない
+@Preview(name: 'RegistrationComplete - Large Text')
+Widget previewRegistrationCompleteLargeText() {
+  return MaterialApp(
+    theme: AppTheme.lightTheme,
+    builder: (context, child) => MediaQuery(
+      data: MediaQuery.of(context).copyWith(
+        textScaler: const TextScaler.linear(1.35),
+      ),
+      child: child!,
+    ),
+    home: _RegistrationCompleteView(trainerName: '田中', onStart: () {}),
+  );
 }

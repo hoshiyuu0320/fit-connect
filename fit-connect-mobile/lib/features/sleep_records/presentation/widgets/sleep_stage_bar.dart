@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
-import 'package:fit_connect_mobile/core/theme/app_colors.dart';
-import 'package:fit_connect_mobile/core/theme/app_theme.dart';
+import 'package:fit_connect_mobile/core/theme/app_spacing.dart';
+import 'package:fit_connect_mobile/shared/widgets/fc/fc.dart';
+import 'package:fit_connect_mobile/shared/widgets/fc/fc_previews.dart';
 
-/// 睡眠ステージの水平スタックバー（案A）+ 凡例（4項目グリッド）
+/// 睡眠ステージの内訳（帯 + 凡例）。基盤の [FcSleepStageBar] に分（深い・レム・浅い・覚醒）を渡す薄い包み。
+///
+/// 正本 `record-screens.js` の `StageBar`: 色はカテゴリ色ではなく accent の濃淡
+/// （深い 100% / レム 60% / 浅い 30%）と、覚醒だけ separator。並びは 深い → レム → 浅い → 覚醒。
+/// 4 つとも 0 分（データなし）のときは何も出さない。上の余白（正本は 16）は含まない。
 class SleepStageBar extends StatelessWidget {
   final int deepMinutes;
   final int lightMinutes;
   final int remMinutes;
   final int awakeMinutes;
-  final double height;
 
   const SleepStageBar({
     super.key,
@@ -17,138 +21,43 @@ class SleepStageBar extends StatelessWidget {
     required this.lightMinutes,
     required this.remMinutes,
     required this.awakeMinutes,
-    this.height = 28,
   });
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColorsExtension.of(context);
     final total = deepMinutes + lightMinutes + remMinutes + awakeMinutes;
     if (total == 0) return const SizedBox.shrink();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: SizedBox(
-            height: height,
-            child: Row(
-              children: [
-                if (deepMinutes > 0)
-                  Expanded(
-                    flex: deepMinutes,
-                    child: Container(color: colors.sleepStageDeep),
-                  ),
-                if (lightMinutes > 0)
-                  Expanded(
-                    flex: lightMinutes,
-                    child: Container(color: colors.sleepStageLight),
-                  ),
-                if (remMinutes > 0)
-                  Expanded(
-                    flex: remMinutes,
-                    child: Container(color: colors.sleepStageRem),
-                  ),
-                if (awakeMinutes > 0)
-                  Expanded(
-                    flex: awakeMinutes,
-                    child: Container(color: colors.sleepStageAwake),
-                  ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 10),
-        _legend(context, total),
-      ],
-    );
-  }
-
-  Widget _legend(BuildContext context, int total) {
-    final colors = AppColorsExtension.of(context);
-    final items = <_LegendItem>[
-      _LegendItem('深い', colors.sleepStageDeep, deepMinutes),
-      _LegendItem('浅い', colors.sleepStageLight, lightMinutes),
-      _LegendItem('REM', colors.sleepStageRem, remMinutes),
-      _LegendItem('覚醒', colors.sleepStageAwake, awakeMinutes),
-    ];
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 6,
-      mainAxisSpacing: 6,
-      crossAxisSpacing: 12,
-      children: items.map((it) => _legendRow(context, it, total)).toList(),
-    );
-  }
-
-  Widget _legendRow(BuildContext context, _LegendItem it, int total) {
-    final colors = AppColorsExtension.of(context);
-    final pct = ((it.minutes / total) * 100).round();
-    final h = it.minutes ~/ 60;
-    final m = it.minutes % 60;
-    final timeLabel = h > 0 ? '${h}h${m}m' : '${m}m';
-    return Row(
-      children: [
-        Container(
-          width: 10,
-          height: 10,
-          decoration: BoxDecoration(
-            color: it.color,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        const SizedBox(width: 7),
-        Text(
-          it.label,
-          style: TextStyle(
-            fontSize: 12,
-            color: colors.textSecondary,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          '$pct%',
-          style: TextStyle(
-            fontSize: 12,
-            color: colors.textPrimary,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(width: 4),
-        Text(
-          '($timeLabel)',
-          style: TextStyle(fontSize: 11, color: colors.textHint),
-        ),
+    return FcSleepStageBar(
+      stages: [
+        FcSleepStage(label: '深い', minutes: deepMinutes, percent: 100),
+        FcSleepStage(label: 'レム', minutes: remMinutes, percent: 60),
+        FcSleepStage(label: '浅い', minutes: lightMinutes, percent: 30),
+        FcSleepStage(label: '覚醒', minutes: awakeMinutes, percent: 0),
       ],
     );
   }
 }
 
-class _LegendItem {
-  final String label;
-  final Color color;
-  final int minutes;
-  const _LegendItem(this.label, this.color, this.minutes);
-}
+// =====================================
+// プレビュー
+// =====================================
 
-@Preview(name: 'SleepStageBar - Normal')
-Widget previewSleepStageBarNormal() {
-  return MaterialApp(
-    theme: AppTheme.lightTheme,
+Widget _previewStageBar({required Brightness brightness, double scale = 1}) {
+  return FcPreviewApp(
+    brightness: brightness,
+    textScale: scale,
     home: Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
       body: SafeArea(
         child: Padding(
-          padding: EdgeInsets.all(16),
-          child: SleepStageBar(
-            deepMinutes: 110,
-            lightMinutes: 221,
-            remMinutes: 88,
-            awakeMinutes: 22,
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          child: FcCard(
+            child: const SleepStageBar(
+              deepMinutes: 85,
+              lightMinutes: 255,
+              remMinutes: 110,
+              awakeMinutes: 20,
+            ),
           ),
         ),
       ),
@@ -156,15 +65,26 @@ Widget previewSleepStageBarNormal() {
   );
 }
 
-@Preview(name: 'SleepStageBar - All Deep')
+@Preview(name: 'SleepStageBar - Light')
+Widget previewSleepStageBarLight() =>
+    _previewStageBar(brightness: Brightness.light);
+
+@Preview(name: 'SleepStageBar - Dark')
+Widget previewSleepStageBarDark() =>
+    _previewStageBar(brightness: Brightness.dark);
+
+@Preview(name: 'SleepStageBar - 文字拡大 1.35')
+Widget previewSleepStageBarLarge() =>
+    _previewStageBar(brightness: Brightness.light, scale: 1.35);
+
+@Preview(name: 'SleepStageBar - 深い睡眠のみ')
 Widget previewSleepStageBarAllDeep() {
-  return MaterialApp(
-    theme: AppTheme.lightTheme,
-    home: Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+  return FcPreviewApp(
+    brightness: Brightness.light,
+    home: const Scaffold(
       body: SafeArea(
         child: Padding(
-          padding: EdgeInsets.all(16),
+          padding: EdgeInsets.all(AppSpacing.xl),
           child: SleepStageBar(
             deepMinutes: 420,
             lightMinutes: 0,

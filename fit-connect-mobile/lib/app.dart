@@ -64,10 +64,10 @@ class _LoadingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
       body: Center(
         child: CircularProgressIndicator(
-          color: AppColors.primary600,
+          color: AppColors.of(context).accent,
         ),
       ),
     );
@@ -318,8 +318,8 @@ class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const CircularProgressIndicator(
-                  color: AppColors.primary600,
+                CircularProgressIndicator(
+                  color: AppColors.of(context).accent,
                 ),
                 const SizedBox(height: 16),
                 Text(

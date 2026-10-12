@@ -1,71 +1,99 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lucide_icons/lucide_icons.dart';
-import 'package:fit_connect_mobile/core/theme/app_colors.dart';
-import 'package:fit_connect_mobile/core/theme/app_theme.dart';
+import 'package:fit_connect_mobile/core/theme/app_spacing.dart';
+import 'package:fit_connect_mobile/features/health/presentation/screens/health_settings_screen.dart';
+import 'package:fit_connect_mobile/features/health/providers/health_provider.dart';
 import 'package:fit_connect_mobile/features/sleep_records/data/sleep_date_utils.dart';
 import 'package:fit_connect_mobile/features/sleep_records/models/sleep_record_model.dart';
-import 'package:fit_connect_mobile/features/sleep_records/providers/sleep_records_provider.dart';
+import 'package:fit_connect_mobile/features/sleep_records/presentation/utils/sleep_labels.dart';
+import 'package:fit_connect_mobile/features/sleep_records/presentation/widgets/sleep_empty_state.dart';
 import 'package:fit_connect_mobile/features/sleep_records/presentation/widgets/sleep_history_list_item.dart';
-import 'package:fit_connect_mobile/features/sleep_records/presentation/widgets/sleep_stage_bar.dart';
+import 'package:fit_connect_mobile/features/sleep_records/presentation/widgets/sleep_summary_card.dart';
+import 'package:fit_connect_mobile/features/sleep_records/presentation/widgets/sleep_sync_status.dart';
 import 'package:fit_connect_mobile/features/sleep_records/presentation/widgets/sleep_week_chart.dart';
 import 'package:fit_connect_mobile/features/sleep_records/presentation/widgets/wakeup_record_sheet.dart';
+import 'package:fit_connect_mobile/features/sleep_records/providers/sleep_records_provider.dart';
+import 'package:fit_connect_mobile/shared/widgets/fc/fc.dart';
+import 'package:fit_connect_mobile/shared/widgets/fc/fc_previews.dart';
 
-class SleepRecordScreen extends StatelessWidget {
-  /// 引っぱって更新（pull-to-refresh）で呼ばれる同期処理。
+/// 記録タブの「睡眠」サブタブの本文。
+///
+/// 見出し・サブタブ・同期ボタンは記録タブの枠（`RecordsScreen`）が持つ。この画面は本文だけ。
+/// 並びは正本 `record-screens.js` の `SleepTab`:
+/// 同期の状態（最終同期 / 同期できなかった警告）→ 昨夜の睡眠 → 直近7日間 → 履歴。
+/// 同期できなかったときも、取得済みの値は消さず下に表示し続ける。
+/// 取得できなかった日は「未取得」と出し、0 とは表示しない。
+class SleepRecordScreen extends ConsumerWidget {
+  /// 引っぱって更新（pull-to-refresh）と「再試行」で呼ばれる同期処理。
   /// 記録タブのサブタブとして埋め込む際に、記録タブ側の同期処理を渡す。
-  /// null の場合は RefreshIndicator を付けない。
+  /// null の場合は RefreshIndicator を付けず、「再試行」も出さない。
   final Future<void> Function()? onRefresh;
 
   const SleepRecordScreen({super.key, this.onRefresh});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final horizontal = AppSpacing.pageHorizontalOf(context);
+    final today = ref.watch(todaySleepRecordProvider);
+    final history = ref.watch(sleepRecordsProvider());
+    final settings = ref.watch(healthSettingsProvider).valueOrNull;
+
+    // 今日の記録も履歴も無いと分かったときだけ「まだ記録がありません」にする
+    final noRecordsAtAll = today.hasValue &&
+        today.value == null &&
+        history.hasValue &&
+        (history.value ?? const <SleepRecord>[]).isEmpty;
+
+    // 睡眠の連携が有効なときだけ、睡眠の同期の状態（最終同期 / 失敗の警告）を出す
+    final retry = onRefresh;
+    final status = SleepSyncStatus.fromSettings(
+      settings,
+      onRetry: retry == null ? null : () => unawaited(retry()),
+    );
+
+    const gap = SizedBox(height: AppSpacing.cardGap);
+
     final list = ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-      children: const [
-        _SummarySection(),
-        SizedBox(height: 24),
-        _SectionTitle(title: '直近7日間'),
-        SizedBox(height: 8),
-        _WeekSection(),
-        SizedBox(height: 24),
-        _HistorySection(),
-      ],
-    );
-    if (onRefresh == null) return list;
-    return RefreshIndicator(onRefresh: onRefresh!, child: list);
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  final String title;
-  final Widget? trailing;
-  const _SectionTitle({required this.title, this.trailing});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppColorsExtension.of(context);
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      // 上の余白（サブタブとの間 16）は記録タブの枠が空ける。
+      // 下は、下部ナビぶん（MediaQuery の下余白）を自分で受け取る
+      padding: EdgeInsets.fromLTRB(
+        horizontal,
+        0,
+        horizontal,
+        MediaQuery.paddingOf(context).bottom,
+      ),
       children: [
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: colors.textPrimary,
-          ),
-        ),
-        if (trailing != null) trailing!,
+        if (!status.isEmpty) ...[status, gap],
+        if (noRecordsAtAll)
+          SleepEmptyState(
+            onOpenHealthSettings: () => _openHealthSettings(context),
+            onRecordWakeup: () => showWakeupRecordSheet(context, ref),
+          )
+        else ...[
+          const _SummarySection(),
+          gap,
+          const _WeekSection(),
+          gap,
+          const _HistorySection(),
+        ],
       ],
+    );
+    if (retry == null) return list;
+    return RefreshIndicator(onRefresh: retry, child: list);
+  }
+
+  void _openHealthSettings(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const HealthSettingsScreen()),
     );
   }
 }
 
-// ===== Summary Section =====
+// ===== 昨夜の睡眠 =====
 
 class _SummarySection extends ConsumerWidget {
   const _SummarySection();
@@ -74,689 +102,349 @@ class _SummarySection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final today = ref.watch(todaySleepRecordProvider);
     return today.when(
-      loading: () => const _SummaryShell(child: _SummaryLoading()),
-      error: (e, _) => _SummaryShell(child: _SummaryError(message: '$e')),
+      loading: () => const SleepSummaryLoadingCard(),
+      error: (_, __) => FcStateMessage.error(
+        title: '読み込めませんでした',
+        actionLabel: '再試行',
+        onAction: () => ref.invalidate(todaySleepRecordProvider),
+      ),
       data: (record) {
         if (record == null) {
-          return const _SummaryShell(child: _SummaryEmpty());
+          return SleepSummaryEmptyCard(
+            onRecordWakeup: () => showWakeupRecordSheet(context, ref),
+          );
         }
-        if (record.hasObjectiveData) {
-          return _SummaryShell(child: _SummaryHealthkit(record: record));
-        }
-        return _SummaryShell(child: _SummaryManualOnly(record: record));
-      },
-    );
-  }
-}
-
-class _SummaryShell extends StatelessWidget {
-  final Widget child;
-  const _SummaryShell({required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppColorsExtension.of(context);
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: colors.border),
-      ),
-      child: child,
-    );
-  }
-}
-
-class _SummaryLoading extends StatelessWidget {
-  const _SummaryLoading();
-
-  @override
-  Widget build(BuildContext context) {
-    return const SizedBox(
-      height: 80,
-      child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-    );
-  }
-}
-
-class _SummaryError extends StatelessWidget {
-  final String message;
-  const _SummaryError({required this.message});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppColorsExtension.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      child: Text(
-        '読み込みに失敗しました',
-        style: TextStyle(fontSize: 13, color: colors.textHint),
-      ),
-    );
-  }
-}
-
-class _SummaryEmpty extends ConsumerWidget {
-  const _SummaryEmpty();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final colors = AppColorsExtension.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: colors.accentIndigo,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: const Icon(
-                LucideIcons.moon,
-                size: 17,
-                color: AppColors.indigo600,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              '今日の記録はまだありません',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: colors.textPrimary,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        SizedBox(
-          width: double.infinity,
-          height: 44,
-          child: ElevatedButton(
-            onPressed: () => showWakeupRecordSheet(context, ref),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(6),
-              ),
-              textStyle: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            child: const Text('目覚めを記録する'),
+        return SleepSummaryCard(
+          record: record,
+          onEditWakeup: () => showWakeupRecordSheet(
+            context,
+            ref,
+            current: record.wakeupRating,
           ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SummaryHealthkit extends ConsumerWidget {
-  final SleepRecord record;
-  const _SummaryHealthkit({required this.record});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final colors = AppColorsExtension.of(context);
-    final mins = record.totalSleepMinutes!;
-    final h = mins ~/ 60;
-    final m = mins % 60;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // ヘッダー
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                const Icon(
-                  LucideIcons.moon,
-                  size: 15,
-                  color: AppColors.indigo600,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '昨夜の睡眠',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: colors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: AppColors.primary50,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Row(
-                children: const [
-                  Icon(
-                    LucideIcons.heartPulse,
-                    size: 11,
-                    color: AppColors.primary,
-                  ),
-                  SizedBox(width: 4),
-                  Text(
-                    'HealthKit',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        // 大きな時間表示
-        RichText(
-          text: TextSpan(
-            style: TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.w700,
-              color: colors.textPrimary,
-              letterSpacing: -0.64,
-              height: 1.1,
-            ),
-            children: [
-              TextSpan(text: '$h'),
-              TextSpan(
-                text: '時間',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: colors.textSecondary,
-                ),
-              ),
-              TextSpan(text: '$m'),
-              TextSpan(
-                text: '分',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: colors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        // 就寝/起床グリッド
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: colors.border,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Row(
-            children: [
-              Expanded(child: _bedWakeColumn('就寝', record.bedTime, colors)),
-              Expanded(child: _bedWakeColumn('起床', record.wakeTime, colors)),
-            ],
-          ),
-        ),
-        // ステージバー
-        Padding(
-          padding: const EdgeInsets.only(top: 16),
-          child: Container(
-            decoration: BoxDecoration(
-              border: Border(top: BorderSide(color: colors.border)),
-            ),
-            padding: const EdgeInsets.only(top: 14),
-            child: SleepStageBar(
-              deepMinutes: record.deepMinutes ?? 0,
-              lightMinutes: record.lightMinutes ?? 0,
-              remMinutes: record.remMinutes ?? 0,
-              awakeMinutes: record.awakeMinutes ?? 0,
-            ),
-          ),
-        ),
-        // 目覚め行
-        Padding(
-          padding: const EdgeInsets.only(top: 14),
-          child: Container(
-            decoration: BoxDecoration(
-              border: Border(top: BorderSide(color: colors.border)),
-            ),
-            padding: const EdgeInsets.only(top: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      '目覚め',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: colors.textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    if (record.wakeupRating != null) ...[
-                      _ratingIcon(record.wakeupRating!, size: 16),
-                      const SizedBox(width: 6),
-                      Text(
-                        record.wakeupRating!.labelJa,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: _ratingColor(record.wakeupRating!),
-                        ),
-                      ),
-                    ] else
-                      Text(
-                        '未記録',
-                        style:
-                            TextStyle(fontSize: 13, color: colors.textHint),
-                      ),
-                  ],
-                ),
-                TextButton.icon(
-                  onPressed: () => showWakeupRecordSheet(
-                    context,
-                    ref,
-                    current: record.wakeupRating,
-                  ),
-                  icon: const Icon(LucideIcons.edit3, size: 13),
-                  label: const Text('編集'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    textStyle: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _bedWakeColumn(
-    String label,
-    DateTime? dt,
-    AppColorsExtension colors,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
-            color: colors.textSecondary,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          dt != null ? _formatHm(dt.toLocal()) : '--:--',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: colors.textPrimary,
-            letterSpacing: -0.16,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SummaryManualOnly extends ConsumerWidget {
-  final SleepRecord record;
-  const _SummaryManualOnly({required this.record});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final colors = AppColorsExtension.of(context);
-    final rating = record.wakeupRating!;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Icon(
-              LucideIcons.moon,
-              size: 15,
-              color: AppColors.indigo600,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              '昨夜の睡眠',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: colors.textSecondary,
-              ),
-            ),
-            const Spacer(),
-            Icon(LucideIcons.edit3, size: 14, color: colors.textHint),
-          ],
-        ),
-        const SizedBox(height: 14),
-        Row(
-          children: [
-            _ratingIcon(rating, size: 32),
-            const SizedBox(width: 12),
-            Text(
-              rating.labelJa,
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                color: _ratingColor(rating),
-                letterSpacing: -0.22,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: colors.border,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(LucideIcons.info, size: 14, color: colors.textSecondary),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  '詳細データを取得するにはヘルスケア連携を有効にしてください',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: colors.textSecondary,
-                    height: 1.5,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(top: 14),
-          child: Container(
-            decoration: BoxDecoration(
-              border: Border(top: BorderSide(color: colors.border)),
-            ),
-            padding: const EdgeInsets.only(top: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      '目覚め',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: colors.textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    _ratingIcon(rating, size: 16),
-                    const SizedBox(width: 6),
-                    Text(
-                      rating.labelJa,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: _ratingColor(rating),
-                      ),
-                    ),
-                  ],
-                ),
-                TextButton.icon(
-                  onPressed: () =>
-                      showWakeupRecordSheet(context, ref, current: rating),
-                  icon: const Icon(LucideIcons.edit3, size: 13),
-                  label: const Text('編集'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    textStyle: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ===== Week Section =====
-class _WeekSection extends ConsumerWidget {
-  const _WeekSection();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final colors = AppColorsExtension.of(context);
-    final recent = ref.watch(recentSleepRecordsProvider());
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(8, 16, 8, 12),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: colors.border),
-      ),
-      child: recent.when(
-        loading: () => const SizedBox(
-          height: 140,
-          child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-        ),
-        error: (_, __) => SizedBox(
-          height: 60,
-          child: Center(
-            child: Text(
-              '読み込めませんでした',
-              style: TextStyle(fontSize: 12, color: colors.textHint),
-            ),
-          ),
-        ),
-        data: (records) {
-          // 直近7日のラベルを生成（recordedDate が無い日は null）
-          final entries = <DailySleepEntry>[];
-          final byDate = {for (final r in records) r.recordedDate: r};
-          for (var i = 6; i >= 0; i--) {
-            final dateKey = jstDateKeyDaysAgo(i);
-            final r = byDate[dateKey];
-            final parts = dateKey.split('-');
-            final label = '${int.parse(parts[1])}/${int.parse(parts[2])}';
-            entries.add(DailySleepEntry(
-              dateLabel: label,
-              hours: r?.totalSleepMinutes != null
-                  ? (r!.totalSleepMinutes! / 60.0)
-                  : null,
-              rating: r?.wakeupRating,
-            ));
-          }
-          return SleepWeekChart(entries: entries);
-        },
-      ),
-    );
-  }
-}
-
-// ===== History Section =====
-class _HistorySection extends ConsumerWidget {
-  const _HistorySection();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final colors = AppColorsExtension.of(context);
-    final list = ref.watch(sleepRecordsProvider());
-
-    return list.when(
-      loading: () => const Padding(
-        padding: EdgeInsets.symmetric(vertical: 24),
-        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-      ),
-      error: (_, __) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 24),
-        child: Center(
-          child: Text(
-            '読み込めませんでした',
-            style: TextStyle(fontSize: 12, color: colors.textHint),
-          ),
-        ),
-      ),
-      data: (records) {
-        if (records.isEmpty) {
-          return const _HistoryEmpty();
-        }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _SectionTitle(
-              title: '履歴',
-              trailing: Text(
-                '${records.length}件',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: colors.textHint,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              decoration: BoxDecoration(
-                color: colors.surface,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: colors.border),
-              ),
-              child: Column(
-                children: [
-                  for (var i = 0; i < records.length; i++) ...[
-                    SleepHistoryListItem(record: records[i]),
-                    if (i < records.length - 1)
-                      Divider(
-                        height: 1,
-                        color: colors.border,
-                        indent: 16,
-                        endIndent: 16,
-                      ),
-                  ],
-                ],
-              ),
-            ),
-          ],
         );
       },
     );
   }
 }
 
-class _HistoryEmpty extends StatelessWidget {
-  const _HistoryEmpty();
+// ===== 直近7日間 =====
+
+class _WeekSection extends ConsumerWidget {
+  const _WeekSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final recent = ref.watch(recentSleepRecordsProvider());
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        recent.when(
+          data: (records) {
+            final summary = SleepWeekSummary.from(
+              SleepWeekChart.entriesFrom(records),
+            );
+            final average = summary.averageMinutes;
+            return FcSectionTitle(
+              '直近7日間',
+              note:
+                  average == null ? null : '平均 ${formatSleepDuration(average)}',
+            );
+          },
+          loading: () => const FcSectionTitle('直近7日間'),
+          error: (_, __) => const FcSectionTitle('直近7日間'),
+        ),
+        const SizedBox(height: AppSpacing.cardGap),
+        recent.when(
+          loading: () => const _WeekLoadingCard(),
+          error: (_, __) => FcStateMessage.error(
+            title: '読み込めませんでした',
+            actionLabel: '再試行',
+            onAction: () => ref.invalidate(recentSleepRecordsProvider),
+          ),
+          data: (records) => FcCard(
+            child: SleepWeekChart(entries: SleepWeekChart.entriesFrom(records)),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// 読み込み中の「直近7日間」カード（棒と補足の配置を保つ）
+class _WeekLoadingCard extends StatelessWidget {
+  const _WeekLoadingCard();
+
+  /// 仮の棒の高さ（見た目だけ。値ではない）
+  static const List<double> _heights = [56, 64, 40, 60, 66, 52, 70];
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColorsExtension.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 40),
-      child: Column(
-        children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: colors.accentIndigo,
-              borderRadius: BorderRadius.circular(16),
+    return Semantics(
+      container: true,
+      label: '読み込み中',
+      child: FcCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              height: 96,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  for (var i = 0; i < _heights.length; i++) ...[
+                    if (i > 0) const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.bottomCenter,
+                        child: FcSkeleton(
+                          width: 28,
+                          height: _heights[i],
+                          radius: 7,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
-            child: const Icon(
-              LucideIcons.moon,
-              size: 28,
-              color: AppColors.indigo600,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            '記録がありません',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: colors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'ヘルスケア連携を有効にするか、\n目覚めを記録してみましょう',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13,
-              color: colors.textSecondary,
-              height: 1.6,
-            ),
-          ),
-        ],
+            const SizedBox(height: AppSpacing.md),
+            const FcSkeleton.line(width: 200),
+          ],
+        ),
       ),
     );
   }
 }
 
-// ===== Helpers =====
-Color _ratingColor(WakeupRating r) => switch (r) {
-      WakeupRating.refreshed => AppColors.success,
-      WakeupRating.okay => AppColors.warning,
-      WakeupRating.groggy => AppColors.error,
-    };
+// ===== 履歴 =====
 
-Widget _ratingIcon(WakeupRating r, {double size = 18}) {
-  final icon = switch (r) {
-    WakeupRating.refreshed => LucideIcons.smile,
-    WakeupRating.okay => LucideIcons.meh,
-    WakeupRating.groggy => LucideIcons.frown,
-  };
-  return Icon(icon, size: size, color: _ratingColor(r));
+class _HistorySection extends ConsumerWidget {
+  const _HistorySection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final list = ref.watch(sleepRecordsProvider());
+
+    return list.when(
+      loading: () => const _HistoryFrame(
+        child: FcRowsCard(
+          children: [
+            _HistorySkeletonRow(),
+            _HistorySkeletonRow(),
+            _HistorySkeletonRow(),
+          ],
+        ),
+      ),
+      error: (_, __) => _HistoryFrame(
+        child: FcStateMessage.error(
+          title: '読み込めませんでした',
+          actionLabel: '再試行',
+          onAction: () => ref.invalidate(sleepRecordsProvider),
+        ),
+      ),
+      data: (records) {
+        // 履歴がまったく無いときの案内は画面の先頭（SleepEmptyState）が出す
+        if (records.isEmpty) return const SizedBox.shrink();
+        final now = DateTime.now();
+        return _HistoryFrame(
+          child: FcRowsCard(
+            children: [
+              for (final record in records)
+                SleepHistoryListItem(record: record, now: now),
+            ],
+          ),
+        );
+      },
+    );
+  }
 }
 
-String _formatHm(DateTime dt) =>
-    '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+/// 見出し「履歴」＋ 本文（見出しの下はカード間隔 16）
+class _HistoryFrame extends StatelessWidget {
+  final Widget child;
+  const _HistoryFrame({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const FcSectionTitle('履歴'),
+        const SizedBox(height: AppSpacing.cardGap),
+        child,
+      ],
+    );
+  }
+}
+
+/// 読み込み中の履歴の行（日付・補足・値の帯。最小高さ 52・縦余白 12 で行の高さを保つ）
+class _HistorySkeletonRow extends StatelessWidget {
+  const _HistorySkeletonRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      container: true,
+      label: '読み込み中',
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 52),
+        child: const Padding(
+          padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    FcSkeleton.line(width: 120),
+                    SizedBox(height: AppSpacing.xs),
+                    FcSkeleton.line(width: 168, height: 12),
+                  ],
+                ),
+              ),
+              SizedBox(width: AppSpacing.md),
+              FcSkeleton(width: 64, height: 18),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 // =====================================
-// プレビュー (静的)
+// プレビュー（Riverpod はダミーのデータで上書きして画面ごと出す）
 // =====================================
 
-@Preview(name: 'SleepRecordScreen - Static')
-Widget previewSleepRecordScreenStatic() {
-  return MaterialApp(
-    theme: AppTheme.lightTheme,
-    home: const Scaffold(
-      body: Center(child: Text('SleepRecordScreen (要 Riverpod 起動環境)')),
+class _PreviewSleepRecords extends SleepRecords {
+  _PreviewSleepRecords(this._records);
+  final Future<List<SleepRecord>> _records;
+
+  @override
+  Future<List<SleepRecord>> build({int limit = 30}) => _records;
+}
+
+class _PreviewHealthSettings extends HealthSettings {
+  _PreviewHealthSettings(this._state);
+  final HealthSettingsState _state;
+
+  @override
+  Future<HealthSettingsState> build() async => _state;
+}
+
+/// 今日から [daysAgo] 日前の記録（HealthKit 由来）
+SleepRecord _previewRecord(
+  int daysAgo,
+  int? total, {
+  WakeupRating? rating,
+  SleepSource source = SleepSource.healthkit,
+}) {
+  final created = DateTime.now();
+  return SleepRecord(
+    id: 'preview-$daysAgo',
+    clientId: 'preview-client',
+    recordedDate: jstDateKeyDaysAgo(daysAgo),
+    bedTime: total == null
+        ? null
+        : DateTime(
+            created.year, created.month, created.day - daysAgo - 1, 23, 30),
+    wakeTime: total == null
+        ? null
+        : DateTime(created.year, created.month, created.day - daysAgo, 7, 20),
+    totalSleepMinutes: total,
+    deepMinutes: total == null ? null : 85,
+    lightMinutes: total == null ? null : 255,
+    remMinutes: total == null ? null : 110,
+    awakeMinutes: total == null ? null : 20,
+    wakeupRating: rating,
+    source: source,
+    createdAt: created,
+    updatedAt: created,
+  );
+}
+
+/// 正本のサンプル（昨夜 7時間30分・直近7日・9/9 に当たる日は未取得・履歴に手動の記録のみの日）
+List<SleepRecord> _previewRecords() => [
+      _previewRecord(0, 450, rating: WakeupRating.refreshed),
+      _previewRecord(1, 410, rating: WakeupRating.okay),
+      _previewRecord(2, 420, rating: WakeupRating.refreshed),
+      _previewRecord(3, 390),
+      _previewRecord(4, null,
+          rating: WakeupRating.groggy, source: SleepSource.manual),
+      _previewRecord(5, 430, rating: WakeupRating.okay),
+      _previewRecord(6, 410, rating: WakeupRating.refreshed),
+    ];
+
+HealthSettingsState _previewSettings({required bool failed}) {
+  final synced = DateTime.now();
+  return HealthSettingsState(
+    isEnabled: true,
+    isWeightEnabled: true,
+    isSleepEnabled: true,
+    isMorningDialogEnabled: true,
+    lastSyncAt: DateTime(synced.year, synced.month, synced.day, 7, 32),
+    lastSyncStatus: failed ? HealthSyncStatus.error : HealthSyncStatus.success,
+    lastSyncError: failed ? '睡眠: timeout' : null,
+  );
+}
+
+Widget _previewScreen({
+  Brightness brightness = Brightness.light,
+  double scale = 1,
+  bool failed = false,
+  bool empty = false,
+  bool loading = false,
+}) {
+  final records = empty ? <SleepRecord>[] : _previewRecords();
+  // 読み込み中は完了しない Future にする（スケルトンのまま止める）
+  Future<List<SleepRecord>> pending() => Completer<List<SleepRecord>>().future;
+
+  return FcPreviewApp(
+    brightness: brightness,
+    textScale: scale,
+    home: Scaffold(
+      body: SafeArea(
+        child: ProviderScope(
+          overrides: [
+            todaySleepRecordProvider.overrideWith(
+              (ref) => loading
+                  ? Completer<SleepRecord?>().future
+                  : Future.value(records.isEmpty ? null : records.first),
+            ),
+            recentSleepRecordsProvider().overrideWith(
+              (ref) => loading ? pending() : Future.value(records),
+            ),
+            sleepRecordsProvider().overrideWith(
+              () => _PreviewSleepRecords(
+                  loading ? pending() : Future.value(records)),
+            ),
+            healthSettingsProvider.overrideWith(
+              () => _PreviewHealthSettings(_previewSettings(failed: failed)),
+            ),
+          ],
+          child: SleepRecordScreen(onRefresh: () async {}),
+        ),
+      ),
     ),
   );
 }
+
+@Preview(name: 'SleepRecordScreen - 通常（ライト）')
+Widget previewSleepRecordScreenLight() => _previewScreen();
+
+@Preview(name: 'SleepRecordScreen - 通常（ダーク）')
+Widget previewSleepRecordScreenDark() =>
+    _previewScreen(brightness: Brightness.dark);
+
+@Preview(name: 'SleepRecordScreen - 文字拡大 1.35')
+Widget previewSleepRecordScreenLarge() => _previewScreen(scale: 1.35);
+
+@Preview(name: 'SleepRecordScreen - 同期できない（取得済みの値を表示）')
+Widget previewSleepRecordScreenSyncFailed() => _previewScreen(failed: true);
+
+@Preview(name: 'SleepRecordScreen - 記録なし')
+Widget previewSleepRecordScreenEmpty() => _previewScreen(empty: true);
+
+@Preview(name: 'SleepRecordScreen - 読込中')
+Widget previewSleepRecordScreenLoading() => _previewScreen(loading: true);

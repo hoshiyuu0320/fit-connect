@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
 import 'package:fit_connect_mobile/features/auth/presentation/widgets/email_sent_card.dart';
@@ -29,7 +30,14 @@ void main() {
 
       expect(decoration.color, AppColorsExtension.dark.successTint);
       final border = decoration.border as Border;
-      expect(border.top.color, AppColors.success.withValues(alpha: 0.3));
+      expect(
+        border.top.color,
+        AppColorsExtension.dark.success.withValues(alpha: 0.3),
+      );
+      // アイコンは静的な AppColors.success ではなくテーマ追従の success（ダークで読める色）
+      final icon = tester.widget<Icon>(find.byIcon(LucideIcons.mailCheck));
+      expect(icon.color, AppColorsExtension.dark.success);
+      expect(icon.color, isNot(AppColors.success));
       expect(find.text('メールを確認してください'), findsOneWidget);
       expect(find.textContaining('user@example.com'), findsOneWidget);
 
@@ -58,6 +66,8 @@ void main() {
       final decoration = container.decoration as BoxDecoration;
 
       expect(decoration.color, AppColorsExtension.light.successTint);
+      final icon = tester.widget<Icon>(find.byIcon(LucideIcons.mailCheck));
+      expect(icon.color, AppColorsExtension.light.success);
       expect(find.text('メールを確認してください'), findsOneWidget);
       expect(find.textContaining('user@example.com'), findsOneWidget);
 

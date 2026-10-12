@@ -1,23 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lucide_icons/lucide_icons.dart';
-import 'package:fit_connect_mobile/features/client_notes/models/client_note_model.dart';
-import 'package:fit_connect_mobile/features/client_notes/providers/client_notes_provider.dart';
-import 'package:fit_connect_mobile/features/client_notes/presentation/widgets/note_card.dart';
-import 'package:fit_connect_mobile/features/client_notes/presentation/screens/client_note_detail_screen.dart';
+import 'package:fit_connect_mobile/core/theme/app_spacing.dart';
+import 'package:fit_connect_mobile/core/theme/app_text_styles.dart';
 import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
-import 'package:fit_connect_mobile/core/theme/app_colors.dart';
-import 'package:fit_connect_mobile/core/theme/app_theme.dart';
+import 'package:fit_connect_mobile/features/client_notes/models/client_note_model.dart';
+import 'package:fit_connect_mobile/features/client_notes/presentation/screens/client_note_detail_screen.dart';
+import 'package:fit_connect_mobile/features/client_notes/presentation/widgets/note_card.dart';
+import 'package:fit_connect_mobile/features/client_notes/providers/client_notes_provider.dart';
+import 'package:fit_connect_mobile/shared/utils/trainer_name.dart';
+import 'package:fit_connect_mobile/shared/widgets/fc/fc.dart';
+import 'package:fit_connect_mobile/shared/widgets/fc/fc_previews.dart';
 
-/// カルテ一覧画面（クライアント側）
+/// 記録タブの「ノート」サブタブの本文（トレーナーが共有したカルテの一覧）。
+///
+/// 見出し・サブタブは記録タブの枠（`RecordsScreen`）が持つ。この画面は本文だけ。
+/// 正本 `record-screens.js` の `NotesTab`: 上に caption「{トレーナー名}が共有したカルテ」→
+/// `NoteCard` を縦に並べる（カード間 16）。カードを押すとカルテの詳細へ。
+/// 状態: 読み込み中（スケルトン）／共有されたノートがない／読み込めなかった（再試行）。
 class ClientNotesScreen extends ConsumerWidget {
   const ClientNotesScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colors = AppColors.of(context);
-
     // カルテ一覧の取得
     final notesAsync = ref.watch(sharedClientNotesProvider);
 
@@ -25,198 +30,155 @@ class ClientNotesScreen extends ConsumerWidget {
     final trainerAsync = ref.watch(trainerProfileProvider);
     final trainerName = trainerAsync.valueOrNull?.name;
 
-    return Scaffold(
-      body: SafeArea(
-        child: notesAsync.when(
-          loading: () => const Center(
-            child: CircularProgressIndicator(),
-          ),
-          error: (error, stack) => Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  LucideIcons.alertCircle,
-                  size: 48,
-                  color: AppColors.rose800,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'エラーが発生しました',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: colors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  error.toString(),
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: colors.textSecondary,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: () {
-                    ref.invalidate(sharedClientNotesProvider);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
-                    ),
-                  ),
-                  child: const Text(
-                    'リトライ',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ],
+    return ClientNotesBody(
+      notes: notesAsync,
+      trainerName: trainerName,
+      onRetry: () => ref.invalidate(sharedClientNotesProvider),
+      onOpen: (note) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ClientNoteDetailScreen(
+              note: note,
+              trainerName: trainerName,
             ),
           ),
-          data: (notes) {
-            if (notes.isEmpty) {
-              return _buildEmptyState(colors);
-            }
+        );
+      },
+    );
+  }
+}
 
-            // セッション日時の年付与判定用。行ごとに引き直すと日跨ぎで
-            // 年表示が食い違うため、ここで1回だけ取得して各カードに配る
-            final now = DateTime.now();
+/// ノート一覧の本文（見た目だけ。取得・遷移は [ClientNotesScreen] が持つ）
+class ClientNotesBody extends StatelessWidget {
+  final AsyncValue<List<ClientNote>> notes;
+  final String? trainerName;
+  final VoidCallback onRetry;
+  final ValueChanged<ClientNote> onOpen;
 
-            return ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                // サマリーカード
-                _buildSummaryCard(colors, notes.length),
+  const ClientNotesBody({
+    super.key,
+    required this.notes,
+    required this.trainerName,
+    required this.onRetry,
+    required this.onOpen,
+  });
 
-                const SizedBox(height: 16),
+  @override
+  Widget build(BuildContext context) {
+    final horizontal = AppSpacing.pageHorizontalOf(context);
+    const gap = SizedBox(height: AppSpacing.cardGap);
 
-                // カルテリスト
-                ...notes.map((note) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: NoteCard(
-                      note: note,
-                      now: now,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ClientNoteDetailScreen(
-                              note: note,
-                              trainerName: trainerName,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  );
-                }).toList(),
-              ],
-            );
-          },
+    // 上の余白（サブタブとの間 16）は記録タブの枠が空ける。
+    // 下は、下部ナビぶん（MediaQuery の下余白）を自分で受け取る
+    final padding = EdgeInsets.fromLTRB(
+      horizontal,
+      0,
+      horizontal,
+      MediaQuery.paddingOf(context).bottom,
+    );
+
+    return notes.when(
+      loading: () => ListView(
+        padding: padding,
+        physics: const NeverScrollableScrollPhysics(),
+        children: const [
+          _CaptionSkeleton(),
+          gap,
+          FcSkeleton.card(height: 168),
+          gap,
+          FcSkeleton.card(height: 168),
+          gap,
+          FcSkeleton.card(height: 168),
+        ],
+      ),
+      error: (error, stack) => ListView(
+        padding: padding,
+        children: [
+          FcStateMessage.error(
+            title: 'カルテを読み込めませんでした',
+            message: 'しばらくしてからもう一度お試しください。',
+            actionLabel: '再試行',
+            onAction: onRetry,
+          ),
+        ],
+      ),
+      data: (list) {
+        if (list.isEmpty) {
+          return ListView(
+            padding: padding,
+            children: const [
+              FcStateMessage.empty(
+                title: '共有されたノートはありません',
+                message: 'トレーナーからまだセッションノートが共有されていません。',
+              ),
+            ],
+          );
+        }
+
+        // セッション日時の年付与判定用。行ごとに引き直すと日跨ぎで
+        // 年表示が食い違うため、ここで1回だけ取得して各カードに配る
+        final now = DateTime.now();
+
+        return ListView(
+          padding: padding,
+          children: [
+            _Caption(trainerName: trainerName),
+            gap,
+            for (var i = 0; i < list.length; i++) ...[
+              if (i > 0) gap,
+              NoteCard(
+                note: list[i],
+                now: now,
+                trainerName: trainerName,
+                onTap: () => onOpen(list[i]),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// 一覧の先頭の caption「{トレーナー名}が共有したカルテ」（正本: 左右 4）
+class _Caption extends StatelessWidget {
+  final String? trainerName;
+  const _Caption({required this.trainerName});
+
+  /// トレーナー名が分からなければ「トレーナー」とする（「田中」でも「田中トレーナー」でも同じ表示）
+  static String textFor(String? trainerName) {
+    return '${trainerDisplayName(trainerName)}が共有したカルテ';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+      child: Text(
+        textFor(trainerName),
+        style: AppTextStyles.caption(context),
+      ),
+    );
+  }
+}
+
+/// 読み込み中の caption の帯
+class _CaptionSkeleton extends StatelessWidget {
+  const _CaptionSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      container: true,
+      label: '読み込み中',
+      child: const Padding(
+        padding: EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+        // ListView の幅いっぱいの制約に負けないよう左寄せで包む
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: FcSkeleton.line(width: 180, height: 12),
         ),
-      ),
-    );
-  }
-
-  /// サマリーカード（淡青）。
-  ///
-  /// 背景はテーマ追従の primaryTint（ダークでは濃青）。アイコンチップは固定の
-  /// primary100 ではなく半透明の primary600 オーバーレイにして、どちらの背景にも馴染ませる。
-  /// アイコンと見出しは淡青カード用の強調色（primaryTintForeground）
-  Widget _buildSummaryCard(AppColorsExtension colors, int noteCount) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colors.primaryTint,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          // アイコン
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppColors.primary600.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              LucideIcons.userCheck,
-              color: colors.primaryTintForeground,
-              size: 20,
-            ),
-          ),
-
-          const SizedBox(width: 12),
-
-          // テキスト
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'トレーナーより',
-                  style: TextStyle(
-                    color: colors.primaryTintForeground,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '共有されたカルテ: $noteCount件',
-                  style: const TextStyle(
-                    color: AppColors.primary400,
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// 空状態
-  Widget _buildEmptyState(AppColorsExtension colors) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            LucideIcons.clipboardList,
-            size: 48,
-            color: colors.textHint,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            '共有されたノートはありません',
-            style: TextStyle(
-              color: colors.textSecondary,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'トレーナーからまだセッションノートが共有されていません。',
-            style: TextStyle(
-              color: colors.textHint,
-              fontSize: 14,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
       ),
     );
   }
@@ -226,208 +188,117 @@ class ClientNotesScreen extends ConsumerWidget {
 // Previews
 // ============================================
 
-/// プレビュー用ヘルパーWidget（データあり）
-class _PreviewNotesListWithData extends StatelessWidget {
-  const _PreviewNotesListWithData();
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-    final dummyNotes = [
-      ClientNote(
-        id: '1',
-        clientId: 'client-1',
-        trainerId: 'trainer-1',
-        title: '初回トレーニングセッション',
-        content: '本日は初回セッションを実施しました。フォームが良好です。',
-        fileUrls: ['https://example.com/file1.jpg'],
-        isShared: true,
-        sharedAt: DateTime.now(),
-        sessionId: 'session-1',
-        // 紐づけあり: セッション日時 + 種別が先頭行に出る
-        session: LinkedSession(
-          sessionDate: DateTime(2026, 2, 15, 10, 0),
-          sessionType: 'パーソナルトレーニング',
-        ),
-        createdAt: DateTime(2026, 2, 15, 14, 30),
-        updatedAt: DateTime(2026, 2, 15, 14, 30),
-      ),
-      ClientNote(
-        id: '2',
-        clientId: 'client-1',
-        trainerId: 'trainer-1',
-        title: '食事指導フォローアップ',
-        content: 'タンパク質摂取量が目標値に達しています。素晴らしいです！',
-        fileUrls: [],
-        isShared: true,
-        sharedAt: DateTime.now(),
-        // 紐づけ無し: 従来どおりタイトルから始まる
-        createdAt: DateTime(2026, 2, 10, 10, 15),
-        updatedAt: DateTime(2026, 2, 10, 10, 15),
-      ),
-      ClientNote(
-        id: '3',
-        clientId: 'client-1',
-        trainerId: 'trainer-1',
-        title: '体組成測定結果',
-        content: '体脂肪率が2%減少し、筋肉量が1.5kg増加しています。',
-        fileUrls: [
-          'https://example.com/chart1.jpg',
-          'https://example.com/report.pdf',
-        ],
-        isShared: true,
-        sharedAt: DateTime.now(),
-        sessionId: 'session-3',
-        // 紐づけあり（種別なし）: 日時だけが出る
-        session: LinkedSession(
-          sessionDate: DateTime(2026, 2, 5, 9, 30),
-        ),
-        createdAt: DateTime(2026, 2, 5, 16, 45),
-        updatedAt: DateTime(2026, 2, 5, 16, 45),
-      ),
-    ];
-
-    return Scaffold(
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            // サマリーカード（本体 _buildSummaryCard と同じ配色）
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: colors.primaryTint,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary600.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
-                      LucideIcons.userCheck,
-                      color: colors.primaryTintForeground,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'トレーナーより',
-                          style: TextStyle(
-                            color: colors.primaryTintForeground,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          '共有されたカルテ: 3件',
-                          style: TextStyle(
-                            color: AppColors.primary400,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // カルテリスト
-            ...dummyNotes.map((note) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: NoteCard(
-                  note: note,
-                  now: DateTime(2026, 2, 20),
-                  onTap: () {},
-                ),
-              );
-            }).toList(),
-          ],
-        ),
-      ),
+List<ClientNote> _previewNotes() {
+  ClientNote note({
+    required String id,
+    required String title,
+    required String content,
+    required DateTime created,
+    List<String> files = const [],
+    LinkedSession? session,
+  }) {
+    return ClientNote(
+      id: id,
+      clientId: 'client-1',
+      trainerId: 'trainer-1',
+      title: title,
+      content: content,
+      fileUrls: files,
+      isShared: true,
+      sharedAt: created,
+      sessionId: session == null ? null : 'session-$id',
+      session: session,
+      createdAt: created,
+      updatedAt: created,
     );
   }
+
+  return [
+    note(
+      id: '1',
+      title: '上半身のフォーム確認',
+      content: 'ダンベルプレスは肩甲骨を寄せたまま下ろせていました。次回は12 kgで10回×3セットを目安にします。',
+      created: DateTime(2026, 9, 8, 21),
+      files: const ['a.jpg', 'b.pdf'],
+      session: LinkedSession(
+        sessionDate: DateTime(2026, 9, 8, 19),
+        sessionType: 'パーソナル',
+      ),
+    ),
+    note(
+      id: '2',
+      title: '目標の見直し',
+      content: '体重を増やしながら筋力をつける方針を確認しました。朝食でたんぱく質をとる習慣を続けましょう。',
+      created: DateTime(2026, 9, 1, 21),
+      files: const ['c.jpg'],
+      session: LinkedSession(
+        sessionDate: DateTime(2026, 9, 1, 19),
+        sessionType: 'パーソナル',
+      ),
+    ),
+    note(
+      id: '3',
+      title: '食事のポイント',
+      content: '毎食、手のひら1枚分のたんぱく質を目安にしましょう。間食はヨーグルトやナッツがおすすめです。',
+      created: DateTime(2026, 8, 25, 18),
+    ),
+  ];
 }
 
-/// プレビュー用ヘルパーWidget（空状態）
-class _PreviewNotesListEmpty extends StatelessWidget {
-  const _PreviewNotesListEmpty();
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-    return Scaffold(
+Widget _previewScreen({
+  required Brightness brightness,
+  required AsyncValue<List<ClientNote>> notes,
+  double scale = 1,
+}) {
+  return FcPreviewApp(
+    brightness: brightness,
+    textScale: scale,
+    home: Scaffold(
       body: SafeArea(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                LucideIcons.clipboardList,
-                size: 48,
-                color: colors.textHint,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                '共有されたノートはありません',
-                style: TextStyle(
-                  color: colors.textSecondary,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'トレーナーからまだセッションノートが共有されていません。',
-                style: TextStyle(
-                  color: colors.textHint,
-                  fontSize: 14,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
+        child: ClientNotesBody(
+          notes: notes,
+          trainerName: '田中トレーナー',
+          onRetry: () {},
+          onOpen: (_) {},
         ),
       ),
+    ),
+  );
+}
+
+@Preview(name: 'ClientNotesScreen - 通常（ライト）')
+Widget previewClientNotesScreenWithData() => _previewScreen(
+      brightness: Brightness.light,
+      notes: AsyncValue.data(_previewNotes()),
     );
-  }
-}
 
-@Preview(name: 'ClientNotesScreen - With Data')
-Widget previewClientNotesScreenWithData() {
-  return MaterialApp(
-    theme: AppTheme.lightTheme,
-    home: const _PreviewNotesListWithData(),
-  );
-}
+@Preview(name: 'ClientNotesScreen - 通常（ダーク）')
+Widget previewClientNotesScreenWithDataDark() => _previewScreen(
+      brightness: Brightness.dark,
+      notes: AsyncValue.data(_previewNotes()),
+    );
 
-/// ダークモード: サマリーカードの淡青が濃青に切り替わり、
-/// アイコン・見出し・件数が読めることを確認する
-@Preview(name: 'ClientNotesScreen - With Data (Dark)')
-Widget previewClientNotesScreenWithDataDark() {
-  return MaterialApp(
-    theme: AppTheme.darkTheme,
-    home: const _PreviewNotesListWithData(),
-  );
-}
+@Preview(name: 'ClientNotesScreen - 文字拡大 1.35')
+Widget previewClientNotesScreenLarge() => _previewScreen(
+      brightness: Brightness.light,
+      scale: 1.35,
+      notes: AsyncValue.data(_previewNotes()),
+    );
 
-@Preview(name: 'ClientNotesScreen - Empty State')
-Widget previewClientNotesScreenEmpty() {
-  return MaterialApp(
-    theme: AppTheme.lightTheme,
-    home: const _PreviewNotesListEmpty(),
-  );
-}
+@Preview(name: 'ClientNotesScreen - 共有されたノートなし')
+Widget previewClientNotesScreenEmpty() => _previewScreen(
+      brightness: Brightness.light,
+      notes: const AsyncValue.data([]),
+    );
+
+@Preview(name: 'ClientNotesScreen - 読込中')
+Widget previewClientNotesScreenLoading() => _previewScreen(
+      brightness: Brightness.light,
+      notes: const AsyncValue.loading(),
+    );
+
+@Preview(name: 'ClientNotesScreen - 読み込めなかった')
+Widget previewClientNotesScreenError() => _previewScreen(
+      brightness: Brightness.light,
+      notes: AsyncValue.error('error', StackTrace.empty),
+    );

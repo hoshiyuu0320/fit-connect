@@ -1,256 +1,214 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
-import 'package:fl_chart/fl_chart.dart';
-import 'package:lucide_icons/lucide_icons.dart';
-import 'package:fit_connect_mobile/core/theme/app_colors.dart';
-import 'package:fit_connect_mobile/core/theme/app_theme.dart';
+import 'package:fit_connect_mobile/core/theme/app_spacing.dart';
+import 'package:fit_connect_mobile/core/theme/app_text_styles.dart';
+import 'package:fit_connect_mobile/features/sleep_records/data/sleep_date_utils.dart';
 import 'package:fit_connect_mobile/features/sleep_records/models/sleep_record_model.dart';
+import 'package:fit_connect_mobile/features/sleep_records/presentation/utils/sleep_labels.dart';
+import 'package:fit_connect_mobile/shared/widgets/fc/fc.dart';
+import 'package:fit_connect_mobile/shared/widgets/fc/fc_previews.dart';
 
-/// 1日分の入力エントリ
+/// 1日分の睡眠時間（直近7日のグラフ用）
 class DailySleepEntry {
-  final String dateLabel; // "4/12"
-  final double? hours; // null=データ無し
-  final WakeupRating? rating;
+  /// JST の日付キー（`yyyy-MM-dd`）
+  final String dateKey;
 
-  const DailySleepEntry({
-    required this.dateLabel,
-    this.hours,
-    this.rating,
-  });
+  /// 睡眠時間（分）。**null = 未取得**（0 分とは区別する。手動の記録のみの日も null）
+  final int? minutes;
+
+  const DailySleepEntry({required this.dateKey, this.minutes});
 }
 
-/// 直近7日分の睡眠時間折れ線グラフ + 目覚めアイコン併記
+/// 直近7日の集計（平均・取得できなかった日）。表示用の純粋な計算
+class SleepWeekSummary {
+  /// 取得できた日の平均（分・四捨五入）。1日も無ければ null
+  final int? averageMinutes;
+
+  /// 取得できた日数
+  final int recordedDays;
+
+  /// 取得できなかった日の「M/D」ラベル（古い日から）
+  final List<String> missingLabels;
+
+  const SleepWeekSummary({
+    required this.averageMinutes,
+    required this.recordedDays,
+    required this.missingLabels,
+  });
+
+  factory SleepWeekSummary.from(List<DailySleepEntry> entries) {
+    var total = 0;
+    var count = 0;
+    final missing = <String>[];
+    for (final e in entries) {
+      final m = e.minutes;
+      if (m == null) {
+        missing.add(_shortDate(e.dateKey));
+      } else {
+        total += m;
+        count++;
+      }
+    }
+    return SleepWeekSummary(
+      averageMinutes: count == 0 ? null : (total / count).round(),
+      recordedDays: count,
+      missingLabels: missing,
+    );
+  }
+
+  /// 日付を並べて出す未取得の日数の上限
+  static const int _maxListedMissing = 3;
+
+  /// 「HealthKit · 6日分の平均（9/9は未取得）」。未取得が 4 日以上なら「（5日は未取得）」。
+  /// 1日も無ければ「HealthKit の記録はまだありません」
+  String get caption {
+    if (recordedDays == 0) return 'HealthKit の記録はまだありません';
+    final base = 'HealthKit · $recordedDays日分の平均';
+    if (missingLabels.isEmpty) return base;
+    // 日付を並べるのは 3 日まで（それ以上は長くなるので日数だけ）
+    final missing = missingLabels.length <= _maxListedMissing
+        ? missingLabels.join('、')
+        : '${missingLabels.length}日';
+    return '$base（$missingは未取得）';
+  }
+
+  /// 「9/9」形式（月・日とも 0 埋めなし）
+  static String _shortDate(String dateKey) {
+    final d = parseSleepDateKey(dateKey);
+    return d == null ? dateKey : '${d.month}/${d.day}';
+  }
+}
+
+/// 直近7日の睡眠時間（棒グラフ + 補足）。カードの中に置く。
+///
+/// 正本 `record-screens.js` の `SleepTab`: 最大 540 分・高さ 96・棒の上に「6:50」形式の値・
+/// 最後の日（今日）を accent・曜日ラベル・取得できなかった日は「未取得」。
+/// 下に caption「HealthKit · 6日分の平均（9/9は未取得）」。
 class SleepWeekChart extends StatelessWidget {
   final List<DailySleepEntry> entries;
-  final double height;
-  final bool showRatings;
 
-  const SleepWeekChart({
-    super.key,
-    required this.entries,
-    this.height = 160,
-    this.showRatings = true,
-  });
+  const SleepWeekChart({super.key, required this.entries});
+
+  /// 棒が最大の高さになる睡眠時間（分）。正本は 540（9時間）
+  static const double referenceMaxMinutes = 540;
+
+  /// 睡眠レコードから、今日までの直近 [days] 日（古い日 → 今日）の入力を作る。
+  /// 記録が無い日・睡眠時間が無い日（手動の記録のみ）は `minutes: null`（未取得）
+  static List<DailySleepEntry> entriesFrom(
+    List<SleepRecord> records, {
+    int days = 7,
+    DateTime? now,
+  }) {
+    final base = now ?? DateTime.now();
+    final byDate = {for (final r in records) r.recordedDate: r};
+    return [
+      for (var i = days - 1; i >= 0; i--)
+        () {
+          final key = jstDateKey(base.subtract(Duration(days: i)));
+          return DailySleepEntry(
+            dateKey: key,
+            minutes: byDate[key]?.totalSleepMinutes,
+          );
+        }(),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
-    final chartHeight = height - (showRatings ? 40 : 20);
-
-    // hours 値の min/max（最低 4-10h レンジ）
-    const minY = 4.0;
-    const maxY = 10.0;
-
-    final colors = AppColorsExtension.of(context);
+    final summary = SleepWeekSummary.from(entries);
+    final tallest = entries
+        .map((e) => e.minutes ?? 0)
+        .fold<int>(0, (a, b) => math.max(a, b));
+    final max = math.max(referenceMaxMinutes, tallest.toDouble());
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SizedBox(
-          height: chartHeight,
-          child: LineChart(
-            LineChartData(
-              minY: minY,
-              maxY: maxY,
-              minX: 0,
-              maxX: (entries.length - 1).toDouble(),
-              clipData: const FlClipData.all(),
-              gridData: FlGridData(
-                show: true,
-                drawVerticalLine: false,
-                horizontalInterval: 1,
-                getDrawingHorizontalLine: (value) => FlLine(
-                  color: colors.border,
-                  strokeWidth: 1,
-                ),
-                checkToShowHorizontalLine: (value) =>
-                    value >= 5 && value <= 9,
-              ),
-              titlesData: const FlTitlesData(show: false),
-              borderData: FlBorderData(show: false),
-              lineTouchData: const LineTouchData(enabled: false),
-              lineBarsData: _buildLineBars(context),
-            ),
-          ),
+        FcBars(
+          max: max,
+          height: 96,
+          semanticLabel: '直近7日間の睡眠時間',
+          items: [
+            for (var i = 0; i < entries.length; i++)
+              _barItem(entries[i], highlighted: i == entries.length - 1),
+          ],
         ),
-        const SizedBox(height: 6),
-        _buildXAxisLabels(context),
+        const SizedBox(height: AppSpacing.md),
+        Text(summary.caption, style: AppTextStyles.caption(context)),
       ],
     );
   }
 
-  /// 連続したデータ点をつなぐ LineChartBarData。null日はギャップとして分離
-  List<LineChartBarData> _buildLineBars(BuildContext context) {
-    final colors = AppColorsExtension.of(context);
-    final segments = <List<FlSpot>>[];
-    var current = <FlSpot>[];
-
-    for (var i = 0; i < entries.length; i++) {
-      final v = entries[i].hours;
-      if (v == null) {
-        if (current.length > 1) segments.add(current);
-        current = [];
-      } else {
-        current.add(FlSpot(i.toDouble(), v));
-      }
-    }
-    if (current.length > 1) segments.add(current);
-
-    return segments.map((seg) {
-      return LineChartBarData(
-        spots: seg,
-        isCurved: false,
-        color: AppColors.primary,
-        barWidth: 2,
-        isStrokeCapRound: true,
-        dotData: FlDotData(
-          show: true,
-          getDotPainter: (spot, _, __, ___) => FlDotCirclePainter(
-            radius: 3.5,
-            color: colors.surface,
-            strokeColor: AppColors.primary,
-            strokeWidth: 2,
-          ),
-        ),
-        belowBarData: BarAreaData(
-          show: true,
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              AppColors.primary.withValues(alpha: 0.24),
-              AppColors.primary.withValues(alpha: 0),
-            ],
-          ),
-        ),
-      );
-    }).toList();
-  }
-
-  Widget _buildXAxisLabels(BuildContext context) {
-    final colors = AppColorsExtension.of(context);
-    return Row(
-      children: [
-        for (var i = 0; i < entries.length; i++)
-          Expanded(
-            child: Column(
-              children: [
-                Text(
-                  entries[i].dateLabel,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: i == entries.length - 1
-                        ? FontWeight.w600
-                        : FontWeight.w400,
-                    color: i == entries.length - 1
-                        ? colors.textSecondary
-                        : colors.textHint,
-                  ),
-                ),
-                if (showRatings)
-                  SizedBox(
-                    height: 14,
-                    child: entries[i].rating == null
-                        ? const SizedBox.shrink()
-                        : _ratingIcon(entries[i].rating!),
-                  ),
-              ],
-            ),
-          ),
-      ],
+  FcBarItem _barItem(DailySleepEntry entry, {required bool highlighted}) {
+    final date = parseSleepDateKey(entry.dateKey);
+    final minutes = entry.minutes;
+    return FcBarItem(
+      value: minutes?.toDouble(),
+      text: minutes == null ? '' : formatSleepHm(minutes),
+      highlighted: highlighted,
+      label: date == null ? '' : sleepWeekdayLabel(date),
     );
-  }
-
-  Widget _ratingIcon(WakeupRating r) {
-    return switch (r) {
-      WakeupRating.refreshed =>
-        const Icon(LucideIcons.smile, size: 12, color: AppColors.success),
-      WakeupRating.okay =>
-        const Icon(LucideIcons.meh, size: 12, color: AppColors.warning),
-      WakeupRating.groggy =>
-        const Icon(LucideIcons.frown, size: 12, color: AppColors.error),
-    };
   }
 }
 
-@Preview(name: 'SleepWeekChart - Full 7days')
-Widget previewSleepWeekChartFull() {
-  return MaterialApp(
-    theme: AppTheme.lightTheme,
+// =====================================
+// プレビュー
+// =====================================
+
+/// 正本のサンプル（9/7〜9/13・9/9 は未取得）
+const List<DailySleepEntry> _sampleEntries = [
+  DailySleepEntry(dateKey: '2026-09-07', minutes: 410),
+  DailySleepEntry(dateKey: '2026-09-08', minutes: 430),
+  DailySleepEntry(dateKey: '2026-09-09'),
+  DailySleepEntry(dateKey: '2026-09-10', minutes: 390),
+  DailySleepEntry(dateKey: '2026-09-11', minutes: 420),
+  DailySleepEntry(dateKey: '2026-09-12', minutes: 410),
+  DailySleepEntry(dateKey: '2026-09-13', minutes: 450),
+];
+
+Widget _previewWeekChart({
+  required Brightness brightness,
+  double scale = 1,
+  List<DailySleepEntry> entries = _sampleEntries,
+}) {
+  return FcPreviewApp(
+    brightness: brightness,
+    textScale: scale,
     home: Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: const SleepWeekChart(
-            entries: [
-              DailySleepEntry(
-                  dateLabel: '4/19',
-                  hours: 7.2,
-                  rating: WakeupRating.refreshed),
-              DailySleepEntry(
-                  dateLabel: '4/20', hours: 6.5, rating: WakeupRating.okay),
-              DailySleepEntry(
-                  dateLabel: '4/21',
-                  hours: 8.0,
-                  rating: WakeupRating.refreshed),
-              DailySleepEntry(
-                  dateLabel: '4/22',
-                  hours: 7.5,
-                  rating: WakeupRating.refreshed),
-              DailySleepEntry(
-                  dateLabel: '4/23',
-                  hours: 7.8,
-                  rating: WakeupRating.refreshed),
-              DailySleepEntry(
-                  dateLabel: '4/24', hours: 6.0, rating: WakeupRating.groggy),
-              DailySleepEntry(
-                  dateLabel: '4/25',
-                  hours: 7.3,
-                  rating: WakeupRating.refreshed),
-            ],
-          ),
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          child: FcCard(child: SleepWeekChart(entries: entries)),
         ),
       ),
     ),
   );
 }
 
-@Preview(name: 'SleepWeekChart - With Null Gap')
-Widget previewSleepWeekChartWithGap() {
-  return MaterialApp(
-    theme: AppTheme.lightTheme,
-    home: Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: const SleepWeekChart(
-            entries: [
-              DailySleepEntry(
-                  dateLabel: '4/19',
-                  hours: 7.2,
-                  rating: WakeupRating.refreshed),
-              DailySleepEntry(
-                  dateLabel: '4/20', hours: 6.5, rating: WakeupRating.okay),
-              DailySleepEntry(
-                  dateLabel: '4/21',
-                  hours: 8.0,
-                  rating: WakeupRating.refreshed),
-              DailySleepEntry(dateLabel: '4/22'),
-              DailySleepEntry(
-                  dateLabel: '4/23',
-                  hours: 7.8,
-                  rating: WakeupRating.refreshed),
-              DailySleepEntry(
-                  dateLabel: '4/24', hours: 6.0, rating: WakeupRating.groggy),
-              DailySleepEntry(
-                  dateLabel: '4/25',
-                  hours: 7.3,
-                  rating: WakeupRating.refreshed),
-            ],
-          ),
-        ),
-      ),
-    ),
-  );
-}
+@Preview(name: 'SleepWeekChart - Light')
+Widget previewSleepWeekChartLight() =>
+    _previewWeekChart(brightness: Brightness.light);
+
+@Preview(name: 'SleepWeekChart - Dark')
+Widget previewSleepWeekChartDark() =>
+    _previewWeekChart(brightness: Brightness.dark);
+
+@Preview(name: 'SleepWeekChart - 文字拡大 1.35')
+Widget previewSleepWeekChartLarge() =>
+    _previewWeekChart(brightness: Brightness.light, scale: 1.35);
+
+@Preview(name: 'SleepWeekChart - 1日も取得できていない')
+Widget previewSleepWeekChartEmpty() => _previewWeekChart(
+      brightness: Brightness.light,
+      entries: const [
+        DailySleepEntry(dateKey: '2026-09-07'),
+        DailySleepEntry(dateKey: '2026-09-08'),
+        DailySleepEntry(dateKey: '2026-09-09'),
+        DailySleepEntry(dateKey: '2026-09-10'),
+        DailySleepEntry(dateKey: '2026-09-11'),
+        DailySleepEntry(dateKey: '2026-09-12'),
+        DailySleepEntry(dateKey: '2026-09-13'),
+      ],
+    );

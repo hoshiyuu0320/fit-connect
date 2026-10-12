@@ -1,9 +1,9 @@
 # FIT-CONNECT Mobile - 実装タスク一覧
 
 **作成日**: 2025年12月30日
-**バージョン**: 3.8
+**バージョン**: 3.9
 **進捗状況**: 全体 99% 完了
-**最終更新**: 2026年7月5日 - 睡眠記録を記録タブへ統合（ホームは今日のまとめ睡眠行に）
+**最終更新**: 2026年10月4日 - モバイル再デザイン（Claude Design の再デザイン案に合わせる）
 
 ---
 
@@ -100,9 +100,9 @@
   - ✅ iOSローカライゼーション設定（日本語UI）
 - ✅ **目標達成機能実装**
   - ✅ GoalAchievementProvider作成（達成状態監視）
-  - ✅ GoalAchievementOverlay作成（Confettiアニメーション付きお祝いモーダル）
-  - ✅ MainScreenに達成検知・お祝い表示ロジック追加
-  - ✅ GoalCard達成時の特別表示（ゴールド背景、トロフィーアイコン）
+  - ✅ GoalAchievementOverlay作成（Confettiアニメーション付きお祝いモーダル）※ 2026-10-04 再デザインにより削除済み（ファイルごと削除）
+  - ✅ MainScreenに達成検知・お祝い表示ロジック追加 ※ 2026-10-04 再デザインにより削除済み（`goal_achievement_provider.dart` は未使用のまま残置）
+  - ✅ GoalCard達成時の特別表示（ゴールド背景、トロフィーアイコン）※ 2026-10-04 再デザインにより削除済み（達成は演出なしの静かなカード）
   - ✅ UIプレビュー関数作成（GoalCard - In Progress / Achieved）
 - ✅ **UI日本語対応（ローカライゼーション）**
   - ✅ GoalCard: 全ラベル日本語化（目標進捗、現在、目標、残り/達成/超過、達成率、期限）
@@ -185,6 +185,44 @@
 
 ## 最新の変更履歴
 
+### 2026年10月4日
+
+#### 19. モバイル再デザイン（Claude Design の再デザイン案に合わせる）
+
+**ブランチ**: `feature/mobile-redesign`（`develop/1.0.0` から分岐）
+**詳細**: `docs/tasks/2026-10-04-mobile-redesign-spec.md`（トークン・共通部品・画面担当への指示・付録A）と `docs/tasks/2026-10-04-mobile-redesign-appendix-b.md`（行・囲み・ボタン・グラフの共通部品）を参照。
+
+**目的**: 見た目だけを再デザイン案に合わせる。5タブと画面構成は現行のまま。
+
+**実施内容**:
+- 5タブと詳細画面を再デザインに合わせた: ホーム／メッセージ／プラン／記録（サマリ・体重・食事・運動・睡眠・ノートの6タブ）／設定／セッション一覧／カルテ詳細／ヘルスケア設定
+- 下部ナビを5タブの浮遊カプセルに変更（`FcBottomNav` / `FcBottomNavLayout`。新着メッセージは数字のない点で示す）
+- 共通部品 `lib/shared/widgets/fc/`（`Fc*`）と、トークン `lib/core/theme/`（`app_colors.dart` の `AppColors.of(context)`、`app_spacing.dart`、`app_text_styles.dart`、`app_theme.dart`）を新設
+- データ層（`models/` `data/` `providers/`）は変更なし
+- 認証・オンボーディング等の再デザイン案に個別デザインが無い画面は、テーマと配色の仕上げのみ
+
+**削除済み（再デザインにより）**:
+- `GoalAchievementOverlay`（目標達成の祝福演出）、`TrainerStatusCard`（トレーナーのオンライン表示）、`NutritionTrendChart`（旧 fl_chart の栄養トレンド）、`SessionStatusBadge` / `SessionMetaChip`（セッションのステータス・メタ表示。セッション一覧は独自実装）
+- `goal_achievement_provider.dart` など、参照が無くなった provider は未使用（データ層のため残置。削除はしていない）
+
+**ホーム画面の主な変更**: 目標の達成率（％）と進捗バーを「現在／目標／目標まで」と開始時の体重に置き換え、トレーナーのオンライン表示を最新コメントのカードに置き換えた。ホーム用に軽量な「最新のトレーナーのコメント」provider（`lib/features/home/providers/latest_trainer_comment_provider.dart`）を新設した（Realtime は購読しない）。トレーナー名の表示は共通ヘルパー `lib/shared/utils/trainer_name.dart` の `trainerDisplayName` に統一した（「田中」でも「田中トレーナー」でも同じ表示）。
+
+**検証**:
+- 変更前: `flutter analyze lib test` 102 件（warning 2）、`flutter test` 253 件
+- 変更後: `flutter analyze lib test` 59 件（error 0・warning 0。すべて info）、`flutter test` 1266 件すべて成功
+
+**未対応・別タスクの候補**:
+1. 食事・運動のリポジトリの期間境界が JST で 9 時間ずれる（`getMealRecordCounts`・`getWeeklyExerciseData` などが `toIso8601String()`〈Z なし〉で問い合わせている）。データ層なので別タスク
+2. ホームの「運動 N日」は記録件数（`weeklyExerciseCountProvider`）で、同じ日に複数記録するとずれる
+3. ホーム用の軽量な「最新のトレーナーのコメント」provider を新設した（`lib/features/home/providers/latest_trainer_comment_provider.dart`）。メッセージ画面側の provider とは別
+4. アカウント削除の最終確認ダイアログの `isDeleting` が、ダイアログの `builder` 内の変数になっている
+5. `confetti` パッケージが lib から参照されなくなった（`pubspec.yaml` は未変更）
+6. `FcButton.block` / `FcButton.text` の `expand: true` は `IntrinsicHeight` や `AlertDialog` の中で使えない
+7. セッションのリマインドの文言は実装（前日 20:00 の 1 回）に合わせて「前日の夜にお知らせ」にした（正本は「前日と当日の朝」）
+8. ワークアウト完了メッセージ本文の絵文字（🔥 / 💬）は、Web の `recordCardParser.ts` が解析するため維持した
+
+---
+
 ### 2026年7月5日
 
 #### 18. 睡眠記録を記録タブへ統合
@@ -251,7 +289,7 @@
 - ワークアウト系: workout_screen, weekly_mini_calendar, overdue_assignment_card
 - ノート系: client_notes_screen, client_note_detail_screen, note_card
 - 認証系: welcome_screen, login_screen, onboarding_screen, profile_setup_screen, trainer_confirm_screen, invite_code_screen, registration_complete_screen
-- その他: trainer_status_card
+- その他: trainer_status_card（2026-10-04 再デザインにより削除済み）
 
 **実装内容**:
 

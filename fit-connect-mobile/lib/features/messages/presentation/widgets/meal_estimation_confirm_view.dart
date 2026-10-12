@@ -1,14 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
-import 'package:fit_connect_mobile/core/theme/app_colors.dart';
-import 'package:fit_connect_mobile/core/theme/app_theme.dart';
-import 'package:fit_connect_mobile/features/meal_records/models/meal_estimation_result.dart';
-import 'package:fit_connect_mobile/shared/storage/storage_buckets.dart';
-import 'package:fit_connect_mobile/shared/widgets/storage_image.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-/// AI推定結果を確認するビュー。
-/// 食品リスト（read-only）+ 合計4値（kcal/P/F/C, 編集可）+ 戻る/送信ボタン
+import 'package:fit_connect_mobile/core/theme/app_colors.dart';
+import 'package:fit_connect_mobile/core/theme/app_spacing.dart';
+import 'package:fit_connect_mobile/core/theme/app_text_styles.dart';
+import 'package:fit_connect_mobile/core/theme/app_theme.dart';
+import 'package:fit_connect_mobile/features/meal_records/models/meal_estimation_result.dart';
+import 'package:fit_connect_mobile/features/messages/presentation/widgets/form_card.dart';
+import 'package:fit_connect_mobile/shared/storage/storage_buckets.dart';
+import 'package:fit_connect_mobile/shared/widgets/fc/fc.dart';
+import 'package:fit_connect_mobile/shared/widgets/storage_image.dart';
+
+/// 推定結果を確認するビュー（食事を記録フォームの 2 段目）。
+///
+/// 正本 `MealForm` の「推定ボックス」に対応する: 写真（または内容・画面）からの **推定（目安）** として、
+/// カロリー（20/500）とたんぱく質・脂質・炭水化物（13）を出し、右の「修正」で数値を直せる。
+/// 食品リスト（読み取り専用）＋ 合計 4 値（kcal/P/F/C・編集可）＋ 戻る / 送信。
+/// AI の断定にせず、「推定」「目安」と明記する。
+///
+/// カードの殻（[FormCard]）は呼び出し側（`MealTagForm`）が付ける。
 class MealEstimationConfirmView extends StatefulWidget {
   final MealEstimationResult estimation;
   final EstimationTotals totals;
@@ -17,7 +28,7 @@ class MealEstimationConfirmView extends StatefulWidget {
   final VoidCallback onSend;
   final bool isSending;
 
-  /// AI 推定に使った画像の Storage 値（message-photos のバケット相対パス。
+  /// 推定に使った画像の Storage 値（message-photos のバケット相対パス。
   /// confirm phase では読み取り専用）。空リストならサムネイル領域を描画しない。
   final List<String> imageValues;
 
@@ -27,6 +38,9 @@ class MealEstimationConfirmView extends StatefulWidget {
   /// 複数スクショの整合性が取れない場合の警告文（null/空なら非表示）。
   /// 非ブロッキング: 表示されても送信は可能。
   final String? warning;
+
+  /// 送信されるメッセージの本文（`#食事:昼食 鶏むね肉のグリル定食`）。null なら出さない
+  final String? composedText;
 
   const MealEstimationConfirmView({
     super.key,
@@ -39,10 +53,12 @@ class MealEstimationConfirmView extends StatefulWidget {
     this.imageValues = const [],
     this.appName,
     this.warning,
+    this.composedText,
   });
 
   @override
-  State<MealEstimationConfirmView> createState() => _MealEstimationConfirmViewState();
+  State<MealEstimationConfirmView> createState() =>
+      _MealEstimationConfirmViewState();
 }
 
 class _MealEstimationConfirmViewState extends State<MealEstimationConfirmView> {
@@ -51,10 +67,14 @@ class _MealEstimationConfirmViewState extends State<MealEstimationConfirmView> {
   late TextEditingController _fC;
   late TextEditingController _cC;
 
+  /// 「修正」で数値の入力欄を開いているか
+  bool _editing = false;
+
   @override
   void initState() {
     super.initState();
-    _kcalC = TextEditingController(text: widget.totals.calories.toStringAsFixed(0));
+    _kcalC =
+        TextEditingController(text: widget.totals.calories.toStringAsFixed(0));
     _pC = TextEditingController(text: widget.totals.proteinG.toStringAsFixed(0));
     _fC = TextEditingController(text: widget.totals.fatG.toStringAsFixed(0));
     _cC = TextEditingController(text: widget.totals.carbsG.toStringAsFixed(0));
@@ -63,8 +83,10 @@ class _MealEstimationConfirmViewState extends State<MealEstimationConfirmView> {
   @override
   void didUpdateWidget(covariant MealEstimationConfirmView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // 親が外部から新しい totals を渡してきた場合に controller を再シード（参照比較で十分）
-    if (!identical(oldWidget.totals, widget.totals)) {
+    // 親が外部から新しい totals を渡してきた場合に controller を再シードする。
+    // 自分が入力した値が親を経由して戻ってきただけなら、入力中の文字（"12." など）を壊さない
+    if (!identical(oldWidget.totals, widget.totals) &&
+        !_sameTotals(_readTotals(), widget.totals)) {
       _kcalC.text = widget.totals.calories.toStringAsFixed(0);
       _pC.text = widget.totals.proteinG.toStringAsFixed(0);
       _fC.text = widget.totals.fatG.toStringAsFixed(0);
@@ -88,198 +110,250 @@ class _MealEstimationConfirmViewState extends State<MealEstimationConfirmView> {
         carbsG: double.tryParse(_cC.text) ?? 0,
       );
 
+  static bool _sameTotals(EstimationTotals a, EstimationTotals b) =>
+      a.calories == b.calories &&
+      a.proteinG == b.proteinG &&
+      a.fatG == b.fatG &&
+      a.carbsG == b.carbsG;
+
   void _emit() => widget.onTotalsChanged(_readTotals());
+
+  /// 推定の出どころ（見出しの文言）。写真・画面・内容のどれから推定したかを明記する
+  String get _sourceLabel {
+    final app = widget.appName;
+    if (app != null && app.isNotEmpty && app != 'unknown') {
+      return '画面からの読み取り（目安）';
+    }
+    if (widget.imageValues.isNotEmpty) return '写真からの推定（目安）';
+    return '内容からの推定（目安）';
+  }
 
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
     final appName = widget.appName;
+    final showApp = appName != null && appName.isNotEmpty && appName != 'unknown';
+    final hasWarning = widget.warning != null && widget.warning!.isNotEmpty;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (appName != null && appName.isNotEmpty && appName != 'unknown') ...[
+        FormHeading(
+          icon: LucideIcons.calculator,
+          title: '推定結果を確認',
+          action: FcButton.back(label: '戻る', onPressed: widget.onBack),
+        ),
+
+        if (showApp) ...[
           Row(
             children: [
-              Icon(LucideIcons.smartphone, size: 14, color: colors.textSecondary),
+              ExcludeSemantics(
+                child: Icon(LucideIcons.smartphone,
+                    size: 14, color: colors.textSecondary),
+              ),
               const SizedBox(width: 6),
-              Text(
-                '$appName から読み取り',
-                style: TextStyle(fontSize: 13, color: colors.textSecondary),
+              Expanded(
+                child: Text(
+                  '$appName から読み取り',
+                  style: AppTextStyles.supplement(context),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.md),
         ],
-        // Header
-        Row(
-          children: [
-            Icon(LucideIcons.sparkles, size: 16, color: colors.textPrimary),
-            const SizedBox(width: 6),
-            Text(
-              'AI推定結果を確認',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: colors.textPrimary,
-              ),
-            ),
-            const Spacer(),
-            GestureDetector(
-              onTap: widget.onBack,
-              child: Text(
-                '戻る',
-                style: TextStyle(fontSize: 13, color: colors.textSecondary),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
 
         // 複数スクショの整合性警告（非ブロッキング: 表示されても送信可能）
-        if (widget.warning != null && widget.warning!.isNotEmpty) ...[
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: AppColors.amber100,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.amber300),
+        if (hasWarning) ...[
+          FcInlineNotice.warning(message: widget.warning!),
+          const SizedBox(height: AppSpacing.md),
+        ],
+
+        // 推定に使った写真（読み取り専用）
+        if (widget.imageValues.isNotEmpty) ...[
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: [
+              for (final value in widget.imageValues)
+                StorageImage(
+                  value: value,
+                  bucket: StorageBuckets.messagePhotos,
+                  width: PhotoTiles.tileSize,
+                  height: PhotoTiles.tileSize,
+                  fit: BoxFit.cover,
+                  borderRadius: BorderRadius.circular(PhotoTiles.tileRadius),
+                  placeholder: const FcPhotoPlaceholder(
+                    width: PhotoTiles.tileSize,
+                    height: PhotoTiles.tileSize,
+                    radius: PhotoTiles.tileRadius,
+                  ),
+                  errorWidget: const FcPhotoPlaceholder(
+                    width: PhotoTiles.tileSize,
+                    height: PhotoTiles.tileSize,
+                    radius: PhotoTiles.tileRadius,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+        ],
+
+        // 推定した食品（読み取り専用）
+        if (widget.estimation.foods.isNotEmpty) ...[
+          Text('推定した内容', style: AppTextStyles.caption(context)),
+          const SizedBox(height: 2),
+          for (final f in widget.estimation.foods)
+            Text(
+              '・${f.name}（${f.calories.toStringAsFixed(0)} kcal）',
+              style: AppTextStyles.supplement(context),
             ),
+          const SizedBox(height: AppSpacing.md),
+        ],
+
+        _buildEstimateBox(context),
+
+        if (widget.composedText != null) ...[
+          const SizedBox(height: AppSpacing.md),
+          ComposedPreview(text: widget.composedText!, title: '送信される内容'),
+        ],
+
+        // 送信（送信中は二重送信を防ぎ、文言でも伝える）
+        const SizedBox(height: 14),
+        FcButton.block(
+          label: 'この内容で送信',
+          loading: widget.isSending,
+          loadingLabel: '送信しています…',
+          onPressed: widget.onSend,
+        ),
+      ],
+    );
+  }
+
+  /// 推定ボックス（正本: surfaceSecondary・calculator 13 + 出どころ + 右に accent の「修正」）。
+  /// 閉じているときはカロリー（20/500）とたんぱく質・脂質・炭水化物（13）、
+  /// 開いているときは 4 つの数値入力
+  Widget _buildEstimateBox(BuildContext context) {
+    final colors = AppColors.of(context);
+    final t = _readTotals();
+    String g(double v) => v.toStringAsFixed(0);
+
+    return FcInfoBox(
+      // 見出し行が「修正」の押せる範囲（高さ 44）で決まるので、上の余白は 0
+      padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: AppSizes.minTouch),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(LucideIcons.alertTriangle, size: 16, color: AppColors.amber800),
-                const SizedBox(width: 8),
+                ExcludeSemantics(
+                  child: Icon(LucideIcons.calculator,
+                      size: 13, color: colors.textSecondary),
+                ),
+                const SizedBox(width: 4),
                 Expanded(
-                  child: Text(
-                    widget.warning!,
-                    style: const TextStyle(fontSize: 12, height: 1.4, color: AppColors.amber800),
+                  child: Text(_sourceLabel, style: AppTextStyles.caption(context)),
+                ),
+                FcPressable(
+                  onTap: () => setState(() => _editing = !_editing),
+                  semanticLabel: _editing ? '修正を終える' : '数値を修正する',
+                  minSize: const Size(AppSizes.minTouch, AppSizes.minTouch),
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Text(
+                      _editing ? '完了' : '修正',
+                      style: AppTextStyles.supplement(context).copyWith(
+                        color: colors.accent,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 12),
-        ],
-
-        // Image thumbnails (read-only)
-        if (widget.imageValues.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 64,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: widget.imageValues.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              // cacheKey=bucket/path は StorageImage 内部で付与される
-              itemBuilder: (context, i) => StorageImage(
-                value: widget.imageValues[i],
-                bucket: StorageBuckets.messagePhotos,
-                width: 64,
-                height: 64,
-                fit: BoxFit.cover,
-                borderRadius: BorderRadius.circular(6),
-                errorWidget: Container(
-                  width: 64,
-                  height: 64,
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  child: const Icon(Icons.broken_image_outlined, size: 24),
-                ),
+          if (!_editing) ...[
+            FcNum(
+              value: g(t.calories),
+              unit: 'kcal',
+              size: FcNumSize.compact,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'たんぱく質 ${g(t.proteinG)} g · 脂質 ${g(t.fatG)} g · 炭水化物 ${g(t.carbsG)} g',
+              style: AppTextStyles.supplement(context).copyWith(
+                fontFeatures: AppTextStyles.tabularFigures,
               ),
             ),
-          ),
-          const SizedBox(height: 8),
+          ] else
+            _buildEditFields(context),
         ],
-
-        // Foods list (read-only in Stage 1)
-        ...widget.estimation.foods.map(
-          (f) => Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Text(
-              '・${f.name}（${f.calories.toStringAsFixed(0)}kcal）',
-              style: TextStyle(fontSize: 12, color: colors.textSecondary),
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-
-        // Editable totals row
-        Row(
-          children: [
-            Expanded(child: _NumField(label: 'kcal', controller: _kcalC, onChanged: (_) => _emit(), colors: colors)),
-            const SizedBox(width: 6),
-            Expanded(child: _NumField(label: 'P', controller: _pC, onChanged: (_) => _emit(), colors: colors)),
-            const SizedBox(width: 6),
-            Expanded(child: _NumField(label: 'F', controller: _fC, onChanged: (_) => _emit(), colors: colors)),
-            const SizedBox(width: 6),
-            Expanded(child: _NumField(label: 'C', controller: _cC, onChanged: (_) => _emit(), colors: colors)),
-          ],
-        ),
-        const SizedBox(height: 10),
-
-        // Send button (送信中は無効化、二重送信防止)
-        Align(
-          alignment: Alignment.centerRight,
-          child: GestureDetector(
-            onTap: widget.isSending ? null : widget.onSend,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: widget.isSending ? AppColors.primary.withAlpha(128) : AppColors.primary,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: widget.isSending
-                  ? const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : const Text(
-                      '送信',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white),
-                    ),
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
-}
 
-class _NumField extends StatelessWidget {
-  final String label;
-  final TextEditingController controller;
-  final ValueChanged<String> onChanged;
-  final AppColorsExtension colors;
-  const _NumField({
-    required this.label,
-    required this.controller,
-    required this.onChanged,
-    required this.colors,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      onChanged: onChanged,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(color: colors.textSecondary, fontSize: 11),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: colors.border)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: colors.border)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.primary, width: 2)),
-        filled: true,
-        fillColor: colors.surface,
-        isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+  Widget _buildEditFields(BuildContext context) {
+    final fields = <Widget>[
+      FcTextField.number(
+        label: 'カロリー',
+        unit: 'kcal',
+        controller: _kcalC,
+        onChanged: (_) {
+          _emit();
+          setState(() {});
+        },
       ),
-      style: TextStyle(color: colors.textPrimary, fontSize: 13),
+      FcTextField.number(
+        label: 'たんぱく質',
+        unit: 'g',
+        controller: _pC,
+        onChanged: (_) {
+          _emit();
+          setState(() {});
+        },
+      ),
+      FcTextField.number(
+        label: '脂質',
+        unit: 'g',
+        controller: _fC,
+        onChanged: (_) {
+          _emit();
+          setState(() {});
+        },
+      ),
+      FcTextField.number(
+        label: '炭水化物',
+        unit: 'g',
+        controller: _cC,
+        onChanged: (_) {
+          _emit();
+          setState(() {});
+        },
+      ),
+    ];
+
+    // 文字拡大のときは 1 列に積み直す（縮めない）
+    final large = MediaQuery.textScalerOf(context).scale(16) > 20;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = large || constraints.maxWidth < 240
+            ? constraints.maxWidth
+            : (constraints.maxWidth - AppSpacing.md) / 2;
+        return Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Wrap(
+            spacing: AppSpacing.md,
+            runSpacing: AppSpacing.md,
+            children: [
+              for (final f in fields) SizedBox(width: width, child: f),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -288,116 +362,100 @@ class _NumField extends StatelessWidget {
 // Preview
 // ============================================
 
-@Preview(name: 'MealEstimationConfirmView - Default')
-Widget previewMealEstimationConfirmViewDefault() {
-  const estimation = MealEstimationResult(
-    foods: [
-      EstimatedFood(name: '牛丼大盛り', calories: 850, proteinG: 32, fatG: 28, carbsG: 95),
-      EstimatedFood(name: 'サラダ', calories: 50, proteinG: 2, fatG: 3, carbsG: 5),
-    ],
-    totals: EstimationTotals(calories: 900, proteinG: 34, fatG: 31, carbsG: 100),
-  );
+Widget _previewApp({
+  required Brightness brightness,
+  required MealEstimationResult estimation,
+  String? composedText,
+  List<String> imageValues = const [],
+  bool isSending = false,
+  double textScale = 1.0,
+}) {
   return MaterialApp(
-    theme: AppTheme.lightTheme,
-    home: Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      body: SafeArea(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.all(16),
-              child: MealEstimationConfirmView(
-                estimation: estimation,
-                totals: estimation.totals,
-                onTotalsChanged: (_) {},
-                onBack: () {},
-                onSend: () {},
-              ),
-            ),
-          ],
-        ),
-      ),
+    theme: brightness == Brightness.dark
+        ? AppTheme.darkTheme
+        : AppTheme.lightTheme,
+    builder: (context, c) => MediaQuery(
+      data: MediaQuery.of(context)
+          .copyWith(textScaler: TextScaler.linear(textScale)),
+      child: c!,
     ),
-  );
-}
-
-@Preview(name: 'MealEstimationConfirmView - 整合性警告')
-Widget previewMealEstimationConfirmViewWarning() {
-  const estimation = MealEstimationResult(
-    foods: [
-      EstimatedFood(name: '鶏胸肉（100g）', calories: 154, proteinG: 0, fatG: 0, carbsG: 0),
-      EstimatedFood(name: 'ご飯（100g）', calories: 203, proteinG: 0, fatG: 0, carbsG: 0),
-    ],
-    totals: EstimationTotals(calories: 589, proteinG: 45, fatG: 12, carbsG: 60),
-    appName: 'あすけん',
-    warning: 'カロリーの画面とPFCの画面で合計が噛み合いません。同じ食事の画面か確認してください',
-  );
-  return MaterialApp(
-    theme: AppTheme.lightTheme,
     home: Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
       body: SafeArea(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.all(16),
+        child: SingleChildScrollView(
+          reverse: true,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+            child: FormCard(
               child: MealEstimationConfirmView(
                 estimation: estimation,
                 totals: estimation.totals,
+                composedText: composedText,
+                imageValues: imageValues,
                 appName: estimation.appName,
                 warning: estimation.warning,
+                isSending: isSending,
                 onTotalsChanged: (_) {},
                 onBack: () {},
                 onSend: () {},
               ),
             ),
-          ],
+          ),
         ),
       ),
     ),
   );
 }
 
-@Preview(name: 'MealEstimationConfirmView - With Images')
-Widget previewMealEstimationConfirmViewWithImages() {
-  const estimation = MealEstimationResult(
-    foods: [
-      EstimatedFood(name: '牛丼大盛り', calories: 850, proteinG: 32, fatG: 28, carbsG: 95),
-      EstimatedFood(name: 'サラダ', calories: 50, proteinG: 2, fatG: 3, carbsG: 5),
-    ],
-    totals: EstimationTotals(calories: 900, proteinG: 34, fatG: 31, carbsG: 100),
-  );
-  return MaterialApp(
-    theme: AppTheme.lightTheme,
-    home: Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      body: SafeArea(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.all(16),
-              child: MealEstimationConfirmView(
-                estimation: estimation,
-                totals: estimation.totals,
-                // 外部 URL は署名なしでそのまま表示される（プレビュー用）
-                imageValues: const [
-                  'https://placehold.jp/64x64.png',
-                  'https://placehold.jp/64x64.png',
-                ],
-                onTotalsChanged: (_) {},
-                onBack: () {},
-                onSend: () {},
-              ),
-            ),
-          ],
-        ),
+const _previewEstimation = MealEstimationResult(
+  foods: [
+    EstimatedFood(
+        name: '鶏むね肉のグリル', calories: 320, proteinG: 30, fatG: 10, carbsG: 4),
+    EstimatedFood(
+        name: 'ごはん', calories: 280, proteinG: 4, fatG: 1, carbsG: 62),
+    EstimatedFood(
+        name: 'サラダ', calories: 40, proteinG: 2, fatG: 3, carbsG: 5),
+  ],
+  totals: EstimationTotals(calories: 640, proteinG: 38, fatG: 18, carbsG: 82),
+);
+
+@Preview(name: 'MealEstimationConfirmView - 推定（ライト）')
+Widget previewMealEstimationConfirmViewLight() => _previewApp(
+      brightness: Brightness.light,
+      estimation: _previewEstimation,
+      composedText: '#食事:昼食 鶏むね肉のグリル定食',
+    );
+
+@Preview(name: 'MealEstimationConfirmView - 推定（ダーク）')
+Widget previewMealEstimationConfirmViewDark() => _previewApp(
+      brightness: Brightness.dark,
+      estimation: _previewEstimation,
+      composedText: '#食事:昼食 鶏むね肉のグリル定食',
+    );
+
+@Preview(name: 'MealEstimationConfirmView - 整合性の警告・文字1.35')
+Widget previewMealEstimationConfirmViewWarning() => _previewApp(
+      brightness: Brightness.light,
+      textScale: 1.35,
+      estimation: const MealEstimationResult(
+        foods: [
+          EstimatedFood(
+              name: '鶏胸肉（100g）',
+              calories: 154,
+              proteinG: 0,
+              fatG: 0,
+              carbsG: 0),
+        ],
+        totals:
+            EstimationTotals(calories: 589, proteinG: 45, fatG: 12, carbsG: 60),
+        appName: 'あすけん',
+        warning: 'カロリーの画面とPFCの画面で合計が噛み合いません。同じ食事の画面か確認してください',
       ),
-    ),
-  );
-}
+    );
+
+@Preview(name: 'MealEstimationConfirmView - 送信中')
+Widget previewMealEstimationConfirmViewSending() => _previewApp(
+      brightness: Brightness.light,
+      estimation: _previewEstimation,
+      composedText: '#食事:昼食 鶏むね肉のグリル定食',
+      isSending: true,
+    );

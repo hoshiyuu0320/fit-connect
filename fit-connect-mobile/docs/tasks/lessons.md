@@ -8,6 +8,31 @@
 
 ---
 
+## 2026-10-04: モバイル再デザイン（feature/mobile-redesign）で得た学び
+
+仕様は `docs/tasks/2026-10-04-mobile-redesign-spec.md` と付録B を参照。
+
+### デザイン正本の渡し方
+- サブエージェントは `DesignSync` を使えない。デザイン正本は、メインのセッションが読んだ原文をそのままファイルに書き出して渡す。
+- 要約や推測で部品を作らせると見た目がずれた（`SegmentedControl` / `TextField` / `StateMessage` / `SubTabs` など）。
+
+### 並列作業の進め方
+- 並列エージェントが同じ作業ツリーで作業するときは、ファイルの担当を分ける、`git stash` / `checkout` / `restore` を禁止する、一時ファイルを `test/_qa_<担当>` に分ける、で衝突しなかった。
+- `dart format` をディレクトリ単位で走らせると、無関係な既存ファイル（データ層・テスト）まで整形される。**自分が触ったファイルだけ**に使う。
+
+### テーマ（`ThemeData`）
+- `InputDecorationTheme` に状態別の枠（`enabledBorder` など）を入れると、画面側の `border: InputBorder.none` が打ち消される。`border` だけに `WidgetStateInputBorder` を使う。
+- `AppBarTheme.titleTextStyle` があると、画面側の `AppBar(foregroundColor:)` がタイトルに効かない。
+
+### 浮遊する下部ナビ
+- ナビを浮遊させて `MediaQuery.padding.bottom` を加算すると、固定の SnackBar がナビの裏に高い帯を作る。テーマで floating にし、`viewPadding` にも同じ確保量を足す。
+- ナビの下へスクロール内容を潜らせたい画面は、`SafeArea(bottom: false)` ＋ `MediaQuery.paddingOf(context).bottom` の余白で、画面ごとに揃える。
+
+### 表示のばらつき
+- `trainers.name` は名前そのもの（「田中」）。画面ごとに「{名前}」「{名前}トレーナー」を組み立てると表記が割れ、DB に「田中トレーナー」と入っていれば「田中トレーナートレーナー」になる。表示は共通ヘルパー `trainerDisplayName`（`lib/shared/utils/trainer_name.dart`）に統一する。
+
+---
+
 ## 2026-07-05: 共通化リファクタで移植元の防御コードを落とした
 
 睡眠記録の記録タブ統合（feature/move-sleep-to-records-tab）で、寝起き記録ボトムシートを2つの既存実装（`sleep_record_screen.dart` の `_showRatingSheet` / `sleep_summary_card.dart` の `_RecordSheet`）から共通関数 `showWakeupRecordSheet` に統合した際の事例。

@@ -4,6 +4,7 @@ import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/features/auth/providers/registration_provider.dart';
 import 'package:fit_connect_mobile/features/auth/presentation/screens/login_screen.dart';
 import 'package:fit_connect_mobile/shared/storage/storage_buckets.dart';
+import 'package:fit_connect_mobile/shared/widgets/fc/fc.dart';
 import 'package:fit_connect_mobile/shared/widgets/storage_image.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
@@ -45,16 +46,10 @@ class TrainerConfirmScreen extends ConsumerWidget {
                 child: Container(
                   width: 120,
                   height: 120,
+                  // 影は付けない（面の色だけで区別する）
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: colors.border,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withAlpha(26),
-                        blurRadius: 20,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                    color: colors.surfaceSecondary,
                   ),
                   child: ClipOval(
                     child: registrationState.trainerImageUrl != null
@@ -107,28 +102,22 @@ class TrainerConfirmScreen extends ConsumerWidget {
 
               const SizedBox(height: 48),
 
-              // 確認メッセージ
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: AppColors.primary50,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.primary100),
-                ),
-                child: const Column(
+              // 確認メッセージ（カードは surface。淡い青緑の面は使わない）
+              FcCard(
+                child: Column(
                   children: [
                     Icon(
                       LucideIcons.userCheck,
                       size: 32,
-                      color: AppColors.primary600,
+                      color: colors.accent,
                     ),
-                    SizedBox(height: 12),
+                    const SizedBox(height: 12),
                     Text(
                       'このトレーナーの元で\nトレーニングを始めますか？',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 16,
-                        color: AppColors.slate700,
+                        color: colors.textPrimary,
                         height: 1.6,
                       ),
                     ),
@@ -139,7 +128,8 @@ class TrainerConfirmScreen extends ConsumerWidget {
               const Spacer(),
 
               // 次へボタン
-              ElevatedButton(
+              FcButton.block(
+                label: '次へ進む',
                 onPressed: () {
                   Navigator.of(context).pushReplacement(
                     MaterialPageRoute(
@@ -149,22 +139,6 @@ class TrainerConfirmScreen extends ConsumerWidget {
                     ),
                   );
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary600,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 0,
-                ),
-                child: const Text(
-                  '次へ進む',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
               ),
               const SizedBox(height: 12),
 

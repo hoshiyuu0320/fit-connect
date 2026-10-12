@@ -2,15 +2,29 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
+import 'package:fit_connect_mobile/core/theme/app_spacing.dart';
+import 'package:fit_connect_mobile/core/theme/app_text_styles.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
+import 'package:fit_connect_mobile/features/messages/presentation/widgets/form_card.dart';
 import 'package:fit_connect_mobile/features/messages/presentation/widgets/tag_suggestion_list.dart';
 import 'package:fit_connect_mobile/features/messages/presentation/widgets/reply_preview.dart';
 import 'package:fit_connect_mobile/features/messages/presentation/widgets/quick_action_bar.dart';
 import 'package:fit_connect_mobile/features/messages/presentation/widgets/structured_tag_form.dart';
 import 'package:fit_connect_mobile/features/meal_records/models/meal_estimation_result.dart';
 import 'package:fit_connect_mobile/services/storage_service.dart';
+import 'package:fit_connect_mobile/shared/widgets/fc/fc.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+/// メッセージの入力エリア（正本 `message-screens.js` の `Composer` / `InputRow` / `ComposerTags`）。
+///
+/// 3 つの見え方がある（どれも背景の上に直接置く。区切り線・塗りは持たない）:
+/// - 会話: クイック操作（体重 / 食事 / 運動）＋入力行
+/// - `#` 入力中: 「タグの候補」のカード＋（返信バナー）＋入力行（クイック操作は隠す）
+/// - 記録フォーム: フォームのカード＋入力行（入力行は残す。「入力欄に入れる」で入る先を見せる）
+///
+/// 入力行 = 写真を添付（丸 44）＋テキスト欄（surface・角丸 22・最小高さ 44）＋送信（丸 44・actionFill）。
+/// 全体は [SingleChildScrollView] で包み、親が高さを制限したとき（キーボード表示中にフォームを開いた
+/// ときなど）はフォームの側がスクロールして、入力行は常に下に見える。
 class ChatInput extends StatefulWidget {
   /// メッセージ送信コールバック。
   /// imageUrls には message-photos のバケット相対パスを渡す
@@ -23,6 +37,10 @@ class ChatInput extends StatefulWidget {
   final String? userId;
   final String? replyToMessageId;
   final String? replyToContent;
+
+  /// 返信先を書いた人の呼び名（トレーナーの名前。自分のメッセージなら「自分」）。
+  /// 返信バナーの「{名前}に返信」に使う。null なら「返信先」
+  final String? replyToSenderName;
   final VoidCallback? onCancelReply;
   final String? editingMessageId;
   final String? editingMessageContent;
@@ -42,6 +60,7 @@ class ChatInput extends StatefulWidget {
     this.userId,
     this.replyToMessageId,
     this.replyToContent,
+    this.replyToSenderName,
     this.onCancelReply,
     this.editingMessageId,
     this.editingMessageContent,
@@ -259,7 +278,6 @@ class _ChatInputState extends State<ChatInput> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('画像は最大${StorageService.maxImagesPerMessage}枚までです'),
-          backgroundColor: AppColors.orange500,
         ),
       );
       return;
@@ -290,7 +308,6 @@ class _ChatInputState extends State<ChatInput> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('ユーザー情報が取得できませんでした'),
-            backgroundColor: AppColors.rose800,
           ),
         );
       }
@@ -311,7 +328,6 @@ class _ChatInputState extends State<ChatInput> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('画像のアップロードに失敗しました'),
-              backgroundColor: AppColors.rose800,
             ),
           );
         }
@@ -326,7 +342,6 @@ class _ChatInputState extends State<ChatInput> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('画像のアップロードに失敗しました: $e'),
-            backgroundColor: AppColors.rose800,
           ),
         );
       }
@@ -346,7 +361,6 @@ class _ChatInputState extends State<ChatInput> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('タグだけでなく、内容も入力してください'),
-            backgroundColor: AppColors.orange500,
             duration: Duration(seconds: 2),
           ),
         );
@@ -378,7 +392,6 @@ class _ChatInputState extends State<ChatInput> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('送信に失敗しました: $e'),
-            backgroundColor: AppColors.rose800,
           ),
         );
       }
@@ -441,7 +454,6 @@ class _ChatInputState extends State<ChatInput> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('送信に失敗しました: $e'),
-            backgroundColor: AppColors.rose800,
           ),
         );
       }
@@ -449,62 +461,6 @@ class _ChatInputState extends State<ChatInput> {
         _isUploading = false;
       });
     }
-  }
-
-  Widget _buildImagePreview({required bool insideForm}) {
-    final colors = AppColors.of(context);
-    return Container(
-      height: 88,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-      decoration: BoxDecoration(
-        color: insideForm ? colors.surfaceDim : colors.surface,
-        border: insideForm
-            ? null
-            : Border(top: BorderSide(color: colors.border)),
-      ),
-      child: ListView.separated(
-        clipBehavior: Clip.none,
-        scrollDirection: Axis.horizontal,
-        itemCount: _selectedImages.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          return Stack(
-            clipBehavior: Clip.none,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.file(
-                  _selectedImages[index],
-                  width: 64,
-                  height: 64,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              Positioned(
-                top: -4,
-                right: -4,
-                child: GestureDetector(
-                  onTap: () => _removeImage(index),
-                  child: Container(
-                    width: 20,
-                    height: 20,
-                    decoration: const BoxDecoration(
-                      color: AppColors.rose800,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      LucideIcons.x,
-                      color: Colors.white,
-                      size: 12,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
   }
 
   void _openStructuredForm(String type) {
@@ -535,255 +491,203 @@ class _ChatInputState extends State<ChatInput> {
     _focusNode.requestFocus();
   }
 
-  @override
-  Widget build(BuildContext context) {
+  /// 入力行（写真を添付・テキスト欄・送信）。正本 `InputRow`
+  Widget _buildInputRow(BuildContext context, {required bool isEditMode}) {
     final colors = AppColors.of(context);
-    // 編集モードと返信モードの排他制御
-    final isEditMode = widget.editingMessageId != null;
-    final isReplyMode = widget.replyToContent != null && !isEditMode;
+    final canSend = _canSend();
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        // 編集プレビュー（編集モード時のみ表示）
-        if (isEditMode)
-          _EditPreview(
-            messageContent: widget.editingMessageContent ?? '',
-            onCancel: widget.onCancelEdit ?? () {},
-          ),
-        // 返信プレビュー（返信モード時のみ表示）
-        if (isReplyMode)
-          ReplyPreview(
-            messageContent: widget.replyToContent!,
-            onCancel: widget.onCancelReply ?? () {},
-          ),
-        // 構造化タグフォーム（クイックアクションから開いた場合）
-        if (_activeFormType != null)
-          StructuredTagForm(
-            formType: _activeFormType!,
-            onCompose: _insertComposedText,
-            onClose: _closeStructuredForm,
-            hasImages: _selectedImages.isNotEmpty,
-            selectedImages: _selectedImages,
-            onPickImage: _pickImage,
-            onRemoveImage: _removeImage,
-            onSendWithEstimation: _handleSendWithEstimation,
-          ),
-        if (_showSuggestions && _activeFormType == null)
-          TagSuggestionList(
-            query: _currentTagQuery,
-            onSelect: _addTag,
-            textFieldFocusNode: _focusNode,
-          ),
-        // タグ選択後のヒント表示（常に同じ高さを維持）
-        if (!_showSuggestions && _activeFormType == null)
-          Container(
-            width: double.infinity,
-            height: 36, // 固定高さでレイアウト変化を防ぐ
+        FcIconButton(
+          icon: LucideIcons.camera,
+          semanticLabel: '写真を添付',
+          onPressed: _isUploading ? null : _pickImage,
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Container(
+            constraints: const BoxConstraints(minHeight: AppSizes.minTouch),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
               color: colors.surface,
-              border: Border(top: BorderSide(color: colors.border)),
+              borderRadius: BorderRadius.circular(22),
             ),
-            child: Text(
-              _selectedTagHint != null ? '例: $_selectedTagHint' : '',
-              style: TextStyle(
-                color: colors.textHint,
-                fontSize: 12,
+            alignment: Alignment.centerLeft,
+            child: TextField(
+              controller: _controller,
+              focusNode: _focusNode,
+              maxLines: 4,
+              minLines: 1,
+              enabled: !_isUploading,
+              cursorColor: colors.accent,
+              style: AppTextStyles.body(context),
+              // テーマの InputDecoration（surface + 1px の枠）は使わず、外側の面だけにする
+              decoration: InputDecoration(
+                isCollapsed: true,
+                filled: false,
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                disabledBorder: InputBorder.none,
+                errorBorder: InputBorder.none,
+                focusedErrorBorder: InputBorder.none,
+                contentPadding: EdgeInsets.zero,
+                hintText: 'メッセージを入力',
+                hintStyle: AppTextStyles.body(context)
+                    .copyWith(color: colors.textSecondary),
               ),
             ),
           ),
-        // クイックアクションバー（フォーム非表示時のみ）
-        if (_activeFormType == null)
-          QuickActionBar(onTap: _openStructuredForm),
-        // 画像プレビュー（フォーム非表示時のみ通常位置に表示）
-        if (_activeFormType == null && _selectedImages.isNotEmpty)
-          _buildImagePreview(insideForm: false),
-        if (_activeFormType == null)
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: colors.surface,
-            border: Border(top: BorderSide(color: colors.border)),
-          ),
-          child: SafeArea(
-            top: false,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: colors.border,
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: Row(
-                      children: [
-                        const SizedBox(width: 8),
-                        Stack(
-                          children: [
-                            IconButton(
-                              icon: Icon(LucideIcons.camera,
-                                  color: colors.textHint, size: 20),
-                              onPressed: _isUploading ? null : _pickImage,
-                            ),
-                            if (_selectedImages.isNotEmpty)
-                              Positioned(
-                                top: 4,
-                                right: 4,
-                                child: Container(
-                                  width: 16,
-                                  height: 16,
-                                  decoration: const BoxDecoration(
-                                    color: AppColors.primary600,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      '${_selectedImages.length}',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                        Expanded(
-                          child: TextField(
-                            controller: _controller,
-                            focusNode: _focusNode,
-                            maxLines: 4,
-                            minLines: 1,
-                            enabled: !_isUploading,
-                            decoration: InputDecoration(
-                              hintText: 'メッセージ... (#でタグ入力)',
-                              border: InputBorder.none,
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 4, vertical: 10),
-                              hintStyle: TextStyle(
-                                  color: colors.textHint, fontSize: 14),
-                            ),
-                            style: TextStyle(
-                                color: colors.textPrimary, fontSize: 14),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                InkWell(
-                  onTap: _canSend() ? _handleSend : null,
-                  borderRadius: BorderRadius.circular(24),
-                  child: Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: _canSend() ? AppColors.primary600 : colors.border,
-                      shape: BoxShape.circle,
-                      boxShadow: _canSend()
-                          ? [
-                              BoxShadow(
-                                color:
-                                    AppColors.primary600.withValues(alpha: 0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
-                              ),
-                            ]
-                          : null,
-                    ),
-                    child: _isUploading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : Icon(
-                            isEditMode ? LucideIcons.check : LucideIcons.send,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                  ),
-                ),
-              ],
-            ),
-          ),
         ),
+        const SizedBox(width: AppSpacing.sm),
+        if (_isUploading)
+          Semantics(
+            label: '送信しています',
+            liveRegion: true,
+            child: Container(
+              width: AppSizes.minTouch,
+              height: AppSizes.minTouch,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: colors.actionFill,
+              ),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: colors.onAction,
+                ),
+              ),
+            ),
+          )
+        else
+          FcIconButton(
+            icon: isEditMode ? LucideIcons.check : LucideIcons.arrowUp,
+            semanticLabel: isEditMode ? '編集を保存' : '送信',
+            primary: true,
+            onPressed: canSend ? _handleSend : null,
+          ),
       ],
     );
   }
-}
 
-// ============================================
-// EditPreview Widget
-// ============================================
-
-class _EditPreview extends StatelessWidget {
-  final String messageContent;
-  final VoidCallback onCancel;
-
-  const _EditPreview({
-    required this.messageContent,
-    required this.onCancel,
-  });
+  /// 縦に並べる子の間に [gap] を挟む
+  List<Widget> _spaced(List<Widget> children, double gap) {
+    return [
+      for (var i = 0; i < children.length; i++) ...[
+        if (i > 0) SizedBox(height: gap),
+        children[i],
+      ],
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: const BoxDecoration(
-        color: AppColors.amber100,
-        border: Border(
-          top: BorderSide(color: AppColors.amber300),
-          bottom: BorderSide(color: AppColors.amber300),
-        ),
-      ),
-      child: Row(
-        children: [
-          const Icon(LucideIcons.pencil, size: 16, color: AppColors.amber800),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  '編集中',
-                  style: TextStyle(
-                    color: AppColors.amber800,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  messageContent,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.amber800,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
+    // 編集モードと返信モードの排他制御
+    final isEditMode = widget.editingMessageId != null;
+    final isReplyMode = widget.replyToContent != null && !isEditMode;
+    final formOpen = _activeFormType != null;
+    final suggesting = _showSuggestions && !formOpen;
+    final inputRow = _buildInputRow(context, isEditMode: isEditMode);
+
+    final Widget body;
+    if (formOpen) {
+      // 記録フォーム: フォームのカード＋入力行（入力行は残す）。正本 `mode="form"`
+      body = Padding(
+        padding: const EdgeInsets.only(top: 8, bottom: 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            StructuredTagForm(
+              formType: _activeFormType!,
+              onCompose: _insertComposedText,
+              onClose: _closeStructuredForm,
+              hasImages: _selectedImages.isNotEmpty,
+              selectedImages: _selectedImages,
+              onPickImage: _pickImage,
+              onRemoveImage: _removeImage,
+              onSendWithEstimation: _handleSendWithEstimation,
             ),
+            const SizedBox(height: 10),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+              child: inputRow,
+            ),
+          ],
+        ),
+      );
+    } else {
+      // 会話 / # 入力中。正本 `Composer` / `ComposerTags`
+      body = Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          10,
+          AppSpacing.lg,
+          AppSpacing.md,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: _spaced(
+            [
+              // タグの候補（# を入力している間だけ）
+              if (suggesting)
+                TagSuggestionList(
+                  query: _currentTagQuery,
+                  onSelect: _addTag,
+                  textFieldFocusNode: _focusNode,
+                ),
+              // 編集バナー（編集モード時のみ）
+              if (isEditMode)
+                ComposerBanner(
+                  icon: LucideIcons.pencil,
+                  title: 'メッセージを編集中',
+                  quote: widget.editingMessageContent ?? '',
+                  closeLabel: '編集をやめる',
+                  onClose: widget.onCancelEdit ?? () {},
+                ),
+              // 返信バナー（返信モード時のみ）
+              if (isReplyMode)
+                ReplyPreview(
+                  messageContent: widget.replyToContent!,
+                  senderName: widget.replyToSenderName,
+                  onCancel: widget.onCancelReply ?? () {},
+                ),
+              // クイック操作（# の候補を出している間は隠す）
+              if (!suggesting) QuickActionBar(onTap: _openStructuredForm),
+              // タグ選択後のヒント（タグ以降の入力例）
+              if (!suggesting && _selectedTagHint != null)
+                Text(
+                  '例: $_selectedTagHint',
+                  style: AppTextStyles.caption(context),
+                ),
+              // 選んだ写真
+              if (_selectedImages.isNotEmpty)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: PhotoTiles(
+                    images: _selectedImages,
+                    onRemove: _removeImage,
+                  ),
+                ),
+              inputRow,
+            ],
+            suggesting ? AppSpacing.sm : 10,
           ),
-          IconButton(
-            icon:
-                const Icon(LucideIcons.x, size: 16, color: AppColors.amber700),
-            onPressed: onCancel,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-          ),
-        ],
-      ),
+        ),
+      );
+    }
+
+    // 親が高さを制限したときだけスクロールする（reverse: 入力行が下に残る）。
+    // primary: false … 画面側の ScrollController（会話の一覧）と取り合わない
+    return SingleChildScrollView(
+      reverse: true,
+      primary: false,
+      child: body,
     );
   }
 }
@@ -792,19 +696,26 @@ class _EditPreview extends StatelessWidget {
 // Previews
 // ============================================
 
-@Preview(name: 'ChatInput - Normal Mode')
-Widget previewChatInputNormal() {
+Widget _previewApp({
+  required Brightness brightness,
+  required Widget child,
+  double textScale = 1.0,
+}) {
   return MaterialApp(
-    theme: AppTheme.lightTheme,
+    theme: brightness == Brightness.dark
+        ? AppTheme.darkTheme
+        : AppTheme.lightTheme,
+    builder: (context, c) => MediaQuery(
+      data: MediaQuery.of(context)
+          .copyWith(textScaler: TextScaler.linear(textScale)),
+      child: c!,
+    ),
     home: Scaffold(
       body: SafeArea(
         child: Column(
           children: [
             const Spacer(),
-            ChatInput(
-              onSend: (text, images, replyTo, metadata) async {},
-              userId: 'user-123',
-            ),
+            child,
           ],
         ),
       ),
@@ -812,150 +723,69 @@ Widget previewChatInputNormal() {
   );
 }
 
-@Preview(name: 'ChatInput - Reply Mode')
-Widget previewChatInputReply() {
-  return MaterialApp(
-    theme: AppTheme.lightTheme,
-    home: Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            const Spacer(),
-            ChatInput(
-              onSend: (text, images, replyTo, metadata) async {},
-              userId: 'user-123',
-              replyToMessageId: 'msg-123',
-              replyToContent: '昨日のトレーニングはどうでしたか?',
-              onCancelReply: () {},
-            ),
-          ],
-        ),
-      ),
-    ),
+ChatInput _previewInput({
+  String? replyToContent,
+  String? replyToSenderName,
+  String? editingMessageId,
+  String? editingMessageContent,
+  String? initialDraft,
+}) {
+  return ChatInput(
+    onSend: (text, images, replyTo, metadata) async {},
+    userId: 'user-123',
+    replyToMessageId: replyToContent == null ? null : 'msg-123',
+    replyToContent: replyToContent,
+    replyToSenderName: replyToSenderName,
+    onCancelReply: () {},
+    editingMessageId: editingMessageId,
+    editingMessageContent: editingMessageContent,
+    onCancelEdit: () {},
+    initialDraft: initialDraft,
+    onDraftConsumed: () {},
   );
 }
 
-@Preview(name: 'ChatInput - Edit Mode')
-Widget previewChatInputEdit() {
-  return MaterialApp(
-    theme: AppTheme.lightTheme,
-    home: Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            const Spacer(),
-            ChatInput(
-              onSend: (text, images, replyTo, metadata) async {},
-              userId: 'user-123',
-              editingMessageId: 'msg-456',
-              editingMessageContent: '今日のトレーニングは30分のランニングと腹筋100回をやりました！',
-              onCancelEdit: () {},
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-}
+@Preview(name: 'ChatInput - 通常（会話）')
+Widget previewChatInputNormal() =>
+    _previewApp(brightness: Brightness.light, child: _previewInput());
 
-@Preview(name: 'ChatInput - With Draft')
+@Preview(name: 'ChatInput - 返信')
+Widget previewChatInputReply() => _previewApp(
+      brightness: Brightness.light,
+      child: _previewInput(
+        replyToContent: 'お疲れさまでした。最後のセットが重いときは、重さはそのままで回数を10回にしてみましょう。',
+        replyToSenderName: '田中トレーナー',
+      ),
+    );
+
+@Preview(name: 'ChatInput - 編集')
+Widget previewChatInputEdit() => _previewApp(
+      brightness: Brightness.light,
+      child: _previewInput(
+        editingMessageId: 'msg-456',
+        editingMessageContent: '今日のトレーニングは30分のランニングと腹筋100回をやりました！',
+      ),
+    );
+
+@Preview(name: 'ChatInput - 定型文あり')
 Widget previewChatInputWithDraft() {
   // セッションの「変更を相談」から定型文が流し込まれた直後の状態
-  return MaterialApp(
-    theme: AppTheme.lightTheme,
-    home: Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            const Spacer(),
-            ChatInput(
-              onSend: (text, images, replyTo, metadata) async {},
-              userId: 'user-123',
-              initialDraft: '9月10日(水) 18:00 のセッションについて相談です。',
-              onDraftConsumed: () {},
-            ),
-          ],
-        ),
-      ),
-    ),
+  return _previewApp(
+    brightness: Brightness.light,
+    child: _previewInput(initialDraft: '9月10日(水) 18:00 のセッションについて相談です。'),
   );
 }
 
-@Preview(name: 'EditPreview - Short Message')
-Widget previewEditPreviewShort() {
-  return MaterialApp(
-    theme: AppTheme.lightTheme,
-    home: Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            _EditPreview(
-              messageContent: 'こんにちは！',
-              onCancel: () {},
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-}
+@Preview(name: 'ChatInput - ダーク')
+Widget previewChatInputDark() =>
+    _previewApp(brightness: Brightness.dark, child: _previewInput());
 
-@Preview(name: 'EditPreview - Long Message')
-Widget previewEditPreviewLong() {
-  return MaterialApp(
-    theme: AppTheme.lightTheme,
-    home: Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            _EditPreview(
-              messageContent:
-                  'これは非常に長いメッセージで、1行に収まりきらないため省略されるはずです。テストメッセージです。',
-              onCancel: () {},
-            ),
-          ],
-        ),
+@Preview(name: 'ChatInput - 文字1.35')
+Widget previewChatInputLarge() => _previewApp(
+      brightness: Brightness.light,
+      textScale: 1.35,
+      child: _previewInput(
+        replyToContent: 'お疲れさまでした。',
+        replyToSenderName: '田中トレーナー',
       ),
-    ),
-  );
-}
-
-@Preview(name: 'ChatInput - QuickAction Visible')
-Widget previewChatInputQuickAction() {
-  return MaterialApp(
-    theme: AppTheme.lightTheme,
-    home: Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            const Spacer(),
-            ChatInput(
-              onSend: (text, images, replyTo, metadata) async {},
-              userId: 'user-123',
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-}
-
-@Preview(name: 'ChatInput - Dark Mode')
-Widget previewChatInputDark() {
-  return MaterialApp(
-    theme: AppTheme.darkTheme,
-    home: Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            const Spacer(),
-            ChatInput(
-              onSend: (text, images, replyTo, metadata) async {},
-              userId: 'user-123',
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-}
+    );

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
+import 'package:fit_connect_mobile/core/theme/app_spacing.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
 import 'package:fit_connect_mobile/features/consent/data/consent_repository.dart';
 import 'package:fit_connect_mobile/features/consent/legal_links.dart';
@@ -41,10 +42,7 @@ class _ConsentDialogState extends ConsumerState<ConsentDialog> {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('リンクを開けませんでした'),
-          backgroundColor: AppColors.rose800,
-        ),
+        const SnackBar(content: Text('リンクを開けませんでした')),
       );
     }
   }
@@ -53,9 +51,7 @@ class _ConsentDialogState extends ConsumerState<ConsentDialog> {
     if (_saving) return;
     setState(() => _saving = true);
     try {
-      await ref
-          .read(consentRepositoryProvider)
-          .recordConsent(widget.userId);
+      await ref.read(consentRepositoryProvider).recordConsent(widget.userId);
       if (mounted) {
         Navigator.of(context).pop();
       }
@@ -66,7 +62,6 @@ class _ConsentDialogState extends ConsumerState<ConsentDialog> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('同意の記録に失敗しました。通信環境をご確認のうえ、もう一度お試しください。'),
-            backgroundColor: AppColors.rose800,
           ),
         );
       }
@@ -134,35 +129,28 @@ class _ConsentDialogState extends ConsumerState<ConsentDialog> {
               const SizedBox(height: 8),
 
               // 同意ボタン（チェックするまで無効）
+              // 形・色はテーマの FilledButton（actionFill・onAction・角丸 24・最小高さ 48）。
+              // 記録中は押せないが、薄い無効表示にはせず塗りのままスピナーを見せる
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
                   onPressed: (_agreed && !_saving) ? _onAgreePressed : null,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
+                  style: _saving
+                      ? FilledButton.styleFrom(
+                          disabledBackgroundColor: colors.actionFill,
+                          disabledForegroundColor: colors.onAction,
+                        )
+                      : null,
                   child: _saving
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 18,
                           height: 18,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white,
-                            ),
+                            color: colors.onAction,
                           ),
                         )
-                      : const Text(
-                          '同意してはじめる',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                      : const Text('同意してはじめる'),
                 ),
               ),
             ],
@@ -187,33 +175,44 @@ class _LegalLinkRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    // リンクの色はテーマ追従の accent（静的な primary500/600 はダークの #1C1C1E 上で読めない）
+    final colors = AppColors.of(context);
+    return Semantics(
+      link: true,
+      label: label,
+      excludeSemantics: true,
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Row(
-          children: [
-            Icon(icon, size: 18, color: AppColors.primary500),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.primary600,
-                  decoration: TextDecoration.underline,
-                  decorationColor: AppColors.primary600,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: AppSizes.minTouch),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              children: [
+                Icon(icon, size: 18, color: colors.accent),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: colors.accent,
+                      decoration: TextDecoration.underline,
+                      decorationColor: colors.accent,
+                    ),
+                  ),
                 ),
-              ),
+                Icon(
+                  LucideIcons.externalLink,
+                  size: 14,
+                  color: colors.accent,
+                ),
+              ],
             ),
-            const Icon(
-              LucideIcons.externalLink,
-              size: 14,
-              color: AppColors.primary500,
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -229,15 +228,15 @@ class ConsentAiNoticeBox extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
 
-    // 淡青枠。ダークでは濃青に切り替わるので、テーマ追従の文字色がそのまま両モードで読める
-    // 枠線は固定の primary100 ではなく半透明の primary600 オーバーレイにして、どちらの背景にも馴染ませる
+    // 淡い青緑の面。ダークでは濃い青緑に切り替わるので、テーマ追従の文字色がそのまま両モードで読める
+    // 枠線は固定色ではなく半透明の accent オーバーレイにして、どちらの背景にも馴染ませる
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: colors.primaryTint.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.primary600.withValues(alpha: 0.3)),
+        border: Border.all(color: colors.accent.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -295,7 +294,7 @@ Widget previewConsentDialogInitial() {
   );
 }
 
-/// ダークモード: AI解析枠が濃青に切り替わり、見出し・本文が読めることを確認する
+/// ダークモード: AI解析枠が濃い青緑に切り替わり、見出し・本文・リンクが読めることを確認する
 @Preview(name: 'ConsentDialog - 初期状態（未チェック, Dark）')
 Widget previewConsentDialogInitialDark() {
   return ProviderScope(
@@ -324,7 +323,7 @@ Widget previewConsentAiNoticeBox() {
   );
 }
 
-/// ダークモード: AI解析枠が濃青に切り替わり、見出し・本文が読めることを確認する
+/// ダークモード: AI解析枠が濃い青緑に切り替わり、見出し・本文・リンクが読めることを確認する
 @Preview(name: 'ConsentAiNoticeBox - 単体（Dark）')
 Widget previewConsentAiNoticeBoxDark() {
   return MaterialApp(

@@ -1,19 +1,34 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fl_chart/fl_chart.dart';
-import 'package:fit_connect_mobile/core/theme/app_colors.dart';
-import 'package:fit_connect_mobile/core/theme/app_theme.dart';
-import 'package:fit_connect_mobile/features/weight_records/models/weight_record_model.dart';
-import 'package:fit_connect_mobile/features/weight_records/providers/weight_records_provider.dart';
-import 'package:fit_connect_mobile/features/goals/providers/goal_provider.dart';
-import 'package:fit_connect_mobile/features/auth/models/client_model.dart';
-import 'package:fit_connect_mobile/shared/models/period_filter.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:intl/intl.dart';
 
+import 'package:fit_connect_mobile/core/theme/app_colors.dart';
+import 'package:fit_connect_mobile/core/theme/app_spacing.dart';
+import 'package:fit_connect_mobile/core/theme/app_text_styles.dart';
+import 'package:fit_connect_mobile/features/auth/models/client_model.dart';
+import 'package:fit_connect_mobile/features/goals/providers/goal_provider.dart';
+import 'package:fit_connect_mobile/features/weight_records/models/weight_record_model.dart';
+import 'package:fit_connect_mobile/features/weight_records/presentation/widgets/weight_format.dart';
+import 'package:fit_connect_mobile/features/weight_records/providers/weight_records_provider.dart';
+import 'package:fit_connect_mobile/shared/models/period_filter.dart';
+import 'package:fit_connect_mobile/shared/widgets/fc/fc.dart';
+import 'package:fit_connect_mobile/shared/widgets/fc/fc_previews.dart';
+
+/// 記録画面「体重」タブ本体。
+///
+/// 現在 / 目標 / 目標まで、開始時・前回からの差、期間の平均・最高・最低・変動幅、推移のグラフ、
+/// 最近の記録を並べる。**達成率（％）や進捗バーは出さない**（「目標まで X kg」に置き換え）。
+/// 増減の符号で色分けしない。体重の記録はメッセージ（#体重）やヘルスケア連携から入るので、
+/// この画面から追加・編集・削除する操作は元から無い。
 class WeightRecordScreen extends ConsumerStatefulWidget {
-  const WeightRecordScreen({super.key});
+  /// 記録がまだ無いときの「メッセージから記録する」を押したとき（メッセージタブへ移る）。
+  /// null なら入口は出さず、文言だけ
+  final VoidCallback? onOpenMessages;
+
+  const WeightRecordScreen({super.key, this.onOpenMessages});
 
   @override
   ConsumerState<WeightRecordScreen> createState() => _WeightRecordScreenState();
@@ -27,1251 +42,776 @@ class _WeightRecordScreenState extends ConsumerState<WeightRecordScreen> {
     final recordsAsync = ref.watch(
       weightRecordsProvider(period: _selectedPeriod),
     );
-    final latestWeightAsync = ref.watch(latestWeightRecordProvider);
+    final latestAsync = ref.watch(latestWeightRecordProvider);
     final goalAsync = ref.watch(currentGoalProvider);
-    final achievementRateAsync = ref.watch(achievementRateProvider);
-    final weightStatsAsync = ref.watch(
-      weightStatsProvider(period: _selectedPeriod),
-    );
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        // Period Filter
-        _buildPeriodFilter(),
-        const SizedBox(height: 16),
-
-        // Stats Card
-        _buildStatsCard(latestWeightAsync, goalAsync, achievementRateAsync,
-            recordsAsync, weightStatsAsync),
-        const SizedBox(height: 24),
-
-        // Chart
-        _buildChartCard(recordsAsync, goalAsync),
-        const SizedBox(height: 24),
-
-        // Records List
-        _buildRecordsList(recordsAsync),
-      ],
-    );
-  }
-
-  Widget _buildPeriodFilter() {
-    final colors = AppColors.of(context);
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: PeriodFilter.values
-            .where((p) => p != PeriodFilter.today)
-            .map((period) {
-          final isSelected = period == _selectedPeriod;
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: FilterChip(
-              label: Text(period.label),
-              selected: isSelected,
-              onSelected: (_) => setState(() => _selectedPeriod = period),
-              selectedColor: AppColors.primary100,
-              checkmarkColor: AppColors.primary600,
-              labelStyle: TextStyle(
-                color: isSelected ? AppColors.primary600 : colors.textSecondary,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _buildStatsCard(
-    AsyncValue<WeightRecord?> latestWeightAsync,
-    AsyncValue<Client?> goalAsync,
-    AsyncValue<double> achievementRateAsync,
-    AsyncValue<List<WeightRecord>> recordsAsync,
-    AsyncValue<Map<String, double>> weightStatsAsync,
-  ) {
-    final colors = AppColors.of(context);
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: colors.border),
-      ),
-      child: latestWeightAsync.when(
-        data: (latestWeight) {
-          return goalAsync.when(
-            data: (goal) {
-              final currentWeight = latestWeight?.weight ?? 0.0;
-              final targetWeight = goal?.targetWeight ?? 0.0;
-              // initial_weightがNULLの場合、記録の最古データをフォールバックに使用
-              final oldestRecordWeight =
-                  recordsAsync.valueOrNull?.lastOrNull?.weight;
-              final initialWeight =
-                  goal?.initialWeight ?? oldestRecordWeight ?? currentWeight;
-              final vsStart = initialWeight - currentWeight;
-
-              // 減量 or 増量の判定
-              final isWeightLossGoal = initialWeight > targetWeight;
-
-              // 残り/超過の計算（減量・増量両対応）
-              final difference = (currentWeight - targetWeight).abs();
-              final bool isExceeded;
-              if (isWeightLossGoal) {
-                // 減量: current < target なら超過達成
-                isExceeded = currentWeight < targetWeight;
-              } else {
-                // 増量: current > target なら超過達成
-                isExceeded = currentWeight > targetWeight;
-              }
-              final bool isExactlyAchieved = currentWeight == targetWeight;
-
-              // ラベル決定: 残り / 達成 / 超過
-              final String statusLabel;
-              if (isExactlyAchieved) {
-                statusLabel = '達成';
-              } else if (isExceeded) {
-                statusLabel = '超過';
-              } else {
-                statusLabel = '残り';
-              }
-
-              return Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _buildTopStat(
-                        '現在',
-                        currentWeight.toStringAsFixed(1),
-                        'kg',
-                      ),
-                      Container(width: 1, height: 40, color: colors.border),
-                      _buildTopStat(
-                        '目標',
-                        targetWeight.toStringAsFixed(1),
-                        'kg',
-                        isAccent: true,
-                      ),
-                      Container(width: 1, height: 40, color: colors.border),
-                      _buildTopStat(
-                        statusLabel,
-                        difference.toStringAsFixed(1),
-                        'kg',
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  // Achievement Rate Progress
-                  achievementRateAsync.when(
-                    data: (rate) => _buildProgressBar(rate),
-                    loading: () => const LinearProgressIndicator(),
-                    error: (_, __) => const SizedBox.shrink(),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildComparisonBox(
-                          '開始時比',
-                          '${vsStart >= 0 ? "-" : "+"}${vsStart.abs().toStringAsFixed(1)}kg',
-                          isPositive: vsStart >= 0,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _buildPreviousComparisonBox(recordsAsync),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  _buildPeriodStats(weightStatsAsync),
-                ],
-              );
-            },
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(child: Text('エラー: $e')),
-          );
+    return _WeightScrollView(
+      period: _selectedPeriod,
+      onPeriodChanged: (p) => setState(() => _selectedPeriod = p),
+      child: _WeightContent(
+        period: _selectedPeriod,
+        recordsAsync: recordsAsync,
+        latestAsync: latestAsync,
+        goalAsync: goalAsync,
+        now: DateTime.now(),
+        onOpenMessages: widget.onOpenMessages,
+        // 失敗したカードだけを読み直す
+        onRetryRecords: () =>
+            ref.invalidate(weightRecordsProvider(period: _selectedPeriod)),
+        onRetryProfile: () {
+          ref.invalidate(latestWeightRecordProvider);
+          ref.invalidate(currentGoalProvider);
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('エラー: $e')),
       ),
     );
   }
+}
 
-  Widget _buildProgressBar(double rate) {
-    final colors = AppColors.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+/// 期間セグメント ＋ 本文を縦に並べるスクロール領域。
+///
+/// 左右の余白は自分で持つ。下はナビぶん（`MediaQuery.padding.bottom`）を空ける。
+class _WeightScrollView extends StatelessWidget {
+  const _WeightScrollView({
+    required this.period,
+    required this.onPeriodChanged,
+    required this.child,
+  });
+
+  final PeriodFilter period;
+  final ValueChanged<PeriodFilter> onPeriodChanged;
+  final Widget child;
+
+  /// 選べる期間（今日は除く。今週 / 今月 / 3ヶ月 / 全期間）
+  static final List<PeriodFilter> periods =
+      PeriodFilter.values.where((p) => p != PeriodFilter.today).toList();
+
+  @override
+  Widget build(BuildContext context) {
+    final horizontal = AppSpacing.pageHorizontalOf(context);
+    return ListView(
+      padding: EdgeInsets.fromLTRB(
+        horizontal,
+        0,
+        horizontal,
+        MediaQuery.paddingOf(context).bottom,
+      ),
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              '達成率',
-              style: TextStyle(
-                color: colors.textSecondary,
-                fontSize: 12,
-              ),
-            ),
-            Text(
-              '${rate.toStringAsFixed(1)}%',
-              style: const TextStyle(
-                color: AppColors.primary600,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(
-            value: rate / 100,
-            backgroundColor: colors.border,
-            valueColor: AlwaysStoppedAnimation<Color>(
-              rate >= 100 ? AppColors.success : AppColors.primary600,
-            ),
-            minHeight: 8,
+        Semantics(
+          container: true,
+          explicitChildNodes: true,
+          label: '期間',
+          child: FcSegmentedControl<PeriodFilter>(
+            items: [
+              for (final p in periods)
+                FcSegmentedItem<PeriodFilter>(value: p, label: p.label),
+            ],
+            selected: period,
+            onChanged: onPeriodChanged,
           ),
         ),
+        const SizedBox(height: AppSpacing.cardGap),
+        child,
       ],
     );
   }
+}
 
-  Widget _buildChartCard(AsyncValue<List<WeightRecord>> recordsAsync,
-      AsyncValue<Client?> goalAsync) {
-    final colors = AppColors.of(context);
-    return Container(
-      height: 280,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: colors.border),
-      ),
-      child: recordsAsync.when(
-        data: (records) {
-          if (records.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(LucideIcons.scale, size: 48, color: colors.textHint),
-                  const SizedBox(height: 12),
-                  Text(
-                    '体重記録がありません',
-                    style: TextStyle(color: colors.textHint),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '体重を記録しましょう',
-                    style: TextStyle(color: colors.textHint, fontSize: 12),
-                  ),
-                ],
-              ),
-            );
-          }
+bool _failed(AsyncValue<Object?> value) => value.hasError;
 
-          // Reverse to show oldest first in chart
-          final chartRecords = records.reversed.toList();
-          final targetWeight = goalAsync.valueOrNull?.targetWeight;
+bool _pending(AsyncValue<Object?> value) =>
+    !value.hasValue && !value.hasError;
 
-          // Calculate min/max for Y axis
-          final weights = chartRecords.map<double>((r) => r.weight).toList();
-          if (targetWeight != null) weights.add(targetWeight);
-          final minWeight = weights.reduce((a, b) => a < b ? a : b) - 2;
-          final maxWeight = weights.reduce((a, b) => a > b ? a : b) + 2;
+/// 体重タブの本文。記録がまったく無ければ空の状態。
+///
+/// 読み込みと失敗は**カードごと**に扱う（失敗したカードだけ「読み込めませんでした」と再試行を出し、
+/// ほかのカードは出し続ける）:
+/// - 上の大きなカード: 最新の体重・目標が必要。読めなければカードごとエラー。
+///   期間の記録だけ読めないときは、現在・目標・目標まで・開始時からは出し、前回から・期間の集計は「—」
+/// - 「体重の推移」と「最近の記録」: 期間の記録が必要。読めなければ推移のカードがエラー
+class _WeightContent extends StatelessWidget {
+  const _WeightContent({
+    required this.period,
+    required this.recordsAsync,
+    required this.latestAsync,
+    required this.goalAsync,
+    required this.now,
+    this.onOpenMessages,
+    this.onRetryRecords,
+    this.onRetryProfile,
+  });
 
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '体重推移',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: colors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: LineChart(
-                  LineChartData(
-                    gridData: FlGridData(
-                      show: true,
-                      drawVerticalLine: false,
-                      horizontalInterval: 2,
-                      getDrawingHorizontalLine: (value) => FlLine(
-                        color: colors.border,
-                        strokeWidth: 1,
-                      ),
-                    ),
-                    titlesData: FlTitlesData(
-                      leftTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          reservedSize: 40,
-                          getTitlesWidget: (value, meta) {
-                            return Text(
-                              value.toStringAsFixed(0),
-                              style: TextStyle(
-                                color: colors.textHint,
-                                fontSize: 10,
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          reservedSize: 30,
-                          interval: (chartRecords.length / 5).ceilToDouble(),
-                          getTitlesWidget: (value, meta) {
-                            final index = value.toInt();
-                            if (index < 0 || index >= chartRecords.length) {
-                              return const SizedBox.shrink();
-                            }
-                            final date = chartRecords[index].recordedAt;
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Text(
-                                DateFormat('M/d').format(date),
-                                style: TextStyle(
-                                  color: colors.textHint,
-                                  fontSize: 10,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      rightTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                      topTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                    ),
-                    borderData: FlBorderData(show: false),
-                    minY: minWeight,
-                    maxY: maxWeight,
-                    lineBarsData: [
-                      // Weight line
-                      LineChartBarData(
-                        spots:
-                            chartRecords.asMap().entries.map<FlSpot>((entry) {
-                          return FlSpot(
-                            entry.key.toDouble(),
-                            entry.value.weight,
-                          );
-                        }).toList(),
-                        isCurved: true,
-                        color: AppColors.primary600,
-                        barWidth: 3,
-                        dotData: FlDotData(
-                          show: true,
-                          getDotPainter: (spot, percent, barData, index) {
-                            return FlDotCirclePainter(
-                              radius: 4,
-                              color: Colors.white,
-                              strokeWidth: 2,
-                              strokeColor: AppColors.primary600,
-                            );
-                          },
-                        ),
-                        belowBarData: BarAreaData(
-                          show: true,
-                          color: AppColors.primary100.withAlpha(100),
-                        ),
-                      ),
-                      // Target line (if exists)
-                      if (targetWeight != null)
-                        LineChartBarData(
-                          spots: [
-                            FlSpot(0, targetWeight),
-                            FlSpot(
-                              (chartRecords.length - 1).toDouble(),
-                              targetWeight,
-                            ),
-                          ],
-                          isCurved: false,
-                          color: AppColors.success,
-                          barWidth: 2,
-                          dashArray: [5, 5],
-                          dotData: const FlDotData(show: false),
-                        ),
-                    ],
-                    lineTouchData: LineTouchData(
-                      touchTooltipData: LineTouchTooltipData(
-                        getTooltipItems: (touchedSpots) {
-                          return touchedSpots.map<LineTooltipItem?>((spot) {
-                            if (spot.barIndex == 1)
-                              return null; // Skip target line
-                            final record = chartRecords[spot.x.toInt()];
-                            return LineTooltipItem(
-                              '${record.weight.toStringAsFixed(1)} kg\n${DateFormat('M/d').format(record.recordedAt)}',
-                              const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            );
-                          }).toList();
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('エラー: $e')),
-      ),
-    );
-  }
+  final PeriodFilter period;
 
-  IconData _getSourceIcon(String source) {
-    switch (source) {
-      case 'healthkit':
-        return LucideIcons.heartPulse;
-      case 'message':
-      default:
-        return LucideIcons.messageCircle;
+  /// 期間内の記録（新しい順）
+  final AsyncValue<List<WeightRecord>> recordsAsync;
+
+  /// いちばん新しい記録（期間に関係なく）
+  final AsyncValue<WeightRecord?> latestAsync;
+  final AsyncValue<Client?> goalAsync;
+  final DateTime now;
+
+  /// 記録がまだ無いときの「メッセージから記録する」。null なら出さない
+  final VoidCallback? onOpenMessages;
+
+  /// 期間の記録の「再試行」
+  final VoidCallback? onRetryRecords;
+
+  /// 最新の体重・目標の「再試行」
+  final VoidCallback? onRetryProfile;
+
+  /// 「9月の記録 7件から計算」の「9月」にあたる言葉
+  String get _periodWord {
+    switch (period) {
+      case PeriodFilter.today:
+        return '今日';
+      case PeriodFilter.week:
+        return '今週';
+      case PeriodFilter.month:
+        return '${now.month}月';
+      case PeriodFilter.threeMonths:
+        return '直近3ヶ月';
+      case PeriodFilter.all:
+        return '全期間';
     }
   }
 
-  Widget _buildRecordsList(AsyncValue<List<WeightRecord>> recordsAsync) {
-    final colors = AppColors.of(context);
-    return recordsAsync.when(
-      data: (records) {
-        if (records.isEmpty) return const SizedBox.shrink();
+  @override
+  Widget build(BuildContext context) {
+    final recordsFailed = _failed(recordsAsync);
+    final records = recordsFailed ? null : recordsAsync.valueOrNull;
+    final goalFailed = _failed(goalAsync);
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '最近の記録',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: colors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 12),
-            ...records.take(10).map((record) => Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: colors.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: colors.border),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary50,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(
-                          _getSourceIcon(record.source),
-                          size: 20,
-                          color: AppColors.primary600.withValues(alpha: 0.5),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${record.weight.toStringAsFixed(1)} kg',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: colors.textPrimary,
-                              ),
-                            ),
-                            if (record.notes != null &&
-                                record.notes!.isNotEmpty)
-                              Text(
-                                record.notes!,
-                                style: TextStyle(
-                                  color: colors.textSecondary,
-                                  fontSize: 12,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                      Text(
-                        DateFormat('M/d HH:mm').format(record.recordedAt),
-                        style: TextStyle(
-                          color: colors.textHint,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                )),
-          ],
-        );
-      },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('エラー: $e')),
-    );
-  }
+    // 最新の体重も期間の記録も読めていて、どちらも無い
+    if (!recordsFailed &&
+        !_failed(latestAsync) &&
+        records != null &&
+        latestAsync.hasValue &&
+        latestAsync.requireValue == null &&
+        records.isEmpty) {
+      return FcStateMessage.empty(
+        title: 'まだ記録がありません',
+        message: '体重を記録すると、ここに推移が表示されます。メッセージ画面で「#体重 62.4kg」のように送ると記録できます。',
+        actionLabel: onOpenMessages == null ? null : 'メッセージから記録する',
+        actionIcon: LucideIcons.messageCircle,
+        onAction: onOpenMessages,
+      );
+    }
 
-  Widget _buildTopStat(String label, String value, String unit,
-      {bool isAccent = false}) {
-    final colors = AppColors.of(context);
+    // 上の大きなカード
+    final Widget summary;
+    if (_failed(latestAsync) || goalFailed) {
+      summary = _CardError(
+        message: '現在の体重と目標を読み込めませんでした。通信の状態を確認して、もう一度お試しください。',
+        onRetry: onRetryProfile,
+      );
+    } else if (_pending(latestAsync) ||
+        _pending(goalAsync) ||
+        _pending(recordsAsync)) {
+      summary = const _SummarySkeleton();
+    } else {
+      summary = _SummaryCard(
+        records: records,
+        latest: latestAsync.requireValue,
+        goal: goalAsync.requireValue,
+        periodWord: _periodWord,
+      );
+    }
+
+    // 体重の推移のカード
+    final Widget trend;
+    if (recordsFailed) {
+      trend = _CardError(
+        message: '体重の推移と最近の記録を読み込めませんでした。通信の状態を確認して、もう一度お試しください。',
+        onRetry: onRetryRecords,
+      );
+    } else if (_pending(recordsAsync) || _pending(goalAsync)) {
+      trend = const _TrendSkeleton();
+    } else {
+      trend = _TrendCard(
+        records: records!,
+        // 目標が読めなかったときは、目標線なしで推移だけ出す
+        target: goalFailed ? null : goalAsync.requireValue?.targetWeight,
+        periodWord: _periodWord,
+      );
+    }
+
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          label.toUpperCase(),
-          style: TextStyle(
-            color: colors.textHint,
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 4),
-        RichText(
-          text: TextSpan(
-            children: [
-              TextSpan(
-                text: value,
-                style: TextStyle(
-                  color: isAccent ? AppColors.primary600 : colors.textPrimary,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              TextSpan(
-                text: unit,
-                style: TextStyle(
-                  color: colors.textHint,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-        ),
+        summary,
+        const SizedBox(height: AppSpacing.cardGap),
+        trend,
+        if (records != null && records.isNotEmpty) ...[
+          const FcSectionTitle('最近の記録'),
+          const SizedBox(height: AppSpacing.cardGap),
+          _RecentRecords(records: records),
+        ],
       ],
     );
   }
+}
 
-  Widget _buildPreviousComparisonBox(
-      AsyncValue<List<WeightRecord>> recordsAsync) {
-    return recordsAsync.when(
-      data: (records) {
-        if (records.length < 2) {
-          return _buildComparisonBox('前回比', '--', isPositive: true);
-        }
-        final diff = records[0].weight - records[1].weight;
-        final isPositive = diff <= 0;
-        return _buildComparisonBox(
-          '前回比',
-          '${diff >= 0 ? "+" : ""}${diff.toStringAsFixed(1)}kg',
-          isPositive: isPositive,
-        );
-      },
-      loading: () => _buildComparisonBox('前回比', '...', isPositive: true),
-      error: (_, __) => _buildComparisonBox('前回比', '--', isPositive: true),
+/// カードひとつぶんの読み込み失敗（失敗した理由の文字は出さない）
+class _CardError extends StatelessWidget {
+  const _CardError({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return FcStateMessage.error(
+      title: '読み込めませんでした',
+      message: message,
+      actionLabel: onRetry == null ? null : '再試行',
+      onAction: onRetry,
     );
   }
+}
 
-  Widget _buildPeriodStats(AsyncValue<Map<String, double>> statsAsync) {
-    final colors = AppColors.of(context);
-    return statsAsync.when(
-      data: (stats) {
-        final average = stats['average'] ?? 0.0;
-        final min = stats['min'] ?? 0.0;
-        final max = stats['max'] ?? 0.0;
-        final range = max - min;
+/// 数値を横に並べる格子（正本の `grid-template-columns: repeat(auto-fit, minmax(Npx, 1fr))`）。
+///
+/// 収まる列数だけ等幅で並べ、足りなければ次の行へ積み直す。
+/// 文字拡大のときは最小幅も拡大に合わせて広げる（収まらない文字を縮めず、行を増やして逃がす）。
+class _AutoFitGrid extends StatelessWidget {
+  const _AutoFitGrid({
+    required this.minItemWidth,
+    required this.gap,
+    required this.children,
+  });
 
-        if (average == 0.0) return const SizedBox.shrink();
+  final double minItemWidth;
+  final double gap;
+  final List<Widget> children;
 
-        return Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: colors.surfaceDim,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '期間統計',
-                style: TextStyle(
-                  color: colors.textSecondary,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final scale = math.max(1.0, MediaQuery.textScalerOf(context).scale(1));
+        final minWidth = minItemWidth * scale;
+        final fit = ((constraints.maxWidth + gap) / (minWidth + gap)).floor();
+        final columns = math.max(1, math.min(children.length, fit));
+
+        final rows = <Widget>[];
+        for (var start = 0; start < children.length; start += columns) {
+          final slice = children.skip(start).take(columns).toList();
+          rows.add(
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var c = 0; c < columns; c++) ...[
+                  if (c > 0) SizedBox(width: gap),
                   Expanded(
-                    child:
-                        _buildMiniStat('平均', '${average.toStringAsFixed(1)}kg'),
-                  ),
-                  Expanded(
-                    child: _buildMiniStat('最高', '${max.toStringAsFixed(1)}kg'),
-                  ),
-                  Expanded(
-                    child: _buildMiniStat('最低', '${min.toStringAsFixed(1)}kg'),
-                  ),
-                  Expanded(
-                    child:
-                        _buildMiniStat('変動幅', '${range.toStringAsFixed(1)}kg'),
+                    child: c < slice.length ? slice[c] : const SizedBox.shrink(),
                   ),
                 ],
-              ),
+              ],
+            ),
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < rows.length; i++) ...[
+              if (i > 0) SizedBox(height: gap),
+              rows[i],
             ],
-          ),
+          ],
         );
       },
-      loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
-    );
-  }
-
-  Widget _buildMiniStat(String label, String value) {
-    final colors = AppColors.of(context);
-    return Column(
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: colors.textHint,
-            fontSize: 10,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: TextStyle(
-            color: colors.textPrimary,
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildComparisonBox(String label, String value,
-      {bool isPositive = true}) {
-    final color = isPositive ? AppColors.emerald600 : AppColors.rose800;
-    final bgColor = isPositive ? AppColors.emerald50 : AppColors.rose100;
-    final icon = isPositive ? LucideIcons.arrowDown : LucideIcons.arrowUp;
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: color.withAlpha(180),
-              fontSize: 10,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: color, size: 14),
-              const SizedBox(width: 4),
-              Text(
-                value,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 }
 
-// ============================================
-// Previews
-// ============================================
+/// 平均・最高・最低・変動幅の 1 つ（ラベル caption ＋ 値 17 / 500 ＋ 単位 caption）
+class _MiniStat extends StatelessWidget {
+  const _MiniStat({required this.label, required this.value});
 
-@Preview(name: 'WeightRecordScreen - Static Preview with Chart')
-Widget previewWeightRecordScreenWithChart() {
-  return MaterialApp(
-    theme: AppTheme.lightTheme,
-    home: Scaffold(
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _PreviewWeightRecordScreen(),
-          ],
-        ),
-      ),
-    ),
-  );
-}
+  final String label;
 
-class _PreviewWeightRecordScreen extends StatelessWidget {
+  /// kg の値（小数 1 桁）。null は「—」（記録がない）
+  final String? value;
+
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
-    // Mock data
-    final now = DateTime.now();
-    final mockRecords = List.generate(
-      10,
-      (index) => WeightRecord(
-        id: 'record_$index',
-        clientId: 'client_1',
-        weight: 70.0 - (index * 0.5), // Declining weight trend
-        notes: index % 3 == 0 ? 'Feeling good!' : null,
-        recordedAt: now.subtract(Duration(days: index * 3)),
-        source: 'manual',
-        messageId: null,
-        createdAt: now.subtract(Duration(days: index * 3)),
-        updatedAt: now.subtract(Duration(days: index * 3)),
-      ),
-    ).reversed.toList();
-
-    final targetWeight = 65.0;
-    final currentWeight = mockRecords.last.weight;
-    final initialWeight = mockRecords.first.weight;
-    final vsStart = initialWeight - currentWeight;
-    final achievementRate =
-        ((initialWeight - currentWeight) / (initialWeight - targetWeight) * 100)
-            .clamp(0, 100);
-
-    // 減量 or 増量の判定
-    final isWeightLossGoal = initialWeight > targetWeight;
-
-    // 残り/超過の計算（減量・増量両対応）
-    final difference = (currentWeight - targetWeight).abs();
-    final bool isExceeded;
-    if (isWeightLossGoal) {
-      isExceeded = currentWeight < targetWeight;
-    } else {
-      isExceeded = currentWeight > targetWeight;
-    }
-    final bool isExactlyAchieved = currentWeight == targetWeight;
-
-    // ラベル決定
-    final String statusLabel;
-    if (isExactlyAchieved) {
-      statusLabel = '達成';
-    } else if (isExceeded) {
-      statusLabel = '超過';
-    } else {
-      statusLabel = '残り';
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Period Filter
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: PeriodFilter.values.map((period) {
-              final isSelected = period == PeriodFilter.month;
-              return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: FilterChip(
-                  label: Text(period.label),
-                  selected: isSelected,
-                  onSelected: (_) {}, // Preview: no-op
-                  selectedColor: AppColors.primary100,
-                  checkmarkColor: AppColors.primary600,
-                  labelStyle: TextStyle(
-                    color: isSelected
-                        ? AppColors.primary600
-                        : colors.textSecondary,
-                    fontWeight:
-                        isSelected ? FontWeight.bold : FontWeight.normal,
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        // Stats Card
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: colors.surface,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: colors.border),
-          ),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildTopStat(
-                      context, '現在', currentWeight.toStringAsFixed(1), 'kg'),
-                  Container(width: 1, height: 40, color: colors.border),
-                  _buildTopStat(
-                      context, '目標', targetWeight.toStringAsFixed(1), 'kg',
-                      isAccent: true),
-                  Container(width: 1, height: 40, color: colors.border),
-                  _buildTopStat(
-                    context,
-                    statusLabel,
-                    difference.toStringAsFixed(1),
-                    'kg',
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              // Achievement Rate Progress
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '達成率',
-                        style: TextStyle(
-                            color: colors.textSecondary, fontSize: 12),
-                      ),
-                      Text(
-                        '${achievementRate.toStringAsFixed(1)}%',
-                        style: const TextStyle(
-                          color: AppColors.primary600,
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: achievementRate / 100,
-                      backgroundColor: colors.border,
-                      valueColor: const AlwaysStoppedAnimation<Color>(
-                          AppColors.primary600),
-                      minHeight: 8,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildComparisonBox(
-                      '開始時比',
-                      '${vsStart >= 0 ? "-" : "+"}${vsStart.abs().toStringAsFixed(1)}kg',
-                      isPositive: vsStart >= 0,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildComparisonBox(
-                      '前回比',
-                      '-0.5kg',
-                      isPositive: true,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: colors.surfaceDim,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '期間統計',
-                      style: TextStyle(
-                        color: colors.textSecondary,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                            child: _buildMiniStat(context, '平均', '67.3kg')),
-                        Expanded(
-                            child: _buildMiniStat(context, '最高', '70.0kg')),
-                        Expanded(
-                            child: _buildMiniStat(context, '最低', '65.5kg')),
-                        Expanded(
-                            child: _buildMiniStat(context, '変動幅', '4.5kg')),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 24),
-
-        // Chart
-        Container(
-          height: 280,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: colors.surface,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: colors.border),
-          ),
-          child: _buildChart(context, mockRecords, targetWeight),
-        ),
-        const SizedBox(height: 24),
-
-        // Records List
-        Text(
-          '最近の記録',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-            color: colors.textPrimary,
-          ),
-        ),
-        const SizedBox(height: 12),
-        ...mockRecords.reversed.take(5).map((record) => Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: colors.surface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: colors.border),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary50,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(
-                      LucideIcons.scale,
-                      size: 20,
-                      color: AppColors.primary600,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${record.weight.toStringAsFixed(1)} kg',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: colors.textPrimary,
-                          ),
-                        ),
-                        if (record.notes != null && record.notes!.isNotEmpty)
-                          Text(
-                            record.notes!,
-                            style: TextStyle(
-                              color: colors.textSecondary,
-                              fontSize: 12,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  Text(
-                    DateFormat('M/d HH:mm').format(record.recordedAt),
-                    style: TextStyle(
-                      color: colors.textHint,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            )),
-      ],
+    final valueStyle = AppTextStyles.exerciseName(context).copyWith(
+      fontFeatures: AppTextStyles.tabularFigures,
+      color: value == null ? colors.textSecondary : colors.textPrimary,
     );
-  }
+    final unitStyle = AppTextStyles.caption(context);
 
-  Widget _buildChart(
-      BuildContext context, List<WeightRecord> records, double targetWeight) {
-    final colors = AppColors.of(context);
-    final weights = records.map<double>((r) => r.weight).toList();
-    weights.add(targetWeight);
-    final minWeight = weights.reduce((a, b) => a < b ? a : b) - 2;
-    final maxWeight = weights.reduce((a, b) => a > b ? a : b) + 2;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '体重推移',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-            color: colors.textPrimary,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Expanded(
-          child: LineChart(
-            LineChartData(
-              gridData: FlGridData(
-                show: true,
-                drawVerticalLine: false,
-                horizontalInterval: 2,
-                getDrawingHorizontalLine: (value) => FlLine(
-                  color: colors.border,
-                  strokeWidth: 1,
-                ),
-              ),
-              titlesData: FlTitlesData(
-                leftTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 40,
-                    getTitlesWidget: (value, meta) {
-                      return Text(
-                        value.toStringAsFixed(0),
-                        style: TextStyle(
-                          color: colors.textHint,
-                          fontSize: 10,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 30,
-                    interval: (records.length / 5).ceilToDouble(),
-                    getTitlesWidget: (value, meta) {
-                      final index = value.toInt();
-                      if (index < 0 || index >= records.length) {
-                        return const SizedBox.shrink();
-                      }
-                      final date = records[index].recordedAt;
-                      return Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: Text(
-                          DateFormat('M/d').format(date),
-                          style: TextStyle(
-                            color: colors.textHint,
-                            fontSize: 10,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                rightTitles: const AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
-                ),
-                topTitles: const AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
-                ),
-              ),
-              borderData: FlBorderData(show: false),
-              minY: minWeight,
-              maxY: maxWeight,
-              lineBarsData: [
-                // Weight line
-                LineChartBarData(
-                  spots: records.asMap().entries.map<FlSpot>((entry) {
-                    return FlSpot(
-                      entry.key.toDouble(),
-                      entry.value.weight,
-                    );
-                  }).toList(),
-                  isCurved: true,
-                  color: AppColors.primary600,
-                  barWidth: 3,
-                  dotData: FlDotData(
-                    show: true,
-                    getDotPainter: (spot, percent, barData, index) {
-                      return FlDotCirclePainter(
-                        radius: 4,
-                        color: Colors.white,
-                        strokeWidth: 2,
-                        strokeColor: AppColors.primary600,
-                      );
-                    },
-                  ),
-                  belowBarData: BarAreaData(
-                    show: true,
-                    color: AppColors.primary100.withAlpha(100),
-                  ),
-                ),
-                // Target line
-                LineChartBarData(
-                  spots: [
-                    FlSpot(0, targetWeight),
-                    FlSpot((records.length - 1).toDouble(), targetWeight),
-                  ],
-                  isCurved: false,
-                  color: AppColors.success,
-                  barWidth: 2,
-                  dashArray: [5, 5],
-                  dotData: const FlDotData(show: false),
-                ),
-              ],
-              lineTouchData: LineTouchData(
-                touchTooltipData: LineTouchTooltipData(
-                  getTooltipItems: (touchedSpots) {
-                    return touchedSpots.map<LineTooltipItem?>((spot) {
-                      if (spot.barIndex == 1) return null; // Skip target line
-                      final record = records[spot.x.toInt()];
-                      return LineTooltipItem(
-                        '${record.weight.toStringAsFixed(1)} kg\n${DateFormat('M/d').format(record.recordedAt)}',
-                        const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      );
-                    }).toList();
-                  },
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTopStat(
-      BuildContext context, String label, String value, String unit,
-      {bool isAccent = false}) {
-    final colors = AppColors.of(context);
-    return Column(
-      children: [
-        Text(
-          label.toUpperCase(),
-          style: TextStyle(
-            color: colors.textHint,
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 4),
-        RichText(
-          text: TextSpan(
-            children: [
-              TextSpan(
-                text: value,
-                style: TextStyle(
-                  color: isAccent ? AppColors.primary600 : colors.textPrimary,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              TextSpan(
-                text: unit,
-                style: TextStyle(
-                  color: colors.textHint,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMiniStat(BuildContext context, String label, String value) {
-    final colors = AppColors.of(context);
-    return Column(
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: colors.textHint,
-            fontSize: 10,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: TextStyle(
-            color: colors.textPrimary,
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildComparisonBox(String label, String value,
-      {bool isPositive = true}) {
-    final color = isPositive ? AppColors.emerald600 : AppColors.rose800;
-    final bgColor = isPositive ? AppColors.emerald50 : AppColors.rose100;
-    final icon = isPositive ? LucideIcons.arrowDown : LucideIcons.arrowUp;
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(12),
-      ),
+    return Semantics(
+      container: true,
+      label: '$label ${value == null ? '記録なし' : '$value kg'}',
+      excludeSemantics: true,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: color.withAlpha(180),
-              fontSize: 10,
-              fontWeight: FontWeight.w500,
+          Text(label, style: AppTextStyles.caption(context)),
+          Text.rich(
+            TextSpan(
+              style: valueStyle,
+              children: [
+                TextSpan(text: value ?? '—'),
+                if (value != null) ...[
+                  const WidgetSpan(child: SizedBox(width: 2)),
+                  TextSpan(text: 'kg', style: unitStyle),
+                ],
+              ],
             ),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: color, size: 14),
-              const SizedBox(width: 4),
-              Text(
-                value,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
           ),
         ],
       ),
     );
   }
+}
+
+/// 上の大きなカード（現在 / 目標 / 目標まで → 開始時・前回から → 平均・最高・最低・変動幅）
+class _SummaryCard extends StatelessWidget {
+  const _SummaryCard({
+    required this.records,
+    required this.latest,
+    required this.goal,
+    required this.periodWord,
+  });
+
+  /// 期間内の記録（新しい順）。**null は読み込めなかった**（空リストの「記録なし」とは別）
+  final List<WeightRecord>? records;
+  final WeightRecord? latest;
+  final Client? goal;
+  final String periodWord;
+
+  @override
+  Widget build(BuildContext context) {
+    final records = this.records;
+    final current = latest?.weight;
+    final target = goal?.targetWeight;
+
+    // 開始時の体重: 目標に設定された開始時の体重。無ければ期間内の最古の記録（現行どおり）
+    final oldest = (records == null || records.isEmpty) ? null : records.last.weight;
+    final initial = goal?.initialWeight ?? oldest;
+    final fromStart =
+        (current != null && initial != null) ? current - initial : null;
+    final fromPrevious = (records != null && records.length >= 2)
+        ? records[0].weight - records[1].weight
+        : null;
+
+    // 目標まで（減量・増量の両方）。届いた・超えたときは静かに文言だけで伝える（色や演出は付けない）
+    String remainingLabel = '目標まで';
+    String remainingValue = '—';
+    String? remainingUnit;
+    String? remainingCaption;
+    if (current != null && target != null) {
+      final isLossGoal = (initial ?? current) > target;
+      final reached = isLossGoal ? current <= target : current >= target;
+      final diff = (current - target).abs();
+      remainingValue = formatKg(diff);
+      remainingUnit = 'kg';
+      if (reached) {
+        remainingCaption = '目標に届きました';
+        if (diff != 0) remainingLabel = '目標との差';
+      }
+    }
+
+    // 期間の平均・最高・最低・変動幅（記録から計算。weightStatsProvider と同じ集計）
+    String? average;
+    String? highest;
+    String? lowest;
+    String? spread;
+    if (records != null && records.isNotEmpty) {
+      final weights = records.map((r) => r.weight).toList();
+      final sum = weights.reduce((a, b) => a + b);
+      final maxWeight = weights.reduce(math.max);
+      final minWeight = weights.reduce(math.min);
+      average = formatKg(sum / weights.length);
+      highest = formatKg(maxWeight);
+      lowest = formatKg(minWeight);
+      spread = formatKg(maxWeight - minWeight);
+    }
+
+    return FcCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _AutoFitGrid(
+            minItemWidth: 88,
+            gap: AppSpacing.md,
+            children: [
+              FcStat(
+                label: '現在',
+                value: current == null ? '—' : formatKg(current),
+                unit: current == null ? null : 'kg',
+              ),
+              FcStat(
+                label: '目標',
+                value: target == null ? '未設定' : formatKg(target),
+                unit: target == null ? null : 'kg',
+              ),
+              FcStat(
+                label: remainingLabel,
+                value: remainingValue,
+                unit: remainingUnit,
+                caption: remainingCaption,
+              ),
+            ],
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
+            child: FcSeparator(),
+          ),
+          _AutoFitGrid(
+            minItemWidth: 120,
+            gap: AppSpacing.md,
+            children: [
+              FcStat(
+                label: '開始時から',
+                value: fromStart == null ? '—' : formatSignedKg(fromStart),
+                unit: fromStart == null ? null : 'kg',
+                size: FcNumSize.compact,
+              ),
+              FcStat(
+                label: '前回から',
+                value: fromPrevious == null ? '—' : formatSignedKg(fromPrevious),
+                unit: fromPrevious == null ? null : 'kg',
+                size: FcNumSize.compact,
+              ),
+            ],
+          ),
+          const Padding(
+            padding: EdgeInsets.only(top: AppSpacing.lg, bottom: AppSpacing.md),
+            child: FcSeparator(),
+          ),
+          _AutoFitGrid(
+            minItemWidth: 64,
+            gap: AppSpacing.sm,
+            children: [
+              _MiniStat(label: '平均', value: average),
+              _MiniStat(label: '最高', value: highest),
+              _MiniStat(label: '最低', value: lowest),
+              _MiniStat(label: '変動幅', value: spread),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Text(
+              records == null
+                  ? 'この期間の記録を読み込めませんでした'
+                  : records.isEmpty
+                      ? 'この期間の記録はありません'
+                      : '$periodWordの記録 ${records.length}件から計算',
+              style: AppTextStyles.caption(context),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 「体重の推移」のカード（折れ線グラフ。目標があれば破線とラベル）
+class _TrendCard extends StatelessWidget {
+  const _TrendCard({
+    required this.records,
+    required this.target,
+    required this.periodWord,
+  });
+
+  final List<WeightRecord> records;
+  final double? target;
+  final String periodWord;
+
+  @override
+  Widget build(BuildContext context) {
+    // 古い順に並べる
+    final chronological = records.reversed.toList();
+    final labels = chartLabelIndices(chronological.length);
+    final points = [
+      for (var i = 0; i < chronological.length; i++)
+        FcChartPoint(
+          chronological[i].weight,
+          label: labels.contains(i)
+              ? formatMonthDay(chronological[i].recordedAt)
+              : null,
+        ),
+    ];
+
+    return FcCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Semantics(
+            header: true,
+            child: Text(
+              '体重の推移',
+              style: AppTextStyles.body(context)
+                  .copyWith(fontWeight: FontWeight.w500),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          if (points.isEmpty)
+            Text(
+              'この期間の体重の記録はありません。',
+              style: AppTextStyles.supplement(context),
+            )
+          else
+            FcLineChart(
+              data: points,
+              goal: target,
+              goalLabel: target == null ? null : '目標 ${formatKg(target!)} kg',
+              height: 170,
+              semanticLabel:
+                  '$periodWordの体重の推移、${formatKg(chronological.first.weight)} kgから${formatKg(chronological.last.weight)} kg',
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 最近の記録（最大 10 件）。行 = 日時 ＋ 記録の出どころ / 右に値
+class _RecentRecords extends StatelessWidget {
+  const _RecentRecords({required this.records});
+
+  final List<WeightRecord> records;
+
+  static String? _sourceLabel(String source) {
+    switch (source) {
+      case 'message':
+        return 'メッセージから';
+      case 'healthkit':
+        return 'ヘルスケアから';
+      case 'manual':
+        return '手入力';
+      default:
+        return null;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FcRowsCard(
+      children: [
+        for (final record in records.take(10))
+          FcListRow(
+            density: FcRowDensity.record,
+            title: formatJpDateTime(record.recordedAt),
+            caption: [
+              _sourceLabel(record.source),
+              if (record.notes != null && record.notes!.isNotEmpty) record.notes,
+            ].whereType<String>().join(' · ').nullIfEmpty,
+            trailing: FcRowValue.text('${formatKg(record.weight)} kg'),
+          ),
+      ],
+    );
+  }
+}
+
+extension on String {
+  String? get nullIfEmpty => isEmpty ? null : this;
+}
+
+/// 読み込み中の上の大きなカード（配置を保つ）
+class _SummarySkeleton extends StatelessWidget {
+  const _SummarySkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      container: true,
+      label: '読み込み中',
+      child: const FcCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(child: _StatSkeleton()),
+                SizedBox(width: AppSpacing.md),
+                Expanded(child: _StatSkeleton()),
+                SizedBox(width: AppSpacing.md),
+                Expanded(child: _StatSkeleton()),
+              ],
+            ),
+            SizedBox(height: AppSpacing.xxl),
+            FcSkeleton.line(width: 180),
+            SizedBox(height: AppSpacing.md),
+            FcSkeleton.line(width: 220),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 読み込み中の「体重の推移」カード（配置を保つ）
+class _TrendSkeleton extends StatelessWidget {
+  const _TrendSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      container: true,
+      label: '読み込み中',
+      child: const FcCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            FcSkeleton.line(width: 96),
+            SizedBox(height: AppSpacing.md),
+            FcSkeleton(height: 170, radius: AppRadius.input),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatSkeleton extends StatelessWidget {
+  const _StatSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        FcSkeleton(width: 40, height: 12),
+        SizedBox(height: AppSpacing.sm),
+        FcSkeleton(width: 64, height: 26, radius: 8),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Previews
+// ---------------------------------------------------------------------------
+
+/// 正本 `record-screens.js` のサンプル（9/13 時点・今月）
+List<WeightRecord> _sampleRecords() {
+  const rows = <(int, int, int, double, String)>[
+    (13, 7, 30, 62.4, 'message'),
+    (11, 7, 25, 62.3, 'message'),
+    (9, 7, 40, 62.2, 'message'),
+    (7, 7, 35, 62.1, 'message'),
+    (5, 7, 30, 61.7, 'healthkit'),
+    (3, 7, 20, 61.8, 'message'),
+    (1, 7, 15, 61.6, 'message'),
+  ];
+  return [
+    for (final (day, hour, minute, weight, source) in rows)
+      WeightRecord(
+        id: 'sample-$day',
+        clientId: 'client-1',
+        weight: weight,
+        recordedAt: DateTime(2026, 9, day, hour, minute),
+        source: source,
+        createdAt: DateTime(2026, 9, day, hour, minute),
+        updatedAt: DateTime(2026, 9, day, hour, minute),
+      ),
+  ];
+}
+
+Client _sampleGoal() => Client(
+      clientId: 'client-1',
+      name: '佐藤',
+      trainerId: 'trainer-1',
+      initialWeight: 61.0,
+      targetWeight: 65.0,
+      createdAt: DateTime(2026, 8, 1),
+    );
+
+class _PreviewWeight extends StatelessWidget {
+  const _PreviewWeight({
+    this.empty = false,
+    this.loading = false,
+    this.recordsFailed = false,
+  });
+
+  final bool empty;
+  final bool loading;
+
+  /// 期間の記録だけ読み込めなかった（ほかのカードは出し続ける）
+  final bool recordsFailed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final records = empty ? <WeightRecord>[] : _sampleRecords();
+    final AsyncValue<List<WeightRecord>> recordsAsync = loading
+        ? const AsyncValue.loading()
+        : recordsFailed
+            ? AsyncValue.error(Exception('preview'), StackTrace.empty)
+            : AsyncValue.data(records);
+    final AsyncValue<WeightRecord?> latestAsync = loading
+        ? const AsyncValue.loading()
+        : AsyncValue.data(records.isEmpty ? null : records.first);
+    final AsyncValue<Client?> goalAsync = loading
+        ? const AsyncValue.loading()
+        : AsyncValue.data(empty ? null : _sampleGoal());
+
+    return Scaffold(
+      backgroundColor: colors.background,
+      body: SafeArea(
+        child: _WeightScrollView(
+          period: PeriodFilter.month,
+          onPeriodChanged: (_) {},
+          child: _WeightContent(
+            period: PeriodFilter.month,
+            recordsAsync: recordsAsync,
+            latestAsync: latestAsync,
+            goalAsync: goalAsync,
+            now: DateTime(2026, 9, 13),
+            onOpenMessages: empty ? () {} : null,
+            onRetryRecords: () {},
+            onRetryProfile: () {},
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+@Preview(name: 'WeightRecordScreen - 通常')
+Widget previewWeightRecordScreenNormal() {
+  return const FcPreviewApp(
+    brightness: Brightness.light,
+    home: _PreviewWeight(),
+  );
+}
+
+@Preview(name: 'WeightRecordScreen - 記録なし')
+Widget previewWeightRecordScreenEmpty() {
+  return const FcPreviewApp(
+    brightness: Brightness.light,
+    home: _PreviewWeight(empty: true),
+  );
+}
+
+@Preview(name: 'WeightRecordScreen - 読込中')
+Widget previewWeightRecordScreenLoading() {
+  return const FcPreviewApp(
+    brightness: Brightness.light,
+    home: _PreviewWeight(loading: true),
+  );
+}
+
+@Preview(name: 'WeightRecordScreen - 推移だけ読み込めない')
+Widget previewWeightRecordScreenRecordsFailed() {
+  return const FcPreviewApp(
+    brightness: Brightness.light,
+    home: _PreviewWeight(recordsFailed: true),
+  );
+}
+
+@Preview(name: 'WeightRecordScreen - ダーク・文字特大')
+Widget previewWeightRecordScreenDarkLarge() {
+  return const FcPreviewApp(
+    brightness: Brightness.dark,
+    textScale: 1.35,
+    home: _PreviewWeight(),
+  );
 }
