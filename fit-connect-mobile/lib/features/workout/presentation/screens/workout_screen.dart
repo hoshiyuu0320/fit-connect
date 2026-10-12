@@ -106,6 +106,25 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
     }
   }
 
+  /// セット記録を保存する。失敗したら画面は DB の状態に戻るので、その旨を知らせる
+  Future<void> _handleSetsUpdated(
+    String assignmentId,
+    String exerciseId,
+    List<ActualSet> sets,
+  ) async {
+    try {
+      await ref
+          .read(workoutScreenNotifierProvider.notifier)
+          .updateExerciseSets(assignmentId, exerciseId, sets);
+    } catch (e) {
+      debugPrint('[WorkoutScreen] セット記録の保存エラー: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('セット記録の保存に失敗しました')),
+      );
+    }
+  }
+
   Future<void> _handleDoToday(String assignmentId) async {
     await ref.read(workoutScreenNotifierProvider.notifier).doToday(assignmentId);
     if (!mounted) return;
@@ -146,9 +165,7 @@ class _WorkoutScreenState extends ConsumerState<WorkoutScreen> {
         onSkip: (id) =>
             ref.read(workoutScreenNotifierProvider.notifier).skip(id),
         onReschedule: _handleReschedule,
-        onSetsUpdated: (aId, eId, sets) => ref
-            .read(workoutScreenNotifierProvider.notifier)
-            .updateExerciseSets(aId, eId, sets),
+        onSetsUpdated: _handleSetsUpdated,
         onSubmit: (assignment) =>
             _handleOpenCompletionSheet(assignment, trainerName),
       ),

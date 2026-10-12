@@ -248,6 +248,41 @@ void main() {
       expect(recorder.saved.last.map((s) => s.done), [false, false, false]);
     });
 
+    testWidgets('セット完了を連続で押すと、押すたびの状態の複製が通知される（後から書き換わらない）', (tester) async {
+      // 通知されたリストをそのまま持つ（_Recorder は複製してしまうため使わない）
+      final notified = <List<ActualSet>>[];
+      await pumpWorkout(
+        tester,
+        Scaffold(
+          body: SingleChildScrollView(
+            child: WorkoutExerciseCard(
+              exerciseName: 'ベンチプレス',
+              targetSets: 3,
+              targetReps: 10,
+              targetWeight: 40,
+              isCompleted: false,
+              initiallyExpanded: true,
+              onSetsUpdated: notified.add,
+            ),
+          ),
+        ),
+      );
+
+      final marks = find.byWidgetPredicate((w) => w is FcDoneMark && w.size == 28);
+      for (var i = 0; i < 3; i++) {
+        await tester.tap(marks.at(i));
+        await tester.pump();
+      }
+
+      expect(notified.map((sets) => sets.map((s) => s.done).toList()), [
+        [true, false, false],
+        [true, true, false],
+        [true, true, true],
+      ]);
+      expect(identical(notified[0], notified[1]), isFalse);
+      expect(() => notified.last.add(notified.last.first), throwsUnsupportedError);
+    });
+
     testWidgets('セット完了の押せる範囲は 44×44 以上、「セット1 完了」のように何セット目かを読み上げる', (tester) async {
       final handle = tester.ensureSemantics();
       await _pumpCard(tester, expanded: true, actual: const [

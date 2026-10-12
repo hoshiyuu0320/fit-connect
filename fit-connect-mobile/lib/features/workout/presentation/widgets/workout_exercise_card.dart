@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widget_previews.dart';
@@ -118,12 +119,12 @@ class _WorkoutExerciseCardState extends State<WorkoutExerciseCard> {
       final index = i;
       _repsFocusNodes[index].addListener(() {
         if (!_repsFocusNodes[index].hasFocus) {
-          widget.onSetsUpdated(_localSets);
+          _notifySetsUpdated();
         }
       });
       _weightFocusNodes[index].addListener(() {
         if (!_weightFocusNodes[index].hasFocus) {
-          widget.onSetsUpdated(_localSets);
+          _notifySetsUpdated();
         }
       });
     }
@@ -149,7 +150,10 @@ class _WorkoutExerciseCardState extends State<WorkoutExerciseCard> {
     super.didUpdateWidget(oldWidget);
     final newSets = widget.actualSets;
     final oldSets = oldWidget.actualSets;
-    if (newSets != oldSets) {
+    // 自分が通知した内容がそのまま戻ってきた場合は作り直さない
+    // （入力中のフォーカスや、通知後のローカル編集を失わないため）
+    if (newSets != oldSets &&
+        !(newSets != null && listEquals(newSets, _localSets))) {
       _disposeControllers();
       _initLocalSets();
       _initControllers();
@@ -196,7 +200,12 @@ class _WorkoutExerciseCardState extends State<WorkoutExerciseCard> {
       _localSets[index] =
           _localSets[index].copyWith(done: !_localSets[index].done);
     });
-    widget.onSetsUpdated(_localSets);
+    _notifySetsUpdated();
+  }
+
+  /// 親へ通知する。以降の編集で中身が変わらないよう、その時点の複製を渡す
+  void _notifySetsUpdated() {
+    widget.onSetsUpdated(List.unmodifiable(_localSets));
   }
 
   @override

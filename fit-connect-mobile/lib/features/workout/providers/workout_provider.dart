@@ -18,8 +18,8 @@ WorkoutRepository workoutRepository(WorkoutRepositoryRef ref) {
 ///
 /// - 初期ロード: 期限切れ・今日・週間・今後の予定の4クエリを並列取得して WorkoutScreenState を返す
 /// - [toggleExercise]: 種目の完了状態をDB更新 + ローカルstateの楽観的更新
-/// - [updateExerciseSets]: セット記録をDB更新 + 楽観的ローカルstate更新
-/// - [submitCompletion]: アサインメントをDB上で完了にしてローカルstateを更新
+/// - [updateExerciseSets]: セット記録を楽観的にローカルstate更新し、種目ごとに直列化してDB更新
+/// - [submitCompletion]: 送信待ちのセット記録を保存後、アサインメントをDB上で完了にしてローカルstateを更新
 /// - [doToday]: 期限切れアサインメントを今日のリストに移動
 /// - [skip]: 期限切れアサインメントをスキップ
 /// - [reschedule]: 期限切れアサインメントの日付を変更
@@ -136,34 +136,66 @@ class WorkoutScreenNotifier extends _$WorkoutScreenNotifier {
     });
   }
 
-  /// セット記録を更新（DB更新 + 楽観的ローカルstate更新）
+  /// 種目ごとの未送信のセット記録（最新の要求のみ保持）
+  final Map<String, List<ActualSet>> _pendingSets = {};
+
+  /// 種目ごとの実行中のセット記録書き込み
+  final Map<String, Future<void>> _setsWrites = {};
+
+  /// セット記録を更新（楽観的ローカルstate更新 + DB更新）
+  ///
+  /// 連続で呼ばれても書き込みは種目ごとに直列化し、送信待ちの間に届いた
+  /// 要求は最新のものだけを送る。返り値の Future は、この呼び出し以降の
+  /// 最新のセット記録がDBに保存された時点で完了する。
+  /// 書き込みに失敗した場合はDBの状態を再取得してから例外を投げ直す。
   Future<void> updateExerciseSets(
     String assignmentId,
     String exerciseId,
     List<ActualSet> actualSets,
-  ) async {
+  ) {
     final currentState = state.valueOrNull;
-    if (currentState == null) return;
+    if (currentState == null) return Future.value();
 
-    // DB更新
-    final repo = ref.read(workoutRepositoryProvider);
-    await repo.updateActualSets(exerciseId, actualSets);
+    // 呼び出し元の可変リストを共有しないよう複製する
+    final snapshot = List<ActualSet>.unmodifiable(actualSets);
 
     // 全セットdone判定
-    final allDone = actualSets.isNotEmpty && actualSets.every((s) => s.done);
+    final allDone = snapshot.isNotEmpty && snapshot.every((s) => s.done);
 
     _updateAssignment(assignmentId, (a) {
       return a.copyWith(
         exercises: a.exercises.map((e) {
           if (e.id != exerciseId) return e;
           return e.copyWith(
-            actualSets: actualSets,
+            actualSets: snapshot,
             isCompleted: allDone,
-            completedAt: allDone ? DateTime.now() : null,
+            completedAt: allDone ? (e.completedAt ?? DateTime.now()) : null,
           );
         }).toList(),
       );
     });
+
+    _pendingSets[exerciseId] = snapshot;
+    return _setsWrites[exerciseId] ??= _drainSetsWrites(exerciseId);
+  }
+
+  /// 送信待ちのセット記録がなくなるまで、最新の要求を1件ずつDBへ書き込む
+  Future<void> _drainSetsWrites(String exerciseId) async {
+    final repo = ref.read(workoutRepositoryProvider);
+    try {
+      while (true) {
+        final sets = _pendingSets.remove(exerciseId);
+        if (sets == null) break;
+        await repo.updateActualSets(exerciseId, sets);
+      }
+    } catch (_) {
+      _pendingSets.remove(exerciseId);
+      // 楽観的に更新したローカルstateがDBとずれるため再取得する
+      ref.invalidateSelf();
+      rethrow;
+    } finally {
+      _setsWrites.remove(exerciseId);
+    }
   }
 
   /// アサインメントを完了報告する（DB更新 + ローカルstate更新）
@@ -174,6 +206,17 @@ class WorkoutScreenNotifier extends _$WorkoutScreenNotifier {
     String? clientFeedback,
     int? calories,
   }) async {
+    // 送信待ちのセット記録をすべて保存してから完了にする
+    await Future.wait(_setsWrites.values.toList());
+
+    final assignment = state.valueOrNull?.allActionable
+        .where((a) => a.id == assignmentId)
+        .firstOrNull;
+    if (assignment != null &&
+        !assignment.exercises.every((e) => e.isCompleted)) {
+      throw StateError('未完了の種目があるため完了報告できません');
+    }
+
     final repo = ref.read(workoutRepositoryProvider);
     await repo.completeAssignment(
       assignmentId,
