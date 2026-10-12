@@ -74,7 +74,7 @@ FIT-CONNECT Mobile is a Flutter-based fitness management app connecting trainers
 - [ ] プレビュー関数作成（UI系の場合）
 
 ### 制約
-- AppColors/AppTheme使用必須
+- AppColors.of(context) / AppTextStyles / AppSpacing / `shared/widgets/fc/` 使用必須（FIT-CONNECT Design System 準拠）
 - 日本語対応必須
 ```
 
@@ -140,7 +140,7 @@ lib/
 ├── main.dart                 # Entry point - Supabase/Firebase initialization
 ├── app.dart                  # Root MaterialApp & theme configuration
 ├── core/                     # App-wide shared resources
-│   ├── theme/               # Design system (Material 3 theme, colors)
+│   ├── theme/               # Design system tokens (colors, text styles, spacing, Material 3 theme)
 │   ├── constants/           # Global constants
 │   └── utils/               # Utility functions
 ├── features/                # Feature modules (organized by domain)
@@ -267,42 +267,68 @@ SupabaseService.client
   });
 ```
 
-### Theme & Styling
+### Theme & Styling（FIT-CONNECT Design System）
 
-The app uses **Material 3** with a centralized color system:
+UIは **Claude Design の「FIT-CONNECT Design System」**（再デザイン案「FIT-CONNECT モバイル 再デザイン案」）に準拠する。
+デザイン上の正本は Claude Design 側（`DESIGN_SYSTEM.md` / `tokens/*.css`）、実装上の正本は `lib/core/theme/`。値が食い違ったら Claude Design 側を確認すること。
 
 **Theme Configuration:**
-- `core/theme/app_theme.dart` - MaterialApp theme definitions
-- `core/theme/app_colors.dart` - Color constants
+- `core/theme/app_colors.dart` — 色。`AppColors.of(context)`（`AppColorsExtension`）でライト/ダークを解決
+- `core/theme/app_text_styles.dart` — 文字の階層（`AppTextStyles.pageHeading(context)` など）
+- `core/theme/app_spacing.dart` — 余白 `AppSpacing` / 角丸 `AppRadius` / サイズ `AppSizes` / 動き `AppMotion`
+- `core/theme/app_theme.dart` — `AppTheme.lightTheme` / `AppTheme.darkTheme`（Material 3）
+- `shared/widgets/fc/` — DS準拠の共通部品（`FcCard`, `FcButton`, `FcPageHeading`, `FcSectionTitle`, `FcListRow`, `FcSegmentedControl`, `FcSubTabs`, `FcChips`, `FcPill`, `FcStat`, `FcNum`, `FcLineChart`, `FcBars`, `FcWeekStrip`, `FcBottomNav`, `FcSkeleton`, `FcTextField`, `FcToggle` など）。新規UIはまずこれを使う
 
-**Color Palette:**
-```dart
-// Primary colors
-AppColors.primary         // Blue #2563EB
-AppColors.primaryLight
-AppColors.primaryDark
+**Color Tokens（`AppColors.of(context).xxx`）:**
 
-// Status colors
-AppColors.success         // Green #10B981
-AppColors.warning         // Orange #F59E0B
-AppColors.error          // Red #EF4444
+| Token | Light | Dark | 用途 |
+| --- | --- | --- | --- |
+| `background` | `#F2F2F7` | `#000000` | 画面背景 |
+| `surface` | `#FFFFFF` | `#1C1C1E` | カード |
+| `surfaceSecondary` | `#EDEDF2` | `#2B2B30` | 入力欄・セグメント等 |
+| `textPrimary` | `#171719` | `#F5F5F7` | 本文・見出し |
+| `textSecondary` | `#6C6C73` | `#ABABB3` | 補足 |
+| `separator` | `#E2E2E7` | `#36363A` | 区切り線 |
+| `accent` | `#17685D` | `#78D6B5` | 選択中・リンク |
+| `actionFill` / `onAction` | `#17685D` / `#FFFFFF` | `#286353` / `#FFFFFF` | 主ボタン |
+| `skeleton` | `#E6E6EB` | `#2B2B30` | 読み込み中 |
+| `error` / `errorSurface` | `#C4271D` / `#FCEDEC` | `#FF7A70` / `#3A1C1A` | エラー |
+| `warning` / `warningSurface` | `#8A5300` / `#FBF1E0` | `#FFC266` / `#3A2C14` | 注意 |
+| `success` / `successSurface` | `#1F7A36` / `#E8F4EB` | `#6FD68A` / `#17301E` | 成功 |
 
-// Activity visualization (GitHub-style grass)
-AppColors.grassLevel0    // No activity (gray)
-AppColors.grassLevel1    // Low activity (light green)
-AppColors.grassLevel2    // Medium activity
-AppColors.grassLevel3    // High activity (dark green)
-```
+- **再デザインした画面では静的定数（`AppColors.primary600` など）を使わない**（ダークに追従しないため）。静的定数は再デザイン対象外の画面（認証・オンボーディング等）向けの互換用
+- ステータス色は必ず文字＋アイコンと併用する（色だけで意味を伝えない）
+
+**Typography:** フォントはシステム標準（SF / Hiragino Sans）。`fontFamily` は指定しない。390px基準で
+ページ見出し 32px/w500、セクション見出し 20px、本文 16px（行間1.5）、ボタン 15px/w500、補足 13px、キャプション 12px、ナビラベル 11px、数値 32〜34px/w500（等幅数字）。
+OSの文字サイズ拡大に追従し、**拡大しても縮めない**（固定高さ・固定行数にせず積み直す）。
+
+**Spacing / Radius / Size:**
+- 間隔スケール 4 / 8 / 12 / 16 / 20 / 24 / 32 / 48（`AppSpacing.xs`〜`huge`）。数値の直書き禁止
+- 画面左右 20px（幅360px未満は16px）、カード間 16px、カード内 20px、大見出しの後 24px
+- 角丸: カード 23 / ボタン 24 / 入力 12 / ナビ 40 / 選択タブ 28 / セグメント 10
+- タップ領域は最低 44px、主ボタン高さ 48px、アイコン 20px
+- 押下時は 120ms で 0.98倍に縮小（reduce motion 時は無効）
+
+**Design Rules（DSの方針）:**
+- 薄いグレー背景＋不透明な白いカード。**枠線・影は使わない**（すりガラス＋影は下部ナビのみ）
+- 青緑（accent）は**操作と選択中の表示だけ**に使う。記録の種類ごとの色分け（食事=オレンジ、睡眠=紫など）はせず、アイコンと言葉で区別する
+- 情報の順序は色ではなく**文字の大きさと余白**で示す
+- 使わないもの: 絵文字（アイコンと言葉に置き換え）、紙吹雪・ゴールドカード等の演出、達成率の％バー（「目標まで 2.6 kg」と表示）、オンライン表示、既読表示、数字入りバッジ（数字のない小さな点にする）、緑の濃淡カレンダー（記録日に単色の印）
+- AIによる栄養推定は「推定」と明記する
+- アイコンは Lucide Icons
 
 **Usage:**
 ```dart
+final c = AppColors.of(context);
+FcCard(
+  child: Text('今日の体重', style: AppTextStyles.sectionHeading(context)),
+);
 Container(
-  color: AppColors.primary,
-  child: Text(
-    'Title',
-    style: Theme.of(context).textTheme.titleLarge,
-  ),
-)
+  color: c.surface,
+  padding: const EdgeInsets.all(AppSpacing.cardPadding),
+  child: Text('補足', style: AppTextStyles.supplement(context)),
+);
 ```
 
 ## Important Conventions
