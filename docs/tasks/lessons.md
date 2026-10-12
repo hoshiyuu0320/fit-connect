@@ -617,7 +617,7 @@
 
 ### Web Push の通しの確認は、HTTPS の受け口とホストの Deno で行う
 - `npm:web-push` は URL のスキームを見ずに常に `https.request` で送るので、HTTP の受け口には届かない
-- Deno の `--unsafely-ignore-certificate-errors` は、`node:https` を通る web-push には効かない。自己署名証明書を `DENO_CERT=<PEM のパス>` で信頼させる（`--allow-sys` も要る）
+- Deno の `--unsafely-ignore-certificate-errors` は、`node:https` を通る web-push には効かない。自己署名証明書を `DENO_CERT=<PEM のパス>` で信頼させる（`--allow-sys` も要る）。**ただし Deno の版で違う**: 2026-10-12 の Deno 2.9.6 では `DENO_CERT` が効かず、`NODE_EXTRA_CA_CERTS=<PEM のパス>` で通った（PR2 の節）
 - macOS の LibreSSL で EC 鍵を作ると、曲線のパラメータが明示形式になって Deno に拒まれる。`openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -pkeyopt ec_param_enc:named_curve` で作る
 - `supabase functions serve` は Docker の中で動き、ホストの 127.0.0.1 の受け口に届かない。関数や `push.ts` を呼ぶスクリプトは、ホストで `npx -y deno run` で動かし、隔離スタックの URL とキーを環境変数で渡す
 
@@ -625,3 +625,28 @@
 - 内蔵ブラウザは `Notification.permission` が最初から `'denied'` だが、`configurable` なので `Object.defineProperty(Notification, 'permission', { get: () => 'granted', configurable: true })` で差し替えられる。`navigator.serviceWorker` の `getRegistration` / `ready` も同様に差し替えられる
 - 差し替えはリロードで消えるので、サイドバー（`router.push`）で画面を移ってコンポーネントをマウントし直す
 - `window.fetch` を差し替えるときは、Next.js のルーターが `URL` オブジェクトを渡すので `String(input instanceof Request ? input.url : input)` で URL を取る。`input.url` だけだと RSC の取得が例外になり、ブラウザの通常の遷移（リロード）に落ちて差し替えが消える
+
+## 朝のまとめ通知（フェーズ9.1 拡張 push の PR2、2026-10-12）で得た知見
+
+### Deno の `node:https` は、keep-alive 接続の上の timeout を黙って送り直す — web-push には keep-alive しない agent を渡す
+- ホストの Deno 2.9.6 で、同じホストへ先に1通送った後に応答しない宛先へ送ると、`timeout` で接続を destroy した後に 'error' を出さず、同じ要求を新しい接続で送り直した（受け口に同じ要求が2回届いた）。送り直しには `timeout` が効かず、`sendNotification` が返らないまま `notification_logs` の行が `pending` で残った
+- push サービスのホストは購読間で共通（Chrome は fcm.googleapis.com）なので、本番でも接続は使い回される。`web-push` の送信オプションに `agent: new https.Agent({ keepAlive: false })` を渡すと、timeout で 'error' になり送り直しも起きない（`_shared/push.ts`。Supabase の Edge Runtime で同じことが起きるかは未確認だが、害は無い）
+- `timeout` を付けたら、「応答しない受け口」に**2通目として**送るケースまで確かめる。1通目だけの確認では接続の使い回しが起きず、見逃す
+
+### Deno 2.9.6 では `DENO_CERT` が `node:https`（web-push）に効かない
+- 自己署名の HTTPS 受け口へ送るとき、PR1（2026-10-04）の手順の `DENO_CERT=<PEM>` では証明書エラーのままだった。`NODE_EXTRA_CA_CERTS=<PEM>` で通った。Deno の版で挙動が変わるので、通らなければ両方を試す
+
+### git ルートに追跡されていない `package.json` / `pnpm-lock.yaml` / `node_modules` があると、Deno と Web の検証が壊れる
+- `deno check` が `npm:openai` の型解決で失敗する。`--node-modules-dir=none` を付けて回避した
+- Web の `next lint` と `next build` の中の lint が `eslint-plugin-react-hooks` を見つけられずに止まった。`NODE_PATH=$PWD/node_modules/.pnpm/node_modules` を付けて回避した（原因がルートの余分な lockfile かは未確認）
+- 検証が見慣れない理由で落ちたら、先に `git status` で git ルートの追跡されていないファイルを見る
+
+### 隔離スタックで cron の負の対照を作るときは `cron.alter_job(command := ...)` を使う
+- `UPDATE cron.job SET command = ...` は permission denied になる。トランザクションの中で `cron.alter_job(jobid, command := ...)` で書き換え、テストを流して ROLLBACK する
+
+### Service Worker からの postMessage はページ側で模せる。`public/sw.js` は vm で vitest から読み込める
+- ページで `navigator.serviceWorker.dispatchEvent(new MessageEvent('message', { data: { type: 'notification-clicked', url: '/dashboard' } }))` を流すと、SW からの `postMessage` を受けたときと同じリスナーが動く（内蔵ブラウザで「通知のクリックで取り直す」を確かめられる。実機の SW からの送信は本番でしか確かめられない）
+- `public/sw.js` は Node の `vm` で読み込める。sandbox に `self`（sandbox 自身）・`location`・`URL`・`clients` / `self.clients`（同じオブジェクト）・`registration`・`addEventListener` を渡す。vm の中のオブジェクトは別の realm なので、比較は `toEqual` にする（`toStrictEqual` は落ちうる）
+
+### zsh ではコマンドを入れた変数が単語分割されない — 負の対照は bash スクリプトで流す
+- `DB="docker exec -i <container> psql -U postgres -d postgres"; $DB -f ...` は、zsh では `$DB` が単語分割されず、全体が1つのコマンド名として扱われて失敗する。負の対照のように同じコマンドを何度も流すものは、scratch の bash スクリプトに書いて `bash <script>` で実行する

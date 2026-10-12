@@ -2,9 +2,9 @@
 
 **作成日**: 2026-07-10
 **対象**: プロジェクトオーナー（1回きりの手動作業）
-**関連 migration**: `supabase/migrations/20260710020000_codify_cron_jobs.sql` / `20260829000300_cleanup_ai_images.sql` / `20260912000000_cron_use_secret_key.sql` / `20260913000000_session_reminder.sql` / `20260913000100_session_reminder_cron_target_date.sql` / `20260914000000_client_alerts.sql` / `20260914000100_client_activity_snapshot.sql` / `20260914000200_client_alert_detection.sql` / `20260922000100_secure_parse_message_tags_webhook.sql`（messages トリガー。§冒頭の 2026-09-22 追加の注記）
+**関連 migration**: `supabase/migrations/20260710020000_codify_cron_jobs.sql` / `20260829000300_cleanup_ai_images.sql` / `20260912000000_cron_use_secret_key.sql` / `20260913000000_session_reminder.sql` / `20260913000100_session_reminder_cron_target_date.sql` / `20260914000000_client_alerts.sql` / `20260914000100_client_activity_snapshot.sql` / `20260914000200_client_alert_detection.sql` / `20260922000100_secure_parse_message_tags_webhook.sql`（messages トリガー。§冒頭の 2026-09-22 追加の注記）/ `20261004000000_client_alert_push.sql`（朝のまとめ通知。§6）
 
-`auto-skip-workouts` / `cleanup-ai-images` / `send-session-reminders` の cron ジョブは migration で「無効(inactive)状態」で登録されます。
+`auto-skip-workouts` / `cleanup-ai-images` / `send-session-reminders` / `notify-trainer-alerts`（§6）の cron ジョブは migration で「無効(inactive)状態」で登録されます。
 実際に動かすには、以下の **(1) Vault シークレット登録** と **(2) ジョブの有効化** が必要です。
 どちらも Supabase Dashboard の SQL Editor から実行します。
 
@@ -230,7 +230,8 @@ select * from cron.job;
 
 - `issue-recurring-tickets`（既存）/ `auto-skip-workouts` / `cleanup-ai-images`（2026-09-12 有効化済み）/
   `send-session-reminders`（2026-09-13 有効化済み）の計4本が active = true で見えること
-- `detect-client-alerts`（フェーズ9.1）は §5 の手順で有効化するまで active = false
+- `detect-client-alerts`（フェーズ9.1）は §5 の手順で有効化するまで active = false（2026-09-22 に有効化済み）
+- `notify-trainer-alerts`（フェーズ9.1 拡張 push）は §6 の手順で有効化するまで active = false
 - `cleanup-ai-images` の有効化・dry run も §2 と同じ要領（関数名を差し替える。こちらは body を省略すると dry run）
 
 ### 実行履歴の確認（有効化後）
@@ -240,7 +241,7 @@ select * from cron.job_run_details order by start_time desc limit 10;
 ```
 
 - `status = 'succeeded'` であること。ただし pg_net 経由の HTTP POST（`auto-skip-workouts` / `cleanup-ai-images` /
-  `send-session-reminders`）は**リクエストを enqueue した時点で succeeded** になる。関数側の 4xx / 5xx・
+  `send-session-reminders` / `notify-trainer-alerts`）は**リクエストを enqueue した時点で succeeded** になる。関数側の 4xx / 5xx・
   タイムアウト・URL 解決失敗（Vault 未登録）はここには出ない
 - HTTP の結果は `net._http_response` で確認する（`status_code` / `timed_out` / `error_msg` / `content`）:
 
@@ -253,8 +254,10 @@ limit 10;
 
   - `status_code = 200` かつ `timed_out = false` であること。`timed_out = true` は pg_net 側のタイムアウト
     （関数は走り続けるので送信自体は止まらないが、結果 JSON は取れない）。`error_msg` は接続・URL 解決の失敗
-  - 3ジョブとも pg_net のタイムアウトは60秒（`auto-skip-workouts` / `cleanup-ai-images` は migration
-    `20260913000200` で既定5秒から延長。関数内の一時障害の再試行を含めて応答を待てるようにするため）
+  - HTTP の4ジョブとも pg_net のタイムアウトは60秒（`auto-skip-workouts` / `cleanup-ai-images` は migration
+    `20260913000200` で既定5秒から延長。関数内の一時障害の再試行を含めて応答を待てるようにするため。
+    `notify-trainer-alerts` は登録時から60秒）。SQL エディタから手で `net.http_post` を送るときも
+    `timeout_milliseconds := 60000` を付ける（付けないと既定の5秒で `timed_out = true` になり、結果が取れない）
   - 保持期間は `pg_net.ttl`（既定 6 時間）のため、cron 実行（JST 20:00）から時間を置かずに確認すること
   - Dashboard → **Edge Functions → 該当関数 → Logs** も合わせて確認すること。6時間を過ぎて `net._http_response`
     が消えた後は、このログ（`POST | 500 | …/functions/v1/<関数名>` のような行）が唯一の手掛かりになる
@@ -276,7 +279,7 @@ limit 20;
 ```
 
 > 補足: `cron.job_run_details` の失敗を自動検知する監視ジョブは未実装
-> （フェーズ7の通知ディスパッチャ完成後に配線予定。フェーズ5.3の残タスク）。
+> （フェーズ5.3の残タスク・判断7-3。朝のまとめ通知（§6）の直後の PR で作る。オーナー決定 2026-10-04）。
 
 ---
 
@@ -289,7 +292,8 @@ limit 20;
 
 毎日 06:00 JST（`0 21 * * *` = UTC 21:00）に、担当顧客の「体重の急な変化（weight_change）」「記録途絶（record_gap）」
 「睡眠の悪化（sleep_decline、2026-10-03 追加）」を判定して `public.alerts` に残すジョブです。Web のダッシュボード「今日の対応」とサイドバーのバッジがこの表を読みます。
-**push 通知は送りません**（VAPID 設定後の後続タスク）。
+このジョブ自体は push 通知を送りません。新しく出たアラートのトレーナー向けの通知（朝のまとめ1通）は、
+10分後の別のジョブ `notify-trainer-alerts`（06:10 JST）が送ります（§6。2026-10-04 設計・2026-10-12 実装）。
 
 ### 他のジョブとの違い
 
@@ -436,7 +440,8 @@ select cron.alter_job((select jobid from cron.job where jobname = 'detect-client
 
 ### 5-6. 翌朝の確認 SQL（有効化の翌朝と、以後は週1回）
 
-cron 失敗の自動監視ジョブは作っていない（トレーナー向け push の配線と一緒に作る。オーナー決定 2026-09-13）。
+cron 失敗の自動監視ジョブは作っていない（当初は「トレーナー向け push の配線と一緒に作る」（オーナー決定 2026-09-13）だったが、
+2026-10-04 のオーナー決定で、朝のまとめ通知（§6）の PR には含めず直後の PR で作ることにした）。
 それまでは、ダッシュボードの検知状態表示と、下の SQL を**週1回**流すことで代える。
 
 ```sql
@@ -602,3 +607,223 @@ where alert_type = 'sleep_decline' group by 1 order by 1;
         `20260914000000_client_alerts.sql` の `COMMENT ON COLUMN public.alerts.…`（96〜127行）の文面に戻す
       - 関数の COMMENT 2つ（`evaluate_client_alerts` / `run_client_alert_detection`）を、
         `20260914000200_client_alert_detection.sql` の `COMMENT ON FUNCTION`（288行・601行）の文面に戻す
+
+---
+
+## 6. `notify-trainer-alerts`（トレーナー向けアラートの朝のまとめ通知）の有効化
+
+**関連 migration**: `20261004000000_client_alert_push.sql`（通知種別 `client_alert` の CHECK・cron の登録（無効））
+**関数**: `supabase/functions/notify-trainer-alerts/index.ts`（`config.toml` で verify_jwt = false）
+**設計**: `docs/superpowers/specs/2026-10-04-trainer-alert-push-design.md`（リリースの順序は §11.2、運用は §11.3）
+
+毎日 06:10 JST（`10 21 * * *` = UTC 21:10）に Edge Function を呼び、06:00 の自動チェック（§5）で**その日に新しく出た**アラート
+（`status = 'open'` かつ `surfaced_on = 対象日 D`）があるトレーナーへ、ブラウザ通知（Web Push）を1通ずつ送るジョブです。
+
+- D の自動チェックが成功していない（`alert_detection_runs` に `target_date = D` の行が無い）日は1通も送らず、`detectionReady: false` を返す
+- 文面はタイトル `今日の対応があります`、本文 `新しく要確認 1名・注意 2名` のような重大度別の人数だけ（顧客名・数値は入れない）。
+  クリックで `/dashboard` を開く。有効期限（TTL）は12時間
+- 人数は顧客ごとの一番重い重大度で数える。今朝新しく出たアラートだけで決めるので、一覧の行のバッジ（全 open の最重大）とは違うことがある
+- 冪等化は `notification_logs.dedup_key` = `client_alert_digest:<trainer_id>:<D>`。同じ D で何度呼んでも1トレーナーに1通（cron の再実行・手動実行を含む）。
+  **結果が何であれ（skipped・failed・pending も）その日のキーは使い切る**。同じ D の再実行で送り直されるのは `failed` / `resolve_error` の行だけ（送り直しは §6-6）
+- 宛先はトレーナーの `device_tokens`（`platform = 'web_push'`・`user_type = 'trainer'`）だけ。ブラウザ通知を登録していないトレーナーは `skipped` / `no_tokens`、
+  通知設定の「アラート（朝のまとめ）」をオフにしたトレーナーは `skipped` / `disabled`
+
+### 他のジョブとの違い
+
+- `send-session-reminders` と同じく Vault の `project_url` / `secret_key` で関数を呼ぶ（url の組み立て・headers・
+  `timeout_milliseconds := 60000` は同一）。違うのは body だけ:
+  body は `{"dry_run": false, "target_date": "<JST の今日>"}`（**`+ 1` しない**。21:10 UTC は JST の翌日 06:10 なので、
+  `(now() AT TIME ZONE 'Asia/Tokyo')::date` がその日の D）
+- 検知（§5）は SQL だけで完結し、失敗は `cron.job_run_details` に残る。こちらは HTTP 経由なので、関数側の失敗は
+  `net._http_response` と関数の Logs にしか残らない（§4）
+
+### 呼び出し契約（body）
+
+| body | 挙動 |
+| --- | --- |
+| 省略 / `{"dry_run": true}` | dry run（人数を返すだけで送らない）。`target_date` 省略時は JST の今日 |
+| `{"dry_run": false, "target_date": "YYYY-MM-DD"}` | 本送信。**`target_date` は必須**（省略・実在しない日付は 400） |
+| `"trainer_id": "<uuid>"`（任意。上のどちらにも足せる） | そのトレーナー1人だけを対象にする（本番での確認・送り直し用。cron は付けない）。UUID でなければ 400 |
+
+- 送る側に倒れるのは真偽値の `false` だけ。`"false"`（文字列）・`0`・`null`、JSON でない body は dry run
+- `target_date` が JST の今日より後なら 400。過去の日付は受け付ける（手動の確認・送り直し用。dedup キーで二重送信は防がれる）
+- 返り値: `{ status, dryRun, targetDate, trainerId, detectionReady, trainerCount, alreadyLogged, digests: [{ trainer_id, high, medium, low }], outcome? }`。顧客の ID・名前は返さない
+  - `alreadyLogged`: 対象の dedup キーで既に `notification_logs` に行がある人数（本送信が重複になるかを事前に知るため。読めなければ `null`）
+  - `outcome`（本送信だけ）: `sent` / `partial` / `skipped` / `failed` / `pending` / `duplicate`（送る前から行があって送らなかった数）/
+    `missing`（送ったのにログの行が無い数）/ `skippedBy`（`no_tokens` / `disabled` / `quiet_hours` / `vapid` / `other`）。`skippedBy` 以外の合計が `trainerCount` になる
+
+### 6-0. 前提とリリースの順序（設計書 §11.2）
+
+1. PR1（Web Push の土台、#97）のリリースが済んでいること: VAPID の鍵の作り直し → `parse-message-tags` / `send-session-reminders` の再デプロイ →
+   Web のリリース → `docs/tasks/2026-07-19-webpush-vapid-setup.md` の手順0（Vercel の公開鍵と Edge Functions の鍵が対か）
+2. PR2 を develop へマージ → develop から `supabase migration list --linked` と `supabase db push --dry-run` で未適用が `20261004000000` の1本だけであることを確かめ、
+   `supabase db push`。末尾の検査（`CLIENT_ALERT_PUSH_POSTCHECK_FAILED`）で止まったら、トランザクションごと巻き戻っている
+3. `supabase functions deploy notify-trainer-alerts` だけ（`parse-message-tags` / `send-session-reminders` の再デプロイは要らない）。
+   deploy の後に `supabase functions list` で更新時刻を確かめる
+4. §6-1 の dry run
+5. Web（sw.js・通知設定・「今朝」の目印）を main へリリース。デプロイ前から開いていたタブは一度リロードする（古いバンドルのままだと、通知のクリックで取り直さない）。
+   ブラウザ通知を使うトレーナーには、設定画面でプッシュ通知をオンにしてもらう
+6. §6-3 の1人に絞った本送信
+7. §6-4 で cron を有効化 → 翌朝 §6-5 の確認
+
+5 より前は本番の sw.js が古いままで、通知のクリック先が `/message` になる。本送信と有効化は 5 の後にする。
+
+### 6-1. dry run（送らない）
+
+SQL エディタから pg_net で呼ぶ。**`timeout_milliseconds := 60000` を必ず付ける**（既定の5秒では、DB の読み取りの再試行が1回あるだけで超え、
+`timed_out = true` で結果が取れない）。
+
+```sql
+select net.http_post(
+  url := (select decrypted_secret from vault.decrypted_secrets where name = 'project_url') || '/functions/v1/notify-trainer-alerts',
+  headers := jsonb_build_object(
+    'Content-Type', 'application/json',
+    'apikey', (select decrypted_secret from vault.decrypted_secrets where name = 'secret_key')
+  ),
+  body := '{"dry_run": true}'::jsonb,  -- 対象日を指定するときは jsonb_build_object('dry_run', true, 'target_date', '<D>')
+  timeout_milliseconds := 60000
+);
+-- 数秒後、上の戻り値の request_id で結果を確認
+select status_code, timed_out, error_msg, content from net._http_response where id = <request_id>;
+```
+
+- `status_code = 200`・`timed_out = false` で、`content` の `dryRun` が `true`、`detectionReady` が `true`、`digests` の人数が §6-2 の SQL と一致すれば OK
+- 対象日を省略すると JST の今日。06:00 の自動チェックより前に流すと、今日の検知がまだ無いので `detectionReady: false`（送るものが無いだけで正常）
+- `status_code` が 401 なら apikey の不一致か verify_jwt（`config.toml` の `[functions.notify-trainer-alerts]` を確かめて deploy し直す）、404 なら関数が未デプロイ
+- あわせて読み取りで確かめる:
+
+```sql
+-- 旧 trainers.fcm_token が残っているトレーナー（web_push が無いと FCM に落ち、FCM→APNs は不達で failed になる。設計書 §9）
+select count(*) from public.trainers where fcm_token is not null;
+
+-- ブラウザ通知を登録しているトレーナー（宛先になる人）
+select user_id, count(*) as browsers, max(last_seen_at) as last_seen_at
+from public.device_tokens
+where platform = 'web_push' and user_type = 'trainer'
+group by user_id;
+```
+
+### 6-2. 人数の突き合わせ（読み取り）
+
+D に新しく出たアラートがある担当顧客の一番重い重大度を、トレーナー別に数える。dry run の `digests` の `high` / `medium` / `low` と一致すること。
+§6-3 では、ここで対象のアラートの `trainer_id` も確かめる。
+
+```sql
+with top as (
+  select a.trainer_id, a.client_id,
+         max(case a.severity when 'high' then 3 when 'medium' then 2 else 1 end) as sev_rank
+  from public.alerts a
+  join public.clients c on c.client_id = a.client_id and c.trainer_id = a.trainer_id
+  where a.status = 'open' and a.surfaced_on = date '<D>'
+  group by a.trainer_id, a.client_id
+)
+select trainer_id,
+       count(*) filter (where sev_rank = 3) as high,
+       count(*) filter (where sev_rank = 2) as medium,
+       count(*) filter (where sev_rank = 1) as low
+from top
+group by trainer_id
+order by trainer_id;
+```
+
+### 6-3. 1人に絞った本送信（有効化の前に1回だけ）
+
+本番で実際に届くことを、ブラウザを登録したトレーナー1人だけで確かめる。**`trainer_id` を必ず付ける**
+（付けないと、その D に新しいアラートがある全トレーナーに古い日付のまとめが飛び、その人たちの D のキーも使い切る）。
+
+1. 対象日 D を決める（`status = 'open'` のアラートがある `surfaced_on` の日。§6-2 の SQL で探す）。
+   設計書 §11.2 の予備の `2026-10-01` は、その日のアラートが対応済み（resolved）になっていて使えない
+   （2026-10-12 の読み取りで open のアラートは0件）。open のアラートが無いときは手順5のとおり本送信をしない
+2. §6-2 の SQL で、D のアラートの `trainer_id` に、ブラウザを登録したトレーナー（§6-1 の `device_tokens` の SQL）が入っていることを確かめる。
+   同じブラウザで複数のトレーナーを切り替えて試したときは、最後に登録したトレーナーが宛先になる
+3. `jsonb_build_object('dry_run', true, 'target_date', '<D>', 'trainer_id', '<そのトレーナー>')` で dry run し、`digests` にそのトレーナーが入っていて、`alreadyLogged` が 0 であること
+4. 受け取るブラウザで新しい sw.js が有効なこと（DevTools → Application → Service Workers で `SW_VERSION` が `2026-10-04.client-alert-1`）。旧版のままだと、通知は出てもクリック先が `/message` になる
+5. **一致するトレーナーが `digests` に入らない場合は本送信をしない**。§6-4 の有効化まで進め、最初の自然なアラートの日に §6-5 で確かめる
+6. 本送信:
+
+```sql
+select net.http_post(
+  url := (select decrypted_secret from vault.decrypted_secrets where name = 'project_url') || '/functions/v1/notify-trainer-alerts',
+  headers := jsonb_build_object(
+    'Content-Type', 'application/json',
+    'apikey', (select decrypted_secret from vault.decrypted_secrets where name = 'secret_key')
+  ),
+  body := jsonb_build_object('dry_run', false, 'target_date', '<D>', 'trainer_id', '<trainer_id>'),  -- trainer_id を必ず付ける
+  timeout_milliseconds := 60000
+);
+select status_code, timed_out, error_msg, content from net._http_response where id = <request_id>;
+```
+
+- ブラウザに届く・クリックでダッシュボードが開く（ダッシュボードのタブが開いていればそれが前面に出て、「今日の対応」とバッジが取り直される）・
+  `outcome.sent` が 1・`notification_logs` が `sent`
+- これで D のそのトレーナーの dedup キーを使い切る。`failed` / `skipped` / `pending` で、鍵や設定を直してからやり直すときは §6-6 の DELETE をしてから同じ D で再実行する
+- `outcome.skippedBy` で原因を見分ける: `vapid` は Edge Functions の VAPID の secrets が未設定、`no_tokens` はブラウザ通知が未登録、`disabled` は通知設定でオフ、`quiet_hours` は静かな時間帯
+- `failed` のときは Edge Functions → `notify-trainer-alerts` → Logs の `[WebPush] Error sending notification` の `statusCode` を見る（403 なら鍵の不一致。PR1 の手順0 をやり直す）
+
+### 6-4. 有効化と停止
+
+```sql
+-- 有効化（翌朝 06:10 JST から毎日）
+select cron.alter_job((select jobid from cron.job where jobname = 'notify-trainer-alerts'), active := true);
+
+-- 停止（通知だけ止まる。検知と「今日の対応」の表示は続く）
+select cron.alter_job((select jobid from cron.job where jobname = 'notify-trainer-alerts'), active := false);
+```
+
+実行スケジュール: `10 21 * * *`（UTC 21:10 = **JST 毎日 06:10**。06:00 の `detect-client-alerts` の10分後）
+
+### 6-5. 翌朝の確認（有効化の翌朝）
+
+**`net._http_response` は6時間（`pg_net.ttl` の既定）で消えるので、12:10 JST までに読む**。それ以降は Edge Functions の Logs と `notification_logs` で確かめる。
+
+```sql
+-- 06:10 JST の cron の応答（timed_out / error_msg の行も見るため、content ではなく時刻で絞る）
+select id, created at time zone 'Asia/Tokyo' as created_jst, status_code, timed_out, error_msg, content
+from net._http_response
+where created >= ((now() at time zone 'Asia/Tokyo')::date + time '06:09') at time zone 'Asia/Tokyo'
+  and created <  ((now() at time zone 'Asia/Tokyo')::date + time '06:13') at time zone 'Asia/Tokyo'
+order by created;
+```
+
+- **`status_code = 200` だけで判断しない**。`content` の中身を読む（`content::jsonb ->> 'dryRun'` など）
+  - `dryRun` が `false` であること。`true` なら cron の body が欠けている（dry run の 200 になり、何も送らない）
+  - `detectionReady` が `true` であること。`false` なら 06:00 の自動チェックが D に成功していない（§5-6 で確かめ、検知を流し直したら §6-6 で送る）
+  - `outcome` の件数。期待値は、ブラウザ通知を登録したトレーナーの人数ぶん `sent`、未登録は `skipped` / `no_tokens`
+    （設定画面でオンにしていない・iPhone だけで使う・購読が失効したトレーナーは正常に `no_tokens`）。`pending` か `missing` が 0 でなければ §6-6
+- `detectionReady: true` かつ `trainerCount: 0` は正常（新しいアラートが無い日）。この日は `notification_logs` に行ができないので、
+  行が無いだけでは「実行されなかった日」と区別できない。12:10 JST を過ぎたら、Logs の `Trainer alert digests: ...` の行
+  （検知が未完了の日は `Alert detection has not succeeded for ...`）で確かめる
+- `cron.job_run_details` の `succeeded` は enqueue しただけ（§4）
+
+```sql
+-- 送信の記録（12:10 JST 以降も残る）
+select created_at, user_id, status, detail, dedup_key
+from public.notification_logs
+where dedup_key like 'client_alert_digest:%'
+order by created_at desc
+limit 20;
+```
+
+### 6-6. 送り直し（オーナー作業。本番への書き込みは Claude が行わない）
+
+- **検知が遅れて成功した日**（`detectionReady: false` だった日）: その日はキーを使っていないので、検知が成功した後に
+  `jsonb_build_object('dry_run', false, 'target_date', '<D>')` を §6-3 の形で送れば、そのまま送られる（全トレーナーが対象。`trainer_id` は付けない）
+- **`failed` / `skipped` / `partial` / `pending` の行を作り直すとき**（§6-3 のやり直し、push サービスの一時障害（5xx）の日など）:
+  そのトレーナーの dedup キー**1行だけ**を `dedup_key` の完全一致で消してから、同じ D で `trainer_id` を付けて再実行する。他の行を巻き込まない
+
+```sql
+delete from public.notification_logs
+where dedup_key = 'client_alert_digest:<trainer_id>:<D>';
+```
+
+- 消してから再実行すると、そのトレーナーにもう1通届く。送る前に、`trainer_id` を付けた dry run で `alreadyLogged` が 0 になったことを確かめる
+- `failed` / `resolve_error`（宛先を読めず何も送っていない行）だけは、消さずに同じ D で再実行すれば送り直される
+- `outcome.missing` が出た日（ログの書き込みに失敗した）は、通知は送られている可能性がある。再実行すると二重に届きうるので、先に Logs とブラウザで確かめる
+
+### 6-7. ロールバック
+
+- **止めるだけ**: §6-4 の停止 SQL。関数は呼ばれなければ何もしない
+- PR2 は migration を含むので **revert しない**（適用済みの migration ファイルまで消え、以後の `db push` が止まる）。戻すときは新しいコミットで直す
+- sw.js に不具合があって通知が出ないとき: Vercel で直前のデプロイへ戻す。ブラウザが旧版に戻るのは次の更新確認（ページの読み込み・push の受信）の後なので、
+  DevTools の `SW_VERSION` で確かめる
+- CHECK に `client_alert` が残っても害は無い。消すなら先に `notification_preferences` の `kind = 'client_alert'` の行を消してから CHECK を戻す

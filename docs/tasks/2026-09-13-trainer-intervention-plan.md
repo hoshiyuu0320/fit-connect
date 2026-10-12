@@ -3,6 +3,7 @@
 **作成**: 2026-09-13 / ブランチ（予定）: PR1 `feature/client-alerts` → PR2 `feature/daily-triage`（どちらも `develop/1.0.0` から切り、PR も `develop/1.0.0` に向ける）
 **出典**: `IMPLEMENTATION_TASKS.md` フェーズ9 / `2026-07-08-solution-catalog.md` cat1 1-A（L33-53）・2-A（L83-99）・6-A（L213-228）、横断レビュー 1-2 / 1-3 / 1-6 / 1-7（L2039-2057）/ `2026-07-10-integration-decisions.md` 判断1（通知基盤）・判断7（横断標準）/ `lessons.md`。**カタログと食い違う箇所は統合判断に従う**
 **オーナー決定（2026-09-13）**: 9.1 → 9.2 を続けて実装し、PR は2本。トレーナー宛の push は VAPID 設定（オーナー保留）が済むまで実装側から着手しない。当面は Web 内の表示（ダッシュボードとサイドバーのバッジ）で知らせ、ディスパッチャ経由の push は後から差し込める作りにする
+**更新（2026-10-04）**: VAPID が Edge Functions に登録されたので、トレーナー向け push を 9.1 の拡張として設計した（`docs/superpowers/specs/2026-10-04-trainer-alert-push-design.md`。トレーナーごとに朝のまとめ1通、PR は2本）。**本書と食い違う箇所は設計書に従う**（オーナー決定 2026-10-04）。push の PR1 Web Push の土台は #97 でマージ（2026-10-04）、push の PR2 朝のまとめは実装済み（2026-10-12、`feature/trainer-alert-push`）。以下、本書の「PR1・PR2」は 9.1・9.2 の MVP の PR を指し、push の PR は「push の PR1・PR2」と書く
 **範囲外**: 9.3（睡眠→指導動線、6-A）。オーナー決定の範囲に入っていないので、`IMPLEMENTATION_TASKS.md` では未着手のまま残す
 **着手条件**:
 - 8.4（`fix/cron-retry-session-memo`。`_shared/retry.ts`、migration `20260913000200`・`000300`・`000400`）が develop にマージ済み
@@ -82,7 +83,7 @@
 | カタログの記載 | 本計画 | 根拠 |
 |---|---|---|
 | Edge Function `detect-client-anomalies` を cron で起動 | SQL 関数を migration 管理の pg_cron から直接実行。Edge Function は作らない | 判断7-3。push しない MVP に HTTP の段は要らない。issue-recurring-tickets が前例 |
-| `push_subscriptions` + `/api/push-notify` で通知 | 当面は送らない。VAPID 設定後に device_tokens + `sendNotification` の別関数で足す | 判断1。/api/push-notify は 7.3 で削除済み |
+| `push_subscriptions` + `/api/push-notify` で通知 | Phase 9 の PR1・PR2 では送らない。VAPID 設定後に device_tokens + `sendNotification` の別関数で足す → **別関数 `notify-trainer-alerts`（cron 06:10 JST）で、トレーナーごとに朝のまとめ1通を送る**（2026-10-04 設計、2026-10-12 実装） | 判断1。/api/push-notify は 7.3 で削除済み |
 | `alerts.title` / `body` 列 | 持たない。`payload` から Web の純関数で文言を作る | 導出値は保存しない（lessons「導出値を非正規化して保存すると必ずドリフトする」） |
 | status `'muted'`、部分ユニーク `WHERE status='open'` | ミュートは拡張の alert_settings に置く。部分ユニークは `WHERE resolved_at IS NULL` | open だけに掛けると、対応済みにした翌朝に同じアラートが作り直される |
 | `alert_settings` の PRIMARY KEY(trainer_id, client_id〈NULL〉, alert_type) | 拡張で作るときに `UNIQUE NULLS NOT DISTINCT` | 主キー列は NULL を持てない。PG 15.8 で使える |
@@ -129,7 +130,7 @@
 - 日次上限、昼・夕方の追加実行
 - ルール③睡眠悪化・④カロリー超過・⑤期日接近×未達
 - Mobile の heartbeat（アプリ起動を記録する仕組み）と HealthKit 連携状態の報告
-- トレーナー向け push と cron 失敗監視ジョブ（オーナー確認3）
+- トレーナー向け push と cron 失敗監視ジョブ（オーナー確認3）→ push は 2026-10-04 に設計（朝のまとめ1通。push の PR1 は #97 でマージ、push の PR2 は 2026-10-12 実装）。cron 失敗監視は push の直後の PR で作る（オーナー決定 2026-10-04）
 - アラート履歴の画面、ヘッダーのベルを通知センターにすること、Realtime でのバッジ更新
 - 1-B の記録時点での即時検知
 - `/clients/[id]` の `?tab=` をクエリの変化に追従させること
@@ -142,7 +143,7 @@
 
 **拡張に回すもの**
 - `triage_actions`（完了・スヌーズ・返信不要。オーナー確認4）
-- 朝のサマリー push
+- 朝のサマリー push → 9.1 拡張の朝のまとめ（2026-10-04 設計）に一本化した。数えるのはその日に新しく出たアラートだけで、未返信はまとめに含めない（メッセージは届くたびに別の通知が出る。設計書 §13-3）
 - AI 返信候補（3-A。判断6の ai_usage_logs が前提）
 - 期日接近の +20 点
 - 顧客一覧の要対応ソート（2-B）
@@ -285,18 +286,18 @@
   - 登録は DO ブロックで jobname がまだ無いことを確かめてから `cron.schedule` し、直後に `cron.alter_job(active := false)`（`20260913000000` L135-159 の書式）
   - HTTP を使わないので、Vault・pg_net・apikey・タイムアウトの設定は要らない
   - 有効化は、リモートで dry run とバックテストをした後にオーナーが行う
-- **dry run の既定**: dry run は `evaluate_client_alerts` だけ（書き込めない）。`run_client_alert_detection` には dry_run フラグも対象日の既定値も持たせず、呼んだら本実行になる。後で作る push 関数は既存の規約（lessons「push を伴う cron 起動 Function は dry_run 省略時に送らない」）に従う
+- **dry run の既定**: dry run は `evaluate_client_alerts` だけ（書き込めない）。`run_client_alert_detection` には dry_run フラグも対象日の既定値も持たせず、呼んだら本実行になる。後で作る push 関数は既存の規約（lessons「push を伴う cron 起動 Function は dry_run 省略時に送らない」）に従う（→ `notify-trainer-alerts` でそのとおりにした。2026-10-12）
 - **バックテスト**
   - 過去30日の各日 d について `evaluate_client_alerts(d, d の 06:00 JST)` を流し、**前日に detected でなかった（顧客, 種別）が detected になった件数**（新規）を1日ごとに数える。続いている発生を毎日数えると、有効化の判断基準（1日の新規件数）と比べられない
   - 監視対象は alerts に依存しないので、バックテストはいつ取っても同じ結果になる（本実行の前後を問わない）
   - 睡眠の updated_at は後の同期で上書きされ、過去の到着の痕跡が一部失われる → 「記録・同期なし」を多めに数える方向にずれる（安全側）
-- **再試行ヘルパー**（8.4 の `_shared/retry.ts`）: PR1・PR2 には HTTP の段が無いので使わない。後で作る push 関数では DB の読み取りだけを `withRetry` で包み、`sendNotification` は包まない
+- **再試行ヘルパー**（8.4 の `_shared/retry.ts`）: PR1・PR2 には HTTP の段が無いので使わない。後で作る push 関数では DB の読み取りだけを `withRetry` で包み、`sendNotification` は包まない（→ `notify-trainer-alerts` でそのとおりにした。2026-10-12）
 - **失敗の見える化**
   1. 例外は `cron.job_run_details` に failed で残る
   2. 成功した本実行ごとに `alert_detection_runs` に1行
   3. Web に最終チェック時刻と「まだ実行されていない」「30時間以上前（遅延）」「停止中」を出す
   4. 手順書に確認用の SQL（直近7日の job_run_details と runs）を載せる
-- 判断7-3 の cron 失敗監視ジョブは PR1・PR2 に含めない（オーナー確認3。推奨はトレーナー向け push の配線と同時に作る）
+- 判断7-3 の cron 失敗監視ジョブは PR1・PR2 に含めない（オーナー確認3。推奨はトレーナー向け push の配線と同時に作る）→ **2026-10-04 オーナー決定: push（朝のまとめ）の PR にも含めず、その直後の PR で作る**（時期を1PR分ずらす。HTTP で動く cron は失敗しても `job_run_details` が succeeded になるので、関数側で結果を記録する仕組みから設計する。設計書 §14）
 - **Edge Function のレーン**: 新規は無し。変更は `delete-account/index.ts` のコメントだけ（`_shared/push.ts` を含め `_shared/` には触らない）
 
 ## リリース順序とロールバック
@@ -365,16 +366,27 @@
 - アニメーションは 150〜200ms で、`prefers-reduced-motion` を尊重する
 
 ## 通知（VAPID 待ちの間と、後で push を足す場所）
-- **PR1・PR2 では `sendNotification` を呼ばず、通知種別（kind）も足さない**
-  - 今呼ぶとすべて skipped（no_tokens / vapid_not_configured）で終わり、dedup キーだけを使い切って後から送り直せなくなる
+> **2026-10-04 更新**: 下の「後で足す手順」は、設計書 `docs/superpowers/specs/2026-10-04-trainer-alert-push-design.md` で置き換えた（オーナー決定 2026-10-04。食い違う箇所は設計書に従う）。
+> 要点: **アラートごとの個別通知は送らず、トレーナーごとに朝のまとめ1通だけ**（自動チェックは1日1回なので個別に送っても早くならず、同じ時刻に複数通届き、ロック画面に顧客名が出るため）。
+> 実装は PR を2本に分けた: push の PR1 Web Push の土台（#97、2026-10-04 マージ。DB 変更なし）/ push の PR2 朝のまとめ（2026-10-12 実装、`feature/trainer-alert-push`。migration `20261004000000`）。
+> 各手順の扱いは下の「→」に書く。
+
+- **PR1・PR2 では `sendNotification` を呼ばず、通知種別（kind）も足さない**（9.1・9.2 の MVP の話。そのとおりにした）
+  - 今呼ぶとすべて skipped（no_tokens / vapid_not_configured）で終わり、dedup キーだけを使い切って後から送り直せなくなる（→ 朝のまとめの dedup キーは日単位なので、skipped になっても翌日は新しいキーで送れる）
   - 届かない種別のトグルを Web の通知設定に出すと紛らわしい（判断1: 設定は notification_preferences に一元化し、push を配線するときに種別を足す）
 - **後で足す手順**（後続タスク。オーナーの VAPID 設定の後）
   1. 前提を直す: トレーナーの Web Push 購読を `device_tokens(web_push)` に入れる（push_subscriptions の1件を移すか、再購読の導線を作る）/ `sw.js` が `data.url` を読んでクリックでその URL を開く / `resolveTargets` を user_type で絞る（兼務アカウントで顧客用のスマホに届かないように）/ `/clients/[id]` の `?tab=` をクエリの変化に追従させる
+     → 購読: 設定画面を開いたときに登録し直す（push の PR1）。user_type の絞り込み: push の PR1。`sw.js` の `data.url`: push の PR2（自分のオリジンのパスだけに正規化）。`?tab=` の追従: 朝のまとめは顧客詳細へ飛ばさず `/dashboard` を開くので不要（範囲外）
   2. 種別 `client_alert` を追加する: push.ts の kind、CHECK の migration（先にリモートへ適用）、Web の `NotificationSection`（一覧と読み込みのフィルタ）。トレーナー専用なので Mobile の enum は不要
+     → このとおり push の PR2 で実装（migration `20261004000000`。通知設定の表示名は「アラート（朝のまとめ）」、既定はオン）
   3. Edge Function `notify-trainer-alerts` を作る: cron は 06:10 JST、認証は isServiceRequest + verify_jwt=false、dry_run 省略時は送らない、本送信では target_date 必須。対象は `status='open' AND severity='high' AND surfaced_on = target_date`（新規・再浮上・open 中の昇格のすべてが入る）。dedupKey は `client_alert:<alert_id>:<surfaced_on>`、`data.url` は `/clients/<id>?tab=…`。ロック画面に健康の数値を出さない文面にする
+     → 関数名・cron の時刻・認証・dry_run・target_date 必須はこのとおり。変えた点: 重大度で絞らず `status='open' AND surfaced_on = D` を全部対象にし、トレーナーごとに顧客ごとの最重大度で人数を数えて1通（`新しく要確認 1名・注意 2名`）。D の自動チェックの成功（`alert_detection_runs` の行）を先に確かめ、無ければ送らない。`data.url` は `/dashboard`
   4. 朝のまとめ（2-A の拡張2）は同じ関数の最後に `daily_triage:<trainer_id>:<対象日>` で1通だけ
+     → これが本体になった。dedup キーは `client_alert_digest:<trainer_id>:<D>`。未返信はまとめに含めない
   5. 判断7-3 の cron 失敗監視ジョブも、この配線に載せて作る（オーナー確認3）
-- alerts に `surfaced_on` と `reopened_count` があるので、テーブルを変えずに上の手順で足せる
+     → push の PR には含めず、直後の PR で作る（オーナー決定 2026-10-04）
+- alerts に `surfaced_on` と `reopened_count` があるので、テーブルを変えずに上の手順で足せる（→ そのとおり、alerts は変えずに足せた）
+- 運用の手順（dry run・1人に絞った本送信・有効化・翌朝の確認・送り直し）は `docs/tasks/2026-07-10-cron-vault-setup.md` §6
 
 ## 契約（レーン間で共有する。変えるときは全レーンに知らせる）
 
@@ -552,7 +564,8 @@
 - **旧「N日間記録なし」を撤去する**ので、アプリ未登録の旧顧客と2週間を過ぎた記録開始前の顧客は個別には出なくなる（人数だけ。オーナー確認1）
 - **対応済みにしたアラートは、トーストが消えると見返すことも戻すこともできない**（DB には残る。履歴の画面は拡張）
 - **トレーナー向け push を後で有効にしても**、通知の節の前提4点を直すまでは届かないか、兼務アカウントでは顧客用のスマホに届く。VAPID の設定前に sendNotification を呼ぶと dedup キーを使い切る
-- **cron 失敗の運営向け通知が無い**（判断7-3 を後回しにする場合）。検知の遅延・停止はトレーナーの画面にしか出ない
+  → 2026-10-04 の設計で対応: 購読の登録し直しと user_type の絞り込みは push の PR1（#97）、`sw.js` の `data.url` は push の PR2。`?tab=` の追従は朝のまとめでは不要。dedup キーは日単位（`client_alert_digest:<trainer_id>:<D>`）なので、skipped になっても翌日は送れる
+- **cron 失敗の運営向け通知が無い**（判断7-3 を後回しにする場合）。検知の遅延・停止はトレーナーの画面にしか出ない（→ 朝のまとめの直後の PR で作る。オーナー決定 2026-10-04）
 - **未返信からタグ付きメッセージを一律に除く**ので、ワークアウト達成の「💬 感想」や記録に添えた質問は拾えない。将来は「タグ以外の本文があるもの」を含める案
 - **purpose は顧客本人が書き換えられる**ので、diet に変えると減少の重要度が1段下がる（検知は残る）
 - **消し込みを入れない場合**（推奨案）、返信不要のメッセージが最長7日並ぶ
@@ -561,12 +574,12 @@
 - **8.4 と重なる**: migration の番号、手順書、000400 の適用順（db push で一緒に当たる）。ローカルの Supabase スタックとメインのチェックアウトも共有。コミット前に lock ファイルや .g.dart が develop から漏れていないか比べる
 - **既存の定義のずれは残る**: 期限間近チケット（14日と7日）、アクティブ（7日と30日）、`getClientListMetrics` の UTC 日付。KPI と「今日の対応」の数字が合わないことがある
 - **監視対象が今は1名**なので、見込み件数は有効化の直前に dry run で取り直す
-- **拡張の優先順（提案）**: 1. トレーナー向け push（と cron 失敗監視）2. 9.2 の消し込み 3. alert_settings（ミュート・閾値 UI・目的の上書き）4. Mobile heartbeat 5. ③睡眠悪化（2026-10-03 実装。ブランチ `feature/sleep-decline-alert`） 6. 追加の実行回 7. ⑤期日×未達（initial_weight の入力導線と達成率の定義の統一が前提）8. ④カロリー超過（目標カロリーは alert_settings に置く）9. 1-B の即時検知
+- **拡張の優先順（提案）**: 1. トレーナー向け push（と cron 失敗監視）（→ push は 2026-10-04 設計・push の PR1 #97 マージ・push の PR2 2026-10-12 実装。cron 失敗監視はその直後の PR）2. 9.2 の消し込み 3. alert_settings（ミュート・閾値 UI・目的の上書き）4. Mobile heartbeat 5. ③睡眠悪化（2026-10-03 実装。ブランチ `feature/sleep-decline-alert`） 6. 追加の実行回 7. ⑤期日×未達（initial_weight の入力導線と達成率の定義の統一が前提）8. ④カロリー超過（目標カロリーは alert_settings に置く）9. 1-B の即時検知
 
 ## オーナー決定（2026-09-13。4点とも推奨案を採用）
 1. 記録開始前・アプリ未登録の顧客の扱い（旧「N日間記録なし」の撤去）→ **登録から2週間以内の未開始だけ出し、それ以外は理由別の人数だけ**
 2. データが届いた日をトレーナーに見せることとプライバシーポリシー → **日付だけ見せ（時刻は持たない）、プライバシーポリシーに1文足す**（文案は PR1 のレビューでオーナーが確認）
-3. 判断7-3 の cron 失敗監視の時期 → **トレーナー向け push の配線と一緒に作る**（それまではダッシュボードの検知状態表示と、手順書の確認 SQL を週1回流すことで代える）
+3. 判断7-3 の cron 失敗監視の時期 → **トレーナー向け push の配線と一緒に作る**（それまではダッシュボードの検知状態表示と、手順書の確認 SQL を週1回流すことで代える）→ **2026-10-04 変更: push（朝のまとめ）の PR には含めず、その直後の PR で作る**（オーナー決定。設計書 §1）
 4. 9.2 の MVP に消し込みを入れるか → **入れない（拡張1）**。`triage_actions` は PR2 では作らない
 5. （2026-09-22 追加）プライバシーポリシーの変更に合わせ、**最終更新日と同意バージョンを 2026-09-22 に上げる**（Web と Mobile の定数を同時に変更。既存の顧客にはアプリ更新後に同意画面が再表示される）
 - 前版の確認事項「減量目的の顧客の減少」は、推奨案（検知して medium に下げる）を既定として採った（設計判断10）。異なる扱いにしたい場合はレビューで指摘してもらえば、定数1箇所の変更で済む

@@ -6,25 +6,13 @@ import { Label } from '@/components/ui/label'
 import { supabase } from '@/lib/supabase'
 import { urlBase64ToUint8Array } from '@/lib/notifications/pushSubscriptionKey'
 import { syncPushSubscription, type SubscriptionSnapshot } from '@/lib/notifications/syncPushSubscription'
-
-type NotificationKind = 'message' | 'goal_achievement'
-
-const NOTIFICATION_KINDS: {
-  kind: NotificationKind
-  label: string
-  description: string
-}[] = [
-  {
-    kind: 'message',
-    label: 'メッセージ受信',
-    description: 'クライアントからメッセージが届いたとき',
-  },
-  {
-    kind: 'goal_achievement',
-    label: '目標達成のお知らせ',
-    description: 'クライアントが目標を達成したとき',
-  },
-]
+import {
+  NOTIFICATION_KINDS,
+  applyPreferenceRows,
+  defaultNotificationPrefs,
+  type NotificationKind,
+  type NotificationPrefs,
+} from '@/lib/notifications/notificationKinds'
 
 const MESSAGE_KEY_MISSING = '現在プッシュ通知を有効にできません。時間をおいて再度お試しください。'
 const MESSAGE_REGISTER_FAILED = 'プッシュ通知の登録に失敗しました。再度お試しください。'
@@ -90,10 +78,7 @@ export function NotificationSection({ trainerId }: NotificationSectionProps) {
   const [syncing, setSyncing] = useState(false)
   const [supported, setSupported] = useState(true)
   // 行が無ければ有効（デフォルトON）
-  const [prefs, setPrefs] = useState<Record<NotificationKind, boolean>>({
-    message: true,
-    goal_achievement: true,
-  })
+  const [prefs, setPrefs] = useState<NotificationPrefs>(defaultNotificationPrefs)
   const [savingKind, setSavingKind] = useState<NotificationKind | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -209,15 +194,8 @@ export function NotificationSection({ trainerId }: NotificationSectionProps) {
       }
 
       if (data && data.length > 0) {
-        setPrefs((prev) => {
-          const next = { ...prev }
-          for (const row of data as { kind: string; enabled: boolean }[]) {
-            if (row.kind === 'message' || row.kind === 'goal_achievement') {
-              next[row.kind] = row.enabled
-            }
-          }
-          return next
-        })
+        // 一覧にある種別の行だけを反映する（顧客向けの session_reminder などは無視）
+        setPrefs((prev) => applyPreferenceRows(prev, data as { kind: unknown; enabled: unknown }[]))
       }
     }
 
@@ -402,7 +380,7 @@ export function NotificationSection({ trainerId }: NotificationSectionProps) {
         <p className="text-sm text-gray-500">
           {permission === 'denied'
             ? '通知がブラウザの設定でブロックされています。アドレスバー横の鍵アイコンから通知を「許可」に変更してください。'
-            : 'クライアントからメッセージが届いた際にブラウザ通知でお知らせします。'}
+            : 'メッセージや朝のまとめをブラウザ通知でお知らせします。'}
         </p>
 
         {/* 通知種別ごとの設定 */}

@@ -1,11 +1,11 @@
 -- =============================================================================
--- cron ジョブ（Edge Function 呼び出し 3 本）の登録内容テスト
+-- cron ジョブ（Edge Function 呼び出し 4 本）の登録内容テスト
 -- （20260912000000_cron_use_secret_key.sql / 20260913000100_session_reminder_cron_target_date.sql
---   / 20260913000200_cron_http_timeout.sql 適用後の状態）
+--   / 20260913000200_cron_http_timeout.sql / 20261004000000_client_alert_push.sql 適用後の状態）
 --
--- pg_cron の 'auto-skip-workouts' / 'cleanup-ai-images' / 'send-session-reminders' について、
--- schedule と command（pg_net の net.http_post 呼び出し）を検証する自己完結テスト
--- （session_reminder_test.sql のケース(f) の書式を踏襲し、3 ジョブへ広げたもの）。
+-- pg_cron の 'auto-skip-workouts' / 'cleanup-ai-images' / 'send-session-reminders' /
+-- 'notify-trainer-alerts' について、schedule と command（pg_net の net.http_post 呼び出し）を
+-- 検証する自己完結テスト（session_reminder_test.sql のケース(f) の書式を踏襲し、4 ジョブへ広げたもの）。
 --
 -- 実行方法（FIT-CONNECT リポジトリルートから。ローカル Supabase スタック起動中）:
 --   docker exec -i supabase_db_fit-connect psql -U postgres -d postgres \
@@ -17,10 +17,10 @@
 -- - active はアサートしない（ローカルは migration で inactive 登録のまま、リモートは
 --   オーナー判断で有効化するため、環境によって値が異なる）
 --
--- 検証ケース（3 ジョブすべて）:
+-- 検証ケース（4 ジョブすべて）:
 --   (a) jobname で 1 件だけ登録され、schedule が期待値
 --       auto-skip-workouts '0 18 * * *'（JST 03:00）/ cleanup-ai-images '0 19 * * *'（JST 04:00）/
---       send-session-reminders '0 11 * * *'（JST 20:00）
+--       send-session-reminders '0 11 * * *'（JST 20:00）/ notify-trainer-alerts '10 21 * * *'（JST 06:10）
 --   (b) command が net.http_post で /functions/v1/<ジョブ名> を呼び、Vault の project_url / secret_key を
 --       参照して secret キーを apikey ヘッダーで送る。旧方式（Vault の service_role_key・
 --       Authorization ヘッダー）を含まない
@@ -28,7 +28,10 @@
 --       一時障害の再試行を含む関数の応答を待たずに timed_out になり、net._http_response で
 --       結果を確認できない）
 --   (d) command の body が既存どおり（timeout を足すために command 全体を書き換えているため、
---       body が変わっていないことを固定する）
+--       body が変わっていないことを固定する）。空白・改行の連続は 1 つの空白に詰めてから比べる
+--       （notify-trainer-alerts は 'dry_run', false から target_date の式までを 1 つの断片にしている。
+--        'dry_run', false だけだと send-session-reminders と同じ緩い断片になり、target_date の
+--        組み立てが壊れても検知できない。JST の今日になることは client_alert_push_test.sql で確かめる）
 --   (e) command が SQL として解析・計画できる（EXPLAIN。(b)〜(d) は文字列の部分一致なので、
 --       カンマ・括弧・$cmd$ の崩れや引数名の誤りで毎回失敗する command でも通ってしまうため）。
 --       EXPLAIN（ANALYZE なし）は net.http_post を実行せず、HTTP リクエストも積まない
@@ -39,7 +42,7 @@
 BEGIN;
 
 -- -----------------------------------------------------------------------------
--- 期待値（各ケースで 3 ジョブ分をループして検証する）
+-- 期待値（各ケースで 4 ジョブ分をループして検証する）
 -- -----------------------------------------------------------------------------
 CREATE TEMP TABLE expected_cron_jobs (
   jobname text PRIMARY KEY,
@@ -50,12 +53,14 @@ CREATE TEMP TABLE expected_cron_jobs (
 INSERT INTO expected_cron_jobs (jobname, schedule, body_fragment) VALUES
   ('auto-skip-workouts',     '0 18 * * *', $f$body := '{}'::jsonb$f$),
   ('cleanup-ai-images',      '0 19 * * *', $f$body := '{"dry_run": false}'::jsonb$f$),
-  ('send-session-reminders', '0 11 * * *', $f$'dry_run', false$f$);
+  ('send-session-reminders', '0 11 * * *', $f$'dry_run', false$f$),
+  ('notify-trainer-alerts',  '10 21 * * *',
+   $f$'dry_run', false, 'target_date', to_char((now() AT TIME ZONE 'Asia/Tokyo')::date, 'YYYY-MM-DD')$f$);
 
 -- -----------------------------------------------------------------------------
 -- ケース(a): 登録と schedule
 -- -----------------------------------------------------------------------------
-\echo '--- case a: 3 ジョブが 1 件ずつ登録され、schedule が期待値であること'
+\echo '--- case a: 4 ジョブが 1 件ずつ登録され、schedule が期待値であること'
 
 DO $$
 DECLARE
@@ -158,7 +163,7 @@ BEGIN
   FOR v_exp IN SELECT * FROM expected_cron_jobs ORDER BY jobname LOOP
     SELECT command INTO v_command FROM cron.job WHERE jobname = v_exp.jobname;
 
-    IF position(v_exp.body_fragment IN v_command) = 0 THEN
+    IF position(v_exp.body_fragment IN regexp_replace(v_command, '\s+', ' ', 'g')) = 0 THEN
       RAISE EXCEPTION 'FAIL: % の command の body が既存と異なる（期待: % を含む）',
         v_exp.jobname, v_exp.body_fragment;
     END IF;

@@ -16,6 +16,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import { getUnreadCounts } from '@/lib/supabase/getUnreadCounts';
 import { triageBadgeLabel } from '@/lib/triage/triageLabels';
+import { subscribeNotificationClicked } from '@/lib/notifications/notificationClicked';
 import { useTriageBadgeStore } from '@/store/triageBadgeStore';
 import { Toaster } from 'sonner';
 import AppHeader from '@/components/AppHeader';
@@ -93,6 +94,10 @@ export default function Sidebar({ children }: { children: React.ReactNode }) {
         document.addEventListener('visibilitychange', handleVisibilityChange);
         return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
     }, [refreshTriageBadge]);
+
+    // 通知のクリックでこのタブが前面に出たときも数え直す（Service Worker からの notification-clicked。
+    // タブが既に見えていた場合は visibilitychange が起きないため。設計書 §7.3）
+    useEffect(() => subscribeNotificationClicked(() => void refreshTriageBadge()), [refreshTriageBadge]);
 
     // 未読数取得 + Realtime購読
     useEffect(() => {

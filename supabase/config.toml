@@ -94,7 +94,7 @@ enabled = false
 # - estimate-meal-nutrition: 関数内で Authorization ヘッダの JWT を自前検証するため false
 # - delete-account: 関数内で Authorization ヘッダの JWT を自前検証するため false
 #   （削除対象は JWT の uid のみ。ボディでの uid 指定は受け付けない）
-# - auto-skip-workouts / cleanup-ai-images / send-session-reminders: pg_cron から
+# - auto-skip-workouts / cleanup-ai-images / send-session-reminders / notify-trainer-alerts: pg_cron から
 #   新 secret キー（JWT ではない）を apikey ヘッダーで受けるため false。
 #   関数内で _shared/service_auth.ts により照合する
 # 注: この設定が無いと `supabase functions deploy` が verify_jwt=true をデフォルト適用し、
@@ -115,4 +115,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.send-session-reminders]
+verify_jwt = false
+
+[functions.notify-trainer-alerts]
 verify_jwt = false
