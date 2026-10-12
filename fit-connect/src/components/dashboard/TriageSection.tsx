@@ -34,6 +34,7 @@ import {
   triageEmptyMessage,
   triageTimingNote,
 } from '@/lib/triage/triageLabels'
+import { subscribeNotificationClicked } from '@/lib/notifications/notificationClicked'
 import { useTriageBadgeStore } from '@/store/triageBadgeStore'
 import { TriageList, triageToggleId } from './TriageList'
 import { TRIAGE_FOCUS_RING, TRIAGE_SECONDARY_BUTTON } from './TriageRow'
@@ -134,7 +135,9 @@ function RetryButton({ retrying, onRetry, className = '' }: RetryButtonProps) {
  * - 並び順は優先度スコアの降順（buildTriageRows / triageScore）。スコアの数値は出さない
  * - 未返信の時間は、未返信を取得した時点を now にして数える（取り直しのたびに更新する）。
  *   開いたままでは進まないので、取得した時刻を見出しの横に出す（triageTimingNote）
- * - 取り直すのは、表示時・タブに戻ったとき（visibilitychange）・「対応済み」「元に戻す」の後
+ * - 取り直すのは、表示時・タブに戻ったとき（visibilitychange）・通知のクリックで前面に出たとき
+ *   （Service Worker からの notification-clicked。タブが既に見えていた場合も）・「対応済み」「元に戻す」の後
+ * - 理由の「今朝」の目印は、アラートを取得した時点を now にして判定する（未返信の時間と同じ基準。日付が変われば次の取り直しで消える）
  * - 一覧の状態遷移は triageListState の reducer、API の順序と成否は alertActionRunner に任せる。
  *   未返信には操作（消し込み）が無いので reducer に持たず、取得したものを一覧の組み立てに渡す（オーナー決定4）
  * - 操作の後はサイドバーのバッジ（triageBadgeStore）も数え直す
@@ -149,6 +152,8 @@ export function TriageSection() {
   const [unrepliedStatus, setUnrepliedStatus] = useState<TriagePartStatus>('loading')
   /** 取得した未返信と、その取得の時点（未返信の時間を数える now） */
   const [unreplied, setUnreplied] = useState<TriageUnrepliedInput | null>(null)
+  /** アラートを取得した時点（「今朝」の目印の判定の基準） */
+  const [alertsLoadedAt, setAlertsLoadedAt] = useState<Date | null>(null)
   const [retrying, setRetrying] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
   const [detection, setDetection] = useState<DetectionInfo>({ kind: 'none' })
@@ -184,6 +189,7 @@ export function TriageSection() {
     // （前のデータのまま残す。nextPartStatus が ready を保つ）
     if (alertsResult.status === 'fulfilled') {
       dispatch({ type: 'loaded', alerts: alertsResult.value })
+      setAlertsLoadedAt(now)
     }
     setAlertsStatus((prev) => nextPartStatus(prev, alertsResult.status === 'fulfilled'))
 
@@ -202,6 +208,9 @@ export function TriageSection() {
     document.addEventListener('visibilitychange', handleVisibilityChange)
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
   }, [load])
+
+  // 通知（朝のまとめ）のクリックで、このタブが前面に出たときも取り直す（設計書 §7.3。バッジは layout が取り直す）
+  useEffect(() => subscribeNotificationClicked(() => void load()), [load])
 
   const handleRetry = useCallback(async () => {
     setRetrying(true)
@@ -437,6 +446,7 @@ export function TriageSection() {
               idPrefix={idPrefix}
               expandedClientIds={listState.expandedClientIds}
               busyAlertIds={busyAlertIds}
+              now={alertsLoadedAt}
               onToggleRow={handleToggleRow}
               onToggleShowAll={handleToggleShowAll}
               onAcknowledge={handleAcknowledge}

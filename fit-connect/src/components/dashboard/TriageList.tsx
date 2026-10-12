@@ -27,6 +27,8 @@ type TriageListProps = {
   idPrefix: string
   expandedClientIds: readonly string[]
   busyAlertIds: ReadonlySet<string>
+  /** 「今朝」の判定の基準（アラートを取り直した時点） */
+  now: Date | null
   onToggleRow: (clientId: string) => void
   onToggleShowAll: () => void
   onAcknowledge: (row: TriageRowModel, reason: TriageReason) => void
@@ -43,6 +45,7 @@ export function TriageList({
   idPrefix,
   expandedClientIds,
   busyAlertIds,
+  now,
   onToggleRow,
   onToggleShowAll,
   onAcknowledge,
@@ -59,6 +62,7 @@ export function TriageList({
             toggleId={triageToggleId(idPrefix, row.clientId)}
             detailId={triageDetailId(idPrefix, row.clientId)}
             busyAlertIds={busyAlertIds}
+            now={now}
             onToggle={onToggleRow}
             onAcknowledge={onAcknowledge}
           />

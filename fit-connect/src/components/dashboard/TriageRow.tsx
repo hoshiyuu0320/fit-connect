@@ -22,6 +22,7 @@ import {
   unrepliedDetailNote,
   unrepliedDetailText,
 } from '@/lib/triage/triageLabels'
+import { isSurfacedToday } from '@/lib/triage/surfacedToday'
 import type { TriageReason, TriageRowModel, TriageUnreplied } from '@/lib/triage/buildTriageRows'
 import type { AlertSeverity } from '@/types/alert'
 
@@ -143,6 +144,13 @@ function TriageUnrepliedDetail({
 const REASON_CHIP =
   'inline-flex items-center gap-1 rounded border border-[#E2E8F0] bg-[#F8FAFC] px-2 py-0.5 text-xs font-medium text-[#475569]'
 
+// 「今朝」の目印（設計書 §7.5）。red / amber は重要度専用なので、TRIAGE_TEXT_LINK と同じ teal 系にする。
+// 色だけに頼らず文字で示し、理由の文言の前に置く（読み上げでも「今朝」が先に読まれる）
+const SURFACED_TODAY_LABEL =
+  'inline-flex items-center rounded-md bg-[#F0FDFA] px-1.5 text-[11px] font-semibold leading-4 text-[#0F766E]'
+
+const SURFACED_TODAY_TEXT = '今朝'
+
 type TriageRowProps = {
   row: TriageRowModel
   expanded: boolean
@@ -152,6 +160,8 @@ type TriageRowProps = {
   detailId: string
   /** 応答待ちで押せないアラート（元に戻している途中） */
   busyAlertIds: ReadonlySet<string>
+  /** 「今朝」の判定の基準（TriageSection がアラートを取り直した時点）。まだ取れていなければ null */
+  now: Date | null
   onToggle: (clientId: string) => void
   onAcknowledge: (row: TriageRowModel, reason: TriageReason) => void
 }
@@ -163,6 +173,8 @@ type TriageRowProps = {
  * - 未返信が無い行: 主ボタンは「記録を見る」、副ボタンは「メッセージ」。
  *   先頭の理由が睡眠悪化なら（row.messageRef）、直近7日の睡眠の引用付きで開く（&record=sleep%3A7d）
  * - 未返信の時間は、行を組み立てた表示時点で数えた値（row.unreplied.elapsedHours）を出すだけで、ここでは計算しない
+ * - 理由の surfacedOn が now の JST の今日なら、その理由のチップの先頭に「今朝」を付ける（朝のまとめ通知の対象と同じ定義）。
+ *   行の顧客名・重要度バッジ・並び順は変えない
  */
 export function TriageRow({
   row,
@@ -170,6 +182,7 @@ export function TriageRow({
   toggleId,
   detailId,
   busyAlertIds,
+  now,
   onToggle,
   onAcknowledge,
 }: TriageRowProps) {
@@ -212,6 +225,9 @@ export function TriageRow({
               )}
               {row.reasons.map((reason) => (
                 <li key={reason.alertId} className={REASON_CHIP}>
+                  {now !== null && isSurfacedToday(reason.surfacedOn, now) && (
+                    <span className={SURFACED_TODAY_LABEL}>{SURFACED_TODAY_TEXT}</span>
+                  )}
                   {reason.description.chip}
                 </li>
               ))}

@@ -23,9 +23,11 @@
  *     （reclaimUnsentLog）。送信済み・skipped など他の行は従来どおり重複としてスキップする
  */
 
+import { Agent as HttpsAgent } from 'node:https'
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { isWithinQuietHours, jstSecondsOfDay } from './quiet_hours.ts'
 import { type RetryOptions, withRetry } from './retry.ts'
+import { buildWebPushOptions } from './web_push_options.ts'
 
 // ============================================================
 // 公開API
@@ -36,7 +38,7 @@ export interface SendArgs {
   supabaseAdmin: SupabaseClient
   userId: string
   userType: 'client' | 'trainer'
-  kind: 'message' | 'goal_achievement' | 'session_reminder'
+  kind: 'message' | 'goal_achievement' | 'session_reminder' | 'client_alert'
   title: string
   body: string
   /** FCM data ペイロード（値は文字列のみ）。Web Push では JSON ペイロードに含める */
@@ -49,6 +51,12 @@ export interface SendArgs {
    * 省略時は締切なし
    */
   retryDeadline?: number
+  /**
+   * 通知の有効期限（秒）。Web Push だけに効く（web-push の TTL オプション。ブラウザが閉じている間に
+   * push サービスが預かる時間）。FCM には渡さない。正の整数のときだけ使い、それ以外は既定のまま
+   * （例: notify-trainer-alerts の朝のまとめは 43200 = 12時間）
+   */
+  ttlSeconds?: number
 }
 
 /**
@@ -188,7 +196,7 @@ export async function sendNotification(args: SendArgs): Promise<void> {
         notes.push('web_push:skipped(vapid_not_configured)')
       } else {
         for (const target of webPushTargets) {
-          const outcome = await sendWebPushToTarget(vapid, target, title, body, data)
+          const outcome = await sendWebPushToTarget(vapid, target, title, body, data, args.ttlSeconds)
           outcomes.push(outcome)
           if (outcome === 'invalid') {
             await cleanupInvalidTarget(supabaseAdmin, target, userId, userType)
@@ -627,8 +635,26 @@ async function getWebPush(): Promise<any> {
 }
 
 /**
+ * Web Push の送信に使う、接続を使い回さない https.Agent（関数のインスタンスごとに1つ）。
+ * Deno の node:https は、使い回した keep-alive 接続の上で timeout → destroy すると、
+ * 'error' を出さずに同じ要求を新しい接続で送り直し、その送り直しには timeout が掛からない
+ * （2026-10-12、ホストの Deno 2.9.6 で確認。先に同じホストへ1通送った後に、応答しない宛先へ送ると
+ * 受け口に同じ要求が2回届き、sendNotification が返らずログ行が pending のまま残った）。
+ * push サービスのホストは購読間で共通（Chrome は fcm.googleapis.com）なので、使い回しは本番でも起きる。
+ * keepAlive: false にすると timeout で 'error' になり、送り直しも起きない
+ */
+let webPushAgent: HttpsAgent | null = null
+
+function getWebPushAgent(): HttpsAgent {
+  if (!webPushAgent) webPushAgent = new HttpsAgent({ keepAlive: false })
+  return webPushAgent
+}
+
+/**
  * Web Push で単一購読へ通知を送信する。
  * endpoint = device_tokens.token、keys = {p256dh, auth}。
+ * 送信オプションは buildWebPushOptions（timeout 10 秒・TTL は ttlSeconds が正の整数のときだけ）。
+ * timeout で打ち切られた送信は例外になり、'failed' として記録される。
  * 410 Gone / 404 Not Found は購読失効 → 呼び出し側で device_tokens 行を DELETE。
  */
 async function sendWebPushToTarget(
@@ -637,6 +663,7 @@ async function sendWebPushToTarget(
   title: string,
   body: string,
   data: Record<string, string>,
+  ttlSeconds: number | undefined,
 ): Promise<SendOutcome> {
   if (!target.webPushP256dh || !target.webPushAuth) {
     console.error('[WebPush] Missing p256dh/auth keys for subscription, skipping:', target.deviceTokenId)
@@ -654,13 +681,10 @@ async function sendWebPushToTarget(
         },
       },
       JSON.stringify({ title, body, data }),
-      {
-        vapidDetails: {
-          subject: vapid.subject,
-          publicKey: vapid.publicKey,
-          privateKey: vapid.privateKey,
-        },
-      },
+      // vapidDetails と timeout（10 秒。応答しない push サービスで逐次の送信を止めない）、
+      // ttlSeconds が正の整数なら TTL（web_push_options.ts）。agent は timeout を確実に効かせるため
+      // （getWebPushAgent のコメント参照）
+      { ...buildWebPushOptions(vapid, ttlSeconds), agent: getWebPushAgent() },
     )
     console.log('[WebPush] Notification sent successfully')
     return 'sent'
