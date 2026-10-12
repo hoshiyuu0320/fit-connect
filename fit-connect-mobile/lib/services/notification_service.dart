@@ -168,8 +168,9 @@ class NotificationService {
       // iOS: requestXxxPermission はデフォルト true で初期化時に OS の許可
       // ダイアログが出てしまうため明示的に false にする（権限リクエストは
       // requestPermissionAndRegister に一本化）
+      // Android の小アイコンは透明背景の単色 drawable を使う。
       const initializationSettingsAndroid =
-          AndroidInitializationSettings('@mipmap/ic_launcher');
+          AndroidInitializationSettings('ic_stat_fit_connect');
       const initializationSettingsIOS = DarwinInitializationSettings(
         requestAlertPermission: false,
         requestBadgePermission: false,
