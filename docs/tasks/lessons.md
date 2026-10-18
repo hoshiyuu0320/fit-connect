@@ -673,3 +673,34 @@
 ### プレビューの launch.json は、セッションを開いたフォルダのものが読まれる
 - このセッションのフォルダ（git ルートの親の `~/Documents/FIT-CONNECT`）の `.claude/launch.json` が読まれた。git ルートの `.claude/launch.json` に足した構成は見つからず、既定の `web`（`.env.local` を読む＝本番の Supabase）が起動した（操作する前に止めた）。隔離スタック向けの構成は読まれる側（追跡されていない親）に一時的に足し、終わったら元に戻す
 - dev server を隔離スタックへ向けるには、`runtimeExecutable: "env"` で `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` / `NEXT_PUBLIC_DEV_LOGIN_EMAIL` / `NEXT_PUBLIC_DEV_LOGIN_PASSWORD` を渡す（Next は既にある環境変数を `.env.local` で上書きしない）。テストログインのボタンもそのまま使える。起動したら、通信先が `127.0.0.1:<ポート>` だけであることを `performance.getEntriesByType('resource')` で確かめてから操作する
+
+## 朝のまとめ通知のリリース（フェーズ9.1 拡張 push、2026-10-12〜18）で得た知見
+
+### Vercel の本番は main、develop は Preview — 「Web を main へリリース」は develop 全体を出すことになる
+- Vercel の本番（Production）は main から作られ、develop の push はすべて Preview（Vercel 認証で保護。ブランチ固定 URL `https://fit-connect-git-develop-100-hoshiyuu0320s-projects.vercel.app`）。最後の本番デプロイは 2026-04-26 だった
+- 手順書の「Web を main へリリース」は、その PR の Web だけでなく develop の未リリース分をまとめて出す（2026-10-12 時点で 63 コミット・`fit-connect/src` の 222 ファイル。課金画面・特商法・「今日の対応」など）。オーナー決定で main へは出さず、Web Push は Preview で確かめた
+- 手順を書く前に、本番がどのブランチのいつのデプロイかを GitHub の Deployments API で確かめる: `gh api "repos/hoshiyuu0320/fit-connect/deployments?environment=Production"`
+
+### develop に「DB の変更が先に要る Web」が入っているときは、Preview で触る前に migration を当てる
+- develop の Preview には PR2 の Web（通知設定の `client_alert` のトグル）も入っていて、migration で CHECK を広げないと保存が失敗する。設計書の順序（PR1 のリリース → PR2 の migration）を組み替え、PR1 の手順0 で Preview の設定画面を触る前に PR2 の migration を当てた
+- 送信を伴わない migration（CHECK の追加と無効の cron の登録）は先に当ててよい
+
+### Supabase CLI の `403 … database_write` は、シェルの `SUPABASE_ACCESS_TOKEN` が原因
+- `unexpected login role status 403 … database_write` で CLI が止まった。シェルの `SUPABASE_ACCESS_TOKEN`（MCP 用の読み取り専用トークン）が、CLI の保存トークンより優先されるため
+- そのターミナルで `unset SUPABASE_ACCESS_TOKEN` してから実行する
+
+### 同じブラウザ・同じオリジンで別のトレーナーがプッシュ通知をオンにすると、購読は後のトレーナーに移る
+- 10/12 21:34 にテストトレーナーで Preview の購読を作った後、23:52 にオーナー自身のトレーナーアカウントがオンにしたため、テストトレーナーの購読が残らなかった（設計書 §7.6 の仕様どおり）。10/16 06:00 にテスト用の顧客の記録途絶が出たが、06:10 のテストトレーナー宛ては `skipped` / `no_tokens` になった
+- テスト用アカウントで通知を待つ前に、そのトレーナーの `device_tokens`（`platform = 'web_push'`・`user_type = 'trainer'`）の行を確かめる
+
+### 読み取り専用の MCP でも、翌朝の確認に要る表は読める
+- `net._http_response`（6 時間で消える）・`cron.job_run_details`・`notification_logs` は読めるので、翌朝の確認は Claude ができる
+- `client_activity_snapshot` などの SECURITY DEFINER 関数は EXECUTE が無く読めない
+
+### iOS シミュレータで日本語を入れるときは、変換候補をタップして確定する
+- `AppleKeyboards` の設定（英語キーボード）が再起動でも効かないことがある。ローマ字で打って変換候補をタップして確定する（Return は送信まで走る恐れがあるので使わない）
+- `xcrun simctl pbcopy` の内容は Mac のクリップボード同期ですぐ上書きされ、オーナーのクリップボードの中身が貼られる。貼り付けで入力しない
+
+### 記録途絶の検知をテスト用の顧客で起こすには、何もしない日を 3 日置く
+- 記録途絶の検知は、顧客が送ったメッセージも「記録」に、既読などのアプリ利用も「到着」に数える
+- テスト用の顧客で検知を起こすには、何もしない日を 3 日置く（10/12 の最終記録 → 10/16 06:00 に検知。見積もりどおり）
