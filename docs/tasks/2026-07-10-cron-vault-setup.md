@@ -231,7 +231,7 @@ select * from cron.job;
 - `issue-recurring-tickets`（既存）/ `auto-skip-workouts` / `cleanup-ai-images`（2026-09-12 有効化済み）/
   `send-session-reminders`（2026-09-13 有効化済み）の計4本が active = true で見えること
 - `detect-client-alerts`（フェーズ9.1）は §5 の手順で有効化するまで active = false（2026-09-22 に有効化済み）
-- `notify-trainer-alerts`（フェーズ9.1 拡張 push）は §6 の手順で有効化するまで active = false
+- `notify-trainer-alerts`（フェーズ9.1 拡張 push）は §6 の手順で有効化するまで active = false（2026-10-12 に有効化済み。2026-10-18 に初めての朝のまとめの到達を確認）
 - `cleanup-ai-images` の有効化・dry run も §2 と同じ要領（関数名を差し替える。こちらは body を省略すると dry run）
 
 ### 実行履歴の確認（有効化後）
@@ -616,6 +616,9 @@ where alert_type = 'sleep_decline' group by 1 order by 1;
 **関数**: `supabase/functions/notify-trainer-alerts/index.ts`（`config.toml` で verify_jwt = false）
 **設計**: `docs/superpowers/specs/2026-10-04-trainer-alert-push-design.md`（リリースの順序は §11.2、運用は §11.3）
 
+> **2026-10-18 時点の状態**: 2026-10-12 に有効化済み（Claude が `active = true`・`10 21 * * *` を確認）。2026-10-18 06:10 に初めての朝のまとめが `sent=1/1` でオーナーの Chrome に届いた。
+> §6-0 の 5（Web を main へリリース）は未実施で、Web は develop の Preview で確認した。§6-3 の本送信は、本番に未対応のアラートが 0 件で対象日が無かったため飛ばした。記録は `docs/tasks/IMPLEMENTATION_TASKS.md` の 9.1 の PR2 の項目
+
 毎日 06:10 JST（`10 21 * * *` = UTC 21:10）に Edge Function を呼び、06:00 の自動チェック（§5）で**その日に新しく出た**アラート
 （`status = 'open'` かつ `surfaced_on = 対象日 D`）があるトレーナーへ、ブラウザ通知（Web Push）を1通ずつ送るジョブです。
 
@@ -660,6 +663,7 @@ where alert_type = 'sleep_decline' group by 1 order by 1;
    `supabase db push`。末尾の検査（`CLIENT_ALERT_PUSH_POSTCHECK_FAILED`）で止まったら、トランザクションごと巻き戻っている
 3. `supabase functions deploy notify-trainer-alerts` だけ（`parse-message-tags` / `send-session-reminders` の再デプロイは要らない）。
    deploy の後に `supabase functions list` で更新時刻を確かめる
+   - CLI が `unexpected login role status 403 … database_write` で止まるときは、そのターミナルの `SUPABASE_ACCESS_TOKEN`（MCP 用の読み取り専用トークン）が原因。`unset SUPABASE_ACCESS_TOKEN` してから実行する
 4. §6-1 の dry run
 5. Web（sw.js・通知設定・「今朝」の目印）を main へリリース。デプロイ前から開いていたタブは一度リロードする（古いバンドルのままだと、通知のクリックで取り直さない）。
    ブラウザ通知を使うトレーナーには、設定画面でプッシュ通知をオンにしてもらう
@@ -775,6 +779,8 @@ select cron.alter_job((select jobid from cron.job where jobname = 'notify-traine
 ### 6-5. 翌朝の確認（有効化の翌朝）
 
 **`net._http_response` は6時間（`pg_net.ttl` の既定）で消えるので、12:10 JST までに読む**。それ以降は Edge Functions の Logs と `notification_logs` で確かめる。
+
+`net._http_response`・`cron.job_run_details`・`notification_logs` は Claude の読み取り権限（MCP）でも読めるので、Claude に頼める。
 
 ```sql
 -- 06:10 JST の cron の応答（timed_out / error_msg の行も見るため、content ではなく時刻で絞る）
