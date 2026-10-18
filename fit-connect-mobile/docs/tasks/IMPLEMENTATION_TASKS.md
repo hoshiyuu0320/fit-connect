@@ -3,7 +3,7 @@
 **作成日**: 2025年12月30日
 **バージョン**: 3.9
 **進捗状況**: 全体 99% 完了
-**最終更新**: 2026年10月4日 - モバイル再デザイン（Claude Design の再デザイン案に合わせる）
+**最終更新**: 2026年10月12日 - FCモノグラムのアプリアイコンを適用（iOS / Android）
 
 ---
 
@@ -184,6 +184,22 @@
 ---
 
 ## 最新の変更履歴
+
+### 2026年10月12日
+
+#### 20. FIT-CONNECT アプリアイコン作成
+
+**ブランチ**: `feature/mobile-app-icon`（`develop/1.0.0` から分岐）
+**詳細**: [アプリアイコン制作・再生成手順](2026-10-12-app-icon.md)
+
+- ティール背景に白い F と C、ミントのアクセントを組み合わせた FC モノグラムを採用
+- `assets/branding/fit-connect-app-icon.png` に 1024×1024 の不透明マスターを保存
+- iOS AppIcon 15 PNG と Android launcher 5 PNG に同じ FC アイコンを適用
+- `tool/generate_app_icons.py` で同じマスターから各サイズを再生成できるようにした
+
+- Android通知には透明背景・白い FC の専用 VectorDrawable を追加し、ローカル通知と FCM の既定アイコンを統一
+
+**検証**: 20画像のサイズ・不透明性、48px目視、ランチャー変更時点の `git diff --check` は成功。iOS `actool` と Android 5密度PNGの `aapt2 compile` は終了コード0。通知用 drawable を含む全Androidリソースの `aapt2 compile --dir` と、Android 36の `android.jar`・Gradle値を解決した一時Manifestによる `aapt2 link` も成功（Gradleの全体ビルドではない）。最終FCアイコンの `actool` は警告なし。最終差分の `git diff --check` も成功。Simulator / Emulator 表示は未実施（作業worktreeに `dev_login.json` がなく、QAスキルが必須とする設定付きアプリビルドを実行していない）。詳細は上記制作手順に記録。
 
 ### 2026年10月4日
 
@@ -1368,4 +1384,4 @@ supabase/
 
 ---
 
-**最終更新**: 2026年2月23日 - ワークアウト機能実装完了（v3.6）
+**最終更新**: 2026年10月12日 - FCモノグラムのアプリアイコンを適用（iOS / Android）
