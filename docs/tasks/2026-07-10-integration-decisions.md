@@ -59,6 +59,7 @@
 
 - **トレーナー紹介（トレーナー→トレーナー）**: cat3 5-A（`referral_codes`/`referrals` + Stripe Coupon/Promotion Code 連動）を正とする。cat8 8-7-A の `pro_credit_days`（クレジット日数）方式は**破棄**（Stripe の外に割引台帳を持つと請求と乖離する）。実装は Stripe 課金（cat3 1-A）の後続。
 - **顧客招待（トレーナー→顧客）**: 現状の `trainers.id` 生UUID 方式は当面維持。短縮コード化（cat8 8-7-B `invite_codes` テーブル）は、`trainers_select_all` RLS（全認証ユーザーがトレーナー全行を読める）の解消とセットで**セキュリティ改善タスクとして別枠**で扱う。
+  - **2026-10-28 改訂（オーナー決定）**: 顧客招待リンク（`2026-10-28-client-invite-link-plan.md`）の段階1で、`invite_codes` の導入と、旧経路（clients への直接 INSERT・trainer_id の更新権限、Mobile の UUID による紐付け）の封鎖を**同時に**行う。生UUID 方式は段階1で終了し、印刷済みの UUID の QR も使えなくなる（アプリ未公開のため影響は小さい）。`trainers_select_all` の解消は引き続き別枠（同計画の段階3）。理由: 旧経路を残すと、コードの期限・回数・失効をすべて迂回できるため。
 
 ## 判断6: AI利用ログ — `ai_usage_logs(kind)` に統一
 
