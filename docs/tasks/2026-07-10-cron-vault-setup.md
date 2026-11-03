@@ -2,9 +2,9 @@
 
 **作成日**: 2026-07-10
 **対象**: プロジェクトオーナー（1回きりの手動作業）
-**関連 migration**: `supabase/migrations/20260710020000_codify_cron_jobs.sql` / `20260829000300_cleanup_ai_images.sql` / `20260912000000_cron_use_secret_key.sql` / `20260913000000_session_reminder.sql` / `20260913000100_session_reminder_cron_target_date.sql` / `20260914000000_client_alerts.sql` / `20260914000100_client_activity_snapshot.sql` / `20260914000200_client_alert_detection.sql` / `20260922000100_secure_parse_message_tags_webhook.sql`（messages トリガー。§冒頭の 2026-09-22 追加の注記）/ `20261004000000_client_alert_push.sql`（朝のまとめ通知。§6）
+**関連 migration**: `supabase/migrations/20260710020000_codify_cron_jobs.sql` / `20260829000300_cleanup_ai_images.sql` / `20260912000000_cron_use_secret_key.sql` / `20260913000000_session_reminder.sql` / `20260913000100_session_reminder_cron_target_date.sql` / `20260914000000_client_alerts.sql` / `20260914000100_client_activity_snapshot.sql` / `20260914000200_client_alert_detection.sql` / `20260922000100_secure_parse_message_tags_webhook.sql`（messages トリガー。§冒頭の 2026-09-22 追加の注記）/ `20261004000000_client_alert_push.sql`（朝のまとめ通知。§6）/ `20261101000000_cron_health_monitor.sql`（cron 失敗の監視。§7）
 
-`auto-skip-workouts` / `cleanup-ai-images` / `send-session-reminders` / `notify-trainer-alerts`（§6）の cron ジョブは migration で「無効(inactive)状態」で登録されます。
+`auto-skip-workouts` / `cleanup-ai-images` / `send-session-reminders` / `notify-trainer-alerts`（§6）/ `check-cron-health`（§7）の cron ジョブは migration で「無効(inactive)状態」で登録されます。
 実際に動かすには、以下の **(1) Vault シークレット登録** と **(2) ジョブの有効化** が必要です。
 どちらも Supabase Dashboard の SQL Editor から実行します。
 
@@ -232,6 +232,7 @@ select * from cron.job;
   `send-session-reminders`（2026-09-13 有効化済み）の計4本が active = true で見えること
 - `detect-client-alerts`（フェーズ9.1）は §5 の手順で有効化するまで active = false（2026-09-22 に有効化済み）
 - `notify-trainer-alerts`（フェーズ9.1 拡張 push）は §6 の手順で有効化するまで active = false（2026-10-12 に有効化済み。2026-10-18 に初めての朝のまとめの到達を確認）
+- `check-cron-health`（cron 失敗の監視）は §7 の手順で有効化するまで active = false（2026-11-01 時点で migration のリモート適用もオーナー作業待ちなので、適用するまで一覧には出ない）
 - `cleanup-ai-images` の有効化・dry run も §2 と同じ要領（関数名を差し替える。こちらは body を省略すると dry run）
 
 ### 実行履歴の確認（有効化後）
@@ -241,7 +242,7 @@ select * from cron.job_run_details order by start_time desc limit 10;
 ```
 
 - `status = 'succeeded'` であること。ただし pg_net 経由の HTTP POST（`auto-skip-workouts` / `cleanup-ai-images` /
-  `send-session-reminders` / `notify-trainer-alerts`）は**リクエストを enqueue した時点で succeeded** になる。関数側の 4xx / 5xx・
+  `send-session-reminders` / `notify-trainer-alerts` / `check-cron-health`）は**リクエストを enqueue した時点で succeeded** になる。関数側の 4xx / 5xx・
   タイムアウト・URL 解決失敗（Vault 未登録）はここには出ない
 - HTTP の結果は `net._http_response` で確認する（`status_code` / `timed_out` / `error_msg` / `content`）:
 
@@ -254,10 +255,16 @@ limit 10;
 
   - `status_code = 200` かつ `timed_out = false` であること。`timed_out = true` は pg_net 側のタイムアウト
     （関数は走り続けるので送信自体は止まらないが、結果 JSON は取れない）。`error_msg` は接続・URL 解決の失敗
+    → 2026-11-01 訂正: pg_net 0.14.0 はタイムアウトでも `timed_out` を埋めない（`status_code` も `timed_out` も NULL で、
+    `error_msg` が `Timeout of 60000 ms reached...`）。タイムアウトと接続失敗は `error_msg` で見分ける。
+    この手順書の他の「`timed_out = true`」も同じ（lessons「pg_net 0.14.0 の応答の形」）
   - HTTP の4ジョブとも pg_net のタイムアウトは60秒（`auto-skip-workouts` / `cleanup-ai-images` は migration
     `20260913000200` で既定5秒から延長。関数内の一時障害の再試行を含めて応答を待てるようにするため。
     `notify-trainer-alerts` は登録時から60秒）。SQL エディタから手で `net.http_post` を送るときも
     `timeout_milliseconds := 60000` を付ける（付けないと既定の5秒で `timed_out = true` になり、結果が取れない）
+  - `check-cron-health`（§7）も HTTP で、タイムアウトは同じ60秒。migration `20261101000000` の適用後は、HTTP の4ジョブの command が
+    発射を `public.cron_http_requests` に記録する形（`INSERT ... SELECT '<job>', net.http_post(...)`）になるので、
+    `cron.job_run_details` の `return_message` は4本とも `INSERT 0 1` になる（正常。enqueue した時点で succeeded になるのは同じ）
   - 保持期間は `pg_net.ttl`（既定 6 時間）のため、cron 実行（JST 20:00）から時間を置かずに確認すること
   - Dashboard → **Edge Functions → 該当関数 → Logs** も合わせて確認すること。6時間を過ぎて `net._http_response`
     が消えた後は、このログ（`POST | 500 | …/functions/v1/<関数名>` のような行）が唯一の手掛かりになる
@@ -278,8 +285,8 @@ order by created_at desc
 limit 20;
 ```
 
-> 補足: `cron.job_run_details` の失敗を自動検知する監視ジョブは未実装
-> （フェーズ5.3の残タスク・判断7-3。朝のまとめ通知（§6）の直後の PR で作る。オーナー決定 2026-10-04）。
+> 補足: cron の失敗を自動検知する監視ジョブ `check-cron-health` は §7。実装済み・有効化はオーナー作業待ち
+> （2026-11-01。フェーズ5.3・判断7-3）。
 
 ---
 
@@ -440,9 +447,8 @@ select cron.alter_job((select jobid from cron.job where jobname = 'detect-client
 
 ### 5-6. 翌朝の確認 SQL（有効化の翌朝と、以後は週1回）
 
-cron 失敗の自動監視ジョブは作っていない（当初は「トレーナー向け push の配線と一緒に作る」（オーナー決定 2026-09-13）だったが、
-2026-10-04 のオーナー決定で、朝のまとめ通知（§6）の PR には含めず直後の PR で作ることにした）。
-それまでは、ダッシュボードの検知状態表示と、下の SQL を**週1回**流すことで代える。
+cron 失敗の自動監視ジョブは §7。実装済み・有効化はオーナー作業待ち（2026-11-01）。
+有効化までは、ダッシュボードの検知状態表示と、下の SQL を**週1回**流すことで代える。
 
 ```sql
 -- 直近7日の cron 実行（failed なら return_message に例外の内容が出る）
@@ -833,3 +839,233 @@ where dedup_key = 'client_alert_digest:<trainer_id>:<D>';
 - sw.js に不具合があって通知が出ないとき: Vercel で直前のデプロイへ戻す。ブラウザが旧版に戻るのは次の更新確認（ページの読み込み・push の受信）の後なので、
   DevTools の `SW_VERSION` で確かめる
 - CHECK に `client_alert` が残っても害は無い。消すなら先に `notification_preferences` の `kind = 'client_alert'` の行を消してから CHECK を戻す
+
+---
+
+## 7. `check-cron-health`（cron 失敗の監視）の有効化
+
+**関連 migration**: `20261101000000_cron_health_monitor.sql`（発射の記録 `cron_http_requests`・見つけた問題 `cron_health_problems`・確認の関数 `run_cron_health_check`・HTTP の4本の command の書き換え・cron の登録（無効））
+**関数**: `supabase/functions/check-cron-health/index.ts`（`config.toml` で verify_jwt = false）
+**設計**: `docs/superpowers/specs/2026-11-01-cron-failure-monitor-design.md`（判定は §4.2・§4.3、リリースの順序は §8）
+
+> **2026-11-01 時点の状態**: 実装済み。本番には何も適用していない。リモート適用・deploy・secret の設定・cron の有効化はすべてオーナー作業待ち（§7-0）
+
+毎日 06:40 / 20:40 JST（`40 11,21 * * *` = UTC 21:40 / 11:40）に Edge Function を呼び、cron の失敗・動かなかった毎日のジョブ・HTTP の cron の応答を確認して、**問題があるときだけオーナーへブラウザ通知（Web Push）を1通**送るジョブです。
+
+- 問題が無ければ何も送らない。既存の cron の schedule・active・送る内容は変えない
+- 文面はタイトル `自動処理で問題が起きています`、本文は最大3件の `<job>（<summary>）` を `・` でつないだもの（残りは `ほかN件`）。`detail` は入れない。クリックで `/dashboard` を開く
+- 問題は `public.cron_health_problems` に `source_key` で1回だけ記録する。同じ失敗で2回通知しない。届かなかった（宛先なし・`no_tokens`・送信失敗）ときは `notified_at` を埋めず、次の確認で送り直す
+- 時刻の理由: 06:40 は 03:00〜06:10 の4本を6時間以内に読め、朝のうちに検知を流し直せる。20:40 は 09:00 と 20:00 の2本を読め、その晩のうちにリマインダーを手で送り直せる
+
+### 見つけるもの（設計書 §4.2・§4.3）
+
+| 状況 | kind | summary |
+| --- | --- | --- |
+| cron の実行が `failed`（SQL・HTTP 共通） | `job_failed` | `失敗` |
+| `succeeded` 以外のまま1時間を過ぎた実行（SQL・HTTP 共通） | `job_failed` | `未完了` |
+| 毎日のジョブが予定時刻の前後（−1分〜+1時間）に動かなかった（失敗した実行は「動いた」に数え、上の行で出る） | `missed_run` | `未実行` |
+| HTTP: `timed_out = true`、または `error_msg` が `Timeout` で始まる | `no_response` | `タイムアウト` |
+| HTTP: `error_msg` あり（接続失敗など） | `no_response` | `接続失敗` |
+| HTTP: 発射から15分を過ぎても応答が無い（pg_net の停止か、6時間を過ぎて応答が消えた） | `no_response` | `結果不明` |
+| HTTP: 2xx 以外 | `http_error` | `HTTP <code>` |
+| HTTP: `status_code` が NULL（`timed_out` でも `error_msg` ありでもないのに）。または 2xx で `content` が NULL・JSON でない・JSON オブジェクトでない | `bad_result` | `応答が不正` |
+| HTTP: 2xx で `dryRun` か `dry_run` が true | `bad_result` | `dry run のまま` |
+| `notify-trainer-alerts`: `detectionReady` が false | `bad_result` | `自動チェック未完了` |
+| `notify-trainer-alerts`: `detectionReady` が false でなく、`outcome` が JSON オブジェクトでない（`null` は `notification_logs` を読み直せなかったとき。DB の障害で送信も失敗している場面に出る） | `bad_result` | `送信結果不明` |
+| `notify-trainer-alerts`: `outcome` の `failed + pending + missing + skippedBy.vapid` が1以上 | `bad_result` | `送信失敗 N件` |
+
+- 失敗・予定時刻・結果不明を見る窓は直近48時間にそろえてある（確認が2回続けて落ちても見逃さない）。48時間を過ぎた応答なしは問題にせず、`checked_at` だけ埋める（監視を止めて再開したときに `結果不明` が山になるのを防ぐ）
+- `missed_run` の対象は `active` で schedule が `M H * * *` の形のジョブだけ。`inactive` は人が止めたものなので見ない。直近7日に1回も動いていないジョブと、初めて動いた実行より前の予定時刻も対象外（有効化した直後に誤って出さない）
+- 見ないもの: `send-session-reminders` の `outcome.failed`（FCM→APNs の既知の不達で毎回のように出るため。APNs キーの登録後に足す）・`cleanup-ai-images` の `failed`（次回の実行に回る設計）
+
+### 他のジョブとの違い
+
+- migration の適用で、HTTP の4本（`auto-skip-workouts` / `cleanup-ai-images` / `send-session-reminders` / `notify-trainer-alerts`）の command の先頭が `INSERT INTO public.cron_http_requests (jobname, request_id) SELECT '<job>', net.http_post(` に変わる（今の command を読んで先頭だけを置き換える）。url・headers・body・timeout・schedule・active は変わらない
+- 確認のときに `request_id` で `net._http_response` と突き合わせる。関数には触らないので、関数に届かない失敗（401・404・接続失敗）も HTTP のステータスと本文のまま読める
+- `check-cron-health` 自身も `send-session-reminders` と同じく Vault の `project_url` / `secret_key` で呼ぶ（url の組み立て・headers・`timeout_milliseconds := 60000` は同一。body は `{"dry_run": false}`）。ただし自身は `cron_http_requests` に記録しない（応答が次の確認まで残らず、自分の失敗を自分では通知できないため）
+
+### 呼び出し契約（body）
+
+| body | 挙動 |
+| --- | --- |
+| 省略 / `{"dry_run": true}` | dry run（確認して問題の記録は冪等に行うが、送らず `notified_at` も埋めない） |
+| `{"dry_run": false}` | 本送信（cron はこれ） |
+| `{"dry_run": false, "test_notification": true}` | テスト通知だけを送る。確認も記録も行わない（`dry_run: false` のときだけ有効） |
+
+- 送る側に倒れるのは真偽値の `false` だけ。`"false"`（文字列）・`0`・`null`、JSON でない body は dry run
+- 返り値: `{ status, dryRun, recipients, pendingCount, notified, problems: [{ jobname, kind, summary, occurred_at }] }`
+  - `pendingCount`: 未通知の問題の数（このリクエストで `notified_at` を埋める前の値）
+  - `notified`: このリクエストで `notified_at` を埋めたか
+  - `detail` は返さない（§7-5 の SQL で読む）
+- `test_notification` のときの返り値: `{ status, dryRun, testNotification: true, recipients, notified }`（`notified` は届いたか）
+
+### 7-0. リリースの順序（設計書 §8）
+
+1. PR を `develop/1.0.0` へマージ
+2. develop から `supabase migration list --linked` と `supabase db push --dry-run` で未適用が `20261101000000` の1本だけであることを確かめ、`supabase db push`。command の書き換え（`CRON_HEALTH_MONITOR_UNEXPECTED_COMMAND`）か末尾の検査（`CRON_HEALTH_MONITOR_POSTCHECK_FAILED`）で止まったら、トランザクションごと巻き戻っている
+3. §7-1 の `supabase secrets set`
+4. `supabase functions deploy check-cron-health` だけ（`_shared/push.ts` は種別を足すだけなので、他の関数の再デプロイは要らない）
+5. §7-2 の dry run。問題が0件であること
+6. §7-3 のテスト通知でブラウザに届くことを確かめる
+7. §7-4 で cron を有効化 → 翌日に確認
+
+**2 から 7 は一度に行い、ジョブの時刻（03:00・04:00・06:10・20:00 JST）をまたがない**（2 の後に動いたジョブの応答は6時間で消えるので、評価しないまま6時間を過ぎると `結果不明` が出る）。またいだら、有効化の直前に dry run をもう1回流す（6時間以内の応答ならそこで評価される）。Web のリリースとは無関係に進められる。
+
+CLI が `unexpected login role status 403 … database_write` で止まるときは、そのターミナルの `SUPABASE_ACCESS_TOKEN`（MCP 用の読み取り専用トークン）が原因。`unset SUPABASE_ACCESS_TOKEN` してから実行する。
+
+### 7-1. 宛先の secret
+
+```bash
+supabase secrets set CRON_ALERT_TRAINER_IDS=<trainer_id>
+```
+
+- 自分の trainer_id は SQL エディタで調べる。PUBLIC リポジトリに ID を書かないために secret にしているので、値はリポジトリ・ドキュメントに書かない
+- カンマ区切りで複数指定できる。UUID でないものは捨てて `console.warn`
+- 未設定でも問題は未通知のまま残り、宛先を設定した後の確認で送られる
+
+```sql
+-- 自分の trainer_id
+select id, name, email from public.trainers where email = '<自分のメールアドレス>';
+
+-- そのトレーナーのブラウザ通知の登録（行が無いと no_tokens で届かない）
+select user_id, count(*) as browsers, max(last_seen_at) as last_seen_at
+from public.device_tokens
+where platform = 'web_push' and user_type = 'trainer' and user_id = '<trainer_id>'
+group by user_id;
+```
+
+### 7-2. dry run（送らない）
+
+SQL エディタから pg_net で呼ぶ。**1文ずつ実行する**（2文をまとめて流すと1つのトランザクションになり、`net.http_post` はコミットされるまで送られないので応答を読めない。`<request_id>` は1文目の戻り値に置き換える）。**`timeout_milliseconds := 60000` を必ず付ける**。
+
+```sql
+select net.http_post(
+  url := (select decrypted_secret from vault.decrypted_secrets where name = 'project_url') || '/functions/v1/check-cron-health',
+  headers := jsonb_build_object(
+    'Content-Type', 'application/json',
+    'apikey', (select decrypted_secret from vault.decrypted_secrets where name = 'secret_key')
+  ),
+  body := '{"dry_run": true}'::jsonb,
+  timeout_milliseconds := 60000
+);
+-- 数秒後、上の戻り値の request_id で結果を確認
+select status_code, timed_out, error_msg, content from net._http_response where id = <request_id>;
+```
+
+- `status_code = 200` で、`content` の `dryRun` が `true`、`recipients` が §7-1 の人数、**`pendingCount` が 0 なら正常**
+- `pendingCount` が1以上なら、`problems` の `jobname` / `kind` / `summary` を見て、§7-5 の SQL と早見表で確かめる。dry run でも問題の記録は行うので、未通知のまま残り、有効化後の最初の確認で通知される
+- `status_code` が 401 なら apikey の不一致か verify_jwt（`config.toml` の `[functions.check-cron-health]` を確かめて deploy し直す）、404 なら関数が未デプロイ、500 なら確認の RPC の失敗（`content` の `error` と Edge Functions の Logs）
+- 行が無ければ少し待って読み直す（応答が返るまで行は無い。前の要求が応答していないと、送信そのものが遅れることもある）
+
+### 7-3. テスト通知
+
+実際の失敗が起きるまで通知の経路を試せないので、テスト通知を1通送る。確認も記録も行わない。§7-2 と同じく**1文ずつ実行する**。
+
+```sql
+select net.http_post(
+  url := (select decrypted_secret from vault.decrypted_secrets where name = 'project_url') || '/functions/v1/check-cron-health',
+  headers := jsonb_build_object(
+    'Content-Type', 'application/json',
+    'apikey', (select decrypted_secret from vault.decrypted_secrets where name = 'secret_key')
+  ),
+  body := '{"dry_run": false, "test_notification": true}'::jsonb,
+  timeout_milliseconds := 60000
+);
+-- 数秒後、上の戻り値の request_id で結果を確認
+select status_code, timed_out, error_msg, content from net._http_response where id = <request_id>;
+```
+
+- ブラウザにタイトル `自動処理の監視`・本文 `テスト通知です` が届き、`content` の `notified` が `true` であること
+- `notified` が `false` のとき: `recipients` が 0 なら secret の値を確かめる（UUID でない値は捨てられる）。1以上なら下の SQL の `status` / `detail` を見る。`skipped` / `no_tokens` はブラウザ通知が未登録（§7-1 の `device_tokens` の SQL）、`failed` は Edge Functions → `check-cron-health` → Logs の `[WebPush] Error sending notification`（§6-3）
+- dedup キーは分単位なので、やり直すときは1分空ける
+
+```sql
+select created_at, user_id, status, detail, dedup_key
+from public.notification_logs
+where dedup_key like 'cron_failure%'
+order by created_at desc
+limit 10;
+```
+
+### 7-4. 有効化と停止
+
+```sql
+-- 有効化（次の 06:40 / 20:40 JST から毎日）
+select cron.alter_job((select jobid from cron.job where jobname = 'check-cron-health'), active := true);
+
+-- 停止（確認と通知だけ止まる。HTTP の4本の command の記録は続く。§7-6）
+select cron.alter_job((select jobid from cron.job where jobname = 'check-cron-health'), active := false);
+```
+
+実行スケジュール: `40 11,21 * * *`（UTC 11:40 / 21:40 = **JST 毎日 20:40 / 06:40**）
+
+**翌日の確認**: `cron_http_requests` に4本分の行があり、`checked_at` が埋まっていること。Claude の読み取り権限（MCP）でも読めるので、Claude に頼める。
+
+```sql
+select jobname,
+       requested_at at time zone 'Asia/Tokyo' as requested_jst,
+       checked_at at time zone 'Asia/Tokyo' as checked_jst
+from public.cron_http_requests
+order by id desc
+limit 8;
+```
+
+- 遅くとも翌日の 20:40 JST の確認の後には4本そろう（06:40 の時点で読めるのは 03:00・04:00・06:10 の3本と、`db push` がその日の 20:00 より前なら前夜の `send-session-reminders`）
+- `checked_at` が NULL でよいのは、直近の確認（06:40 / 20:40 JST）より後に発射した行だけ
+
+### 7-5. 通知が来たとき
+
+```sql
+select id, jobname, kind, summary, detail, occurred_at, notified_at
+from public.cron_health_problems
+order by id desc
+limit 20;
+```
+
+`detail`（例外の文言や応答の本文の先頭。200 文字まで）は通知にも関数の返り値にも出ないので、ここで読む。Claude の読み取りでも見られる。
+
+| kind | summary | 見るところ・対処 |
+| --- | --- | --- |
+| `job_failed` | `失敗` / `未完了` | `return_message` を見る（`detail` に先頭 200 文字が入っている。`cron.job_run_details` でも読める。§5-6）。原因を直してから流し直す |
+| `missed_run` | `未実行` | 予定時刻に動かなかった（DB の再起動などで pg_cron は取り戻さない）。手で流し直す |
+| `http_error` | `HTTP <code>` | Edge Functions → 該当関数 → Logs（§4）。401 は apikey か verify_jwt、404 は未デプロイ（§6-1）。原因を直してから流し直す |
+| `no_response` | `タイムアウト` / `接続失敗` | pg_net（`net._http_response` の `error_msg`。6時間で消える）と関数の Logs。タイムアウトでも関数は走り続けるので、Logs と副作用で結果を確かめてから流し直す |
+| `no_response` | `結果不明` | pg_net と関数の Logs。発射から6時間以内に評価できず応答が消えた場合は、**監視が止まっていた可能性**がある（§7-6）。結果は Logs と副作用で確かめる |
+| `bad_result` | `dry run のまま` | cron の body を確かめる（`select command from cron.job where jobname = '<job>';`）。dry run の 200 になり、何もしていない |
+| `bad_result` | `自動チェック未完了` | 06:00 の `detect-client-alerts` がその日に成功していない。§5-6 で確かめ、§5-4 で流し直したら §6-6 で送る |
+| `bad_result` | `送信結果不明` | `notification_logs` を読み直せなかった（DB の障害）。§6-5 の `notification_logs` の SQL で確かめ、§6-6 で送り直す |
+| `bad_result` | `送信失敗 N件` | §6-3（`skippedBy` と `failed` の見分け方）を見て、§6-6 で送り直す。他のトレーナーの購読の失効でも出る（§7-6） |
+| `bad_result` | `応答が不正` | `detail`（本文の先頭）と関数の Logs |
+
+流し直しはジョブごとに次の節で行う（本番への書き込みなので、Claude は行わない）:
+
+| ジョブ | 流し直し |
+| --- | --- |
+| `auto-skip-workouts` | §2 の dry run の SQL の `body` を `'{}'::jsonb` にし、`timeout_milliseconds := 60000` を足して流す。対象は翌日の実行でも拾われる |
+| `cleanup-ai-images` | §2 の dry run の SQL の関数名を差し替え、`body` を `'{"dry_run": false}'::jsonb` にし、`timeout_milliseconds := 60000` を足して流す。対象は翌日の実行でも拾われる |
+| `send-session-reminders` | §3「手動で本送信する場合」（`target_date` を必ず明示する。飛ばした日の JST の翌日） |
+| `detect-client-alerts` | §5-4 の手動実行（同じ対象日の再実行は同じ状態に収束する）。その日の朝のまとめが送られていなければ続けて §6-6 |
+| `notify-trainer-alerts` | §6-6 |
+| `issue-recurring-tickets` | 手順書に節は無い。SQL エディタで `select public.issue_recurring_tickets();`。`next_issue_date` が今日以前の契約だけを発行して日付を進めるので、流し直しても同じ分を二重に発行しない。対象は翌日の実行でも拾われる |
+
+- 手で流した `net.http_post` は `cron_http_requests` に記録されないので、監視の対象外。結果はその `request_id` で読む
+- 流し直しても `cron_health_problems` の行はそのまま（通知済みの行は通知から90日で掃除される）
+
+### 7-6. 分かっている限界とロールバック
+
+分かっている限界（設計書 §9・§10）:
+
+- **監視の経路そのものが止まると気づけない**: pg_cron の停止・Vault のキーの誤り・Edge Functions の障害・RPC が失敗し続ける不具合では、監視も同時に止まる（Vault のキーが壊れると HTTP の5本が全部 401 になり、通知も送れない）。外部の死活監視（healthchecks.io などに確認のたび ping し、途絶えたらメール）で塞げるが、外部サービスの登録が要るので別の変更にする
+- `check-cron-health` の応答は `cron_http_requests` に入れないので、最新の結果を見るには6時間以内の `net._http_response` か Edge Functions の Logs
+- 通知の宛先のブラウザの購読が消えていると `no_tokens` のまま届かない（確認のたびに `notification_logs` には残る）。メールの経路は別の変更
+- 他のトレーナーのブラウザの購読が失効（410）すると、購読の掃除は正常に済んでも朝のまとめの `failed` に数えられ、オーナーに `送信失敗 1件` が届く。関数に触らないと見分けられないので受け入れる（まれで、1回限り）
+- ジョブを止めて7日以内に、予定時刻をまたいで再開すると `未実行` が出る（`cron.job` に有効化の時刻が無く、SQL では見分けられない）。schedule を変えた直後も、古い時刻の実行が新しい予定の窓に入らず1件出ることがある
+- 起動前に DB が再起動した実行（時刻が両方 NULL の `failed`）は、`失敗` と `未実行` の両方が並ぶことがある（時刻が無く予定時刻に結び付けられないため）
+- 検知が遅れた日の自動の回復（06:40 の再送スロット）は入れない。通知を受けて手で流し直す
+- `send-session-reminders` の `outcome.failed` の監視は、APNs キーの登録後に足す
+- 運営向けの画面は作らない。詳細は `cron_health_problems` を SQL か Claude の読み取りで見る
+
+ロールバック（設計書 §8）:
+
+- **通知を止めるだけ**: §7-4 の停止 SQL。4本の command の INSERT は残っても害が無い（掃除が止まり、`cron_http_requests` が1日4行ずつ増えるだけ）
+- **migration は revert しない**。戻すなら新しい migration で command を戻す
