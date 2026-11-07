@@ -358,7 +358,7 @@
 ### cron の「succeeded」は HTTP の成否ではない — 初回実行の後は関数ログで status を見る
 
 - **症状**: `cleanup-ai-images` の初回（2026-09-13 04:00 JST）は `cron.job_run_details` では succeeded だったが、実際は Edge Function 内の `rpc('find_orphan_ai_images')` が PostgREST から 504 Gateway Timeout（約7秒待ち）を受けて 500 終了し、削除候補5件が残っていた。SQL 自体は 6.5ms、PostgREST 側にログなし＝一時障害
-- **原因**: pg_net の `net.http_post` はリクエストを積んだ時点で戻るので、cron の成否は「投げたか」だけ。結果は `net._http_response`（保持は既定6時間）と Edge Function ログ（`function_edge_logs` / `function_logs`）にしか残らない。さらに auto-skip / cleanup の cron は pg_net 既定の5秒タイムアウトのままで、遅い応答は `timed_out` になり中身を確認できなかった
+- **原因**: pg_net の `net.http_post` はリクエストを積んだ時点で戻るので、cron の成否は「投げたか」だけ。結果は `net._http_response`（保持は既定6時間）と Edge Function ログ（`function_edge_logs` / `function_logs`）にしか残らない。さらに auto-skip / cleanup の cron は pg_net 既定の5秒タイムアウトのままで、遅い応答は `timed_out` になり中身を確認できなかった（→ 2026-11-01 訂正: pg_net 0.14.0 はタイムアウトでも `timed_out` を埋めず、`error_msg` に出る。このファイルの「pg_net 0.14.0 の応答の形」）
 - **対策**: 3つの cron 関数の DB / Storage 呼び出しに、一時障害（status 0・5xx・例外）に限った再試行を入れ、cron の HTTP タイムアウトを60秒に揃えた（push 送信は二重送信を避けるため再試行しない）
 - **教訓**: cron を有効化したら、**初回実行の後に Edge Function ログで status を確認する**。副作用の結果（skipped 件数・残った候補数）を SQL で数えるのが一番確実（auto-skip はこれで9件 skipped を確認できた）
 - **その後（同日 20:00 JST）**: send-session-reminders の初回本送信でも、対象抽出の RPC が1回目に 504 を受けたが、再試行で成功した（ログに `[retry] ... attempt 1/3 failed (status=504 ...)`）。04:00 と 20:00 のどちらも毎時0分ちょうどの呼び出しで起きている
@@ -704,3 +704,49 @@
 ### 記録途絶の検知をテスト用の顧客で起こすには、何もしない日を 3 日置く
 - 記録途絶の検知は、顧客が送ったメッセージも「記録」に、既読などのアプリ利用も「到着」に数える
 - テスト用の顧客で検知を起こすには、何もしない日を 3 日置く（10/12 の最終記録 → 10/16 06:00 に検知。見積もりどおり）
+
+## cron 失敗の監視（統合判断7-3、2026-11-01）で得た知見
+
+### pg_net の番号は巻き戻る — `request_id` に一意制約を付けない
+- `net.http_request_queue_id_seq` は UNLOGGED で、異常終了や復元で 1 に戻る
+- `request_id` に一意制約を付けて同じトランザクションで INSERT すると、本番の HTTP の cron が重複で飛ばなくなる
+- 照合は `r.id = q.request_id AND r.created >= q.requested_at`
+- 設計レビューで見つかった（本番の `last_value` が起動以降の要求数とほぼ一致していた）
+
+### pg_net 0.14.0 の応答の形 — タイムアウトは `timed_out` ではなく `error_msg` で見分ける
+- タイムアウトでも接続失敗でも `status_code` と `timed_out` は NULL で、見分けるのは `error_msg`（`Timeout of 60000 ms reached...`）。成功時の `timed_out` は false
+- `created` は応答の到着時刻ではない（同じコミットの要求の行は、20秒後に現れる行も同じ値だった）
+- 応答しない要求があっても、同じコミットの他の応答はすぐ見えた。後から別のコミットで出した要求の送信は、前の要求のタイムアウトまで遅れた（各1回の測定。原因は未確認）
+- 既存の記述（このファイルの「cron の『succeeded』は HTTP の成否ではない」・`retry.ts`・`20260913000200` のコメント）の「`timed_out` になる」は不正確
+- 手で書いた行を流す SQL テストだけでは分からず、通しの確認で見つかった
+- 最初は「1バッチは1トランザクションなので、同じバッチの他の応答も最大60秒見えない」と書いたが、4行の `created` が同じ値だったことからの推測で、レビューの指摘を受けて実測すると誤りだった。**外部のコンポーネントの動きは、観測したことと推測を分けて記録する**
+
+### `cron.timezone` は postmaster 設定で superuser-only
+- セッションで SET できず、`service_role` には読めない（SECURITY INVOKER の関数だと確認全体が落ちる）
+- 別の時刻帯で試すには `supabase_admin` で `ALTER SYSTEM` して `docker restart`
+
+### cron の試験データの作り方
+- postgres は `cron.runid_seq` を使えないので、`runid` を明示する
+- `job_run_details` と `_http_response` には postgres で INSERT / DELETE でき、`cron.schedule` / `cron.alter_job` もトランザクションの中で使える
+- 2引数の `cron.schedule` のジョブは `jobname` が NULL で、`'x' || NULL` が NOT NULL 違反になる
+
+### 既存の command を書き換えるときは、書き写さず読んで置き換える
+- `send-session-reminders` の `+ 1` は既存のテストが守っていなかった（今回テストも固定した）
+- `regexp_replace` で先頭だけ置き換え、形が違えば止める
+
+### 既定権限は `service_role` にも付く
+- anon / authenticated だけ REVOKE しても `service_role` に全権限が残り、`UPDATE (列)` の GRANT が制限にならない
+- シーケンスも同じ
+
+### 通知の dedup キーを id の範囲で作るなら、並びは id の順にする
+- `occurred_at` の順だと、後から見つかった問題が途中に入っても最初と最後の id が変わらず、送っていない問題まで通知済みになる
+
+### 通知の tag を同じにすると、閉じている間の通知が置き換わる
+- `data.tag` を問題ごとに変えないと、前の問題に気づけないまま通知済みになる
+
+### 大量の負の対照は `BEGIN` + `pg_get_functiondef` の `replace` を `EXECUTE` + テストで回せる
+- テスト末尾の ROLLBACK で戻る
+
+### 通しの組み立て
+- Docker Desktop では DB コンテナの pg_net から `host.docker.internal` でホストのスタブに届く
+- 実 pg_cron は `* * * * *` で1分待てば確かめられる

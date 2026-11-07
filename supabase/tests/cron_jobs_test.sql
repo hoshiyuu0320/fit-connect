@@ -1,11 +1,12 @@
 -- =============================================================================
--- cron ジョブ（Edge Function 呼び出し 4 本）の登録内容テスト
+-- cron ジョブ（Edge Function 呼び出し 5 本）の登録内容テスト
 -- （20260912000000_cron_use_secret_key.sql / 20260913000100_session_reminder_cron_target_date.sql
---   / 20260913000200_cron_http_timeout.sql / 20261004000000_client_alert_push.sql 適用後の状態）
+--   / 20260913000200_cron_http_timeout.sql / 20261004000000_client_alert_push.sql
+--   / 20261101000000_cron_health_monitor.sql 適用後の状態）
 --
 -- pg_cron の 'auto-skip-workouts' / 'cleanup-ai-images' / 'send-session-reminders' /
--- 'notify-trainer-alerts' について、schedule と command（pg_net の net.http_post 呼び出し）を
--- 検証する自己完結テスト（session_reminder_test.sql のケース(f) の書式を踏襲し、4 ジョブへ広げたもの）。
+-- 'notify-trainer-alerts' / 'check-cron-health' について、schedule と command（pg_net の net.http_post
+-- 呼び出し）を検証する自己完結テスト（session_reminder_test.sql のケース(f) の書式を踏襲し、5 ジョブへ広げたもの）。
 --
 -- 実行方法（FIT-CONNECT リポジトリルートから。ローカル Supabase スタック起動中）:
 --   docker exec -i supabase_db_fit-connect psql -U postgres -d postgres \
@@ -17,10 +18,11 @@
 -- - active はアサートしない（ローカルは migration で inactive 登録のまま、リモートは
 --   オーナー判断で有効化するため、環境によって値が異なる）
 --
--- 検証ケース（4 ジョブすべて）:
+-- 検証ケース（5 ジョブすべて）:
 --   (a) jobname で 1 件だけ登録され、schedule が期待値
 --       auto-skip-workouts '0 18 * * *'（JST 03:00）/ cleanup-ai-images '0 19 * * *'（JST 04:00）/
---       send-session-reminders '0 11 * * *'（JST 20:00）/ notify-trainer-alerts '10 21 * * *'（JST 06:10）
+--       send-session-reminders '0 11 * * *'（JST 20:00）/ notify-trainer-alerts '10 21 * * *'（JST 06:10）/
+--       check-cron-health '40 11,21 * * *'（JST 20:40 / 06:40）
 --   (b) command が net.http_post で /functions/v1/<ジョブ名> を呼び、Vault の project_url / secret_key を
 --       参照して secret キーを apikey ヘッダーで送る。旧方式（Vault の service_role_key・
 --       Authorization ヘッダー）を含まない
@@ -29,12 +31,17 @@
 --       結果を確認できない）
 --   (d) command の body が既存どおり（timeout を足すために command 全体を書き換えているため、
 --       body が変わっていないことを固定する）。空白・改行の連続は 1 つの空白に詰めてから比べる
---       （notify-trainer-alerts は 'dry_run', false から target_date の式までを 1 つの断片にしている。
---        'dry_run', false だけだと send-session-reminders と同じ緩い断片になり、target_date の
---        組み立てが壊れても検知できない。JST の今日になることは client_alert_push_test.sql で確かめる）
+--       （send-session-reminders と notify-trainer-alerts は 'dry_run', false から target_date の式までを
+--        1 つの断片にしている。'dry_run', false だけだと target_date の組み立てが壊れても検知できない。
+--        send-session-reminders は + 1（JST の明日）まで含む。JST の今日になることは
+--        client_alert_push_test.sql で確かめる）
 --   (e) command が SQL として解析・計画できる（EXPLAIN。(b)〜(d) は文字列の部分一致なので、
 --       カンマ・括弧・$cmd$ の崩れや引数名の誤りで毎回失敗する command でも通ってしまうため）。
 --       EXPLAIN（ANALYZE なし）は net.http_post を実行せず、HTTP リクエストも積まない
+--   (f) HTTP の 4 本の command が、先頭で net.http_post の戻り値を自分の jobname で
+--       public.cron_http_requests に記録する。check-cron-health は記録しない（設計書 §4.4）
+--   (g) 監視自身以外で net.http_* を呼ぶ cron が記録を忘れていない（この表に無いジョブも含む。
+--       新しい HTTP の cron を足して記録を忘れると、失敗しても通知されない）
 -- =============================================================================
 
 \set ON_ERROR_STOP on
@@ -42,25 +49,28 @@
 BEGIN;
 
 -- -----------------------------------------------------------------------------
--- 期待値（各ケースで 4 ジョブ分をループして検証する）
+-- 期待値（各ケースで 5 ジョブ分をループして検証する）
 -- -----------------------------------------------------------------------------
 CREATE TEMP TABLE expected_cron_jobs (
   jobname text PRIMARY KEY,
   schedule text NOT NULL,
-  body_fragment text NOT NULL
+  body_fragment text NOT NULL,
+  records_request boolean NOT NULL
 ) ON COMMIT DROP;
 
-INSERT INTO expected_cron_jobs (jobname, schedule, body_fragment) VALUES
-  ('auto-skip-workouts',     '0 18 * * *', $f$body := '{}'::jsonb$f$),
-  ('cleanup-ai-images',      '0 19 * * *', $f$body := '{"dry_run": false}'::jsonb$f$),
-  ('send-session-reminders', '0 11 * * *', $f$'dry_run', false$f$),
+INSERT INTO expected_cron_jobs (jobname, schedule, body_fragment, records_request) VALUES
+  ('auto-skip-workouts',     '0 18 * * *', $f$body := '{}'::jsonb$f$, true),
+  ('cleanup-ai-images',      '0 19 * * *', $f$body := '{"dry_run": false}'::jsonb$f$, true),
+  ('send-session-reminders', '0 11 * * *',
+   $f$'dry_run', false, 'target_date', to_char(((now() AT TIME ZONE 'Asia/Tokyo')::date + 1), 'YYYY-MM-DD')$f$, true),
   ('notify-trainer-alerts',  '10 21 * * *',
-   $f$'dry_run', false, 'target_date', to_char((now() AT TIME ZONE 'Asia/Tokyo')::date, 'YYYY-MM-DD')$f$);
+   $f$'dry_run', false, 'target_date', to_char((now() AT TIME ZONE 'Asia/Tokyo')::date, 'YYYY-MM-DD')$f$, true),
+  ('check-cron-health',      '40 11,21 * * *', $f$body := '{"dry_run": false}'::jsonb$f$, false);
 
 -- -----------------------------------------------------------------------------
 -- ケース(a): 登録と schedule
 -- -----------------------------------------------------------------------------
-\echo '--- case a: 4 ジョブが 1 件ずつ登録され、schedule が期待値であること'
+\echo '--- case a: 5 ジョブが 1 件ずつ登録され、schedule が期待値であること'
 
 DO $$
 DECLARE
@@ -190,7 +200,7 @@ BEGIN
 
   FOR v_exp IN SELECT * FROM expected_cron_jobs ORDER BY jobname LOOP
     SELECT command INTO v_command FROM cron.job WHERE jobname = v_exp.jobname;
-    -- 末尾の空白と ; を落とした 1 文（command は SELECT net.http_post(...) の 1 文だけのはず）
+    -- 末尾の空白と ; を落とした 1 文（command は net.http_post を呼ぶ INSERT か SELECT の 1 文だけのはず）
     v_stmt := regexp_replace(v_command, '[\s;]+$', '');
 
     BEGIN
@@ -208,6 +218,78 @@ BEGIN
       v_queue_before, v_queue_after;
   END IF;
   RAISE NOTICE 'OK: net.http_request_queue は % 件のまま（EXPLAIN は HTTP リクエストを積まない）', v_queue_after;
+END $$;
+
+-- -----------------------------------------------------------------------------
+-- ケース(f): HTTP の 4 本は発射を cron_http_requests に記録する（check-cron-health は記録しない）
+--   空白・改行の連続は 1 つの空白に詰めてから、先頭の形で比べる（途中に INSERT の文字列があるだけでは通さない）
+-- -----------------------------------------------------------------------------
+\echo '--- case f: HTTP の 4 本が cron_http_requests に記録し、check-cron-health は記録しないこと'
+
+DO $$
+DECLARE
+  v_exp record;
+  v_command text;
+  v_prefix text;
+BEGIN
+  FOR v_exp IN SELECT * FROM expected_cron_jobs ORDER BY jobname LOOP
+    SELECT btrim(regexp_replace(command, '\s+', ' ', 'g')) INTO v_command
+    FROM cron.job WHERE jobname = v_exp.jobname;
+
+    IF v_exp.records_request THEN
+      v_prefix := format(
+        'INSERT INTO public.cron_http_requests (jobname, request_id) SELECT %L, net.http_post(',
+        v_exp.jobname
+      );
+      IF left(v_command, char_length(v_prefix)) <> v_prefix THEN
+        RAISE EXCEPTION 'FAIL: % の command が発射を記録していない（先頭が %）',
+          v_exp.jobname, left(v_command, char_length(v_prefix));
+      END IF;
+      RAISE NOTICE 'OK: % は cron_http_requests に記録する', v_exp.jobname;
+    ELSE
+      IF position('cron_http_requests' IN v_command) > 0 THEN
+        RAISE EXCEPTION 'FAIL: % は cron_http_requests に記録しない（応答が次の確認まで残らず、自分の失敗を自分では通知できない）',
+          v_exp.jobname;
+      END IF;
+      RAISE NOTICE 'OK: % は cron_http_requests に記録しない', v_exp.jobname;
+    END IF;
+  END LOOP;
+END $$;
+
+-- -----------------------------------------------------------------------------
+-- ケース(g): 監視自身以外で net.http_* を呼ぶ cron は、すべて記録する
+--   expected_cron_jobs に無いジョブも見る（DB にある全ジョブが対象）
+-- -----------------------------------------------------------------------------
+\echo '--- case g: 監視自身以外で net.http_* を呼ぶ cron が記録を忘れていないこと'
+
+DO $$
+DECLARE
+  v_job record;
+  v_prefix text;
+  v_count int := 0;
+BEGIN
+  FOR v_job IN
+    SELECT jobname, btrim(regexp_replace(command, '\s+', ' ', 'g')) AS command
+    FROM cron.job
+    WHERE command ~ 'net\.http_'
+      AND jobname IS DISTINCT FROM 'check-cron-health'
+    ORDER BY jobname
+  LOOP
+    v_prefix := format(
+      'INSERT INTO public.cron_http_requests (jobname, request_id) SELECT %L, net.http_post(',
+      v_job.jobname
+    );
+    IF left(v_job.command, char_length(v_prefix)) <> v_prefix THEN
+      RAISE EXCEPTION 'FAIL: cron ジョブ % は net.http_* を呼ぶが、発射を cron_http_requests に記録していない（失敗しても通知されない）',
+        v_job.jobname;
+    END IF;
+    v_count := v_count + 1;
+  END LOOP;
+
+  IF v_count <> 4 THEN
+    RAISE EXCEPTION 'FAIL: 監視自身以外で net.http_* を呼ぶ cron が % 本（期待 4 本。増やしたら expected_cron_jobs にも足す）', v_count;
+  END IF;
+  RAISE NOTICE 'OK: 監視自身以外で net.http_* を呼ぶ cron は % 本で、すべて記録する', v_count;
 END $$;
 
 ROLLBACK;

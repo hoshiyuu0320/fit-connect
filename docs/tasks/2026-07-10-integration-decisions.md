@@ -71,6 +71,7 @@
 1. **`messages.metadata` スキーマレジストリ**: metadata に新キーを足す施策（record_ref / silent / recorded_date / meals[] / broadcast_id / payment_request / schedule_proposal / sticker_id 等）は、`docs/architecture/message-metadata-registry.md`（新設）に **キー名・スキーマ・解釈者（Web/Mobile/parse-message-tags）・旧アプリでのフォールバック描画**を登録してから実装する。parse-message-tags のスキップ分岐は early-return テーブル1箇所に集約。
 2. **Storage は private + 署名URL が標準**: 新設バケット（進捗写真・動画・スタンプ・種目動画）はすべて private で作成し、cat7 2-A Phase 0 の「URL/パス両対応ヘルパー」を共有実装として先に用意する。DB には URL でなく storage パスを保存する。
 3. **cron は pg_cron の migration 管理 + 失敗監視**: 新設ジョブ（異常検知・週次サマリー・リマインダー・cleanup 等 8本以上）は cat7 5-A の Vault 参照パターンで migration 化し、`cron.job_run_details` の失敗を通知ディスパッチャ経由でトレーナー（運営）に飛ばす監視ジョブを1本設ける。
+   → 2026-11-01 に実装（`docs/superpowers/specs/2026-11-01-cron-failure-monitor-design.md`。関数側ではなく request_id の記録で照合。リリースはオーナー作業待ち）
 4. **RLS の CI テスト**: 新規 RLS ポリシー追加時は、anon/authenticated/他人ロールでのアクセス可否を検証する pgTAP or スクリプトテストを `supabase/tests/` に追加する（anon 全開放事故の再発防止）。
 
 ---

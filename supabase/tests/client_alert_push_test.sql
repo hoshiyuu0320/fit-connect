@@ -5,7 +5,7 @@
 --
 -- notification_preferences.kind の CHECK 拡張（client_alert）と、cron ジョブ
 -- 'notify-trainer-alerts' の登録内容（schedule・body の対象日・dry_run・timeout）を検証する自己完結テスト。
--- url / headers（Vault の apikey 方式）と EXPLAIN での解析は cron_jobs_test.sql が4ジョブまとめて確かめる。
+-- url / headers（Vault の apikey 方式）と EXPLAIN での解析は cron_jobs_test.sql が5ジョブまとめて確かめる。
 --
 -- 実行方法（FIT-CONNECT リポジトリルートから。ローカル Supabase スタック起動中）:
 --   docker exec -i supabase_db_fit-connect psql -U postgres -d postgres \
