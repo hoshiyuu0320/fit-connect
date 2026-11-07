@@ -11,6 +11,7 @@ import 'package:fit_connect_mobile/features/auth/presentation/screens/welcome_sc
 import 'package:fit_connect_mobile/features/auth/presentation/screens/profile_setup_screen.dart';
 import 'package:fit_connect_mobile/features/auth/presentation/screens/registration_complete_screen.dart';
 import 'package:fit_connect_mobile/features/app_update/presentation/app_update_gate.dart';
+import 'package:fit_connect_mobile/features/auth/providers/auth_provider.dart';
 import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
 import 'package:fit_connect_mobile/features/auth/providers/registration_provider.dart';
 import 'package:fit_connect_mobile/features/consent/data/consent_repository.dart';
@@ -18,6 +19,8 @@ import 'package:fit_connect_mobile/features/consent/presentation/consent_dialog.
 import 'package:fit_connect_mobile/services/notification_service.dart';
 import 'package:fit_connect_mobile/features/health/providers/health_sync_provider.dart';
 import 'package:fit_connect_mobile/features/health/providers/health_provider.dart';
+import 'package:fit_connect_mobile/features/home/providers/notification_navigation_provider.dart';
+import 'package:fit_connect_mobile/features/record_reminders/services/record_reminder_sync.dart';
 import 'package:fit_connect_mobile/features/sessions/providers/sessions_provider.dart';
 import 'package:fit_connect_mobile/features/sleep_records/providers/morning_dialog_provider.dart';
 import 'package:fit_connect_mobile/features/sleep_records/presentation/widgets/morning_wakeup_dialog.dart';
@@ -92,6 +95,9 @@ class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen>
   Timer? _periodicSyncTimer;
   bool _isResumeSyncing = false;
 
+  /// 記録のリマインダーを始めたクライアント（クライアントが分かるたびに1回）
+  String? _recordRemindersClientId;
+
   @override
   void initState() {
     super.initState();
@@ -107,6 +113,8 @@ class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen>
   void dispose() {
     _periodicSyncTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
+    // 通知タップの受け口を外す（外した後のタップは、次に受け口ができるまで取っておかれる）
+    NotificationService.setNotificationTapHandler(null);
     super.dispose();
   }
 
@@ -120,6 +128,8 @@ class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen>
       ref.invalidate(pastSessionsProvider);
       _maybeShowMorningDialog();
       _maybeRunResumeSync();
+      // 記録のリマインダー（日付が変わった・ほかの端末で記録した分を反映する）
+      _refreshRecordReminders('resumed');
     }
   }
 
@@ -223,20 +233,42 @@ class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen>
         defaultTargetPlatform == TargetPlatform.android) {
       // FCMトークンをDBに保存（非同期で実行、UIをブロックしない）
       NotificationService.saveTokenToSupabase(clientId, 'client').then((saved) {
-        print(saved ? '[App] FCMトークン保存完了' : '[App] FCMトークン保存失敗');
+        debugPrint(saved ? '[App] FCMトークン保存完了' : '[App] FCMトークン保存失敗');
       }).catchError((e) {
-        print('[App] FCMトークン保存エラー: $e');
+        debugPrint('[App] FCMトークン保存エラー: $e');
       });
-
-      // 通知タップハンドリングを設定
-      NotificationService.onNotificationTap = (type, id) {
-        print('[App] 通知タップ: type=$type, id=$id');
-        // MainScreenのNavigatorを使ってタブ切り替え
-        // 注意: MaterialAppのNavigatorContextが必要
-        // 現在のcontext経由でMainScreenのStateにアクセスできないため、
-        // シンプルにMainScreenを表示するだけ（タブ遷移は将来拡張）
-      };
     }
+  }
+
+  /// 記録のリマインダーを始める（クライアントが分かるたびに1回。FCM のトークンの保存とは別に行う）
+  ///
+  /// - 通知タップの受け口を設定する（受け口が無い間に来たタップ・起動時のタップは、
+  ///   設定の直後の microtask で渡されるので、build の中で設定してよい）
+  /// - このアカウントの設定で端末の予約をし直す
+  void _startRecordRemindersIfNeeded(String clientId) {
+    if (_recordRemindersClientId == clientId) return;
+    _recordRemindersClientId = clientId;
+
+    NotificationService.setNotificationTapHandler(_handleNotificationTap);
+    // Android はここで（起動・ログインのたびに1回）、端末の予約一覧を信用せずにすべて予約し直す
+    // （RecordReminderSync.rescheduleAllOnSignIn）
+    _refreshRecordReminders(RecordReminderSync.signedInReason);
+  }
+
+  /// 通知タップの受け口。記録のリマインダーは「開く先」を置く（MainScreen が実行する）。
+  /// それ以外の通知はこれまでどおりログに出すだけ
+  void _handleNotificationTap(String type, String? id) {
+    final request = notificationNavigationRequestFor(type, id);
+    if (request == null || !mounted) {
+      debugPrint('[App] 通知タップ: type=$type, id=$id');
+      return;
+    }
+    ref.read(notificationNavigationProvider.notifier).request(request);
+  }
+
+  /// 記録のリマインダーを予約し直す（待たない。失敗はログに出すだけ）
+  void _refreshRecordReminders(String reason) {
+    unawaited(ref.read(recordReminderSyncProvider).refresh(reason: reason));
   }
 
   /// 「セッション有り・clients 行なし・登録フロー外」の残存セッションを
@@ -255,9 +287,19 @@ class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen>
     if (_staleSessionSignOutRequested) return;
     _staleSessionSignOutRequested = true;
 
+    // 片付けで使うものは先に読んでおく（サインアウトするとこの画面は破棄され、ref は使えない）
+    final reminderSync = ref.read(recordReminderSyncProvider);
+    final container = ProviderScope.containerOf(context, listen: false);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // fire-and-forget: 失敗してもUIをブロックしない
-      Supabase.instance.client.auth.signOut().then((_) {
+      // サインアウトしてから、記録のリマインダーの予約・表示中の通知、取っておいた通知のタップ、
+      // 通知を押したときの「開く先」を片付ける（サインアウトに失敗しても片付ける。signOutAndClearState）
+      signOutAndClearState(
+        signOut: () => Supabase.instance.client.auth.signOut(),
+        reminderSync: reminderSync,
+        invalidateNotificationNavigation: () =>
+            container.invalidate(notificationNavigationProvider),
+      ).then((_) {
         SignedUrlCache.instance.clear(); // 署名URLキャッシュも破棄
         debugPrint('[App] clients 行のない残存セッションをサインアウトしました');
       }).catchError((e) {
@@ -292,6 +334,8 @@ class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen>
         if (client != null) {
           // FCMトークン保存（MainScreen表示前）
           _saveTokenIfNeeded(client.clientId);
+          // 記録のリマインダー（通知タップの受け口・予約し直し）
+          _startRecordRemindersIfNeeded(client.clientId);
           _syncHealthDataIfNeeded();
           // 同意ゲート（client_id は auth.uid と同一）
           _checkConsentIfNeeded(client.clientId);

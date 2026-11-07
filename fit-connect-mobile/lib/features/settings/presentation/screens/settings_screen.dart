@@ -17,6 +17,9 @@ import 'package:fit_connect_mobile/features/auth/data/client_repository.dart';
 import 'package:fit_connect_mobile/features/auth/providers/auth_provider.dart';
 import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
 import 'package:fit_connect_mobile/features/consent/legal_links.dart';
+import 'package:fit_connect_mobile/features/record_reminders/models/record_reminder_settings.dart';
+import 'package:fit_connect_mobile/features/record_reminders/presentation/screens/record_reminder_settings_screen.dart';
+import 'package:fit_connect_mobile/features/record_reminders/providers/record_reminder_settings_provider.dart';
 import 'package:fit_connect_mobile/features/sessions/utils/session_formatting.dart';
 import 'package:fit_connect_mobile/features/settings/providers/notification_preferences_provider.dart';
 import 'package:fit_connect_mobile/services/storage_service.dart';
@@ -31,7 +34,8 @@ import 'package:fit_connect_mobile/shared/widgets/storage_image.dart';
 /// 見出し「設定」→ プロフィールカード → 外観 / 通知 / ヘルスケア連携 / 法的情報 / アカウントを
 /// 「グループ名（13・secondary）＋ 行を並べたカード」で縦に積み、末尾にバージョンを置く。
 /// 機能（写真・名前の変更、テーマ切替、通知のオン/オフ、ヘルスケア設定への遷移、
-/// 規約リンク、ログアウト、アカウント削除）は現行のまま。
+/// 規約リンク、ログアウト、アカウント削除）は現行のまま。通知グループの末尾に
+/// 記録のリマインダーの設定への行がある。
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -193,8 +197,7 @@ class _TrainerValue extends StatelessWidget {
     }
     // 名前は「田中」でも「田中トレーナー」でも同じ「田中トレーナー」。取れていなければ「未設定」
     final raw = trainerName?.trim();
-    final name =
-        (raw == null || raw.isEmpty) ? null : trainerDisplayName(raw);
+    final name = (raw == null || raw.isEmpty) ? null : trainerDisplayName(raw);
     return Text(
       name ?? '未設定',
       textAlign: TextAlign.end,
@@ -485,6 +488,7 @@ class _NotificationSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final prefsAsync = ref.watch(notificationPreferencesProvider);
+    final remindersAsync = ref.watch(recordReminderSettingsProvider);
 
     return _NotificationRows(
       prefs: prefsAsync.valueOrNull,
@@ -503,21 +507,49 @@ class _NotificationSection extends ConsumerWidget {
           }
         }
       },
+      reminderRow: _RecordReminderEntryRow(
+        value: _recordReminderValue(remindersAsync),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const RecordReminderSettingsScreen(),
+            ),
+          );
+        },
+      ),
     );
   }
 }
 
-/// 通知のオン/オフ（3 行）。[prefs] が null の間は読み込み中の行を出す。
+/// 「記録のリマインダー」の行の値。オフなら「オフ」、オンの項目があれば表示名を「・」でつなぐ
+/// （例「体重・夕食」）。読み込み中はスケルトン、読めなければ値を出さない（行は押せる。
+/// 開いた先で再試行できる）
+FcRowValue? _recordReminderValue(AsyncValue<RecordReminderSettings> async) {
+  final settings = async.valueOrNull;
+  if (settings != null) {
+    return FcRowValue.text(reminderSummaryLabel(settings), muted: true);
+  }
+  if (async.hasError) return null;
+  return const FcRowValue.loading();
+}
+
+/// 通知のオン/オフ（3 行）と、その下の [reminderRow]（記録のリマインダーへの行）。
+/// [prefs] が null の間は読み込み中の行を出す。
 /// 正本: `RowsCard` に `Row`（トグル）。現行の 3 項目に合わせる
 class _NotificationRows extends StatelessWidget {
   const _NotificationRows({
     required this.prefs,
+    required this.reminderRow,
     this.hasError = false,
     this.onRetry,
     this.onChanged,
   });
 
   final NotificationPreferencesState? prefs;
+
+  /// 記録のリマインダーの行（[_RecordReminderEntryRow]）
+  final Widget reminderRow;
   final bool hasError;
   final VoidCallback? onRetry;
   final void Function(NotificationKind kind, bool value)? onChanged;
@@ -525,10 +557,18 @@ class _NotificationRows extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (hasError) {
-      return FcInlineNotice.error(
-        message: '通知設定を読み込めませんでした',
-        actionLabel: '再試行',
-        onAction: onRetry,
+      // 記録のリマインダーは端末に保存した設定なので、通知設定を読めなくても開けるようにする
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          FcInlineNotice.error(
+            message: '通知設定を読み込めませんでした',
+            actionLabel: '再試行',
+            onAction: onRetry,
+          ),
+          const SizedBox(height: AppSpacing.cardGap),
+          FcRowsCard(children: [reminderRow]),
+        ],
       );
     }
 
@@ -558,7 +598,28 @@ class _NotificationRows extends StatelessWidget {
               onChanged:
                   onChanged == null ? null : (value) => onChanged!(kind, value),
             ),
+        reminderRow,
       ],
+    );
+  }
+}
+
+/// 記録のリマインダーへの行（値 + chevron。押すと記録のリマインダーの設定画面へ）。
+/// 読み上げは「記録のリマインダー、体重・夕食」
+class _RecordReminderEntryRow extends StatelessWidget {
+  const _RecordReminderEntryRow({required this.value, this.onTap});
+
+  /// 行の値（[_recordReminderValue]）。null なら値を出さない
+  final FcRowValue? value;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return FcListRow(
+      title: '記録のリマインダー',
+      trailing: value,
+      chevron: true,
+      onTap: onTap,
     );
   }
 }
@@ -1127,10 +1188,14 @@ class _PreviewSettingsBody extends StatelessWidget {
   const _PreviewSettingsBody({
     this.themeMode = ThemeMode.system,
     this.loading = false,
+    this.reminderSummary = 'オフ',
   });
 
   final ThemeMode themeMode;
   final bool loading;
+
+  /// 記録のリマインダーの行の値（reminderSummaryLabel の結果）
+  final String reminderSummary;
 
   @override
   Widget build(BuildContext context) {
@@ -1168,6 +1233,12 @@ class _PreviewSettingsBody extends StatelessWidget {
                         sessionReminderEnabled: false,
                       ),
                 onChanged: (_, __) {},
+                reminderRow: _RecordReminderEntryRow(
+                  value: loading
+                      ? const FcRowValue.loading()
+                      : FcRowValue.text(reminderSummary, muted: true),
+                  onTap: () {},
+                ),
               ),
               const _GroupLabel('ヘルスケア連携'),
               _HealthRowCard(
@@ -1212,6 +1283,26 @@ Widget previewSettingsScreenDark() {
   return MaterialApp(
     theme: AppTheme.darkTheme,
     home: const _PreviewSettingsBody(themeMode: ThemeMode.dark),
+  );
+}
+
+/// 通知グループの「記録のリマインダー」の値がオンの項目の表示名になる（既定の Light は「オフ」）
+@Preview(name: 'SettingsScreen - 記録のリマインダー（体重・夕食）')
+Widget previewSettingsScreenRecordRemindersOn() {
+  return MaterialApp(
+    theme: AppTheme.lightTheme,
+    home: const _PreviewSettingsBody(reminderSummary: '体重・夕食'),
+  );
+}
+
+@Preview(name: 'SettingsScreen - 記録のリマインダー（体重・夕食・ダーク）')
+Widget previewSettingsScreenRecordRemindersOnDark() {
+  return MaterialApp(
+    theme: AppTheme.darkTheme,
+    home: const _PreviewSettingsBody(
+      themeMode: ThemeMode.dark,
+      reminderSummary: '体重・夕食',
+    ),
   );
 }
 

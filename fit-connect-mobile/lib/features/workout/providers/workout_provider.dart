@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:fit_connect_mobile/features/record_reminders/services/record_reminder_sync.dart';
 import 'package:fit_connect_mobile/features/workout/data/workout_repository.dart';
 import 'package:fit_connect_mobile/features/workout/models/actual_set_model.dart';
 import 'package:fit_connect_mobile/features/workout/models/workout_assignment_model.dart';
@@ -23,6 +26,8 @@ WorkoutRepository workoutRepository(WorkoutRepositoryRef ref) {
 /// - [doToday]: 期限切れアサインメントを今日のリストに移動
 /// - [skip]: 期限切れアサインメントをスキップ
 /// - [reschedule]: 期限切れアサインメントの日付を変更
+///
+/// 完了・今日やる・スキップ・日付の変更の後は、記録のリマインダー（運動）を予約し直す
 @riverpod
 class WorkoutScreenNotifier extends _$WorkoutScreenNotifier {
   @override
@@ -231,6 +236,7 @@ class WorkoutScreenNotifier extends _$WorkoutScreenNotifier {
         calories: calories,
       );
     });
+    _refreshRecordReminders();
   }
 
   /// 未完了アサインメントを「今日やる」に変更（DB更新後にデータを再取得して画面全体を更新）
@@ -241,6 +247,7 @@ class WorkoutScreenNotifier extends _$WorkoutScreenNotifier {
 
     final repo = ref.read(workoutRepositoryProvider);
     await repo.rescheduleAssignment(assignmentId, todayStr);
+    _refreshRecordReminders();
 
     // 週間カレンダー等を含めて画面全体を再描画するためinvalidate
     ref.invalidateSelf();
@@ -250,6 +257,7 @@ class WorkoutScreenNotifier extends _$WorkoutScreenNotifier {
   Future<void> skip(String assignmentId) async {
     final repo = ref.read(workoutRepositoryProvider);
     await repo.skipAssignment(assignmentId);
+    _refreshRecordReminders();
 
     final currentState = state.valueOrNull;
     if (currentState == null) return;
@@ -271,9 +279,17 @@ class WorkoutScreenNotifier extends _$WorkoutScreenNotifier {
 
     final repo = ref.read(workoutRepositoryProvider);
     await repo.rescheduleAssignment(assignmentId, newDateStr);
+    _refreshRecordReminders();
 
     // 週間カレンダー等を含めて画面全体を再描画するためinvalidate
     ref.invalidateSelf();
+  }
+
+  /// 記録のリマインダーを予約し直す（運動はその日に未完了のプランがある日だけ鳴るため。待たない）
+  void _refreshRecordReminders() {
+    unawaited(
+      ref.read(recordReminderSyncProvider).refresh(reason: 'workout_changed'),
+    );
   }
 }
 

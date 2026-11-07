@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:health/health.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:fit_connect_mobile/features/health/providers/health_provider.dart';
+import 'package:fit_connect_mobile/features/record_reminders/services/record_reminder_sync.dart';
 import 'package:fit_connect_mobile/features/weight_records/data/weight_repository.dart';
 import 'package:fit_connect_mobile/features/weight_records/models/weight_record_model.dart';
 import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
@@ -300,6 +303,10 @@ class HealthSync extends _$HealthSync {
       ref.invalidate(weightRecordsProvider);
       ref.invalidate(latestWeightRecordProvider);
       ref.invalidate(weightStatsProvider);
+      // 記録のリマインダー: 今日の体重が取り込まれたら今日の分を止める（待たない）
+      unawaited(
+        ref.read(recordReminderSyncProvider).refresh(reason: 'health_sync'),
+      );
     }
   }
 

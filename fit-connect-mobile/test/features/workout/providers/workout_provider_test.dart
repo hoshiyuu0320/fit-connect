@@ -2,12 +2,15 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fit_connect_mobile/features/record_reminders/services/record_reminder_sync.dart';
 import 'package:fit_connect_mobile/features/workout/data/workout_repository.dart';
 import 'package:fit_connect_mobile/features/workout/models/actual_set_model.dart';
 import 'package:fit_connect_mobile/features/workout/models/workout_assignment_exercise_model.dart';
 import 'package:fit_connect_mobile/features/workout/models/workout_assignment_model.dart';
 import 'package:fit_connect_mobile/features/workout/models/workout_screen_state.dart';
 import 'package:fit_connect_mobile/features/workout/providers/workout_provider.dart';
+
+import '../../record_reminders/fake_record_reminder_sync.dart';
 
 /// 固定の WorkoutScreenState を返すテスト用Notifier
 class _FakeWorkoutScreenNotifier extends WorkoutScreenNotifier {
@@ -57,6 +60,25 @@ class _FakeWorkoutRepository extends WorkoutRepository {
   }) async {
     completeCalled = true;
     pendingWritesWhenCompleted = inFlight > 0;
+  }
+
+  /// rescheduleAssignment の呼び出し（アサインメント ID, 新しい日付）
+  final rescheduled = <(String, String)>[];
+
+  /// skipAssignment の呼び出し
+  final skipped = <String>[];
+
+  @override
+  Future<void> rescheduleAssignment(
+    String assignmentId,
+    String newDateStr,
+  ) async {
+    rescheduled.add((assignmentId, newDateStr));
+  }
+
+  @override
+  Future<void> skipAssignment(String assignmentId) async {
+    skipped.add(assignmentId);
   }
 
   /// 未完了の書き込みを順に完了させる
@@ -109,14 +131,17 @@ List<ActualSet> _sets(List<bool> done) => [
 
 void main() {
   late _FakeWorkoutRepository repo;
+  late FakeRecordReminderSync reminderSync;
   late ProviderContainer container;
 
   setUp(() async {
     repo = _FakeWorkoutRepository();
+    reminderSync = FakeRecordReminderSync();
     container = ProviderContainer(overrides: [
       workoutRepositoryProvider.overrideWithValue(repo),
       workoutScreenNotifierProvider
           .overrideWith(() => _FakeWorkoutScreenNotifier(_initialState())),
+      recordReminderSyncProvider.overrideWithValue(reminderSync),
     ]);
     addTearDown(container.dispose);
     // autoDispose のため購読して state を保持する
@@ -183,6 +208,7 @@ void main() {
         workoutRepositoryProvider.overrideWithValue(failingRepo),
         workoutScreenNotifierProvider
             .overrideWith(() => _FakeWorkoutScreenNotifier(_initialState())),
+        recordReminderSyncProvider.overrideWithValue(reminderSync),
       ]);
       addTearDown(c.dispose);
       c.listen(workoutScreenNotifierProvider, (_, __) {});
@@ -228,6 +254,8 @@ void main() {
             .status,
         'completed',
       );
+      // 今日のプランが済んだので、運動のリマインダーを予約し直す
+      expect(reminderSync.refreshReasons, ['workout_changed']);
     });
 
     test('未完了の種目がある場合は完了にしない', () async {
@@ -244,6 +272,31 @@ void main() {
 
       await submit;
       expect(repo.completeCalled, isFalse);
+      expect(reminderSync.refreshReasons, isEmpty);
+    });
+  });
+
+  group('記録のリマインダーの予約し直し', () {
+    test('今日やる・スキップ・日付の変更の後に、運動のリマインダーを予約し直す', () async {
+      final notifier = container.read(workoutScreenNotifierProvider.notifier);
+
+      await notifier.doToday(_assignmentId);
+      expect(repo.rescheduled, hasLength(1));
+      expect(reminderSync.refreshReasons, ['workout_changed']);
+
+      await container.read(workoutScreenNotifierProvider.future);
+      await container
+          .read(workoutScreenNotifierProvider.notifier)
+          .skip(_assignmentId);
+      expect(repo.skipped, [_assignmentId]);
+      expect(reminderSync.refreshReasons, hasLength(2));
+
+      await container
+          .read(workoutScreenNotifierProvider.notifier)
+          .reschedule(_assignmentId, DateTime(2026, 11, 10));
+      expect(repo.rescheduled.last, (_assignmentId, '2026-11-10'));
+      expect(reminderSync.refreshReasons,
+          ['workout_changed', 'workout_changed', 'workout_changed']);
     });
   });
 }

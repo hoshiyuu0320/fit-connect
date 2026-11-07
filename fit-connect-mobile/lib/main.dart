@@ -14,6 +14,15 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   print('🚀 アプリ起動開始');
 
+  // ローカル通知の初期化（iOS/Androidのみ。await しない）
+  // 記録のリマインダーの時間帯（Asia/Tokyo）の設定と、ローカル通知のタップで起動したときの
+  // タップの受け取りを早めに始める。Firebase の初期化に失敗しても動くよう、下の try の外で行う。
+  // 失敗は内部でログに出すだけ（例外は投げない）
+  if (defaultTargetPlatform == TargetPlatform.iOS ||
+      defaultTargetPlatform == TargetPlatform.android) {
+    unawaited(NotificationService.ensureLocalNotificationsInitialized());
+  }
+
   // 環境変数読み込み
   await dotenv.load(fileName: "assets/.env");
   print('✅ 環境変数読み込み完了');
