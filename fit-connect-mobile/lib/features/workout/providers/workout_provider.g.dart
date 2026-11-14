@@ -233,17 +233,19 @@ class _CompletedWorkoutAssignmentsProviderElement
 }
 
 String _$workoutScreenNotifierHash() =>
-    r'0c78ec67fb74cc9938778ca89b00b5cd07772c27';
+    r'7d9c835f265ecc057af5f92a90b6d85c4937948f';
 
 /// ワークアウト画面の状態を管理するNotifier
 ///
 /// - 初期ロード: 期限切れ・今日・週間・今後の予定の4クエリを並列取得して WorkoutScreenState を返す
 /// - [toggleExercise]: 種目の完了状態をDB更新 + ローカルstateの楽観的更新
-/// - [updateExerciseSets]: セット記録をDB更新 + 楽観的ローカルstate更新
-/// - [submitCompletion]: アサインメントをDB上で完了にしてローカルstateを更新
+/// - [updateExerciseSets]: セット記録を楽観的にローカルstate更新し、種目ごとに直列化してDB更新
+/// - [submitCompletion]: 送信待ちのセット記録を保存後、アサインメントをDB上で完了にしてローカルstateを更新
 /// - [doToday]: 期限切れアサインメントを今日のリストに移動
 /// - [skip]: 期限切れアサインメントをスキップ
 /// - [reschedule]: 期限切れアサインメントの日付を変更
+///
+/// 完了・今日やる・スキップ・日付の変更の後は、記録のリマインダー（運動）を予約し直す
 ///
 /// Copied from [WorkoutScreenNotifier].
 @ProviderFor(WorkoutScreenNotifier)

@@ -5,6 +5,7 @@ import 'package:fit_connect_mobile/features/messages/data/message_repository.dar
 import 'package:fit_connect_mobile/features/messages/providers/paginated_messages_state.dart';
 import 'package:fit_connect_mobile/features/auth/providers/auth_provider.dart';
 import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
+import 'package:fit_connect_mobile/features/record_reminders/services/record_reminder_sync.dart';
 
 part 'messages_provider.g.dart';
 
@@ -139,6 +140,9 @@ class PaginatedMessages extends _$PaginatedMessages {
         messages: [...currentState.messages, sentMessage],
       ));
     }
+
+    // 記録のリマインダー: 送ったタグから今日記録した項目を推定し、今日の分を止める（待たない）
+    ref.read(recordReminderSyncProvider).onMessageSent(tags ?? const []);
   }
 
   /// メッセージを編集（5分以内）
