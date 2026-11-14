@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart'
-    show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/widget_previews.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,6 +19,7 @@ import 'package:fit_connect_mobile/features/sessions/utils/session_formatting.da
 import 'package:fit_connect_mobile/features/settings/providers/notification_preferences_provider.dart';
 import 'package:fit_connect_mobile/services/storage_service.dart';
 import 'package:fit_connect_mobile/shared/storage/storage_buckets.dart';
+import 'package:fit_connect_mobile/shared/utils/health_source_name.dart';
 import 'package:fit_connect_mobile/shared/utils/trainer_name.dart';
 import 'package:fit_connect_mobile/shared/widgets/fc/fc.dart';
 import 'package:fit_connect_mobile/shared/widgets/storage_image.dart';
@@ -582,7 +581,7 @@ class _HealthSection extends ConsumerWidget {
       children: [
         const _GroupLabel('ヘルスケア連携'),
         _HealthRowCard(
-          title: _healthSourceName(),
+          title: healthSourceName(),
           caption: _healthCaption(settings, DateTime.now()),
           onTap: () {
             Navigator.push(
@@ -597,11 +596,6 @@ class _HealthSection extends ConsumerWidget {
     );
   }
 }
-
-/// 連携先の名前（iOS は HealthKit、Android は Health Connect）
-String _healthSourceName() => defaultTargetPlatform == TargetPlatform.android
-    ? 'Health Connect'
-    : 'HealthKit';
 
 /// 「連携中 · 体重 · 睡眠 · 最終同期 9月13日（日）7:32」。設定が読めるまでは null（補足なし）
 String? _healthCaption(HealthSettingsState? settings, DateTime now) {
@@ -1171,7 +1165,7 @@ class _PreviewSettingsBody extends StatelessWidget {
               ),
               const _GroupLabel('ヘルスケア連携'),
               _HealthRowCard(
-                title: 'HealthKit',
+                title: healthSourceName(),
                 caption: loading
                     ? null
                     : _healthCaption(

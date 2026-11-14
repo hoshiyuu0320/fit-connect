@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fit_connect_mobile/features/health/providers/health_provider.dart';
@@ -119,3 +120,24 @@ final RegExp emojiPattern = RegExp(
   r'[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]',
   unicode: true,
 );
+
+/// 端末を iOS / Android に見立てて [body] を実行する（`testWidgets` 用）。
+///
+/// `flutter test` は何も指定しないと Android 扱い（`defaultTargetPlatform`）なので、
+/// 連携元の名前（iOS は HealthKit・Android は Health Connect）を確かめるテストは、
+/// OS を明示するためにこれで包む。
+///
+/// 上書きした変数は、テスト本体の中で必ず戻す（本体の後に残ると、flutter_test の
+/// 終了時チェックで失敗する。`addTearDown` では間に合わない）。
+/// [body] が例外で終わっても `finally` で戻す
+Future<void> withPlatform(
+  TargetPlatform platform,
+  Future<void> Function() body,
+) async {
+  debugDefaultTargetPlatformOverride = platform;
+  try {
+    await body();
+  } finally {
+    debugDefaultTargetPlatformOverride = null;
+  }
+}

@@ -7,6 +7,7 @@ import 'package:fit_connect_mobile/core/theme/app_text_styles.dart';
 import 'package:fit_connect_mobile/features/sleep_records/models/sleep_record_model.dart';
 import 'package:fit_connect_mobile/features/sleep_records/presentation/utils/sleep_labels.dart';
 import 'package:fit_connect_mobile/features/sleep_records/presentation/widgets/sleep_stage_bar.dart';
+import 'package:fit_connect_mobile/shared/utils/health_source_name.dart';
 import 'package:fit_connect_mobile/shared/widgets/fc/fc.dart';
 import 'package:fit_connect_mobile/shared/widgets/fc/fc_previews.dart';
 
@@ -52,8 +53,8 @@ class SleepSummaryCard extends StatelessWidget {
             icon: LucideIcons.moon,
             label: '昨夜の睡眠',
             trailing: hasObjective
-                ? const FcPill(
-                    'HealthKit',
+                ? FcPill(
+                    healthSourceName(),
                     tone: FcPillTone.muted,
                     icon: LucideIcons.heartPulse,
                   )

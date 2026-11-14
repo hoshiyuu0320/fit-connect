@@ -17,6 +17,7 @@ import 'package:fit_connect_mobile/features/sessions/presentation/widgets/next_s
 import 'package:fit_connect_mobile/features/sessions/utils/session_formatting.dart';
 import 'package:fit_connect_mobile/features/weight_records/models/weight_record_model.dart';
 import 'package:fit_connect_mobile/features/weight_records/providers/weight_records_provider.dart';
+import 'package:fit_connect_mobile/shared/utils/health_source_name.dart';
 import 'package:fit_connect_mobile/shared/utils/trainer_name.dart';
 import 'package:fit_connect_mobile/shared/widgets/fc/fc.dart';
 
@@ -335,9 +336,9 @@ class _PreviewHome extends StatelessWidget {
           [FcValuePart(isAchieved ? '65.0' : '62.4', 'kg')],
           sub: '前回から +0.1 kg · 7:30',
         ),
-        sleep: const SummaryRowData.value(
-          [FcValuePart('7', '時間'), FcValuePart('30', '分')],
-          sub: 'HealthKit',
+        sleep: SummaryRowData.value(
+          const [FcValuePart('7', '時間'), FcValuePart('30', '分')],
+          sub: healthSourceName(),
         ),
         onMealsTap: () {},
         onActivityTap: () {},

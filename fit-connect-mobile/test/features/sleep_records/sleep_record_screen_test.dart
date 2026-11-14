@@ -97,38 +97,58 @@ void main() {
 
   group('通常', () {
     testWidgets('昨夜の睡眠 → 直近7日間 → 履歴の順に、正本どおりの内容が並ぶ', (tester) async {
-      await pumpScreen(tester);
+      await withPlatform(TargetPlatform.iOS, () async {
+        await pumpScreen(tester);
 
-      // 昨夜の睡眠
-      expect(find.text('昨夜の睡眠'), findsOneWidget);
-      expect(heroText(tester), '7時間30分');
-      expect(find.text('HealthKit'), findsOneWidget);
-      expect(find.text('すっきり'), findsOneWidget); // 今日の目覚め（ピル）
-      // 直近7日間: 平均は取得できた 5 日（6時間58分）
-      expect(find.text('直近7日間'), findsOneWidget);
-      expect(find.text('平均 6時間58分'), findsOneWidget);
-      expect(find.byType(FcBars), findsOneWidget);
-      expect(
-        find.text(
-          'HealthKit · 5日分の平均'
-          '（${shortDate(4)}、${shortDate(2)}は未取得）',
-        ),
-        findsOneWidget,
-      );
-      // 履歴
-      expect(find.text('履歴'), findsOneWidget);
-      expect(find.byType(SleepHistoryListItem), findsNWidgets(6));
-      expect(find.text('目覚め だるい · 手動の記録のみ'), findsOneWidget);
+        // 昨夜の睡眠
+        expect(find.text('昨夜の睡眠'), findsOneWidget);
+        expect(heroText(tester), '7時間30分');
+        expect(find.text('HealthKit'), findsOneWidget);
+        expect(find.text('すっきり'), findsOneWidget); // 今日の目覚め（ピル）
+        // 直近7日間: 平均は取得できた 5 日（6時間58分）
+        expect(find.text('直近7日間'), findsOneWidget);
+        expect(find.text('平均 6時間58分'), findsOneWidget);
+        expect(find.byType(FcBars), findsOneWidget);
+        expect(
+          find.text(
+            'HealthKit · 5日分の平均'
+            '（${shortDate(4)}、${shortDate(2)}は未取得）',
+          ),
+          findsOneWidget,
+        );
+        // 履歴
+        expect(find.text('履歴'), findsOneWidget);
+        expect(find.byType(SleepHistoryListItem), findsNWidgets(6));
+        expect(find.text('目覚め だるい · 手動の記録のみ'), findsOneWidget);
 
-      // 並び順
-      expect(
-        top(tester, find.text('昨夜の睡眠')),
-        lessThan(top(tester, find.text('直近7日間'))),
-      );
-      expect(
-        top(tester, find.text('直近7日間')),
-        lessThan(top(tester, find.text('履歴'))),
-      );
+        // 並び順
+        expect(
+          top(tester, find.text('昨夜の睡眠')),
+          lessThan(top(tester, find.text('直近7日間'))),
+        );
+        expect(
+          top(tester, find.text('直近7日間')),
+          lessThan(top(tester, find.text('履歴'))),
+        );
+      });
+    });
+
+    testWidgets('Android: 昨夜の睡眠のピルも直近7日間の caption も Health Connect',
+        (tester) async {
+      await withPlatform(TargetPlatform.android, () async {
+        await pumpScreen(tester);
+
+        expect(find.text('Health Connect'), findsOneWidget);
+        expect(
+          find.text(
+            'Health Connect · 5日分の平均'
+            '（${shortDate(4)}、${shortDate(2)}は未取得）',
+          ),
+          findsOneWidget,
+        );
+        // 画面のどこにも HealthKit は出ない
+        expect(find.textContaining('HealthKit'), findsNothing);
+      });
     });
 
     testWidgets('取得できなかった日は「未取得」で、0 とは出さない', (tester) async {
@@ -191,9 +211,13 @@ void main() {
     });
 
     testWidgets('文字拡大 1.35・狭い幅でも横にはみ出さない', (tester) async {
-      await pumpScreen(tester, textScale: 1.35, width: 320);
-      expect(tester.takeException(), isNull);
-      expect(find.text('直近7日間'), findsOneWidget);
+      // 昨夜の睡眠の見出し行の幅は連携元のピルの文字数で決まる。OS を固定する（iOS = HealthKit）。
+      // テスト用フォント（Ahem）は 1 文字が 1em 幅なので、Health Connect は幅 320・1.35 倍だと収まらない
+      await withPlatform(TargetPlatform.iOS, () async {
+        await pumpScreen(tester, textScale: 1.35, width: 320);
+        expect(tester.takeException(), isNull);
+        expect(find.text('直近7日間'), findsOneWidget);
+      });
     });
   });
 
@@ -216,37 +240,63 @@ void main() {
     });
 
     testWidgets('同期できないときは警告と再試行。取得済みの値は消さずに表示し続ける', (tester) async {
-      var retries = 0;
-      await pumpScreen(
-        tester,
-        settings: healthSettingsState(
-          status: HealthSyncStatus.error,
-          lastSyncAt: syncedAt,
-        ),
-        onRefresh: () async => retries++,
-      );
+      await withPlatform(TargetPlatform.iOS, () async {
+        var retries = 0;
+        await pumpScreen(
+          tester,
+          settings: healthSettingsState(
+            status: HealthSyncStatus.error,
+            lastSyncAt: syncedAt,
+          ),
+          onRefresh: () async => retries++,
+        );
 
-      expect(
-        find.text(
-          'HealthKitと同期できませんでした。'
-          '${formatSleepDateTime(syncedAt)} に取得した値を表示しています。',
-        ),
-        findsOneWidget,
-      );
-      expect(find.textContaining('最終同期'), findsNothing);
-      // 取得済みの値（昨夜の睡眠・直近7日間・履歴）はそのまま
-      expect(heroText(tester), '7時間30分');
-      expect(find.text('平均 6時間58分'), findsOneWidget);
-      expect(find.byType(SleepHistoryListItem), findsNWidgets(6));
-      // 警告は昨夜の睡眠の上
-      expect(
-        top(tester, find.byType(FcInlineNotice)),
-        lessThan(top(tester, find.text('昨夜の睡眠'))),
-      );
+        expect(
+          find.text(
+            'HealthKitと同期できませんでした。'
+            '${formatSleepDateTime(syncedAt)} に取得した値を表示しています。',
+          ),
+          findsOneWidget,
+        );
+        expect(find.textContaining('最終同期'), findsNothing);
+        // 取得済みの値（昨夜の睡眠・直近7日間・履歴）はそのまま
+        expect(heroText(tester), '7時間30分');
+        expect(find.text('平均 6時間58分'), findsOneWidget);
+        expect(find.byType(SleepHistoryListItem), findsNWidgets(6));
+        // 警告は昨夜の睡眠の上
+        expect(
+          top(tester, find.byType(FcInlineNotice)),
+          lessThan(top(tester, find.text('昨夜の睡眠'))),
+        );
 
-      await tester.tap(find.text('再試行'));
-      await tester.pump();
-      expect(retries, 1);
+        await tester.tap(find.text('再試行'));
+        await tester.pump();
+        expect(retries, 1);
+      });
+    });
+
+    testWidgets('Android: 同期の警告は「Health Connectと同期できませんでした。…」', (tester) async {
+      await withPlatform(TargetPlatform.android, () async {
+        await pumpScreen(
+          tester,
+          settings: healthSettingsState(
+            status: HealthSyncStatus.error,
+            lastSyncAt: syncedAt,
+          ),
+          onRefresh: () async {},
+        );
+
+        expect(
+          find.text(
+            'Health Connectと同期できませんでした。'
+            '${formatSleepDateTime(syncedAt)} に取得した値を表示しています。',
+          ),
+          findsOneWidget,
+        );
+        // 取得済みの値は消さずに表示し続ける（名前以外は iOS と同じ）
+        expect(heroText(tester), '7時間30分');
+        expect(find.textContaining('HealthKit'), findsNothing);
+      });
     });
 
     testWidgets('onRefresh が無ければ再試行は出さない', (tester) async {
@@ -298,18 +348,20 @@ void main() {
     });
 
     testWidgets('睡眠の連携がオンで睡眠が失敗していれば警告（体重と両方失敗でも）', (tester) async {
-      await pumpScreen(
-        tester,
-        settings: healthSettingsState(
-          status: HealthSyncStatus.error,
-          lastSyncAt: syncedAt,
-          error: '体重: timeout / 睡眠: timeout',
-        ),
-        onRefresh: () async {},
-      );
+      await withPlatform(TargetPlatform.iOS, () async {
+        await pumpScreen(
+          tester,
+          settings: healthSettingsState(
+            status: HealthSyncStatus.error,
+            lastSyncAt: syncedAt,
+            error: '体重: timeout / 睡眠: timeout',
+          ),
+          onRefresh: () async {},
+        );
 
-      expect(find.byType(FcInlineNotice), findsOneWidget);
-      expect(find.textContaining('HealthKitと同期できませんでした。'), findsOneWidget);
+        expect(find.byType(FcInlineNotice), findsOneWidget);
+        expect(find.textContaining('HealthKitと同期できませんでした。'), findsOneWidget);
+      });
     });
 
     testWidgets('ヘルスケア連携が無効なら同期の表示は出さない', (tester) async {
@@ -326,19 +378,22 @@ void main() {
     });
 
     testWidgets('同期できない状態でも文字拡大 1.35・ダークで崩れない', (tester) async {
-      await pumpScreen(
-        tester,
-        settings: healthSettingsState(
-          status: HealthSyncStatus.error,
-          lastSyncAt: syncedAt,
-        ),
-        onRefresh: () async {},
-        textScale: 1.35,
-        width: 320,
-        theme: AppTheme.darkTheme,
-      );
-      expect(tester.takeException(), isNull);
-      expect(find.byType(FcInlineNotice), findsOneWidget);
+      // OS を固定する（iOS = HealthKit）。理由は「文字拡大 1.35・狭い幅でも横にはみ出さない」と同じ
+      await withPlatform(TargetPlatform.iOS, () async {
+        await pumpScreen(
+          tester,
+          settings: healthSettingsState(
+            status: HealthSyncStatus.error,
+            lastSyncAt: syncedAt,
+          ),
+          onRefresh: () async {},
+          textScale: 1.35,
+          width: 320,
+          theme: AppTheme.darkTheme,
+        );
+        expect(tester.takeException(), isNull);
+        expect(find.byType(FcInlineNotice), findsOneWidget);
+      });
     });
   });
 
@@ -404,16 +459,34 @@ void main() {
     });
 
     testWidgets('手動の記録のみの今日は時間「未取得」と目覚めの言葉', (tester) async {
-      await pumpScreen(
-        tester,
-        records: [sleepRecord(0, rating: WakeupRating.groggy)],
-      );
+      await withPlatform(TargetPlatform.iOS, () async {
+        await pumpScreen(
+          tester,
+          records: [sleepRecord(0, rating: WakeupRating.groggy)],
+        );
 
-      expect(heroText(tester), '未取得');
-      expect(find.text('手動の記録'), findsOneWidget);
-      // 直近7日間は 1 日も取得できていない
-      expect(find.text('HealthKit の記録はまだありません'), findsOneWidget);
-      expect(find.textContaining('平均'), findsNothing);
+        expect(heroText(tester), '未取得');
+        expect(find.text('手動の記録'), findsOneWidget);
+        // 直近7日間は 1 日も取得できていない
+        expect(find.text('HealthKit の記録はまだありません'), findsOneWidget);
+        expect(find.textContaining('平均'), findsNothing);
+      });
+    });
+
+    testWidgets('Android: 取得できた日が無ければ「Health Connect の記録はまだありません」',
+        (tester) async {
+      await withPlatform(TargetPlatform.android, () async {
+        await pumpScreen(
+          tester,
+          records: [sleepRecord(0, rating: WakeupRating.groggy)],
+        );
+
+        expect(find.text('Health Connect の記録はまだありません'), findsOneWidget);
+        expect(find.textContaining('平均'), findsNothing);
+        // 手動の記録のみの今日は、連携元のピルを出さない
+        expect(find.text('Health Connect'), findsNothing);
+        expect(find.textContaining('HealthKit'), findsNothing);
+      });
     });
 
     testWidgets('読み込み中はスケルトンで配置を保つ（スピナーは出さない）', (tester) async {
