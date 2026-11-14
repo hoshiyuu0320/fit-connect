@@ -45,6 +45,14 @@ class AuthNotifier extends _$AuthNotifier {
           ref.invalidateSelf();
         }
       },
+      // gotrue は、トークン更新の再試行可能な失敗（オフライン・5xx など）を
+      // セッションを消さずに、このストリームへエラーとして流す。
+      // ここで受けないと未処理の非同期例外になる。
+      // ログアウトは signedOut イベント（値）で届くので、エラーはログアウト扱いにしない
+      // （state の変更も invalidateSelf もしない。ログに残すだけ）。
+      onError: (Object error, StackTrace stackTrace) {
+        debugPrint('[AuthNotifier] 認証状態の通知でエラー（セッションは維持）: $error');
+      },
     );
 
     // Provider破棄時にサブスクリプションをキャンセル
