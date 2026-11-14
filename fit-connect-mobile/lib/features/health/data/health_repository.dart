@@ -7,6 +7,12 @@ class HealthRepository {
 
   HealthRepository({Health? health}) : _health = health ?? Health();
 
+  /// 同じ晩とみなす隙間（晩の終わり〜次の点の始まり）の上限。これ以上あけば次の晩
+  static const _nightGapLimit = Duration(hours: 3);
+
+  /// 睡眠の取得を startDate より前に広げる幅
+  static const _sleepLookback = Duration(days: 2);
+
   /// HealthKit / Health Connect が利用可能かチェック
   Future<bool> isAvailable() async {
     try {
@@ -114,8 +120,13 @@ class HealthRepository {
     }
   }
 
-  /// 起床日ごとにメインセッション1件の集計を返す。
-  /// 返却: `Map<recordedDate(YYYY-MM-DD JST), SleepSessionData>`
+  /// 睡眠の点をひと晩ずつまとめ、起床日ごとに1晩分の集計を返す。
+  /// 返却: `Map<recordedDate(YYYY-MM-DD JST), SleepSessionData>`。
+  /// キーはその晩の起床（wakeTime）の JST 日付。同じ起床日に晩が複数あれば
+  /// （昼寝など）、合計が最も長い1晩だけを返す（同じ長さなら起床が遅い方）。
+  /// health の iOS は開始時刻で絞って読む（`.strictStartDate`）ため、startDate が
+  /// 夜の途中だとその夜の前半が抜ける。そこで 2 日前から読み、起床日が
+  /// startDate の JST 日付より前の晩は返さない
   Future<Map<String, SleepSessionData>> getSleepData({
     required DateTime startDate,
     DateTime? endDate,
@@ -125,25 +136,29 @@ class HealthRepository {
     try {
       final data = await _health.getHealthDataFromTypes(
         types: _sleepTypes,
-        startTime: startDate,
+        startTime: startDate.subtract(_sleepLookback),
         endTime: end,
       );
 
-      // 起床日キー（wake側=dateTo の JST 日付）でグループ化
-      final byDate = <String, List<HealthDataPoint>>{};
-      for (final p in data) {
-        final jst = p.dateTo.toUtc().add(const Duration(hours: 9));
-        final key = '${jst.year.toString().padLeft(4, '0')}-'
-            '${jst.month.toString().padLeft(2, '0')}-'
-            '${jst.day.toString().padLeft(2, '0')}';
-        byDate.putIfAbsent(key, () => []).add(p);
-      }
-
+      final startKey = _jstDateKey(startDate);
       final result = <String, SleepSessionData>{};
-      byDate.forEach((date, points) {
-        final session = _aggregateMainSession(points);
-        if (session != null) result[date] = session;
-      });
+      for (final points in _splitIntoNights(data)) {
+        final night = _aggregateNight(points);
+        if (night == null) continue;
+
+        // 前に広げて読んだ分（起床日が startDate より前の晩）は返さない
+        final key = _jstDateKey(night.wakeTime);
+        if (key.compareTo(startKey) < 0) continue;
+
+        // 同じ起床日なら合計が長い方、同じ長さなら起床が遅い方を残す
+        final kept = result[key];
+        if (kept == null ||
+            night.totalSleepMinutes > kept.totalSleepMinutes ||
+            (night.totalSleepMinutes == kept.totalSleepMinutes &&
+                night.wakeTime.isAfter(kept.wakeTime))) {
+          result[key] = night;
+        }
+      }
       return result;
     } catch (e) {
       debugPrint('[HealthRepository] Failed to get sleep data: $e');
@@ -151,10 +166,39 @@ class HealthRepository {
     }
   }
 
-  /// メインセッション集計。
-  /// その日の全 sleep セグメントを dateFrom 順にソートし、
-  /// 最早開始〜最遅終了 を主セッションとみなし、ステージ別合計分を算出
-  SleepSessionData? _aggregateMainSession(List<HealthDataPoint> points) {
+  /// 点を dateFrom の順に並べ、ひと晩ずつに分ける。
+  /// 晩の終わり（それまでの dateTo の最大）と次の点の dateFrom の隙間が
+  /// [_nightGapLimit] 未満なら同じ晩（重なりも同じ晩）、以上なら次の晩とする
+  List<List<HealthDataPoint>> _splitIntoNights(List<HealthDataPoint> points) {
+    final sorted = [...points]
+      ..sort((a, b) => a.dateFrom.compareTo(b.dateFrom));
+
+    final nights = <List<HealthDataPoint>>[];
+    DateTime? nightEnd;
+    for (final p in sorted) {
+      if (nightEnd == null ||
+          p.dateFrom.difference(nightEnd) >= _nightGapLimit) {
+        nights.add([p]);
+        nightEnd = p.dateTo;
+      } else {
+        nights.last.add(p);
+        if (p.dateTo.isAfter(nightEnd)) nightEnd = p.dateTo;
+      }
+    }
+    return nights;
+  }
+
+  /// 日時を JST の日付キー（YYYY-MM-DD）にする
+  static String _jstDateKey(DateTime time) {
+    final jst = time.toUtc().add(const Duration(hours: 9));
+    return '${jst.year.toString().padLeft(4, '0')}-'
+        '${jst.month.toString().padLeft(2, '0')}-'
+        '${jst.day.toString().padLeft(2, '0')}';
+  }
+
+  /// ひと晩分の点の集計。
+  /// dateFrom 順にソートし、最早開始〜最遅終了を就寝〜起床として、ステージ別合計分を算出
+  SleepSessionData? _aggregateNight(List<HealthDataPoint> points) {
     if (points.isEmpty) return null;
 
     points.sort((a, b) => a.dateFrom.compareTo(b.dateFrom));

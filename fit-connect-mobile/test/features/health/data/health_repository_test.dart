@@ -72,6 +72,159 @@ const _iosSleepTypes = [
   HealthDataType.SLEEP_IN_BED,
 ];
 
+/// health プラグインと同じく、点を型の順（ASLEEP, DEEP, LIGHT, REM, AWAKE,
+/// IN_BED/SESSION）に並べる。プラグインは型ごとに取得して連結するので、
+/// 返る点は時刻の順にならない。同じ型の中は元の順のまま
+List<HealthDataPoint> _inPluginOrder(List<HealthDataPoint> points) => [
+      for (final type in [..._iosSleepTypes, HealthDataType.SLEEP_SESSION])
+        ...points.where((p) => p.type == type),
+    ];
+
+/// 夜 N のステージ: JST 2026-04-01 23:00 就寝 〜 04-02 07:00 起床（合計 480 分）。
+/// 最初の LIGHT は JST 0 時より前（04-01 23:40）に終わる
+List<HealthDataPoint> _nightN({
+  HealthPlatformType sourcePlatform = HealthPlatformType.appleHealth,
+}) =>
+    [
+      // LIGHT: JST 04-01 23:00〜23:40（40 分）
+      _createSleepDataPoint(
+        type: HealthDataType.SLEEP_LIGHT,
+        dateFrom: DateTime.utc(2026, 4, 1, 14, 0),
+        dateTo: DateTime.utc(2026, 4, 1, 14, 40),
+        sourcePlatform: sourcePlatform,
+      ),
+      // DEEP: JST 04-01 23:40〜04-02 00:30（50 分）
+      _createSleepDataPoint(
+        type: HealthDataType.SLEEP_DEEP,
+        dateFrom: DateTime.utc(2026, 4, 1, 14, 40),
+        dateTo: DateTime.utc(2026, 4, 1, 15, 30),
+        sourcePlatform: sourcePlatform,
+      ),
+      // LIGHT: JST 04-02 00:30〜03:00（150 分）
+      _createSleepDataPoint(
+        type: HealthDataType.SLEEP_LIGHT,
+        dateFrom: DateTime.utc(2026, 4, 1, 15, 30),
+        dateTo: DateTime.utc(2026, 4, 1, 18, 0),
+        sourcePlatform: sourcePlatform,
+      ),
+      // REM: JST 04-02 03:00〜04:00（60 分）
+      _createSleepDataPoint(
+        type: HealthDataType.SLEEP_REM,
+        dateFrom: DateTime.utc(2026, 4, 1, 18, 0),
+        dateTo: DateTime.utc(2026, 4, 1, 19, 0),
+        sourcePlatform: sourcePlatform,
+      ),
+      // AWAKE: JST 04-02 04:00〜04:10（10 分）
+      _createSleepDataPoint(
+        type: HealthDataType.SLEEP_AWAKE,
+        dateFrom: DateTime.utc(2026, 4, 1, 19, 0),
+        dateTo: DateTime.utc(2026, 4, 1, 19, 10),
+        sourcePlatform: sourcePlatform,
+      ),
+      // LIGHT: JST 04-02 04:10〜06:00（110 分）
+      _createSleepDataPoint(
+        type: HealthDataType.SLEEP_LIGHT,
+        dateFrom: DateTime.utc(2026, 4, 1, 19, 10),
+        dateTo: DateTime.utc(2026, 4, 1, 21, 0),
+        sourcePlatform: sourcePlatform,
+      ),
+      // REM: JST 04-02 06:00〜07:00（60 分）
+      _createSleepDataPoint(
+        type: HealthDataType.SLEEP_REM,
+        dateFrom: DateTime.utc(2026, 4, 1, 21, 0),
+        dateTo: DateTime.utc(2026, 4, 1, 22, 0),
+        sourcePlatform: sourcePlatform,
+      ),
+    ];
+
+/// 前の夜 P（iOS）: JST 2026-03-31 23:30 就寝 〜 04-01 06:30 起床（合計 405 分）
+List<HealthDataPoint> _nightP() => [
+      // LIGHT: JST 03-31 23:30〜04-01 01:30（120 分）
+      _createSleepDataPoint(
+        type: HealthDataType.SLEEP_LIGHT,
+        dateFrom: DateTime.utc(2026, 3, 31, 14, 30),
+        dateTo: DateTime.utc(2026, 3, 31, 16, 30),
+        sourcePlatform: HealthPlatformType.appleHealth,
+      ),
+      // DEEP: JST 04-01 01:30〜02:45（75 分）
+      _createSleepDataPoint(
+        type: HealthDataType.SLEEP_DEEP,
+        dateFrom: DateTime.utc(2026, 3, 31, 16, 30),
+        dateTo: DateTime.utc(2026, 3, 31, 17, 45),
+        sourcePlatform: HealthPlatformType.appleHealth,
+      ),
+      // REM: JST 04-01 02:45〜04:00（75 分）
+      _createSleepDataPoint(
+        type: HealthDataType.SLEEP_REM,
+        dateFrom: DateTime.utc(2026, 3, 31, 17, 45),
+        dateTo: DateTime.utc(2026, 3, 31, 19, 0),
+        sourcePlatform: HealthPlatformType.appleHealth,
+      ),
+      // AWAKE: JST 04-01 04:00〜04:15（15 分）
+      _createSleepDataPoint(
+        type: HealthDataType.SLEEP_AWAKE,
+        dateFrom: DateTime.utc(2026, 3, 31, 19, 0),
+        dateTo: DateTime.utc(2026, 3, 31, 19, 15),
+        sourcePlatform: HealthPlatformType.appleHealth,
+      ),
+      // LIGHT: JST 04-01 04:15〜06:15（120 分）
+      _createSleepDataPoint(
+        type: HealthDataType.SLEEP_LIGHT,
+        dateFrom: DateTime.utc(2026, 3, 31, 19, 15),
+        dateTo: DateTime.utc(2026, 3, 31, 21, 15),
+        sourcePlatform: HealthPlatformType.appleHealth,
+      ),
+      // IN_BED: JST 03-31 23:30〜04-01 06:30（就寝・起床は広げるが、分は足さない）
+      _createSleepDataPoint(
+        type: HealthDataType.SLEEP_IN_BED,
+        dateFrom: DateTime.utc(2026, 3, 31, 14, 30),
+        dateTo: DateTime.utc(2026, 3, 31, 21, 30),
+        sourcePlatform: HealthPlatformType.appleHealth,
+      ),
+    ];
+
+/// getSleepData が返す1晩分の値を、すべての項目で確かめる Matcher
+Matcher _isSleepSession({
+  required DateTime bedTime,
+  required DateTime wakeTime,
+  required int deepMinutes,
+  required int lightMinutes,
+  required int remMinutes,
+  required int awakeMinutes,
+  required int totalSleepMinutes,
+}) =>
+    isA<SleepSessionData>()
+        .having((s) => s.bedTime, 'bedTime', bedTime)
+        .having((s) => s.wakeTime, 'wakeTime', wakeTime)
+        .having((s) => s.deepMinutes, 'deepMinutes', deepMinutes)
+        .having((s) => s.lightMinutes, 'lightMinutes', lightMinutes)
+        .having((s) => s.remMinutes, 'remMinutes', remMinutes)
+        .having((s) => s.awakeMinutes, 'awakeMinutes', awakeMinutes)
+        .having(
+            (s) => s.totalSleepMinutes, 'totalSleepMinutes', totalSleepMinutes);
+
+/// 夜 N の期待値
+final _isNightN = _isSleepSession(
+  bedTime: DateTime.utc(2026, 4, 1, 14, 0), // JST 04-01 23:00
+  wakeTime: DateTime.utc(2026, 4, 1, 22, 0), // JST 04-02 07:00
+  deepMinutes: 50,
+  lightMinutes: 300, // 40 + 150 + 110
+  remMinutes: 120, // 60 + 60
+  awakeMinutes: 10,
+  totalSleepMinutes: 480, // 50 + 300 + 120 + 10
+);
+
+/// 前の夜 P の期待値
+final _isNightP = _isSleepSession(
+  bedTime: DateTime.utc(2026, 3, 31, 14, 30), // JST 03-31 23:30
+  wakeTime: DateTime.utc(2026, 3, 31, 21, 30), // JST 04-01 06:30（IN_BED の終わり）
+  deepMinutes: 75,
+  lightMinutes: 240, // 120 + 120
+  remMinutes: 75,
+  awakeMinutes: 15,
+  totalSleepMinutes: 405, // 75 + 240 + 75 + 15。IN_BED は足さない
+);
+
 void main() {
   late MockHealth mockHealth;
   late HealthRepository repository;
@@ -682,6 +835,90 @@ void main() {
           expect(sleep.bedTime, DateTime.utc(2026, 4, 1, 14, 0));
           expect(sleep.wakeTime, DateTime.utc(2026, 4, 1, 21, 0));
         });
+
+        test(
+            'a session crossing JST midnight is one night keyed by its wake '
+            'date, and the session is not added to the total', () async {
+          final points = _inPluginOrder([
+            // 夜 N のステージ（最初の LIGHT は JST 04-01 23:40 に終わる）
+            ..._nightN(sourcePlatform: HealthPlatformType.googleHealthConnect),
+            // SESSION: JST 04-01 23:00〜04-02 07:00（480 分）
+            _createSleepDataPoint(
+              type: HealthDataType.SLEEP_SESSION,
+              dateFrom: DateTime.utc(2026, 4, 1, 14, 0),
+              dateTo: DateTime.utc(2026, 4, 1, 22, 0),
+              sourcePlatform: HealthPlatformType.googleHealthConnect,
+            ),
+          ]);
+          when(mockHealth.getHealthDataFromTypes(
+            types: anyNamed('types'),
+            startTime: anyNamed('startTime'),
+            endTime: anyNamed('endTime'),
+          )).thenAnswer((_) async => points);
+
+          final result = await repository.getSleepData(
+            startDate: DateTime.utc(2026, 3, 31),
+            endDate: DateTime.utc(2026, 4, 4),
+          );
+
+          // 就寝した JST 04-01 にはキーを作らない
+          expect(result.keys, ['2026-04-02']);
+          // 就寝・起床はセッションの範囲（夜 N と同じ）。
+          // 合計はステージの 480 分で、セッションの 480 分は足さない
+          expect(result['2026-04-02'], _isNightN);
+        });
+
+        test(
+            'a previous night with only a session keeps its range and session '
+            'length when the next night has a stage ending before JST midnight',
+            () async {
+          final points = _inPluginOrder([
+            // 前の夜はステージの無いセッションだけ
+            // SESSION: JST 03-31 23:30〜04-01 06:30（420 分）
+            _createSleepDataPoint(
+              type: HealthDataType.SLEEP_SESSION,
+              dateFrom: DateTime.utc(2026, 3, 31, 14, 30),
+              dateTo: DateTime.utc(2026, 3, 31, 21, 30),
+              sourcePlatform: HealthPlatformType.googleHealthConnect,
+            ),
+            // 夜 N のステージ（最初の LIGHT は JST 04-01 23:40 に終わる）
+            ..._nightN(sourcePlatform: HealthPlatformType.googleHealthConnect),
+            // 夜 N の SESSION: JST 04-01 23:00〜04-02 07:00（480 分）
+            _createSleepDataPoint(
+              type: HealthDataType.SLEEP_SESSION,
+              dateFrom: DateTime.utc(2026, 4, 1, 14, 0),
+              dateTo: DateTime.utc(2026, 4, 1, 22, 0),
+              sourcePlatform: HealthPlatformType.googleHealthConnect,
+            ),
+          ]);
+          when(mockHealth.getHealthDataFromTypes(
+            types: anyNamed('types'),
+            startTime: anyNamed('startTime'),
+            endTime: anyNamed('endTime'),
+          )).thenAnswer((_) async => points);
+
+          final result = await repository.getSleepData(
+            startDate: DateTime.utc(2026, 3, 31),
+            endDate: DateTime.utc(2026, 4, 4),
+          );
+
+          expect(result.keys, unorderedEquals(['2026-04-01', '2026-04-02']));
+          // 夜 N の最初の LIGHT（JST 04-01 23:00〜23:40）は前の夜に入らない。
+          // 前の夜はステージが無いままなので、合計はセッションの長さ
+          expect(
+            result['2026-04-01'],
+            _isSleepSession(
+              bedTime: DateTime.utc(2026, 3, 31, 14, 30), // JST 03-31 23:30
+              wakeTime: DateTime.utc(2026, 3, 31, 21, 30), // JST 04-01 06:30
+              deepMinutes: 0,
+              lightMinutes: 0,
+              remMinutes: 0,
+              awakeMinutes: 0,
+              totalSleepMinutes: 420,
+            ),
+          );
+          expect(result['2026-04-02'], _isNightN);
+        });
       });
 
       group('on iOS', () {
@@ -860,6 +1097,326 @@ void main() {
           expect(result.keys, ['2026-04-02']);
           expect(result.containsKey('2026-04-03'), isFalse);
           expect(result['2026-04-02']!.totalSleepMinutes, 360);
+        });
+
+        test('a night crossing JST midnight is keyed by its wake date only',
+            () async {
+          // 夜 N だけ。最初の LIGHT は JST 04-01 23:40 に終わる
+          final points = _inPluginOrder(_nightN());
+          when(mockHealth.getHealthDataFromTypes(
+            types: anyNamed('types'),
+            startTime: anyNamed('startTime'),
+            endTime: anyNamed('endTime'),
+          )).thenAnswer((_) async => points);
+
+          final result = await repository.getSleepData(
+            startDate: DateTime.utc(2026, 3, 31),
+            endDate: DateTime.utc(2026, 4, 4),
+          );
+
+          // 就寝した JST 04-01 にはキーを作らない
+          expect(result.keys, ['2026-04-02']);
+          expect(result['2026-04-02'], _isNightN);
+        });
+
+        test(
+            'a stage ending before JST midnight stays in its own night '
+            'and does not change the previous night', () async {
+          // 前の夜 P（JST 04-01 起床）と夜 N（JST 04-02 起床）
+          final points = _inPluginOrder([..._nightP(), ..._nightN()]);
+          when(mockHealth.getHealthDataFromTypes(
+            types: anyNamed('types'),
+            startTime: anyNamed('startTime'),
+            endTime: anyNamed('endTime'),
+          )).thenAnswer((_) async => points);
+
+          final result = await repository.getSleepData(
+            startDate: DateTime.utc(2026, 3, 31),
+            endDate: DateTime.utc(2026, 4, 4),
+          );
+
+          expect(result.keys, unorderedEquals(['2026-04-01', '2026-04-02']));
+          // 夜 N の最初の LIGHT（JST 04-01 23:00〜23:40）は P に入らない。
+          // P の起床は JST 23:40 にずれず、合計も 445 分にならない
+          expect(result['2026-04-01'], _isNightP);
+          expect(result['2026-04-02'], _isNightN);
+        });
+
+        test('a nap is not added to the night that wakes on the same day',
+            () async {
+          final points = _inPluginOrder([
+            ..._nightN(),
+            // 昼寝 LIGHT: JST 04-02 14:00〜15:00（60 分）
+            _createSleepDataPoint(
+              type: HealthDataType.SLEEP_LIGHT,
+              dateFrom: DateTime.utc(2026, 4, 2, 5, 0),
+              dateTo: DateTime.utc(2026, 4, 2, 6, 0),
+              sourcePlatform: HealthPlatformType.appleHealth,
+            ),
+          ]);
+          when(mockHealth.getHealthDataFromTypes(
+            types: anyNamed('types'),
+            startTime: anyNamed('startTime'),
+            endTime: anyNamed('endTime'),
+          )).thenAnswer((_) async => points);
+
+          final result = await repository.getSleepData(
+            startDate: DateTime.utc(2026, 3, 31),
+            endDate: DateTime.utc(2026, 4, 4),
+          );
+
+          // 昼寝も起床は JST 04-02 だが、合計の長い夜 N を1件だけ返す。昼寝の分は足さない
+          expect(result.keys, ['2026-04-02']);
+          expect(result['2026-04-02'], _isNightN);
+        });
+
+        test('a nap is recorded on a day without any other night', () async {
+          final points = _inPluginOrder([
+            ..._nightN(),
+            // 昼寝 LIGHT: JST 04-03 14:00〜15:00（60 分）
+            _createSleepDataPoint(
+              type: HealthDataType.SLEEP_LIGHT,
+              dateFrom: DateTime.utc(2026, 4, 3, 5, 0),
+              dateTo: DateTime.utc(2026, 4, 3, 6, 0),
+              sourcePlatform: HealthPlatformType.appleHealth,
+            ),
+          ]);
+          when(mockHealth.getHealthDataFromTypes(
+            types: anyNamed('types'),
+            startTime: anyNamed('startTime'),
+            endTime: anyNamed('endTime'),
+          )).thenAnswer((_) async => points);
+
+          final result = await repository.getSleepData(
+            startDate: DateTime.utc(2026, 3, 31),
+            endDate: DateTime.utc(2026, 4, 4),
+          );
+
+          expect(result.keys, unorderedEquals(['2026-04-02', '2026-04-03']));
+          expect(result['2026-04-02'], _isNightN);
+          expect(
+            result['2026-04-03'],
+            _isSleepSession(
+              bedTime: DateTime.utc(2026, 4, 3, 5, 0), // JST 04-03 14:00
+              wakeTime: DateTime.utc(2026, 4, 3, 6, 0), // JST 04-03 15:00
+              deepMinutes: 0,
+              lightMinutes: 60,
+              remMinutes: 0,
+              awakeMinutes: 0,
+              totalSleepMinutes: 60,
+            ),
+          );
+        });
+
+        test(
+            'syncing in the middle of a night does not overwrite '
+            'the previous night with the same wake date', () async {
+          final points = _inPluginOrder([
+            ..._nightN(),
+            // 次の夜の最初のステージだけ（同期したときは寝ている途中）。
+            // LIGHT: JST 04-02 23:00〜23:40（40 分）。いまの起床は夜 N と同じ JST 04-02
+            _createSleepDataPoint(
+              type: HealthDataType.SLEEP_LIGHT,
+              dateFrom: DateTime.utc(2026, 4, 2, 14, 0),
+              dateTo: DateTime.utc(2026, 4, 2, 14, 40),
+              sourcePlatform: HealthPlatformType.appleHealth,
+            ),
+          ]);
+          when(mockHealth.getHealthDataFromTypes(
+            types: anyNamed('types'),
+            startTime: anyNamed('startTime'),
+            endTime: anyNamed('endTime'),
+          )).thenAnswer((_) async => points);
+
+          final result = await repository.getSleepData(
+            startDate: DateTime.utc(2026, 3, 31),
+            endDate: DateTime.utc(2026, 4, 4),
+          );
+
+          // 40 分の晩は夜 N より短いので選ばれない
+          expect(result.keys, ['2026-04-02']);
+          expect(result['2026-04-02'], _isNightN);
+        });
+
+        test('points with a gap of less than 3 hours are the same night',
+            () async {
+          final points = _inPluginOrder([
+            // LIGHT: JST 04-01 23:00〜04-02 01:00（120 分）
+            _createSleepDataPoint(
+              type: HealthDataType.SLEEP_LIGHT,
+              dateFrom: DateTime.utc(2026, 4, 1, 14, 0),
+              dateTo: DateTime.utc(2026, 4, 1, 16, 0),
+              sourcePlatform: HealthPlatformType.appleHealth,
+            ),
+            // 2 時間 30 分あけて LIGHT: JST 04-02 03:30〜07:00（210 分）
+            _createSleepDataPoint(
+              type: HealthDataType.SLEEP_LIGHT,
+              dateFrom: DateTime.utc(2026, 4, 1, 18, 30),
+              dateTo: DateTime.utc(2026, 4, 1, 22, 0),
+              sourcePlatform: HealthPlatformType.appleHealth,
+            ),
+          ]);
+          when(mockHealth.getHealthDataFromTypes(
+            types: anyNamed('types'),
+            startTime: anyNamed('startTime'),
+            endTime: anyNamed('endTime'),
+          )).thenAnswer((_) async => points);
+
+          final result = await repository.getSleepData(
+            startDate: DateTime.utc(2026, 3, 31),
+            endDate: DateTime.utc(2026, 4, 4),
+          );
+
+          expect(result.keys, ['2026-04-02']);
+          expect(
+            result['2026-04-02'],
+            _isSleepSession(
+              bedTime: DateTime.utc(2026, 4, 1, 14, 0), // JST 04-01 23:00
+              wakeTime: DateTime.utc(2026, 4, 1, 22, 0), // JST 04-02 07:00
+              deepMinutes: 0,
+              lightMinutes: 330,
+              remMinutes: 0,
+              awakeMinutes: 0,
+              totalSleepMinutes: 330, // 120 + 210
+            ),
+          );
+        });
+
+        test('points with a gap of exactly 3 hours are separate nights',
+            () async {
+          final points = _inPluginOrder([
+            // LIGHT: JST 04-01 21:00〜23:30（150 分）
+            _createSleepDataPoint(
+              type: HealthDataType.SLEEP_LIGHT,
+              dateFrom: DateTime.utc(2026, 4, 1, 12, 0),
+              dateTo: DateTime.utc(2026, 4, 1, 14, 30),
+              sourcePlatform: HealthPlatformType.appleHealth,
+            ),
+            // ちょうど 3 時間あけて LIGHT: JST 04-02 02:30〜07:00（270 分）
+            _createSleepDataPoint(
+              type: HealthDataType.SLEEP_LIGHT,
+              dateFrom: DateTime.utc(2026, 4, 1, 17, 30),
+              dateTo: DateTime.utc(2026, 4, 1, 22, 0),
+              sourcePlatform: HealthPlatformType.appleHealth,
+            ),
+          ]);
+          when(mockHealth.getHealthDataFromTypes(
+            types: anyNamed('types'),
+            startTime: anyNamed('startTime'),
+            endTime: anyNamed('endTime'),
+          )).thenAnswer((_) async => points);
+
+          final result = await repository.getSleepData(
+            startDate: DateTime.utc(2026, 3, 31),
+            endDate: DateTime.utc(2026, 4, 4),
+          );
+
+          expect(result.keys, unorderedEquals(['2026-04-01', '2026-04-02']));
+          expect(
+            result['2026-04-01'],
+            _isSleepSession(
+              bedTime: DateTime.utc(2026, 4, 1, 12, 0), // JST 04-01 21:00
+              wakeTime: DateTime.utc(2026, 4, 1, 14, 30), // JST 04-01 23:30
+              deepMinutes: 0,
+              lightMinutes: 150,
+              remMinutes: 0,
+              awakeMinutes: 0,
+              totalSleepMinutes: 150,
+            ),
+          );
+          expect(
+            result['2026-04-02'],
+            _isSleepSession(
+              bedTime: DateTime.utc(2026, 4, 1, 17, 30), // JST 04-02 02:30
+              wakeTime: DateTime.utc(2026, 4, 1, 22, 0), // JST 04-02 07:00
+              deepMinutes: 0,
+              lightMinutes: 270,
+              remMinutes: 0,
+              awakeMinutes: 0,
+              totalSleepMinutes: 270,
+            ),
+          );
+        });
+
+        test(
+            'fetches from 2 days before startDate to read a night from its '
+            'start, and drops nights waking before the JST date of startDate',
+            () async {
+          // 前の夜 P（JST 04-01 起床）と夜 N（JST 04-02 起床）
+          final points = _inPluginOrder([..._nightP(), ..._nightN()]);
+          when(mockHealth.getHealthDataFromTypes(
+            types: anyNamed('types'),
+            startTime: anyNamed('startTime'),
+            endTime: anyNamed('endTime'),
+          )).thenAnswer((_) async => points);
+
+          final result = await repository.getSleepData(
+            // JST 04-02 03:00（夜 N の途中）
+            startDate: DateTime.utc(2026, 4, 1, 18, 0),
+            // JST 04-03 09:00
+            endDate: DateTime.utc(2026, 4, 3),
+          );
+
+          final captured = verify(mockHealth.getHealthDataFromTypes(
+            types: anyNamed('types'),
+            startTime: captureAnyNamed('startTime'),
+            endTime: captureAnyNamed('endTime'),
+          )).captured;
+          final startTime = captured[0] as DateTime;
+          final endTime = captured[1] as DateTime;
+          // 読み始めは startDate の 2 日前（JST 03-31 03:00）。endTime は endDate のまま
+          expect(startTime, DateTime.utc(2026, 3, 30, 18, 0));
+          expect(endTime, DateTime.utc(2026, 4, 3));
+          // P は起床が JST 04-01 で、startDate の JST 日付（04-02）より前なので返さない
+          expect(result.keys, ['2026-04-02']);
+          // 就寝は startDate より前（UTC 04-01 14:00）だが、夜 N を最初から数える
+          expect(result['2026-04-02'], _isNightN);
+        });
+
+        test(
+            'when nights with the same wake date have the same total, '
+            'the one waking later is returned', () async {
+          final points = _inPluginOrder([
+            // LIGHT: JST 04-02 00:00〜01:00（60 分）
+            _createSleepDataPoint(
+              type: HealthDataType.SLEEP_LIGHT,
+              dateFrom: DateTime.utc(2026, 4, 1, 15, 0),
+              dateTo: DateTime.utc(2026, 4, 1, 16, 0),
+              sourcePlatform: HealthPlatformType.appleHealth,
+            ),
+            // 4 時間あけて（別の晩）LIGHT: JST 04-02 05:00〜06:00（60 分）
+            _createSleepDataPoint(
+              type: HealthDataType.SLEEP_LIGHT,
+              dateFrom: DateTime.utc(2026, 4, 1, 20, 0),
+              dateTo: DateTime.utc(2026, 4, 1, 21, 0),
+              sourcePlatform: HealthPlatformType.appleHealth,
+            ),
+          ]);
+          when(mockHealth.getHealthDataFromTypes(
+            types: anyNamed('types'),
+            startTime: anyNamed('startTime'),
+            endTime: anyNamed('endTime'),
+          )).thenAnswer((_) async => points);
+
+          final result = await repository.getSleepData(
+            startDate: DateTime.utc(2026, 3, 31),
+            endDate: DateTime.utc(2026, 4, 4),
+          );
+
+          // どちらも起床は JST 04-02 で、合計は同じ 60 分。起床が遅い方を1件だけ返す
+          expect(result.keys, ['2026-04-02']);
+          expect(
+            result['2026-04-02'],
+            _isSleepSession(
+              bedTime: DateTime.utc(2026, 4, 1, 20, 0), // JST 04-02 05:00
+              wakeTime: DateTime.utc(2026, 4, 1, 21, 0), // JST 04-02 06:00
+              deepMinutes: 0,
+              lightMinutes: 60,
+              remMinutes: 0,
+              awakeMinutes: 0,
+              totalSleepMinutes: 60,
+            ),
+          );
         });
       });
 
