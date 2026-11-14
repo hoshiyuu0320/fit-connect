@@ -750,3 +750,53 @@
 ### 通しの組み立て
 - Docker Desktop では DB コンテナの pg_net から `host.docker.internal` でホストのスタブに届く
 - 実 pg_cron は `* * * * *` で1分待てば確かめられる
+
+## Android の Health Connect 連携が動いていなかった不具合（2026-11-08、`fix/android-health-connect-activity`）で得た知見
+
+### health プラグインは `FlutterFragmentActivity` が必須 — `FlutterActivity` のままだと権限画面が一度も開かない
+- health 11.x は `onAttachedToActivity` で `activity as ComponentActivity` にキャストし、`registerForActivityResult` で Health Connect の権限画面を開く（README の「Android 14」節）
+- `FlutterActivity` だと起動時に `GeneratedPluginRegistrant: Error registering plugin health ... ClassCastException` が出る。例外は登録処理が握りつぶすのでアプリは普通に動き、`requestAuthorization` は `FLUTTER_HEALTH: Permission launcher not found` を出して即 false を返す（画面には「設定アプリからヘルスケアの権限を許可してください」が出るだけ）
+- Android の起動時の logcat で `GeneratedPluginRegistrant` の行を確かめる
+- `FlutterFragmentActivity` に変えても、他の18プラグインはコード上すべて動く（Activity の型のキャストは health と mobile_scanner の `LifecycleOwner` だけ）。エミュレータ（API 37）でディープリンクの singleTop、戻る、image_picker の結果の受け取りも確認した
+- 挙動の差: Android 12〜15 で最初の画面から戻ると、Activity を終了せずタスクを背面へ移すようになる（コードからの推測。手元に API 31〜35 のイメージが無く未確認。API 37 では変更前後とも終了する）
+
+### Health Connect の権限名はデータ型ごと — 体重は `READ_WEIGHT`
+- マニフェストに `READ_BODY_MEASUREMENTS` を宣言していたが、この権限は存在しない（SDK 37 の `HealthPermissions` にも端末の `pm list permissions` にも無い）。Health Connect の画面で体重が「Body measurements」の下に出るので取り違えやすい
+- 宣言していない権限は許可画面に出ず、許可できない。権限名はプラグインの型→記録クラス（`HealthPlugin.kt` の `mapToType`）から決める（WEIGHT → `WeightRecord` → `READ_WEIGHT`、SLEEP_* → `SleepSessionRecord` → `READ_SLEEP`）
+- README の `<queries>`（`com.google.android.apps.healthdata` と rationale の intent）と、MainActivity の `androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE` の intent-filter も入れる（Android 13 以下で Health Connect が APK の端末向け）
+
+### `SLEEP_IN_BED` は iOS 専用 — Android では代わりに `SLEEP_SESSION` を読む
+- health 11.1.1 の Android の型（`dataTypeKeysAndroid`）に `SLEEP_IN_BED` は無い。要求に含めると、`requestAuthorization` と `hasPermissions` は `FLUTTER_HEALTH::ERROR: Datatype SLEEP_IN_BED not found in HC` を出し、権限画面を出さずに false を返す。`getHealthDataFromTypes` は `HealthException` を投げる。体重と一緒に要求すると体重も失敗する
+- 型の一覧は OS ごとに `dataTypeKeysAndroid` / `dataTypeKeysIOS` で確かめる
+  - `HealthRepository._sleepTypes` で OS ごとに分けた
+  - Android は `SLEEP_SESSION`（`SleepSessionRecord` 全体。権限は `READ_SLEEP`）を読み、就寝・起床の範囲に使う。iOS の `SLEEP_IN_BED` と同じ扱い
+- Android の `SLEEP_DEEP` などは、セッションの `stages` から1ステージにつき1点で返る。`SLEEP_ASLEEP` は「睡眠中（種類なし）」のステージだけ
+- ステージは任意なので、ステージの無いセッションは `SLEEP_SESSION` にしか出てこない。ステージの合計が 0 のときだけ、セッションの長さを睡眠時間にする
+
+### Android の `requestAuthorization` は「1つでも許可済み」で true になる — `hasPermissions` で確かめ直す
+- health 11.1.1 の Android は、権限画面の結果が空でなければ true を返す（`HealthPlugin.kt` の `onHealthConnectPermissionCallback`）。結果は「要求した権限のうち許可済みのもの」で、前から許可していたものも入る
+- そのため、体重を許可済みのまま睡眠を拒否しても true になり、睡眠のスイッチがオンになった。同期では `hasPermission(forSleep: true)` が false なので何も取り込まれず、エラーも出ない
+- `hasPermissions` は、要求したものが全部許可済みのときだけ true を返す（`containsAll`）
+  - Android では、`requestAuthorization` が true のあと `hasPermissions` で確かめ直す
+  - iOS は読み取り権限の状態を教えないので、確かめない
+- 複数の型を1回で要求する箇所（睡眠のスイッチ、オンボーディングの一括連携）で起きる。体重だけの要求では起きない
+
+### 睡眠は点ごとの起床日でまとめている — 0 時（JST）より前に終わるステージが前日に入る（未修正、iOS も同じ）
+- `getSleepData` は、各点の `dateTo` の JST 日付でまとめる。23 時に寝た夜のうち、0 時より前に終わるステージは前日のキーに入る（2026-11-08 にテストで確認）
+  - その夜の睡眠時間は、その分短くなる
+  - 前日に記録が無ければ、前日に短い記録ができる
+  - 前日に記録があれば、前日の起床時刻が夜の 23 時台にずれ、合計が増える
+- Android では 0 時をまたぐ `SLEEP_SESSION` が起床日に入るので、就寝時刻は正しく出る。ただしステージの分は同じように前日に入る
+- 直すなら、点を時間の重なりでひと晩ずつにまとめてから起床日で分ける。すでに upsert 済みの誤った行をどうするかも決める
+
+### Android エミュレータの QA で詰まったところ
+- `fvm flutter run` がエミュレータを `Android null (API null) (unsupported)` と見て起動できない（adb サーバーが落ちて getprop に失敗する）。`fvm flutter build apk --debug --dart-define-from-file=dev_login.json` で同じ検証用ビルドを作り、`adb push` → `adb shell pm install -r` で入れる（`adb install` は転送中に接続が切れやすい）。入ったものは `pm path` の base.apk の sha256 で照合できる
+- Android 17 では、起動中のアプリを更新すると「アプリが更新されました」画面（`PackageUpdateActivity`）が出て、アプリは後から立ち上がる。起動時の logcat は `am force-stop` → `logcat -c` → `am start` で取り直す
+- `uiautomator dump` は失敗しても前回の `/sdcard/ui.xml` が残り、古い画面を読んでしまう。dump の前に消す
+- 権限の宣言が違う APK（変更前のビルド）を上書きすると、Health Connect の許可が外れる。比較で入れ替えたら許可し直す
+- Health Connect には睡眠を手で入れられない
+  - `SleepSessionRecord` を書くだけの使い捨てアプリを scratchpad に作って入れた。connect-client の `insertRecords` を使い、clientRecordId を付けて上書きにする
+  - health の権限は `adb shell pm grant <pkg> android.permission.health.WRITE_SLEEP` で付けられる
+- ステージの合計とセッションの長さが同じになるデータでは、どちらで数えたかを画面で見分けられない。ステージを一部だけにした夜で確かめた（8 時間のセッションにステージ 225 分 → 画面は 3:45）
+- 拒否をもう一度試すときは、`pm revoke` と `pm clear-permission-flags <pkg> <permission> user-set user-fixed` で未回答に戻す。Health Connect は2回拒否されると権限画面を出さなくなる（公式ドキュメントによる。今回は試していない）
+- auto mode では、本番の Supabase の読み取り（execute_sql）も拒否された。テスト用クライアントの記録の有無は、アプリの画面で確かめる
