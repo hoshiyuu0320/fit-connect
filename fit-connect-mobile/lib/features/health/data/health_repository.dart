@@ -17,18 +17,25 @@ class HealthRepository {
     }
   }
 
-  /// 体重（+任意で睡眠）データの読み取り権限をリクエスト
-  Future<bool> requestPermission({bool includeSleep = false}) async {
-    final types = <HealthDataType>[HealthDataType.WEIGHT];
-    if (includeSleep) {
-      types.addAll([
+  /// 睡眠として扱う型（権限リクエスト・権限チェック・取得で共通）
+  /// SLEEP_IN_BED は Health Connect に無い（health 11.1.1 では iOS 専用）ため、
+  /// Android ではセッション全体の SLEEP_SESSION（権限は READ_SLEEP）を使う
+  List<HealthDataType> get _sleepTypes => [
         HealthDataType.SLEEP_ASLEEP,
         HealthDataType.SLEEP_DEEP,
         HealthDataType.SLEEP_LIGHT,
         HealthDataType.SLEEP_REM,
         HealthDataType.SLEEP_AWAKE,
-        HealthDataType.SLEEP_IN_BED,
-      ]);
+        defaultTargetPlatform == TargetPlatform.android
+            ? HealthDataType.SLEEP_SESSION
+            : HealthDataType.SLEEP_IN_BED,
+      ];
+
+  /// 体重（+任意で睡眠）データの読み取り権限をリクエスト
+  Future<bool> requestPermission({bool includeSleep = false}) async {
+    final types = <HealthDataType>[HealthDataType.WEIGHT];
+    if (includeSleep) {
+      types.addAll(_sleepTypes);
     }
     final permissions = List.filled(types.length, HealthDataAccess.READ);
 
@@ -37,6 +44,15 @@ class HealthRepository {
         types,
         permissions: permissions,
       );
+      // Health Connect は要求のうち1つでも許可済みなら true を返す（睡眠を拒否しても
+      // 体重が許可済みなら true）ため、Android では全部許可されたかを確かめ直す
+      if (granted && defaultTargetPlatform == TargetPlatform.android) {
+        final allGranted = await _health.hasPermissions(
+          types,
+          permissions: permissions,
+        );
+        return allGranted ?? false;
+      }
       return granted;
     } catch (e) {
       debugPrint('[HealthRepository] Permission request failed: $e');
@@ -47,16 +63,8 @@ class HealthRepository {
   /// 権限があるかチェック
   Future<bool> hasPermission({bool forSleep = false}) async {
     try {
-      final types = forSleep
-          ? <HealthDataType>[
-              HealthDataType.SLEEP_ASLEEP,
-              HealthDataType.SLEEP_DEEP,
-              HealthDataType.SLEEP_LIGHT,
-              HealthDataType.SLEEP_REM,
-              HealthDataType.SLEEP_AWAKE,
-              HealthDataType.SLEEP_IN_BED,
-            ]
-          : <HealthDataType>[HealthDataType.WEIGHT];
+      final types =
+          forSleep ? _sleepTypes : <HealthDataType>[HealthDataType.WEIGHT];
       final permissions = List.filled(types.length, HealthDataAccess.READ);
       final granted = await _health.hasPermissions(
         types,
@@ -114,18 +122,9 @@ class HealthRepository {
   }) async {
     final end = endDate ?? DateTime.now().add(const Duration(days: 1));
 
-    const sleepTypes = [
-      HealthDataType.SLEEP_ASLEEP,
-      HealthDataType.SLEEP_DEEP,
-      HealthDataType.SLEEP_LIGHT,
-      HealthDataType.SLEEP_REM,
-      HealthDataType.SLEEP_AWAKE,
-      HealthDataType.SLEEP_IN_BED,
-    ];
-
     try {
       final data = await _health.getHealthDataFromTypes(
-        types: sleepTypes,
+        types: _sleepTypes,
         startTime: startDate,
         endTime: end,
       );
@@ -160,9 +159,10 @@ class HealthRepository {
 
     points.sort((a, b) => a.dateFrom.compareTo(b.dateFrom));
     final bed = points.first.dateFrom;
-    final wake = points.map((p) => p.dateTo).reduce((a, b) => a.isAfter(b) ? a : b);
+    final wake =
+        points.map((p) => p.dateTo).reduce((a, b) => a.isAfter(b) ? a : b);
 
-    var deep = 0, light = 0, rem = 0, awake = 0, asleep = 0;
+    var deep = 0, light = 0, rem = 0, awake = 0, asleep = 0, session = 0;
     for (final p in points) {
       final mins = p.dateTo.difference(p.dateFrom).inMinutes;
       switch (p.type) {
@@ -184,15 +184,21 @@ class HealthRepository {
         case HealthDataType.SLEEP_IN_BED:
           // 時間計算には含めない（在床時間は総睡眠時間とは別概念）
           break;
+        case HealthDataType.SLEEP_SESSION:
+          // Android のセッション全体。ステージと重なるのでステージ別には足さない
+          session += mins;
+          break;
         default:
           break;
       }
     }
 
     // ステージ明細あり → 合算、無ければ ASLEEP に寄せる
-    final total = (deep + light + rem) > 0
-        ? deep + light + rem + awake
-        : asleep + awake;
+    final stageTotal =
+        (deep + light + rem) > 0 ? deep + light + rem + awake : asleep + awake;
+    // Health Connect ではステージは任意（セッションだけを書くアプリもある）ため、
+    // ステージが無いときだけセッションの長さを総睡眠時間とする
+    final total = stageTotal > 0 ? stageTotal : session;
     if (total <= 0) return null;
 
     return SleepSessionData(
