@@ -8,7 +8,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 // バックグラウンドハンドラ（トップレベル関数）
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  print('[NotificationService] バックグラウンドメッセージ: ${message.notification?.title}');
+  // タイトルには送信者の氏名が入るので、種類だけ出す
+  debugPrint(
+      '[NotificationService] バックグラウンドメッセージ: type=${message.data['type']}');
 }
 
 /// 通知セットアップの結果
@@ -72,7 +74,8 @@ class NotificationService {
         // FCMトークン取得（iOS は APNs トークンの到着を待ってから）
         if (await _waitForApnsToken()) {
           final token = await _messaging.getToken();
-          print('[NotificationService] FCM Token: $token');
+          // トークンは全文を出さない（取れたかどうかだけ）
+          debugPrint('[NotificationService] FCMトークン取得: ${token != null}');
         } else {
           print('[NotificationService] APNsトークン未取得のため取得をスキップ');
         }
@@ -199,8 +202,9 @@ class NotificationService {
   /// フォアグラウンドメッセージハンドラ
   static Future<void> _handleForegroundMessage(RemoteMessage message) async {
     try {
-      print(
-          '[NotificationService] フォアグラウンドメッセージ受信: ${message.notification?.title}');
+      // タイトルには送信者の氏名が入るので、種類だけ出す
+      debugPrint(
+          '[NotificationService] フォアグラウンドメッセージ受信: type=${message.data['type']}');
 
       // ローカル通知を表示
       final notification = message.notification;
@@ -498,7 +502,8 @@ class NotificationService {
   /// トークンリフレッシュハンドラ
   static Future<void> _handleTokenRefresh(String newToken) async {
     try {
-      print('[NotificationService] トークンリフレッシュ: $newToken');
+      // トークンは全文を出さない
+      debugPrint('[NotificationService] トークンリフレッシュ');
 
       // 保持しているユーザー情報がある場合のみ更新
       if (_currentUserId != null && _currentUserType != null) {
