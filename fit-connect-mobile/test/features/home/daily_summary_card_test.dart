@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -19,6 +20,22 @@ bool _hasRich(String plain) => find
     .isNotEmpty;
 
 void main() {
+  /// 端末を iOS / Android に見立てて [body] を実行する（変数は本体の中で必ず戻す）。
+  ///
+  /// `flutter test` の既定は Android。睡眠の補足（連携元の名前）は OS で変わるので、
+  /// それを確かめるテストは暗黙の Android に頼らず、OS を明示する
+  Future<void> withPlatform(
+    TargetPlatform platform,
+    Future<void> Function() body,
+  ) async {
+    debugDefaultTargetPlatformOverride = platform;
+    try {
+      await body();
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  }
+
   Future<void> pumpCard(
     WidgetTester tester, {
     required List<Override> overrides,
@@ -97,29 +114,38 @@ void main() {
     });
 
     testWidgets('値は数値＋単位、運動の補足は今週の起点、体重の補足は前回との差と時刻', (tester) async {
-      await pumpCard(tester, overrides: recorded());
+      // 睡眠の補足は連携元の名前（iOS は HealthKit）。OS を iOS に見立てる
+      await withPlatform(TargetPlatform.iOS, () async {
+        await pumpCard(tester, overrides: recorded());
 
-      expect(_hasRich('2回'), isTrue);
-      expect(_hasRich('3日'), isTrue);
-      expect(_hasRich('62.4kg'), isTrue);
-      expect(_hasRich('7時間30分'), isTrue);
+        expect(_hasRich('2回'), isTrue);
+        expect(_hasRich('3日'), isTrue);
+        expect(_hasRich('62.4kg'), isTrue);
+        expect(_hasRich('7時間30分'), isTrue);
 
-      final monday = d.subtract(Duration(days: d.weekday - 1));
-      expect(find.text('今週（${monday.month}/${monday.day}〜）'), findsOneWidget);
-      expect(find.text('前回から +0.1 kg · 7:30'), findsOneWidget);
-      expect(find.text('HealthKit'), findsOneWidget);
+        final monday = d.subtract(Duration(days: d.weekday - 1));
+        expect(find.text('今週（${monday.month}/${monday.day}〜）'), findsOneWidget);
+        expect(find.text('前回から +0.1 kg · 7:30'), findsOneWidget);
+        expect(find.text('HealthKit'), findsOneWidget);
+      });
     });
 
     testWidgets('体重が減ったときは負の符号。色は変えない', (tester) async {
-      await pumpCard(
-        tester,
-        overrides: recorded(latest: 61.8, previous: 62.4),
-      );
+      // 比べる相手は睡眠の補足（連携元の名前）。iOS に見立てて HealthKit で探す
+      await withPlatform(TargetPlatform.iOS, () async {
+        await pumpCard(
+          tester,
+          overrides: recorded(latest: 61.8, previous: 62.4),
+        );
 
-      final sub = tester.widget<Text>(find.text('前回から -0.6 kg · 7:30'));
-      // caption は textSecondary のまま（良し悪しで色分けしない）
-      expect(sub.style!.color, isNotNull);
-      expect(sub.style!.color, tester.widget<Text>(find.text('HealthKit')).style!.color);
+        final sub = tester.widget<Text>(find.text('前回から -0.6 kg · 7:30'));
+        // caption は textSecondary のまま（良し悪しで色分けしない）
+        expect(sub.style!.color, isNotNull);
+        expect(
+          sub.style!.color,
+          tester.widget<Text>(find.text('HealthKit')).style!.color,
+        );
+      });
     });
 
     testWidgets('前回の記録が見つからなければ時刻だけ', (tester) async {
@@ -135,6 +161,28 @@ void main() {
         overrides: recorded(sleep: sampleSleep(minutes: 45)),
       );
       expect(_hasRich('45分'), isTrue);
+    });
+
+    testWidgets('睡眠の補足（連携元）は iOS では HealthKit。Health Connect とは出ない',
+        (tester) async {
+      await withPlatform(TargetPlatform.iOS, () async {
+        await pumpCard(tester, overrides: recorded());
+
+        expect(find.text('HealthKit'), findsOneWidget);
+        expect(find.text('Health Connect'), findsNothing);
+      });
+    });
+
+    testWidgets('睡眠の補足（連携元）は Android では Health Connect。HealthKit とは出ない',
+        (tester) async {
+      await withPlatform(TargetPlatform.android, () async {
+        await pumpCard(tester, overrides: recorded());
+
+        expect(find.text('Health Connect'), findsOneWidget);
+        expect(find.text('HealthKit'), findsNothing);
+        // 睡眠の値そのものは OS で変わらない
+        expect(_hasRich('7時間30分'), isTrue);
+      });
     });
 
     testWidgets('目覚めの記録だけなら評価を言葉で（絵文字なし）', (tester) async {

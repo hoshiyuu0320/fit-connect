@@ -7,6 +7,7 @@ import 'package:fit_connect_mobile/core/theme/app_text_styles.dart';
 import 'package:fit_connect_mobile/core/theme/app_theme.dart';
 import 'package:fit_connect_mobile/features/health/providers/health_provider.dart';
 import 'package:fit_connect_mobile/features/health/providers/health_sync_provider.dart';
+import 'package:fit_connect_mobile/shared/utils/health_source_name.dart';
 import 'package:fit_connect_mobile/shared/widgets/fc/fc.dart';
 
 /// ヘルスケア連携の設定画面（設定タブ › ヘルスケア連携 から push される）。
@@ -231,7 +232,7 @@ class _HealthSettingsContent extends StatelessWidget {
             FcListRow.toggle(
               icon: LucideIcons.moon,
               title: '睡眠',
-              caption: 'HealthKit/Health Connect から睡眠データを取得',
+              caption: '${healthSourceName()} から睡眠データを取得',
               value: settings.isSleepEnabled,
               onChanged: enabled ? onSleepChanged : null,
             ),
@@ -292,7 +293,7 @@ class _HealthSettingsContent extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4),
           child: Text(
-            '手動入力の体重記録がある日はHealthKitからの取り込みをスキップします',
+            '手動入力の体重記録がある日は${healthSourceName()}からの取り込みをスキップします',
             style: AppTextStyles.caption(context),
           ),
         ),

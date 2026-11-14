@@ -4,6 +4,7 @@ import 'package:fit_connect_mobile/core/theme/app_spacing.dart';
 import 'package:fit_connect_mobile/core/theme/app_text_styles.dart';
 import 'package:fit_connect_mobile/features/health/providers/health_provider.dart';
 import 'package:fit_connect_mobile/features/sleep_records/presentation/utils/sleep_labels.dart';
+import 'package:fit_connect_mobile/shared/utils/health_source_name.dart';
 import 'package:fit_connect_mobile/shared/widgets/fc/fc.dart';
 import 'package:fit_connect_mobile/shared/widgets/fc/fc_previews.dart';
 
@@ -38,7 +39,7 @@ class SleepSyncStatus extends StatelessWidget {
 
   /// 同期失敗の文言
   static String failureMessage(DateTime? lastSyncAt, {DateTime? now}) {
-    const head = 'HealthKitと同期できませんでした。';
+    final head = '${healthSourceName()}と同期できませんでした。';
     if (lastSyncAt == null) return head;
     final at = formatSleepDateTime(lastSyncAt, now: now ?? DateTime.now());
     return '$head$at に取得した値を表示しています。';

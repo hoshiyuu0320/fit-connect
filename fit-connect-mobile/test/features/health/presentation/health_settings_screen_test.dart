@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -81,6 +82,19 @@ const _disconnected = HealthSettingsState(
 void main() {
   late _FakeHealthSync sync;
 
+  /// 端末を iOS / Android に見立てて [body] を実行する（変数は本体の中で必ず戻す）
+  Future<void> withPlatform(
+    TargetPlatform platform,
+    Future<void> Function() body,
+  ) async {
+    debugDefaultTargetPlatformOverride = platform;
+    try {
+      await body();
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  }
+
   Future<_FakeHealthSettings> pumpScreen(
     WidgetTester tester,
     HealthSettingsState settings, {
@@ -116,35 +130,54 @@ void main() {
 
   group('HealthSettingsScreen 構成と文言', () {
     testWidgets('戻る・見出しと、連携 / データソース / 通知 / 同期の各グループが出る', (tester) async {
-      await pumpScreen(tester, _connected());
+      // 連携元の名前は OS で変わる（iOS は HealthKit）ので、iOS に見立てて確かめる
+      await withPlatform(TargetPlatform.iOS, () async {
+        await pumpScreen(tester, _connected());
 
-      expect(find.byType(AppBar), findsNothing);
-      expect(find.text('戻る'), findsOneWidget);
-      // 見出しとマスターの行で同じ文言が 2 回
-      expect(find.text('ヘルスケア連携'), findsNWidgets(2));
-      expect(
-        find.text('お使いの端末のヘルスケア（iOS: ヘルスケア / Android: Health Connect）からデータを取得'),
-        findsOneWidget,
-      );
-      expect(find.text('データソース'), findsOneWidget);
-      expect(find.text('体重'), findsOneWidget);
-      expect(find.text('読み取りのみ'), findsOneWidget);
-      expect(find.text('睡眠'), findsOneWidget);
-      expect(find.text('HealthKit/Health Connect から睡眠データを取得'), findsOneWidget);
-      expect(find.text('通知'), findsOneWidget);
-      expect(find.text('朝の目覚めダイアログ'), findsOneWidget);
-      expect(find.text('同期'), findsOneWidget);
-      expect(find.text('最終同期'), findsOneWidget);
-      expect(find.text('5分前'), findsOneWidget);
-      expect(find.text('今すぐ同期'), findsOneWidget);
-      expect(
-        find.text('手動入力の体重記録がある日はHealthKitからの取り込みをスキップします'),
-        findsOneWidget,
-      );
-      // 旧デザインの「NEW」バッジは出さない
-      expect(find.text('NEW'), findsNothing);
-      // 同期に失敗していなければ警告は出ない
-      expect(find.byType(HealthSyncErrorRow), findsNothing);
+        expect(find.byType(AppBar), findsNothing);
+        expect(find.text('戻る'), findsOneWidget);
+        // 見出しとマスターの行で同じ文言が 2 回
+        expect(find.text('ヘルスケア連携'), findsNWidgets(2));
+        expect(
+          find.text(
+              'お使いの端末のヘルスケア（iOS: ヘルスケア / Android: Health Connect）からデータを取得'),
+          findsOneWidget,
+        );
+        expect(find.text('データソース'), findsOneWidget);
+        expect(find.text('体重'), findsOneWidget);
+        expect(find.text('読み取りのみ'), findsOneWidget);
+        expect(find.text('睡眠'), findsOneWidget);
+        expect(find.text('HealthKit から睡眠データを取得'), findsOneWidget);
+        expect(find.text('通知'), findsOneWidget);
+        expect(find.text('朝の目覚めダイアログ'), findsOneWidget);
+        expect(find.text('同期'), findsOneWidget);
+        expect(find.text('最終同期'), findsOneWidget);
+        expect(find.text('5分前'), findsOneWidget);
+        expect(find.text('今すぐ同期'), findsOneWidget);
+        expect(
+          find.text('手動入力の体重記録がある日はHealthKitからの取り込みをスキップします'),
+          findsOneWidget,
+        );
+        // 旧デザインの「NEW」バッジは出さない
+        expect(find.text('NEW'), findsNothing);
+        // 同期に失敗していなければ警告は出ない
+        expect(find.byType(HealthSyncErrorRow), findsNothing);
+      });
+    });
+
+    testWidgets('Android では連携元の名前が「Health Connect」になり、「HealthKit」は出ない',
+        (tester) async {
+      await withPlatform(TargetPlatform.android, () async {
+        await pumpScreen(tester, _connected());
+
+        expect(find.text('Health Connect から睡眠データを取得'), findsOneWidget);
+        expect(
+          find.text('手動入力の体重記録がある日はHealth Connectからの取り込みをスキップします'),
+          findsOneWidget,
+        );
+        // 画面のどの文言にも「HealthKit」は含まれない
+        expect(find.textContaining('HealthKit'), findsNothing);
+      });
     });
 
     testWidgets('未同期なら「未同期」と出る', (tester) async {
