@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fit_connect_mobile/features/consent/presentation/consent_dialog.dart';
 import 'package:fit_connect_mobile/features/home/presentation/screens/home_screen.dart';
+import 'package:fit_connect_mobile/features/home/providers/notification_navigation_provider.dart';
 import 'package:fit_connect_mobile/features/messages/presentation/screens/message_screen.dart';
 import 'package:fit_connect_mobile/features/home/presentation/screens/records_screen.dart';
 import 'package:fit_connect_mobile/features/settings/presentation/screens/settings_screen.dart';
@@ -36,6 +40,37 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _maybeSyncOnHomeEntry();
     });
+    // 表示前（起動中・認証待ち）に置かれた通知の「開く先」を、最初のフレームの後で実行する
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _openNotificationNavigation();
+    });
+  }
+
+  /// 通知を押したときの「開く先」の要求を取り出して実行する（記録のリマインダー）。
+  /// 体重・食事 → メッセージタブ（入力欄にタグ）、運動 → プランタブ
+  void _openNotificationNavigation() {
+    if (!mounted) return;
+    final request = ref.read(notificationNavigationProvider.notifier).consume();
+    if (request == null) return;
+
+    // 上に重なった画面（設定から開いた画面・記録の詳細・ボトムシートなど）を閉じてから
+    // タブを切り替える（閉じないと、切り替えが下で起きて見えないまま）。
+    // 閉じるのを拒む画面（PopScope の canPop: false。同意ダイアログ・強制アップデートのダイアログ・
+    // 送信中の完了報告シートなど）は閉じずに残し、そこで止める（その下の画面もそのまま）。
+    // 同意ダイアログは、PopScope が変わっても閉じてしまわないよう、名前でも見分ける
+    Navigator.of(context).popUntil(
+      (route) =>
+          route.isFirst ||
+          route.settings.name == consentDialogRouteName ||
+          route.popDisposition == RoutePopDisposition.doNotPop,
+    );
+
+    switch (request) {
+      case OpenMessagesWithDraft(:final draft):
+        _navigateToMessagesWithDraft(draft);
+      case OpenPlanTab():
+        setState(() => _currentIndex = 2);
+    }
   }
 
   void _navigateToRecordsTab(int tabIndex) {
@@ -124,6 +159,13 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 表示中に置かれた通知の「開く先」を実行する
+    // （取り出すと provider が変わるので、通知の最中ではなく次の microtask で）
+    ref.listen<NotificationNavigationRequest?>(notificationNavigationProvider,
+        (previous, next) {
+      if (next != null) scheduleMicrotask(_openNotificationNavigation);
+    });
+
     // 未読は件数ではなく「数字のない小さな点」で示す
     final hasUnreadMessages =
         (ref.watch(unreadMessageCountProvider).valueOrNull ?? 0) > 0;

@@ -19,6 +19,10 @@ import 'package:fit_connect_mobile/features/auth/providers/current_user_provider
 import 'package:fit_connect_mobile/features/health/presentation/screens/health_settings_screen.dart';
 import 'package:fit_connect_mobile/features/health/providers/health_provider.dart';
 import 'package:fit_connect_mobile/features/health/providers/health_sync_provider.dart';
+import 'package:fit_connect_mobile/features/record_reminders/models/record_reminder_settings.dart';
+import 'package:fit_connect_mobile/features/record_reminders/models/reminder_kind.dart';
+import 'package:fit_connect_mobile/features/record_reminders/presentation/screens/record_reminder_settings_screen.dart';
+import 'package:fit_connect_mobile/features/record_reminders/providers/record_reminder_settings_provider.dart';
 import 'package:fit_connect_mobile/features/settings/presentation/screens/settings_screen.dart';
 import 'package:fit_connect_mobile/features/settings/providers/notification_preferences_provider.dart';
 import 'package:fit_connect_mobile/shared/widgets/fc/fc.dart';
@@ -107,6 +111,42 @@ class _FakeHealthSync extends HealthSync {
   Future<void> build() async {}
 }
 
+/// 記録のリマインダーの設定（端末の SharedPreferences には触れない）
+class _FakeReminderSettings extends RecordReminderSettingsNotifier {
+  _FakeReminderSettings(this.initial);
+
+  final RecordReminderSettings initial;
+
+  @override
+  Future<RecordReminderSettings> build() async => initial;
+}
+
+class _PendingReminderSettings extends RecordReminderSettingsNotifier {
+  _PendingReminderSettings(this.pending);
+
+  final Future<RecordReminderSettings> pending;
+
+  @override
+  Future<RecordReminderSettings> build() => pending;
+}
+
+class _FailingReminderSettings extends RecordReminderSettingsNotifier {
+  @override
+  Future<RecordReminderSettings> build() async =>
+      throw StateError('prefs failed');
+}
+
+/// 体重・夕食をオンにした記録のリマインダーの設定
+RecordReminderSettings _weightAndDinnerOn() => RecordReminderSettings.defaults()
+    .withSetting(
+      ReminderKind.dinner,
+      ReminderSetting.defaultFor(ReminderKind.dinner).copyWith(enabled: true),
+    )
+    .withSetting(
+      ReminderKind.weight,
+      ReminderSetting.defaultFor(ReminderKind.weight).copyWith(enabled: true),
+    );
+
 final _client = Client(
   clientId: 'client-1',
   name: '佐藤 美咲',
@@ -158,6 +198,9 @@ void main() {
 
     /// ナビ（FcBottomNavLayout）が MediaQuery に足す下余白の見立て
     double bottomPadding = 0,
+
+    /// 記録のリマインダーの設定（省略時は既定 = すべてオフ）
+    RecordReminderSettingsNotifier Function()? reminders,
   }) async {
     await tester.binding.setSurfaceSize(const Size(390, 2200));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -181,6 +224,14 @@ void main() {
           healthSettingsProvider
               .overrideWith(() => _FakeHealthSettings(_health)),
           healthSyncProvider.overrideWith(() => _FakeHealthSync()),
+          recordReminderSettingsProvider.overrideWith(
+            reminders ??
+                () => _FakeReminderSettings(RecordReminderSettings.defaults()),
+          ),
+          // 記録のリマインダーの画面を開いたときの通知の許可（Firebase には触れない）
+          reminderNotificationPermissionProvider.overrideWith(
+            (ref) async => ReminderNotificationPermission.granted,
+          ),
           packageInfoProvider.overrideWith(
             (ref) async => PackageInfo(
               appName: 'FIT-CONNECT',
@@ -237,6 +288,7 @@ void main() {
           'トレーナーからのメッセージ',
           '目標の達成',
           'セッションのリマインド',
+          '記録のリマインダー',
           'HealthKit',
           '利用規約',
           'プライバシーポリシー',
@@ -436,6 +488,184 @@ void main() {
     });
   });
 
+  group('SettingsScreen 記録のリマインダー', () {
+    /// 「記録のリマインダー」の行
+    Finder entryRow() => find.ancestor(
+          of: find.text('記録のリマインダー'),
+          matching: find.byType(FcListRow),
+        );
+
+    testWidgets('通知グループの 3 つのトグルの下（同じカード）にあり、すべてオフなら値は「オフ」', (tester) async {
+      await withPlatform(TargetPlatform.iOS, () async {
+        await pumpSettings(tester);
+
+        // グループの並びは変わらない（行は「通知」と「ヘルスケア連携」の間）
+        final top = tester.getTopLeft(find.text('記録のリマインダー')).dy;
+        expect(
+            top, greaterThan(tester.getTopLeft(find.text('セッションのリマインド')).dy));
+        expect(top, lessThan(tester.getTopLeft(find.text('ヘルスケア連携')).dy));
+        Element cardOf(String title) => tester.element(
+              find.ancestor(
+                of: find.text(title),
+                matching: find.byType(FcRowsCard),
+              ),
+            );
+        expect(
+          cardOf('記録のリマインダー'),
+          same(cardOf('トレーナーからのメッセージ')),
+        );
+        // トグルはこれまでの 3 つのまま。値と chevron の行
+        expect(find.byType(FcToggle), findsNWidgets(3));
+        expect(
+          find.descendant(of: entryRow(), matching: find.byType(FcToggle)),
+          findsNothing,
+        );
+        expect(
+          find.descendant(of: entryRow(), matching: find.text('オフ')),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: entryRow(),
+            matching: find.byIcon(LucideIcons.chevronRight),
+          ),
+          findsOneWidget,
+        );
+        // 値は補足の色（textSecondary）
+        expect(
+          tester.widget<Text>(find.text('オフ')).style!.color,
+          AppColorsExtension.light.textSecondary,
+        );
+      });
+    });
+
+    testWidgets('オンの項目があれば、表示名を項目の並びで「・」でつないだ値（体重・夕食）', (tester) async {
+      await pumpSettings(
+        tester,
+        reminders: () => _FakeReminderSettings(_weightAndDinnerOn()),
+      );
+
+      expect(
+        find.descendant(of: entryRow(), matching: find.text('体重・夕食')),
+        findsOneWidget,
+      );
+      expect(find.text('オフ'), findsNothing);
+    });
+
+    testWidgets('読み上げは「記録のリマインダー、体重・夕食」のボタン', (tester) async {
+      final handle = tester.ensureSemantics();
+      await pumpSettings(
+        tester,
+        reminders: () => _FakeReminderSettings(_weightAndDinnerOn()),
+      );
+
+      expect(
+        tester.getSemantics(find.bySemanticsLabel('記録のリマインダー、体重・夕食')),
+        isSemantics(
+          label: '記録のリマインダー、体重・夕食',
+          isButton: true,
+          hasTapAction: true,
+        ),
+      );
+      handle.dispose();
+    });
+
+    testWidgets('押すと記録のリマインダーの設定画面へ進み、「戻る」で設定タブに戻る', (tester) async {
+      await pumpSettings(
+        tester,
+        reminders: () => _FakeReminderSettings(_weightAndDinnerOn()),
+      );
+
+      await tester.tap(find.text('記録のリマインダー'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(RecordReminderSettingsScreen), findsOneWidget);
+      // 設定画面と同じ設定（体重・夕食がオン）
+      final toggles = tester
+          .widgetList<FcToggle>(
+            find.descendant(
+              of: find.byType(RecordReminderSettingsScreen),
+              matching: find.byType(FcToggle),
+            ),
+          )
+          .map((toggle) => toggle.value)
+          .toList();
+      expect(toggles, [true, false, false, true, false]);
+
+      await tester.tap(find.text('戻る'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(RecordReminderSettingsScreen), findsNothing);
+      expect(find.text('体重・夕食'), findsOneWidget);
+    });
+
+    testWidgets('読み込み中は値がスケルトン（行は出ていて押せる）', (tester) async {
+      final completer = Completer<RecordReminderSettings>();
+      await pumpSettings(
+        tester,
+        reminders: () => _PendingReminderSettings(completer.future),
+        settle: false,
+      );
+      await tester.pump();
+
+      expect(find.text('記録のリマインダー'), findsOneWidget);
+      expect(
+        find.descendant(of: entryRow(), matching: find.byType(FcSkeleton)),
+        findsOneWidget,
+      );
+      expect(find.text('オフ'), findsNothing);
+
+      completer.complete(_weightAndDinnerOn());
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(of: entryRow(), matching: find.byType(FcSkeleton)),
+        findsNothing,
+      );
+      expect(find.text('体重・夕食'), findsOneWidget);
+    });
+
+    testWidgets('読み込めなければ値を出さない（「オフ」と言い切らない。行は押せる）', (tester) async {
+      await pumpSettings(tester, reminders: _FailingReminderSettings.new);
+
+      expect(find.text('記録のリマインダー'), findsOneWidget);
+      expect(find.text('オフ'), findsNothing);
+      expect(
+        find.descendant(of: entryRow(), matching: find.byType(FcSkeleton)),
+        findsNothing,
+      );
+      expect(
+        find.descendant(
+          of: entryRow(),
+          matching: find.byIcon(LucideIcons.chevronRight),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('記録のリマインダー'));
+      await tester.pumpAndSettle();
+      expect(find.byType(RecordReminderSettingsScreen), findsOneWidget);
+      expect(find.text('リマインダーの設定を読み込めませんでした'), findsOneWidget);
+    });
+
+    testWidgets('通知設定を読み込めないときも、記録のリマインダーの行は出て押せる', (tester) async {
+      await pumpSettings(tester, prefsOverride: (_) => _FailingPrefs());
+
+      expect(find.text('通知設定を読み込めませんでした'), findsOneWidget);
+      expect(find.byType(FcToggle), findsNothing);
+      expect(find.text('記録のリマインダー'), findsOneWidget);
+      expect(find.text('オフ'), findsOneWidget);
+      // お知らせの下
+      expect(
+        tester.getTopLeft(find.text('記録のリマインダー')).dy,
+        greaterThan(tester.getTopLeft(find.text('通知設定を読み込めませんでした')).dy),
+      );
+
+      await tester.tap(find.text('記録のリマインダー'));
+      await tester.pumpAndSettle();
+      expect(find.byType(RecordReminderSettingsScreen), findsOneWidget);
+    });
+  });
+
   group('SettingsScreen ヘルスケア連携', () {
     testWidgets('iOS は HealthKit。連携中・データ・最終同期が補足に出て、押すと設定画面へ進む',
         (tester) async {
@@ -449,7 +679,18 @@ void main() {
           find.text('連携中 · 体重 · 睡眠 · 最終同期 9月13日（日）7:32'),
           findsOneWidget,
         );
-        expect(find.byIcon(LucideIcons.chevronRight), findsOneWidget);
+        // chevron はこの行と、通知グループの「記録のリマインダー」の行
+        expect(find.byIcon(LucideIcons.chevronRight), findsNWidgets(2));
+        expect(
+          find.descendant(
+            of: find.ancestor(
+              of: find.text('HealthKit'),
+              matching: find.byType(FcListRow),
+            ),
+            matching: find.byIcon(LucideIcons.chevronRight),
+          ),
+          findsOneWidget,
+        );
 
         await tester.tap(find.text('HealthKit'));
         await tester.pumpAndSettle();
@@ -471,6 +712,8 @@ void main() {
 
       expect(find.text('ヘルスケア連携'), findsNothing);
       expect(find.byIcon(LucideIcons.heartPulse), findsNothing);
+      // chevron は記録のリマインダーの行だけ
+      expect(find.byIcon(LucideIcons.chevronRight), findsOneWidget);
     });
   });
 
@@ -489,8 +732,21 @@ void main() {
       final delete = tester.widget<Text>(find.text('アカウントを削除'));
       expect(delete.style!.color, AppColorsExtension.light.error);
       expect(find.byIcon(LucideIcons.userX), findsNothing);
-      // chevron はヘルスケア連携の行（1 つ）だけ
-      expect(find.byIcon(LucideIcons.chevronRight), findsOneWidget);
+      // chevron は記録のリマインダーとヘルスケア連携の行（2 つ）だけ
+      expect(find.byIcon(LucideIcons.chevronRight), findsNWidgets(2));
+      for (final title in ['ログアウト', 'アカウントを削除']) {
+        expect(
+          find.descendant(
+            of: find.ancestor(
+              of: find.text(title),
+              matching: find.byType(FcListRow),
+            ),
+            matching: find.byIcon(LucideIcons.chevronRight),
+          ),
+          findsNothing,
+          reason: title,
+        );
+      }
     });
 
     testWidgets('外部リンクの行は「外部で開く」を読み上げに含める', (tester) async {
@@ -712,7 +968,7 @@ void main() {
       );
 
       expect(tester.takeException(), isNull);
-      for (final title in ['利用規約', 'ログアウト', 'アカウントを削除']) {
+      for (final title in ['記録のリマインダー', '利用規約', 'ログアウト', 'アカウントを削除']) {
         final row = find
             .ancestor(of: find.text(title), matching: find.byType(FcPressable))
             .first;

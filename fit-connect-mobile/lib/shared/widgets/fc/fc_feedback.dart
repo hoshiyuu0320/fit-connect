@@ -243,7 +243,8 @@ enum FcNoticeKind {
 /// - 余白 10×12・角丸 12・文字 13（行高 1.5）。**文字もアイコンもトーンの色**（面は errorSurface など）
 /// - アイコンは 16（文字の 1 行目に揃える）。neutral はアイコンなし
 /// - アイコンと文言を併用し、色だけで伝えない。読み上げの live region
-/// - [actionLabel] と [onAction] で「再試行」を付けられる（更新アイコン 14 + ラベル・タッチ領域 44 以上・太さ 500）
+/// - [actionLabel] と [onAction] で「再試行」を付けられる（更新アイコン 14 + ラベル・タッチ領域 44 以上・太さ 500）。
+///   再試行以外の操作（「設定を開く」など）は [actionIcon] でアイコンを替える（null ならアイコンなし）
 /// - 文字拡大では折り返して縦に伸びる
 class FcInlineNotice extends StatelessWidget {
   const FcInlineNotice({
@@ -252,6 +253,7 @@ class FcInlineNotice extends StatelessWidget {
     required this.message,
     this.actionLabel,
     this.onAction,
+    this.actionIcon = LucideIcons.refreshCw,
   });
 
   const FcInlineNotice.warning({
@@ -259,12 +261,14 @@ class FcInlineNotice extends StatelessWidget {
     required String message,
     String? actionLabel,
     VoidCallback? onAction,
+    IconData? actionIcon = LucideIcons.refreshCw,
   }) : this(
           key: key,
           kind: FcNoticeKind.warning,
           message: message,
           actionLabel: actionLabel,
           onAction: onAction,
+          actionIcon: actionIcon,
         );
 
   const FcInlineNotice.error({
@@ -272,12 +276,14 @@ class FcInlineNotice extends StatelessWidget {
     required String message,
     String? actionLabel,
     VoidCallback? onAction,
+    IconData? actionIcon = LucideIcons.refreshCw,
   }) : this(
           key: key,
           kind: FcNoticeKind.error,
           message: message,
           actionLabel: actionLabel,
           onAction: onAction,
+          actionIcon: actionIcon,
         );
 
   /// [FcInlineNotice.neutral] の別名
@@ -286,12 +292,14 @@ class FcInlineNotice extends StatelessWidget {
     required String message,
     String? actionLabel,
     VoidCallback? onAction,
+    IconData? actionIcon = LucideIcons.refreshCw,
   }) : this(
           key: key,
           kind: FcNoticeKind.info,
           message: message,
           actionLabel: actionLabel,
           onAction: onAction,
+          actionIcon: actionIcon,
         );
 
   const FcInlineNotice.neutral({
@@ -299,12 +307,14 @@ class FcInlineNotice extends StatelessWidget {
     required String message,
     String? actionLabel,
     VoidCallback? onAction,
+    IconData? actionIcon = LucideIcons.refreshCw,
   }) : this(
           key: key,
           kind: FcNoticeKind.neutral,
           message: message,
           actionLabel: actionLabel,
           onAction: onAction,
+          actionIcon: actionIcon,
         );
 
   const FcInlineNotice.success({
@@ -312,18 +322,23 @@ class FcInlineNotice extends StatelessWidget {
     required String message,
     String? actionLabel,
     VoidCallback? onAction,
+    IconData? actionIcon = LucideIcons.refreshCw,
   }) : this(
           key: key,
           kind: FcNoticeKind.success,
           message: message,
           actionLabel: actionLabel,
           onAction: onAction,
+          actionIcon: actionIcon,
         );
 
   final FcNoticeKind kind;
   final String message;
   final String? actionLabel;
   final VoidCallback? onAction;
+
+  /// 操作の前に置くアイコン（14）。既定は「再試行」の更新アイコン。null ならアイコンなし
+  final IconData? actionIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -396,14 +411,16 @@ class FcInlineNotice extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        ExcludeSemantics(
-                          child: Icon(
-                            LucideIcons.refreshCw,
-                            size: 14,
-                            color: foreground,
+                        if (actionIcon != null) ...[
+                          ExcludeSemantics(
+                            child: Icon(
+                              actionIcon,
+                              size: 14,
+                              color: foreground,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 4),
+                          const SizedBox(width: 4),
+                        ],
                         Text(
                           actionLabel!,
                           softWrap: false,

@@ -9,6 +9,10 @@ import 'package:fit_connect_mobile/core/theme/app_theme.dart';
 import 'package:fit_connect_mobile/features/consent/data/consent_repository.dart';
 import 'package:fit_connect_mobile/features/consent/legal_links.dart';
 
+/// 同意ダイアログの route の名前。
+/// 通知を押したときに上に重なった画面を閉じる処理（MainScreen）が、このダイアログを見分けて残すのに使う
+const String consentDialogRouteName = 'consent_dialog';
+
 /// 同意ダイアログを表示する。
 /// 同意が記録されるまで閉じられない（バリア/戻る操作を抑止）。
 Future<void> showConsentDialog(
@@ -18,6 +22,7 @@ Future<void> showConsentDialog(
   return showDialog<void>(
     context: context,
     barrierDismissible: false,
+    routeSettings: const RouteSettings(name: consentDialogRouteName),
     builder: (_) => ConsentDialog(userId: userId),
   );
 }

@@ -161,6 +161,14 @@ void main() {
       expect(find.text('ご利用にあたって'), findsOneWidget);
     });
 
+    testWidgets('route に名前が付く（通知を押したときに上の画面を閉じる処理が、このダイアログを残すため）',
+        (tester) async {
+      await _pumpDialog(tester, _FakeConsentRepository());
+
+      final route = ModalRoute.of(tester.element(find.byType(ConsentDialog)))!;
+      expect(route.settings.name, consentDialogRouteName);
+    });
+
     testWidgets('ダーク: 利用規約・プライバシーポリシーのリンクとアイコンは accent（#1C1C1E の上で読める）',
         (tester) async {
       await _pumpDialog(

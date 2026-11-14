@@ -1,14 +1,20 @@
 import 'dart:io' show Platform;
 
-import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, debugPrint, defaultTargetPlatform, visibleForTesting;
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:timezone/data/latest.dart' as tzdata;
+import 'package:timezone/timezone.dart' as tz;
+
+import 'package:fit_connect_mobile/services/notification_tap_dispatcher.dart';
 
 // バックグラウンドハンドラ（トップレベル関数）
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  print('[NotificationService] バックグラウンドメッセージ: ${message.notification?.title}');
+  debugPrint(
+      '[NotificationService] バックグラウンドメッセージ: ${message.notification?.title}');
 }
 
 /// 通知セットアップの結果
@@ -23,6 +29,15 @@ class NotificationService {
   static final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
+  /// 記録のリマインダー（予約するローカル通知）の Android 通知チャンネル
+  static const AndroidNotificationChannel recordReminderChannel =
+      AndroidNotificationChannel(
+    'record_reminder',
+    '記録のリマインダー',
+    description: '記録を忘れないためのお知らせ',
+    importance: Importance.defaultImportance,
+  );
+
   // トークンリフレッシュ時に使用
   static String? _currentUserId;
   static String? _currentUserType;
@@ -30,8 +45,48 @@ class NotificationService {
   // 直近に保存したFCMトークン（リフレッシュ時の旧 device_tokens 行削除に使用）
   static String? _currentToken;
 
-  // 通知タップコールバック
-  static void Function(String type, String? id)? onNotificationTap;
+  // ローカル通知の初期化（ensureLocalNotificationsInitialized。起動ごとに1回）
+  static Future<void>? _localNotificationsInitialization;
+
+  // 通知タップの受け渡し（FCM・ローカル通知とも。受け口が無い間は最後の1件を取っておく）
+  static final NotificationTapDispatcher _tapDispatcher =
+      NotificationTapDispatcher(
+    onError: (e) => debugPrint('[NotificationService] 通知タップエラー: $e'),
+  );
+
+  /// 通知タップの受け口を設定する（null で外す）
+  ///
+  /// 受け口が無い間に来たタップ（FCM・ローカル通知とも、最後の1件）は取っておき、
+  /// ここで受け口が設定されたときに渡す（設定の直後の microtask で。build の中で設定してもよい）。
+  /// 受け口がある間に来たタップは、来たときにそのまま渡す
+  static void setNotificationTapHandler(
+      void Function(String type, String? id)? handler) {
+    _tapDispatcher.setHandler(handler);
+  }
+
+  /// 受け口が無い間に取っておいたタップ（FCM・ローカル通知とも）を捨てる。
+  ///
+  /// ログアウトしたときに呼ぶ（ログアウトした端末で押された通知を、次のログインへ持ち越さない）。
+  /// 受け口・起動時の通知の重複の判定はそのまま
+  static void clearPendingTap() => _tapDispatcher.clearPendingTap();
+
+  /// 通知タップの受け口（[setNotificationTapHandler] と同じ。代入しても取っておいたタップを渡す）
+  static void Function(String type, String? id)? get onNotificationTap =>
+      _tapDispatcher.handler;
+
+  static set onNotificationTap(
+          void Function(String type, String? id)? handler) =>
+      setNotificationTapHandler(handler);
+
+  /// ローカル通知のプラグイン（記録のリマインダーの予約に使う）。
+  /// 使う前に [ensureLocalNotificationsInitialized] を await すること
+  static FlutterLocalNotificationsPlugin get localNotifications =>
+      _localNotifications;
+
+  /// テスト用: 通知タップの受け渡し
+  @visibleForTesting
+  static NotificationTapDispatcher get tapDispatcherForTesting =>
+      _tapDispatcher;
 
   /// 初期化
   ///
@@ -59,7 +114,7 @@ class NotificationService {
           settings.authorizationStatus == AuthorizationStatus.authorized ||
               settings.authorizationStatus == AuthorizationStatus.provisional;
 
-      print('[NotificationService] 通知権限: ${settings.authorizationStatus}');
+      debugPrint('[NotificationService] 通知権限: ${settings.authorizationStatus}');
 
       if (isAuthorized) {
         // iOS フォアグラウンド通知設定
@@ -72,14 +127,14 @@ class NotificationService {
         // FCMトークン取得（iOS は APNs トークンの到着を待ってから）
         if (await _waitForApnsToken()) {
           final token = await _messaging.getToken();
-          print('[NotificationService] FCM Token: $token');
+          debugPrint('[NotificationService] FCM Token: $token');
         } else {
-          print('[NotificationService] APNsトークン未取得のため取得をスキップ');
+          debugPrint('[NotificationService] APNsトークン未取得のため取得をスキップ');
         }
       }
 
-      // ローカル通知プラグイン初期化
-      await _initializeLocalNotifications();
+      // ローカル通知プラグイン初期化（済んでいれば何もしない）
+      await ensureLocalNotificationsInitialized();
 
       // フォアグラウンド通知リスナー
       FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
@@ -100,9 +155,9 @@ class NotificationService {
       // トークンリフレッシュリスナー
       _messaging.onTokenRefresh.listen(_handleTokenRefresh);
 
-      print('[NotificationService] 初期化完了');
+      debugPrint('[NotificationService] 初期化完了');
     } catch (e) {
-      print('[NotificationService] 初期化エラー: $e');
+      debugPrint('[NotificationService] 初期化エラー: $e');
     }
   }
 
@@ -148,8 +203,33 @@ class NotificationService {
     }
   }
 
+  /// ローカル通知の初期化（何度・同時に呼んでもよい。初期化は起動ごとに1回）
+  ///
+  /// - 時間帯を `Asia/Tokyo` に固定する（記録のリマインダーは日本時間で予約する）
+  /// - iOS/Android: 通知チャンネル（重要な通知・記録のリマインダー）を作り、プラグインを初期化する。
+  ///   アプリがローカル通知のタップで起動していれば、そのタップを通知タップの受け口へ渡す
+  ///
+  /// Firebase は使わない（Firebase の初期化に失敗した端末でも使える）。
+  /// 失敗はログに出すだけで、例外は投げない
+  static Future<void> ensureLocalNotificationsInitialized() =>
+      _localNotificationsInitialization ??= _initializeLocalNotifications();
+
   /// ローカル通知プラグイン初期化
   static Future<void> _initializeLocalNotifications() async {
+    // 時間帯（記録のリマインダーの予約・「今日」の判定は日本時間）
+    try {
+      tzdata.initializeTimeZones();
+      tz.setLocalLocation(tz.getLocation('Asia/Tokyo'));
+    } catch (e) {
+      debugPrint('[NotificationService] 時間帯の初期化エラー: $e');
+    }
+
+    // iOS/Androidのみ
+    if (defaultTargetPlatform != TargetPlatform.iOS &&
+        defaultTargetPlatform != TargetPlatform.android) {
+      return;
+    }
+
     try {
       // Android通知チャンネル作成
       const androidChannel = AndroidNotificationChannel(
@@ -159,10 +239,12 @@ class NotificationService {
         importance: Importance.high,
       );
 
-      await _localNotifications
-          .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
-          ?.createNotificationChannel(androidChannel);
+      final androidPlugin =
+          _localNotifications.resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>();
+      await androidPlugin?.createNotificationChannel(androidChannel);
+      // 記録のリマインダー（予約するローカル通知）
+      await androidPlugin?.createNotificationChannel(recordReminderChannel);
 
       // 初期化設定
       // iOS: requestXxxPermission はデフォルト true で初期化時に OS の許可
@@ -183,23 +265,22 @@ class NotificationService {
 
       await _localNotifications.initialize(
         initializationSettings,
-        onDidReceiveNotificationResponse: (details) {
-          if (details.payload != null) {
-            _handleLocalNotificationTap(details.payload!);
-          }
-        },
+        onDidReceiveNotificationResponse: _handleLocalNotificationResponse,
       );
 
-      print('[NotificationService] ローカル通知初期化完了');
+      debugPrint('[NotificationService] ローカル通知初期化完了');
     } catch (e) {
-      print('[NotificationService] ローカル通知初期化エラー: $e');
+      debugPrint('[NotificationService] ローカル通知初期化エラー: $e');
     }
+
+    // 通知タップハンドリング（アプリがローカル通知のタップで終了状態から開かれた場合）
+    await _handleLocalNotificationLaunch();
   }
 
   /// フォアグラウンドメッセージハンドラ
   static Future<void> _handleForegroundMessage(RemoteMessage message) async {
     try {
-      print(
+      debugPrint(
           '[NotificationService] フォアグラウンドメッセージ受信: ${message.notification?.title}');
 
       // ローカル通知を表示
@@ -232,43 +313,67 @@ class NotificationService {
         );
       }
     } catch (e) {
-      print('[NotificationService] フォアグラウンドメッセージエラー: $e');
+      debugPrint('[NotificationService] フォアグラウンドメッセージエラー: $e');
     }
   }
 
   /// 通知タップハンドラ（リモートメッセージから）
   static void _handleNotificationTap(RemoteMessage message) {
     try {
-      print('[NotificationService] 通知タップ: ${message.data}');
+      debugPrint('[NotificationService] 通知タップ: ${message.data}');
 
-      final type = message.data['type'] as String?;
-      final id = message.data['id'] as String?;
-
-      if (type != null && onNotificationTap != null) {
-        onNotificationTap!(type, id);
-      }
+      // data の type / id を受け口へ（ローカル通知と同じ経路。受け口が無い間は取っておく）
+      _tapDispatcher.dispatchRemoteData(message.data);
     } catch (e) {
-      print('[NotificationService] 通知タップエラー: $e');
+      debugPrint('[NotificationService] 通知タップエラー: $e');
     }
   }
 
-  /// ローカル通知タップハンドラ
-  static void _handleLocalNotificationTap(String payload) {
+  /// ローカル通知タップハンドラ（onDidReceiveNotificationResponse）
+  static void _handleLocalNotificationResponse(NotificationResponse details) {
+    final payload = details.payload;
+    if (payload == null) return;
     try {
-      print('[NotificationService] ローカル通知タップ: $payload');
+      debugPrint('[NotificationService] ローカル通知タップ: $payload');
 
-      // 簡易的なペイロード解析（type:id形式）
-      final parts = payload.split(':');
-      if (parts.length >= 1) {
-        final type = parts[0];
-        final id = parts.length >= 2 ? parts[1] : null;
+      // payload（type:id形式）を受け口へ。起動時の通知として渡し済みのタップは渡さない
+      _tapDispatcher.dispatchLocalResponse(
+        notificationId: details.id,
+        payload: payload,
+      );
+    } catch (e) {
+      debugPrint('[NotificationService] ローカル通知タップエラー: $e');
+    }
+  }
 
-        if (onNotificationTap != null) {
-          onNotificationTap!(type, id);
-        }
+  /// アプリを起動したローカル通知のタップを、通知タップと同じ経路で渡す
+  ///
+  /// ローカル通知の初期化の後に1回だけ呼ぶ。同じタップが onDidReceiveNotificationResponse
+  /// からも届いた場合は、どちらか一方だけを渡す（[NotificationTapDispatcher]）
+  static Future<void> _handleLocalNotificationLaunch() async {
+    NotificationResponse? response;
+    try {
+      final details =
+          await _localNotifications.getNotificationAppLaunchDetails();
+      if (details != null && details.didNotificationLaunchApp) {
+        response = details.notificationResponse;
       }
     } catch (e) {
-      print('[NotificationService] ローカル通知タップエラー: $e');
+      debugPrint('[NotificationService] 起動時の通知の取得エラー: $e');
+    }
+
+    try {
+      final payload = response?.payload;
+      if (payload != null) {
+        debugPrint('[NotificationService] ローカル通知のタップで起動: $payload');
+      }
+      // 通知で起動していなくても呼ぶ（起動前後に届いたタップとの重複の判定を終えるため）
+      _tapDispatcher.dispatchLaunchResponse(
+        notificationId: response?.id,
+        payload: payload,
+      );
+    } catch (e) {
+      debugPrint('[NotificationService] ローカル通知タップエラー: $e');
     }
   }
 
@@ -384,13 +489,13 @@ class NotificationService {
       String userId, String userType) async {
     try {
       if (!await _waitForApnsToken()) {
-        print('[NotificationService] APNsトークン未取得のため保存を中止');
+        debugPrint('[NotificationService] APNsトークン未取得のため保存を中止');
         return false;
       }
 
       final token = await _messaging.getToken();
       if (token == null) {
-        print('[NotificationService] トークン取得失敗');
+        debugPrint('[NotificationService] トークン取得失敗');
         return false;
       }
 
@@ -409,19 +514,19 @@ class NotificationService {
         await client
             .from('clients')
             .update({'fcm_token': token}).eq('client_id', userId);
-        print('[NotificationService] クライアントトークン保存: $userId');
+        debugPrint('[NotificationService] クライアントトークン保存: $userId');
       } else if (userType == 'trainer') {
         await client
             .from('trainers')
             .update({'fcm_token': token}).eq('id', userId);
-        print('[NotificationService] トレーナートークン保存: $userId');
+        debugPrint('[NotificationService] トレーナートークン保存: $userId');
       } else {
-        print('[NotificationService] 不明なユーザータイプ: $userType');
+        debugPrint('[NotificationService] 不明なユーザータイプ: $userType');
         return false;
       }
       return true;
     } catch (e) {
-      print('[NotificationService] トークン保存エラー: $e');
+      debugPrint('[NotificationService] トークン保存エラー: $e');
       return false;
     }
   }
@@ -441,14 +546,14 @@ class NotificationService {
         await client
             .from('clients')
             .update({'fcm_token': null}).eq('client_id', userId);
-        print('[NotificationService] クライアントトークン削除: $userId');
+        debugPrint('[NotificationService] クライアントトークン削除: $userId');
       } else if (userType == 'trainer') {
         await client
             .from('trainers')
             .update({'fcm_token': null}).eq('id', userId);
-        print('[NotificationService] トレーナートークン削除: $userId');
+        debugPrint('[NotificationService] トレーナートークン削除: $userId');
       } else {
-        print('[NotificationService] 不明なユーザータイプ: $userType');
+        debugPrint('[NotificationService] 不明なユーザータイプ: $userType');
       }
 
       // 保持している情報をクリア
@@ -456,7 +561,7 @@ class NotificationService {
       _currentUserType = null;
       _currentToken = null;
     } catch (e) {
-      print('[NotificationService] トークン削除エラー: $e');
+      debugPrint('[NotificationService] トークン削除エラー: $e');
     }
   }
 
@@ -479,9 +584,8 @@ class NotificationService {
         iOS: iosDetails,
       );
 
-      final body = message.length > 120
-          ? '${message.substring(0, 120)}…'
-          : message;
+      final body =
+          message.length > 120 ? '${message.substring(0, 120)}…' : message;
 
       await _localNotifications.show(
         9001, // 固定ID（同期エラー専用、上書きされる）
@@ -491,14 +595,14 @@ class NotificationService {
         payload: 'health_sync_error',
       );
     } catch (e) {
-      print('[NotificationService] 同期エラー通知エラー: $e');
+      debugPrint('[NotificationService] 同期エラー通知エラー: $e');
     }
   }
 
   /// トークンリフレッシュハンドラ
   static Future<void> _handleTokenRefresh(String newToken) async {
     try {
-      print('[NotificationService] トークンリフレッシュ: $newToken');
+      debugPrint('[NotificationService] トークンリフレッシュ: $newToken');
 
       // 保持しているユーザー情報がある場合のみ更新
       if (_currentUserId != null && _currentUserType != null) {
@@ -520,18 +624,18 @@ class NotificationService {
           await client
               .from('clients')
               .update({'fcm_token': newToken}).eq('client_id', _currentUserId!);
-          print('[NotificationService] クライアントトークン更新: $_currentUserId');
+          debugPrint('[NotificationService] クライアントトークン更新: $_currentUserId');
         } else if (_currentUserType == 'trainer') {
           await client
               .from('trainers')
               .update({'fcm_token': newToken}).eq('id', _currentUserId!);
-          print('[NotificationService] トレーナートークン更新: $_currentUserId');
+          debugPrint('[NotificationService] トレーナートークン更新: $_currentUserId');
         }
       } else {
-        print('[NotificationService] ユーザー情報未設定のためトークン更新スキップ');
+        debugPrint('[NotificationService] ユーザー情報未設定のためトークン更新スキップ');
       }
     } catch (e) {
-      print('[NotificationService] トークンリフレッシュエラー: $e');
+      debugPrint('[NotificationService] トークンリフレッシュエラー: $e');
     }
   }
 }
