@@ -136,7 +136,8 @@ class RegistrationNotifier extends _$RegistrationNotifier {
           .eq('id', trainerId)
           .maybeSingle();
 
-      print('[fetchTrainerInfo] response: $response');
+      // 氏名など中身はログに出さない
+      print('[fetchTrainerInfo] found: ${response != null}');
 
       if (response == null) {
         return false; // トレーナーが見つからない
