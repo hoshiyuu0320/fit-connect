@@ -13,7 +13,8 @@ Future<Client?> currentClient(CurrentClientRef ref) async {
 
   // 認証状態の完了を待つ（.futureで待機することで、ローディング中はawaitされる）
   final user = await ref.watch(authNotifierProvider.future);
-  print('[DEBUG] currentClientProvider: user = $user, user.id = ${user?.id}');
+  // User 全体はメール・identities などを含むので、id だけ出す
+  print('[DEBUG] currentClientProvider: user.id = ${user?.id}');
 
   if (user == null) {
     print('[DEBUG] currentClientProvider: user is null, returning null');
@@ -67,7 +68,8 @@ Future<Trainer?> trainerProfile(TrainerProfileRef ref) async {
         .select()
         .eq('id', trainerId)
         .maybeSingle();
-    print('[DEBUG] trainerProfileProvider: response = $response');
+    // 氏名・メールなど中身はログに出さない
+    print('[DEBUG] trainerProfileProvider: found = ${response != null}');
     if (response == null) return null;
     return Trainer.fromJson(response);
   } catch (e) {
