@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  next@15.5.12:
+    hash: 73e3cafd7f8818bb6958ea616d24a45b970fa9a999a930a53029c5c5023aa1c3
+    path: patches/next@15.5.12.patch
+
 importers:
 
   .:
@@ -25,7 +30,7 @@ importers:
         version: 10.5.0
       '@next/third-parties':
         specifier: ^16.2.10
-        version: 16.2.10(next@15.5.12(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react@19.1.0)
+        version: 16.2.10(next@15.5.12(patch_hash=73e3cafd7f8818bb6958ea616d24a45b970fa9a999a930a53029c5c5023aa1c3)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react@19.1.0)
       '@radix-ui/react-alert-dialog':
         specifier: ^1.1.15
         version: 1.1.15(@types/react-dom@19.1.5(@types/react@19.1.6))(@types/react@19.1.6)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -70,7 +75,7 @@ importers:
         version: 0.511.0(react@19.1.0)
       next:
         specifier: ^15.5.9
-        version: 15.5.12(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: 15.5.12(patch_hash=73e3cafd7f8818bb6958ea616d24a45b970fa9a999a930a53029c5c5023aa1c3)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       qrcode.react:
         specifier: ^4.2.0
         version: 4.2.0(react@19.1.0)
@@ -3554,9 +3559,9 @@ snapshots:
   '@next/swc-win32-x64-msvc@15.5.12':
     optional: true
 
-  '@next/third-parties@16.2.10(next@15.5.12(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react@19.1.0)':
+  '@next/third-parties@16.2.10(next@15.5.12(patch_hash=73e3cafd7f8818bb6958ea616d24a45b970fa9a999a930a53029c5c5023aa1c3)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react@19.1.0)':
     dependencies:
-      next: 15.5.12(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      next: 15.5.12(patch_hash=73e3cafd7f8818bb6958ea616d24a45b970fa9a999a930a53029c5c5023aa1c3)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       react: 19.1.0
       third-party-capital: 1.0.20
 
@@ -5485,7 +5490,7 @@ snapshots:
 
   natural-compare@1.4.0: {}
 
-  next@15.5.12(react-dom@19.1.0(react@19.1.0))(react@19.1.0):
+  next@15.5.12(patch_hash=73e3cafd7f8818bb6958ea616d24a45b970fa9a999a930a53029c5c5023aa1c3)(react-dom@19.1.0(react@19.1.0))(react@19.1.0):
     dependencies:
       '@next/env': 15.5.12
       '@swc/helpers': 0.5.15
