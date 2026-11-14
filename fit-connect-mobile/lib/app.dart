@@ -11,6 +11,7 @@ import 'package:fit_connect_mobile/features/auth/presentation/screens/welcome_sc
 import 'package:fit_connect_mobile/features/auth/presentation/screens/profile_setup_screen.dart';
 import 'package:fit_connect_mobile/features/auth/presentation/screens/registration_complete_screen.dart';
 import 'package:fit_connect_mobile/features/app_update/presentation/app_update_gate.dart';
+import 'package:fit_connect_mobile/features/auth/providers/auth_provider.dart';
 import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
 import 'package:fit_connect_mobile/features/auth/providers/registration_provider.dart';
 import 'package:fit_connect_mobile/features/consent/data/consent_repository.dart';
@@ -22,6 +23,7 @@ import 'package:fit_connect_mobile/features/sessions/providers/sessions_provider
 import 'package:fit_connect_mobile/features/sleep_records/providers/morning_dialog_provider.dart';
 import 'package:fit_connect_mobile/features/sleep_records/presentation/widgets/morning_wakeup_dialog.dart';
 import 'package:fit_connect_mobile/shared/storage/signed_url_cache.dart';
+import 'package:fit_connect_mobile/features/auth/presentation/widgets/client_load_error_view.dart';
 
 class MyApp extends ConsumerWidget {
   const MyApp({super.key});
@@ -43,7 +45,13 @@ class MyApp extends ConsumerWidget {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const _LoadingScreen();
             }
-            final session = snapshot.data?.session;
+            // gotrue はトークン更新の失敗（オフラインなど）をこのストリームの「エラー」として
+            // 流すが、セッションは消さない（使えないと分かったときは signedOut を流す）。
+            // エラーのときは snapshot.data が無くなるので、今のセッションで判定する
+            // （エラーをログアウト扱いにしない）
+            final session = snapshot.hasError
+                ? Supabase.instance.client.auth.currentSession
+                : snapshot.data?.session;
             if (session != null) {
               // ログイン済み: クライアントデータの確認
               return const _AuthLoadingScreen();
@@ -113,6 +121,8 @@ class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      // クライアント情報の取得に失敗したままなら取り直す（オフラインで起動した後など）
+      _retryClientFetchIfFailed();
       // resumed 時はSleep同期完了を待たずに即時再判定（同期は別途バックグラウンド継続）
       ref.invalidate(morningDialogProvider);
       // 「今日/明日」表示や今後/過去の仕分けが古くならないよう取り直す
@@ -120,6 +130,26 @@ class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen>
       ref.invalidate(pastSessionsProvider);
       _maybeShowMorningDialog();
       _maybeRunResumeSync();
+    }
+  }
+
+  /// クライアント情報の取得に失敗したまま（再試行中でない）なら取り直す
+  void _retryClientFetchIfFailed() {
+    final clientAsync = ref.read(currentClientProvider);
+    if (clientAsync.hasError && !clientAsync.isLoading) {
+      ref.invalidate(currentClientProvider);
+    }
+  }
+
+  /// 読み込み失敗の画面で「ログアウト」が確認されたとき。設定画面のログアウトと同じ処理
+  Future<void> _signOutAfterLoadError() async {
+    if (!mounted) return;
+    try {
+      await ref.read(authNotifierProvider.notifier).signOut();
+      // 画面の切り替えは MyApp の StreamBuilder（signedOut）が行う
+    } catch (e) {
+      // オフラインでは /logout に届かず例外になるが、端末のセッションは先に消えている
+      debugPrint('[App] 読み込み失敗の画面からのログアウトでエラー: $e');
     }
   }
 
@@ -248,6 +278,9 @@ class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen>
   /// 「セッション残存 + clients 行なし」のままウェルカム画面が表示され、
   /// ログイン画面の挙動不整合など不可解な状態になる。
   ///
+  /// 取得に失敗したとき（オフライン・サーバーエラーなど）はここへ来ない
+  /// （currentClientProvider が AsyncError になり、build の error 分岐で再試行の画面を出す）。
+  ///
   /// ビルド中に副作用を起こさないよう post-frame で一度だけ実行する。
   /// サインアウト完了後は onAuthStateChange 経由で MyApp の StreamBuilder が
   /// 未ログイン側（WelcomeScreen）を表示する。
@@ -288,6 +321,9 @@ class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen>
     final registrationState = ref.watch(registrationNotifierProvider);
 
     return clientAsync.when(
+      // 取得済みのクライアントがいる間は、取り直し（設定画面での更新後など）の失敗で
+      // 画面を替えない（前の値で MainScreen を出し続ける）
+      skipError: clientAsync.valueOrNull != null,
       data: (client) {
         if (client != null) {
           // FCMトークン保存（MainScreen表示前）
@@ -335,14 +371,22 @@ class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen>
         );
       },
       error: (error, stack) {
-        // エラー時: 登録フロー中ならプロフィール設定画面、そうでなければオンボーディング
+        // 取得に失敗した（オフライン・サーバーエラーなど）。clients 行が無いとは限らないので
+        // サインアウトしない（行が無いときは data(null) になり、上の else でサインアウトする）。
+        // 登録フロー中は data(null) のときと同じ画面を出す
+        if (registrationState.isRegistrationComplete) {
+          return const RegistrationCompleteScreen();
+        }
         if (registrationState.hasTrainer) {
           return const ProfileSetupScreen();
         }
-        // セッション有り・client 取得不能・登録フロー外 → 残存セッションを
-        // サインアウトして未ログイン状態へ自己修復（data 分岐の else と同様）
-        _signOutStaleSessionIfNeeded();
-        return const WelcomeScreen();
+        // 再試行できる画面（手動・15 秒ごとの自動・アプリが前面に戻ったとき）。
+        // 取得が続けて失敗する場合の逃げ道としてログアウトも出す
+        return ClientLoadErrorView(
+          isRetrying: clientAsync.isLoading,
+          onRetry: () => ref.invalidate(currentClientProvider),
+          onSignOut: _signOutAfterLoadError,
+        );
       },
     );
   }
