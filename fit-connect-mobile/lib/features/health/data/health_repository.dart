@@ -7,6 +7,12 @@ class HealthRepository {
 
   HealthRepository({Health? health}) : _health = health ?? Health();
 
+  /// 同じ晩とみなす隙間（晩の終わり〜次の点の始まり）の上限。これ以上あけば次の晩
+  static const _nightGapLimit = Duration(hours: 3);
+
+  /// 睡眠の取得を startDate より前に広げる幅
+  static const _sleepLookback = Duration(days: 2);
+
   /// HealthKit / Health Connect が利用可能かチェック
   Future<bool> isAvailable() async {
     try {
@@ -17,18 +23,25 @@ class HealthRepository {
     }
   }
 
-  /// 体重（+任意で睡眠）データの読み取り権限をリクエスト
-  Future<bool> requestPermission({bool includeSleep = false}) async {
-    final types = <HealthDataType>[HealthDataType.WEIGHT];
-    if (includeSleep) {
-      types.addAll([
+  /// 睡眠として扱う型（権限リクエスト・権限チェック・取得で共通）
+  /// SLEEP_IN_BED は Health Connect に無い（health 11.1.1 では iOS 専用）ため、
+  /// Android ではセッション全体の SLEEP_SESSION（権限は READ_SLEEP）を使う
+  List<HealthDataType> get _sleepTypes => [
         HealthDataType.SLEEP_ASLEEP,
         HealthDataType.SLEEP_DEEP,
         HealthDataType.SLEEP_LIGHT,
         HealthDataType.SLEEP_REM,
         HealthDataType.SLEEP_AWAKE,
-        HealthDataType.SLEEP_IN_BED,
-      ]);
+        defaultTargetPlatform == TargetPlatform.android
+            ? HealthDataType.SLEEP_SESSION
+            : HealthDataType.SLEEP_IN_BED,
+      ];
+
+  /// 体重（+任意で睡眠）データの読み取り権限をリクエスト
+  Future<bool> requestPermission({bool includeSleep = false}) async {
+    final types = <HealthDataType>[HealthDataType.WEIGHT];
+    if (includeSleep) {
+      types.addAll(_sleepTypes);
     }
     final permissions = List.filled(types.length, HealthDataAccess.READ);
 
@@ -37,6 +50,15 @@ class HealthRepository {
         types,
         permissions: permissions,
       );
+      // Health Connect は要求のうち1つでも許可済みなら true を返す（睡眠を拒否しても
+      // 体重が許可済みなら true）ため、Android では全部許可されたかを確かめ直す
+      if (granted && defaultTargetPlatform == TargetPlatform.android) {
+        final allGranted = await _health.hasPermissions(
+          types,
+          permissions: permissions,
+        );
+        return allGranted ?? false;
+      }
       return granted;
     } catch (e) {
       debugPrint('[HealthRepository] Permission request failed: $e');
@@ -47,16 +69,8 @@ class HealthRepository {
   /// 権限があるかチェック
   Future<bool> hasPermission({bool forSleep = false}) async {
     try {
-      final types = forSleep
-          ? <HealthDataType>[
-              HealthDataType.SLEEP_ASLEEP,
-              HealthDataType.SLEEP_DEEP,
-              HealthDataType.SLEEP_LIGHT,
-              HealthDataType.SLEEP_REM,
-              HealthDataType.SLEEP_AWAKE,
-              HealthDataType.SLEEP_IN_BED,
-            ]
-          : <HealthDataType>[HealthDataType.WEIGHT];
+      final types =
+          forSleep ? _sleepTypes : <HealthDataType>[HealthDataType.WEIGHT];
       final permissions = List.filled(types.length, HealthDataAccess.READ);
       final granted = await _health.hasPermissions(
         types,
@@ -106,45 +120,45 @@ class HealthRepository {
     }
   }
 
-  /// 起床日ごとにメインセッション1件の集計を返す。
-  /// 返却: `Map<recordedDate(YYYY-MM-DD JST), SleepSessionData>`
+  /// 睡眠の点をひと晩ずつまとめ、起床日ごとに1晩分の集計を返す。
+  /// 返却: `Map<recordedDate(YYYY-MM-DD JST), SleepSessionData>`。
+  /// キーはその晩の起床（wakeTime）の JST 日付。同じ起床日に晩が複数あれば
+  /// （昼寝など）、合計が最も長い1晩だけを返す（同じ長さなら起床が遅い方）。
+  /// health の iOS は開始時刻で絞って読む（`.strictStartDate`）ため、startDate が
+  /// 夜の途中だとその夜の前半が抜ける。そこで 2 日前から読み、起床日が
+  /// startDate の JST 日付より前の晩は返さない
   Future<Map<String, SleepSessionData>> getSleepData({
     required DateTime startDate,
     DateTime? endDate,
   }) async {
     final end = endDate ?? DateTime.now().add(const Duration(days: 1));
 
-    const sleepTypes = [
-      HealthDataType.SLEEP_ASLEEP,
-      HealthDataType.SLEEP_DEEP,
-      HealthDataType.SLEEP_LIGHT,
-      HealthDataType.SLEEP_REM,
-      HealthDataType.SLEEP_AWAKE,
-      HealthDataType.SLEEP_IN_BED,
-    ];
-
     try {
       final data = await _health.getHealthDataFromTypes(
-        types: sleepTypes,
-        startTime: startDate,
+        types: _sleepTypes,
+        startTime: startDate.subtract(_sleepLookback),
         endTime: end,
       );
 
-      // 起床日キー（wake側=dateTo の JST 日付）でグループ化
-      final byDate = <String, List<HealthDataPoint>>{};
-      for (final p in data) {
-        final jst = p.dateTo.toUtc().add(const Duration(hours: 9));
-        final key = '${jst.year.toString().padLeft(4, '0')}-'
-            '${jst.month.toString().padLeft(2, '0')}-'
-            '${jst.day.toString().padLeft(2, '0')}';
-        byDate.putIfAbsent(key, () => []).add(p);
-      }
-
+      final startKey = _jstDateKey(startDate);
       final result = <String, SleepSessionData>{};
-      byDate.forEach((date, points) {
-        final session = _aggregateMainSession(points);
-        if (session != null) result[date] = session;
-      });
+      for (final points in _splitIntoNights(data)) {
+        final night = _aggregateNight(points);
+        if (night == null) continue;
+
+        // 前に広げて読んだ分（起床日が startDate より前の晩）は返さない
+        final key = _jstDateKey(night.wakeTime);
+        if (key.compareTo(startKey) < 0) continue;
+
+        // 同じ起床日なら合計が長い方、同じ長さなら起床が遅い方を残す
+        final kept = result[key];
+        if (kept == null ||
+            night.totalSleepMinutes > kept.totalSleepMinutes ||
+            (night.totalSleepMinutes == kept.totalSleepMinutes &&
+                night.wakeTime.isAfter(kept.wakeTime))) {
+          result[key] = night;
+        }
+      }
       return result;
     } catch (e) {
       debugPrint('[HealthRepository] Failed to get sleep data: $e');
@@ -152,17 +166,47 @@ class HealthRepository {
     }
   }
 
-  /// メインセッション集計。
-  /// その日の全 sleep セグメントを dateFrom 順にソートし、
-  /// 最早開始〜最遅終了 を主セッションとみなし、ステージ別合計分を算出
-  SleepSessionData? _aggregateMainSession(List<HealthDataPoint> points) {
+  /// 点を dateFrom の順に並べ、ひと晩ずつに分ける。
+  /// 晩の終わり（それまでの dateTo の最大）と次の点の dateFrom の隙間が
+  /// [_nightGapLimit] 未満なら同じ晩（重なりも同じ晩）、以上なら次の晩とする
+  List<List<HealthDataPoint>> _splitIntoNights(List<HealthDataPoint> points) {
+    final sorted = [...points]
+      ..sort((a, b) => a.dateFrom.compareTo(b.dateFrom));
+
+    final nights = <List<HealthDataPoint>>[];
+    DateTime? nightEnd;
+    for (final p in sorted) {
+      if (nightEnd == null ||
+          p.dateFrom.difference(nightEnd) >= _nightGapLimit) {
+        nights.add([p]);
+        nightEnd = p.dateTo;
+      } else {
+        nights.last.add(p);
+        if (p.dateTo.isAfter(nightEnd)) nightEnd = p.dateTo;
+      }
+    }
+    return nights;
+  }
+
+  /// 日時を JST の日付キー（YYYY-MM-DD）にする
+  static String _jstDateKey(DateTime time) {
+    final jst = time.toUtc().add(const Duration(hours: 9));
+    return '${jst.year.toString().padLeft(4, '0')}-'
+        '${jst.month.toString().padLeft(2, '0')}-'
+        '${jst.day.toString().padLeft(2, '0')}';
+  }
+
+  /// ひと晩分の点の集計。
+  /// dateFrom 順にソートし、最早開始〜最遅終了を就寝〜起床として、ステージ別合計分を算出
+  SleepSessionData? _aggregateNight(List<HealthDataPoint> points) {
     if (points.isEmpty) return null;
 
     points.sort((a, b) => a.dateFrom.compareTo(b.dateFrom));
     final bed = points.first.dateFrom;
-    final wake = points.map((p) => p.dateTo).reduce((a, b) => a.isAfter(b) ? a : b);
+    final wake =
+        points.map((p) => p.dateTo).reduce((a, b) => a.isAfter(b) ? a : b);
 
-    var deep = 0, light = 0, rem = 0, awake = 0, asleep = 0;
+    var deep = 0, light = 0, rem = 0, awake = 0, asleep = 0, session = 0;
     for (final p in points) {
       final mins = p.dateTo.difference(p.dateFrom).inMinutes;
       switch (p.type) {
@@ -184,15 +228,21 @@ class HealthRepository {
         case HealthDataType.SLEEP_IN_BED:
           // 時間計算には含めない（在床時間は総睡眠時間とは別概念）
           break;
+        case HealthDataType.SLEEP_SESSION:
+          // Android のセッション全体。ステージと重なるのでステージ別には足さない
+          session += mins;
+          break;
         default:
           break;
       }
     }
 
     // ステージ明細あり → 合算、無ければ ASLEEP に寄せる
-    final total = (deep + light + rem) > 0
-        ? deep + light + rem + awake
-        : asleep + awake;
+    final stageTotal =
+        (deep + light + rem) > 0 ? deep + light + rem + awake : asleep + awake;
+    // Health Connect ではステージは任意（セッションだけを書くアプリもある）ため、
+    // ステージが無いときだけセッションの長さを総睡眠時間とする
+    final total = stageTotal > 0 ? stageTotal : session;
     if (total <= 0) return null;
 
     return SleepSessionData(
