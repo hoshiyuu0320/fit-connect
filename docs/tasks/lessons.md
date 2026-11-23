@@ -906,3 +906,31 @@
 - この版のアプリには、体重・食事・運動を手で追加・削除する画面が無い（記録はメッセージから）。昨日の日付の記録は画面から作れないので、「昨日まで続いている」状態は翌日に確かめる
 - テスト用クライアントの目標体重は 60.0kg。`#体重 60` を送ると、ホームの目標カードが「目標の 60.0 kg に届きました」になる（画面側の判定。DB の goal_achieved_at は付かない）。目標と違う値で試す
 - iOS シミュレータでも、メッセージのタグのボタン（体重・食事・運動）から数値の欄に入れれば、全角にならずに `#体重 60kg` を送れる
+
+## 割り当ての書き込みガード（フェーズ5.11、2026-11-23）で得た知見
+
+### 報告されたポリシーだけでなく、同じ表の全ポリシーを読む
+- 報告は「顧客の UPDATE ポリシーに列の制限が無い」だったが、同じ表のトレーナー用 ALL ポリシー（`WITH CHECK (trainer_id = auth.uid())`）が `client_id` を縛っておらず、トレーナーが authenticated で他トレーナーの顧客に割り当てを INSERT できた（顧客のアプリに出て、そのトレーナーのプランも読ませられ、完了にすると顧客の記録の連続にも数えられる。担当トレーナーには見えない）
+- 役割（顧客・トレーナー・anon）× 操作（INSERT / UPDATE / DELETE）× 表（親・子）で表にしてから設計する。正規の経路が無い組み合わせ（ここでは authenticated の INSERT / DELETE）は、GRANT とトリガーの両方で閉じる
+
+### 別の表を引く判定をポリシーに入れると RLS が再帰する — トリガーで判定する
+- `workout_plans` の `clients_read_assigned_plans` が `workout_assignments` を参照しているので、`workout_assignments` のポリシーに `plan_id IN (SELECT id FROM workout_plans WHERE plan_type = 'self_guided')` を足すと、顧客・トレーナーとも UPDATE が 42P17 `infinite recursion detected in policy`（RESTRICTIVE でも同じ。隔離スタックで確認）
+- BEFORE トリガー（SECURITY INVOKER）の中の SELECT は普通のクエリなので再帰しない。呼び出し元の RLS で読み、見えなければ拒否（fail closed）にする。テストでは、参照先のポリシーを SAVEPOINT の中で外すと正規の書き込みも拒否されることまで確かめ、ガードがそのポリシーに頼っていることを固定した
+
+### FK の参照動作は「参照側の表の所有者」として動く
+- Web の `deleteSession.ts` はブラウザのクライアント（authenticated のトレーナー）で `sessions` を消す。そのときの `workout_assignments.session_id` の ON DELETE SET NULL は `workout_assignments` の所有者（postgres）として実行され、ガードの `current_user` は postgres になるので、`current_user NOT IN ('authenticated', 'anon')` の素通しで止まらない（SQL テストと API リプレイで確認。プラン・顧客の削除の CASCADE も同じ）
+- 書き込み経路の全数調査は、対象の表を書くコードの grep だけでは足りない。親の表の DELETE / UPDATE が **FK の参照動作で対象の表を書く**経路も、誰のロールの操作かと一緒に洗い出す
+
+### BEFORE ROW トリガーで DELETE を素通しにするときは OLD を返す
+- INSERT / UPDATE / DELETE を1つの関数で扱い、素通しの分岐で `RETURN NEW` とだけ書くと、DELETE では NEW が NULL なので**削除が黙って取り消される**（エラーにならない）。負の対照で、service_role の DELETE が 0 行になった。素通しの分岐にも `IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;` を書き、テストで DELETE の行数と CASCADE を確かめる
+
+### 列 GRANT のある表で「トリガー層だけ」を試すときは SAVEPOINT で戻す
+- 表単位の REVOKE は同じ権限の列単位の GRANT もまとめて剥がす（隔離スタックで、表の UPDATE を GRANT → REVOKE すると、authenticated の UPDATE 列権限が 6 → 0 になった）。テストで一時的に表の権限を戻すときは `SAVEPOINT` → `GRANT` → 確認 → `ROLLBACK TO SAVEPOINT` で元の最終形に戻す。拒否のあとの行の不変は、戻す前に postgres で全行の `to_jsonb` のスナップショットと比べる
+
+### API リプレイの判別力は、修正前の状態に戻して確かめる
+- migration ヘッダーに書いた「緊急時の戻し方」の (3)（全部戻す）の SQL を隔離スタックに当てると、relacl が修正前と同じに戻り、同じ API リプレイの 44 ケースのうち 25 ケースが落ちた（顧客の不正な PATCH が 204 で行を変える・他トレーナーの顧客宛ての POST が 201 など）。リプレイが不正な変種を見分けていることと、戻し方の SQL が正しいことを一度に確かめられる。そのあと、データの入った修正前の DB に migration を流し直し（本番と同じ条件）、44/44 に戻ることも確かめた
+- ユーザーの JWT は `supabase status -o env` の `JWT_SECRET` で HS256 署名して作れる（CLI 2.120・PostgREST v12.2.3。GoTrue にユーザーを作ってログインしなくてよい）。値は環境変数で渡し、画面にもファイルにも出さない
+
+### 「完了」にしたセキュリティ修正が本番に出ているかは、本番のデプロイ元で確かめる
+- DB の変更は `db push` ですぐ本番に効くが、Web の変更は main へのリリースまで本番に出ない（Vercel の本番は main）。5.5（API Route の認証）は 2026-07 に完了扱いだったが、本番 Web は 2026-04-26 の main のままで、route.ts 24 本のうち 20 本が認証なしで supabaseAdmin を使っていた（5.11 のレビューで発見 → 5.12）
+- DB 側のガードの評価・レビューでは、develop ではなく**本番で動いているアプリの版**の書き込み経路を前提にする。5.11 のガードは DB に直接届く経路（PostgREST に authenticated / anon で届く要求）だけを塞ぎ、本番 Web の未認証の API（service_role）からの同じ書き込みは止められない
