@@ -934,3 +934,8 @@
 ### 「完了」にしたセキュリティ修正が本番に出ているかは、本番のデプロイ元で確かめる
 - DB の変更は `db push` ですぐ本番に効くが、Web の変更は main へのリリースまで本番に出ない（Vercel の本番は main）。5.5（API Route の認証）は 2026-07 に完了扱いだったが、本番 Web は 2026-04-26 の main のままで、route.ts 24 本のうち 20 本が認証なしで supabaseAdmin を使っていた（5.11 のレビューで発見 → 5.12）
 - DB 側のガードの評価・レビューでは、develop ではなく**本番で動いているアプリの版**の書き込み経路を前提にする。5.11 のガードは DB に直接届く経路（PostgREST に authenticated / anon で届く要求）だけを塞ぎ、本番 Web の未認証の API（service_role）からの同じ書き込みは止められない
+
+### 権限の確認は `has_*_privilege` で書く — `information_schema` は見る人によって行が減る
+- `information_schema.column_privileges` / `table_privileges` は、見る人が grantor か grantee（またはその所属）の権限しか出さない。5.11 の適用後に Supabase MCP の `execute_sql`（`supabase_read_only_user`）で確かめると、実際は9列ある authenticated の UPDATE が0件と出た。migration ヘッダーの「適用後の確認」で余分な列権限を探す部分は、このユーザーでは余分な権限があっても0行になる（隔離スタックでは postgres で流したので気づかなかった。SQL エディタも postgres なので見える）
+- 権限の確認は `has_table_privilege` / `has_column_privilege` / `has_any_column_privilege` / `has_function_privilege` と `pg_attribute` で書く。見る人に関係なく、そのロールの実際の権限（PUBLIC やロールの所属を通した付与も含む）を返す。migration 末尾の検査 DO ブロックはこの形だったので、適用時の検査は正しく効いていた
+- 「0 行なら OK」の確認には、見えていることの対照を一緒に出す（ここでは、付けたはずの9列を `has_column_privilege` で数えて 9 になること。改ざんの確認では全行数）。0 行が「無い」のか「見えない」のかを分けられる
