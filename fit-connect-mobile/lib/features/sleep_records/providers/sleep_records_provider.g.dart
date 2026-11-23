@@ -192,7 +192,7 @@ class _RecentSleepRecordsProviderElement
   int get days => (origin as RecentSleepRecordsProvider).days;
 }
 
-String _$sleepRecordsHash() => r'75964f70337914deb614f5b32bdc31c340cc86c4';
+String _$sleepRecordsHash() => r'c71b730b97a3951b28f7a0615b0abf1ae30d75ea';
 
 abstract class _$SleepRecords
     extends BuildlessAutoDisposeAsyncNotifier<List<SleepRecord>> {

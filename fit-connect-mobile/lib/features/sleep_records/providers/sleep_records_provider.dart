@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:fit_connect_mobile/services/supabase_service.dart';
 import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
+import 'package:fit_connect_mobile/features/record_streak/providers/record_streak_provider.dart';
 import 'package:fit_connect_mobile/features/sleep_records/data/sleep_date_utils.dart';
 import 'package:fit_connect_mobile/features/sleep_records/models/sleep_record_model.dart';
 
@@ -99,6 +100,8 @@ class SleepRecords extends _$SleepRecords {
     ref.invalidateSelf();
     ref.invalidate(todaySleepRecordProvider);
     ref.invalidate(recentSleepRecordsProvider);
+    // 目覚めの評価は記録の連続に数える（ヘルスケアの行でも、評価があれば数える）
+    ref.invalidate(recordStreakProvider);
   }
 }
 

@@ -6,6 +6,7 @@ import 'package:fit_connect_mobile/features/messages/providers/paginated_message
 import 'package:fit_connect_mobile/features/auth/providers/auth_provider.dart';
 import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
 import 'package:fit_connect_mobile/features/record_reminders/services/record_reminder_sync.dart';
+import 'package:fit_connect_mobile/features/record_streak/providers/record_streak_provider.dart';
 
 part 'messages_provider.g.dart';
 
@@ -143,6 +144,12 @@ class PaginatedMessages extends _$PaginatedMessages {
 
     // 記録のリマインダー: 送ったタグから今日記録した項目を推定し、今日の分を止める（待たない）
     ref.read(recordReminderSyncProvider).onMessageSent(tags ?? const []);
+    // 記録の連続: 記録になるタグなら、記録の作成を待たずに今日を記録済みとして見せる（送ってから 60 秒だけ）。
+    // 日付はサーバーが付けた送信時刻（messages.created_at）で決める
+    ref.read(recordStreakTagOverlayProvider.notifier).onMessageSent(
+          tags ?? const [],
+          createdAt: sentMessage.createdAt,
+        );
   }
 
   /// メッセージを編集（5分以内）

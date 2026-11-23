@@ -14,6 +14,8 @@ import 'package:fit_connect_mobile/features/meal_records/providers/meal_records_
 import 'package:fit_connect_mobile/features/home/providers/latest_trainer_comment_provider.dart';
 import 'package:fit_connect_mobile/features/messages/models/message_model.dart';
 import 'package:fit_connect_mobile/features/onboarding_flow/providers/onboarding_flow_provider.dart';
+import 'package:fit_connect_mobile/features/record_streak/domain/record_streak_view.dart';
+import 'package:fit_connect_mobile/features/record_streak/providers/record_streak_provider.dart';
 import 'package:fit_connect_mobile/features/sessions/models/session_model.dart';
 import 'package:fit_connect_mobile/features/sessions/providers/sessions_provider.dart';
 import 'package:fit_connect_mobile/features/sleep_records/models/sleep_record_model.dart';
@@ -148,6 +150,10 @@ Future<T> never<T>() => Completer<T>().future;
 ///
 /// [loading] が true なら、すべて読み込み中のまま（未完了の Future）。
 /// 各データは null / 空で「はじめて」の状態になる。
+///
+/// [streak] は今日のまとめの先頭「記録の連続」の行の状態（recordStreakViewProvider）。
+/// 既定は AsyncData(null) で、行を出さない（[loading] でも同じ。行を出すテストだけが渡す）。
+/// 本物の provider は get_record_streak を呼ぶ（Supabase に出る）ので、既定でも必ず差し替える
 List<Override> homeOverrides({
   bool loading = false,
   Client? client,
@@ -162,6 +168,7 @@ List<Override> homeOverrides({
   int exerciseDays = 0,
   SleepRecord? sleep,
   bool messageSent = false,
+  AsyncValue<RecordStreakView?> streak = const AsyncData<RecordStreakView?>(null),
 }) {
   if (loading) {
     return [
@@ -178,6 +185,7 @@ List<Override> homeOverrides({
       weeklyExerciseCountProvider.overrideWith((ref) => never<int>()),
       todaySleepRecordProvider.overrideWith((ref) => never<SleepRecord?>()),
       hasSentFirstMessageProvider.overrideWith((ref) => never<bool>()),
+      recordStreakViewProvider.overrideWithValue(streak),
     ];
   }
   return [
@@ -200,11 +208,16 @@ List<Override> homeOverrides({
     weeklyExerciseCountProvider.overrideWith((ref) async => exerciseDays),
     todaySleepRecordProvider.overrideWith((ref) async => sleep),
     hasSentFirstMessageProvider.overrideWith((ref) async => messageSent),
+    recordStreakViewProvider.overrideWithValue(streak),
   ];
 }
 
 /// 目標に向けた体重・メッセージ・予定・記録がそろった通常の日のサンプル。
-List<Override> normalHomeOverrides({DateTime? now}) {
+/// [streak] は [homeOverrides] と同じ（既定は行を出さない）
+List<Override> normalHomeOverrides({
+  DateTime? now,
+  AsyncValue<RecordStreakView?> streak = const AsyncData<RecordStreakView?>(null),
+}) {
   final today = now ?? DateTime.now();
   final d = DateTime(today.year, today.month, today.day);
   final session = d.add(const Duration(days: 2, hours: 19));
@@ -238,6 +251,7 @@ List<Override> normalHomeOverrides({DateTime? now}) {
     exerciseDays: 3,
     sleep: sampleSleep(),
     messageSent: true,
+    streak: streak,
   );
 }
 
