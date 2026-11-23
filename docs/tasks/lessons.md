@@ -860,3 +860,20 @@
 - ステージの合計とセッションの長さが同じになるデータでは、どちらで数えたかを画面で見分けられない。ステージを一部だけにした夜で確かめた（8 時間のセッションにステージ 225 分 → 画面は 3:45）
 - 拒否をもう一度試すときは、`pm revoke` と `pm clear-permission-flags <pkg> <permission> user-set user-fixed` で未回答に戻す。Health Connect は2回拒否されると権限画面を出さなくなる（公式ドキュメントによる。今回は試していない）
 - auto mode では、本番の Supabase の読み取り（execute_sql）も拒否された。テスト用クライアントの記録の有無は、アプリの画面で確かめる
+
+## 並行して作った PR のマージ（#113〜#119、2026-11-14〜23）で得た知見
+
+### 並行 PR は、タスク表の先頭2行と lessons の末尾でぶつかる
+- どの PR もタスク表の「進捗状況」「最終更新」の行と lessons.md の末尾に書くので、先にマージされた PR とぶつかる（今回は #113・#115。#118 はコードで、#113 と同じログの行）
+- 両方を残して解き、`git diff --numstat` で行数まで確かめる。解いた結果を develop と比べた差分が PR の元の差分と一致し、PR の元と比べた差分が develop 側の差分と一致すればよい
+- マージの順は `git merge-tree --write-tree` で、ブランチに触らずに洗い出せる。squash マージは `git commit-tree` で積んでまねる
+
+### ほかのセッションのブランチは、一時的な worktree から直して push する
+- 作ったセッションの worktree には触らない。`git worktree add --detach` で別の場所に出して rebase し、`git push --force-with-lease=refs/heads/<branch>:<元の SHA> origin HEAD:refs/heads/<branch>` で送る（元のセッションの worktree のブランチは古いまま残る）
+- #115 の上に積んだ #117 は、#115 の squash マージの後に `git rebase --onto origin/develop/1.0.0 <載せ直した #115 のコミット>` で、睡眠のコミットだけを載せ直した。#115 のマージ前に同じ形で解いて試しておくと、マージ後は移して push するだけで済む
+- 新しい worktree で Flutter のテストやビルドをすると、`.gitignore` の `assets/.env` が無いので asset の取り込みで止まる。テストは中身を読まないので、空のファイルを置けば通る（本物はコピーしない）
+- 新しい worktree で `pub get` すると、`pubspec.lock` の `meta` と `test_api` が下がる（Flutter 3.41.9 との既存のずれ）。コミットに入れない
+
+### cron 失敗の監視が初めて知らせたのは、関数に届く前の 503 だった
+- 11/16 03:00 の `auto-skip-workouts` が `HTTP 503`（`upstream connect error or disconnect/reset before headers`）で失敗した
+- 関数の中で記録する案（設計書 §3 で採らなかった案）では残らない種類の失敗で、HTTP の応答をそのまま読む今の作りだから見つかった
