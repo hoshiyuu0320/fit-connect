@@ -20,6 +20,7 @@ function AssignmentCard({ assignment, onDelete }: AssignmentCardProps) {
   const style = {
     transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.4 : 1,
+    touchAction: 'none' as const,
   }
 
   const isSession = assignment.plan?.plan_type === 'session'
@@ -49,7 +50,7 @@ function AssignmentCard({ assignment, onDelete }: AssignmentCardProps) {
         <button
           onPointerDown={(e) => e.stopPropagation()}
           onClick={() => onDelete(assignment.id)}
-          className="text-white/70 hover:text-white w-5 h-5 flex items-center justify-center rounded transition-colors text-sm"
+          className="text-white/70 hover:text-white w-8 h-8 flex items-center justify-center rounded transition-colors text-sm"
         >
           ✕
         </button>
