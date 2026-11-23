@@ -6,9 +6,15 @@ part of 'current_user_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$currentClientHash() => r'4f9c807c7debb163c021f583b1f445c0c4416543';
+String _$currentClientHash() => r'a1f6de4dabd4fa2dbde0cd7168092690f9b7cc48';
 
 /// 現在のクライアント情報を取得するProvider
+///
+/// 「行が無い」と「取得に失敗した」を区別する。呼び出し側も区別して扱うこと。
+/// - clients の行が無い: `null`（未ログインのときも `null`）。
+///   app.dart が「残ったセッション」とみなしてサインアウトする。
+/// - 取得に失敗した（オフライン・サーバーエラー・応答の不整合など）: AsyncError。
+///   行が無いとは限らないので、サインアウトさせない（再試行を促す）。
 ///
 /// Copied from [currentClient].
 @ProviderFor(currentClient)

@@ -89,3 +89,23 @@ feature/healthkit-weight-sync でユーザー画面に HealthKit 由来レコー
 - 原因: `await ref.read(provider.future)` は**購読を作らない**ため、autoDispose provider が build の await 中に dispose され得る（autoDispose スケジューラ / resume 時の `ref.invalidate` / 登録フロー中の画面破棄）。Riverpod 2.6.1 は dispose 時に `.future` へ StateError を completeError するので、fire-and-forget な呼び出し経路では未処理例外になる。
 - 対策: 読み取りの間だけ `ref.listenManual` で購読を保持し、StateError は catch して「判定不能 = 非表示」に落とす（`morning_dialog_provider.dart` の `readMorningDialogDecision` 参照）。`ProviderSubscription.close()` は冪等なので finally で安全に close できる。keepAlive 化は依存 provider（healthSettings / todaySleepRecord）まで常駐化して挙動が変わるため不採用。
 - 教訓: **autoDispose provider の `.future` を `ref.read` で await するパターンは全箇所要注意**。await 期間の購読保持＋StateError ハンドリングをセットにする。
+
+## 認証: 取得の失敗を「行が無い」と同じ null にしない（2026-11-08）
+
+### バグ: オフラインで起動すると、ログイン中のクライアントがログアウトされる
+
+- 症状: 電波の無い状態でアプリをコールドスタートすると、ログイン済みのクライアントがサインアウトされ、ウェルカム画面に戻る。トークンが期限切れのときは、サインアウトされていなくてもウェルカム画面になる。
+- 原因①: `currentClientProvider` が clients の取得エラーをすべて `null` にしていた。`app.dart` の `_AuthLoadingScreen` は「ログイン済みなのに client が `null`」を残ったセッションとみなして `auth.signOut()` を呼ぶので、通信の失敗がそのままサインアウトになった。gotrue の `signOut()` は `/logout` の通信より先に端末内のセッションを消すため、オフラインでも消える。
+- 原因②: トークンが期限切れのまま起動すると、gotrue はセッションを残したまま、`onAuthStateChange`（BehaviorSubject）に `AuthRetryableFetchException` をエラーとして流す。`AuthNotifier` の `listen` に `onError` が無く、未処理の例外になっていた。さらに `MyApp` の `StreamBuilder` はエラーのとき `snapshot.data` を捨てるので、セッションがあるのにウェルカム画面を出していた。
+- 対策:
+  - `currentClientProvider` は「行が無い（と未ログイン）= `null`」「取得失敗 = `AsyncError`」に分ける。`ClientRepository.fetchClient` が、行なしは `null`・失敗は例外で返す。
+  - `app.dart` は `AsyncError` ならサインアウトせず、`ClientLoadErrorView`（再試行・15 秒ごとの自動再試行・確認付きのログアウト）を出す。前面に戻ったときも取り直す。値を持っている間の取り直しの失敗は `skipError` で画面を保つ。
+  - `MyApp` はストリームがエラーのとき `auth.currentSession` で判定する。`AuthNotifier` の `listen` には `onError`（ログのみ）を付ける。
+- 教訓:
+  - **「無い」と「取れなかった」を同じ `null` にしない**。`null` を見てサインアウト・削除・初期化のような戻せない処理をする呼び出し側があるなら、失敗は例外のまま伝える。
+  - **Supabase の `onAuthStateChange` は値だけでなくエラーも流す**（BehaviorSubject なので、後から購読しても直近のエラーが届く）。`listen` には `onError` を付け、`StreamBuilder` では `hasError` のときデータが消える前提で組む。ログアウトは `signedOut` イベント（値）で届くので、エラーをログアウト扱いにしない。
+
+### メモ: iOS シミュレータでオフラインを再現する
+
+- iOS の Dart では `Platform.environment` が空なので、`SIMCTL_CHILD_https_proxy` などでプロキシを指定しても効かず、通信は直接出ていく（macOS の Dart CLI では効く）。プロキシで通信を止めて再現する方法は使えない。
+- シミュレータだけネットワークを切る手段はないので、Mac 側を切る（Wi-Fi と有線の両方。片方だけだともう片方に切り替わる）。切っている間は Claude のセッションも止まるため、オフラインでの起動・スクリーンショット・ログの回収は Mac 上のスクリプトに任せ、戻ってから結果を読む。

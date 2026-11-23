@@ -44,7 +44,7 @@ final isAuthenticatedProvider = AutoDisposeProvider<bool>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef IsAuthenticatedRef = AutoDisposeProviderRef<bool>;
-String _$authNotifierHash() => r'04fa3bd56be722ad94629092af1b6e7962a43039';
+String _$authNotifierHash() => r'e4334fa0eb2aa02a03bfada95273c12303a65000';
 
 /// 認証状態を管理するProvider
 /// 注意: プロフィール情報はcurrentClientProvider/trainerProfileProviderを使用
