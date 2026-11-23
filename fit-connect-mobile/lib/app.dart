@@ -21,6 +21,7 @@ import 'package:fit_connect_mobile/features/health/providers/health_sync_provide
 import 'package:fit_connect_mobile/features/health/providers/health_provider.dart';
 import 'package:fit_connect_mobile/features/home/providers/notification_navigation_provider.dart';
 import 'package:fit_connect_mobile/features/record_reminders/services/record_reminder_sync.dart';
+import 'package:fit_connect_mobile/features/record_streak/providers/record_streak_provider.dart';
 import 'package:fit_connect_mobile/features/sessions/providers/sessions_provider.dart';
 import 'package:fit_connect_mobile/features/sleep_records/providers/morning_dialog_provider.dart';
 import 'package:fit_connect_mobile/features/sleep_records/presentation/widgets/morning_wakeup_dialog.dart';
@@ -135,6 +136,8 @@ class _AuthLoadingScreenState extends ConsumerState<_AuthLoadingScreen>
       // 「今日/明日」表示や今後/過去の仕分けが古くならないよう取り直す
       ref.invalidate(upcomingSessionsProvider);
       ref.invalidate(pastSessionsProvider);
+      // 記録の連続（ホームを開いたまま日付をまたいだ・ほかの端末で記録した分を反映する）
+      ref.invalidate(recordStreakProvider);
       _maybeShowMorningDialog();
       _maybeRunResumeSync();
       // 記録のリマインダー（日付が変わった・ほかの端末で記録した分を反映する）

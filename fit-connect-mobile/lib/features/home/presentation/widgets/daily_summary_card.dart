@@ -9,6 +9,8 @@ import 'package:fit_connect_mobile/core/theme/app_theme.dart';
 import 'package:fit_connect_mobile/features/exercise_records/providers/exercise_records_provider.dart';
 import 'package:fit_connect_mobile/features/home/presentation/utils/home_formatting.dart';
 import 'package:fit_connect_mobile/features/meal_records/providers/meal_records_provider.dart';
+import 'package:fit_connect_mobile/features/record_streak/domain/record_streak_view.dart';
+import 'package:fit_connect_mobile/features/record_streak/providers/record_streak_provider.dart';
 import 'package:fit_connect_mobile/features/sleep_records/models/sleep_record_model.dart';
 import 'package:fit_connect_mobile/features/sleep_records/presentation/widgets/wakeup_record_sheet.dart';
 import 'package:fit_connect_mobile/features/sleep_records/providers/sleep_records_provider.dart';
@@ -24,6 +26,8 @@ import 'package:fit_connect_mobile/shared/widgets/fc/fc.dart';
 // 正本: home-screens.js の `HomeSummary` / `SumRow`
 // 食事・運動・体重・睡眠を 4 行の一覧で示す。カテゴリごとの色・絵文字・進捗バーはやめ、
 // アイコンと言葉で区別する。各行は押すと記録タブの該当サブタブへ。
+// 先頭に「記録の連続」の行を足す（フェーズ10.3。設計: docs/superpowers/specs/2026-11-23-record-streak-design.md §6.4）。
+// 移る先が無いので押せない（矢印も出さない）。読めないときは行ごと出さない。
 // ============================================
 
 /// 「今日のまとめ」の 1 行の中身（右側の値と補足）。
@@ -67,6 +71,7 @@ class SummaryRowData {
 /// ホームの「今日のまとめ」カード（データを取得して [DailySummaryCardBody] に渡す）。
 ///
 /// 操作（記録タブの各サブタブへの遷移・睡眠の「目覚めを記録」ダイアログ）は従来どおり。
+/// 先頭の「記録の連続」は [recordStreakViewProvider] から作る（[streakRowDataOf]）。
 class DailySummaryCard extends ConsumerWidget {
   final VoidCallback? onMealsTap;
   final VoidCallback? onActivityTap;
@@ -93,8 +98,10 @@ class DailySummaryCard extends ConsumerWidget {
     final weightHistory =
         ref.watch(weightRecordsProvider(period: weightHistoryPeriod));
     final todaySleep = ref.watch(todaySleepRecordProvider);
+    final streak = ref.watch(recordStreakViewProvider);
 
     return DailySummaryCardBody(
+      streak: streakRowDataOf(streak),
       meals: _mealRow(mealCount),
       exercise: _exerciseRow(exerciseCount, now),
       weight: _weightRow(latestWeight, weightHistory.valueOrNull, now),
@@ -105,6 +112,46 @@ class DailySummaryCard extends ConsumerWidget {
       onSleepTap: onSleepTap,
       onSleepRecord: () => showWakeupRecordSheet(context, ref),
     );
+  }
+
+  /// 「記録の連続」の行の中身（設計 §6.4）。null なら行を出さない。
+  ///
+  /// - 今日記録済み → `12 日`・「今日も記録しました」（1 日目は `1 日`・「今日記録しました」）
+  /// - 今日まだ・昨日まで続いている → `12 日`・「今日記録すると13日」
+  /// - 続いていない → 「これから」・「今日記録すると1日目」。0 とは出さない
+  ///   （ほかの行の「未記録」と同じ弱い文字色）
+  /// - 読み込み中 → スケルトン（補足なし）
+  /// - 読めない（オフライン・関数がまだ無い DB など）・ログインしていない（null）→ 行を出さない
+  ///
+  /// 値があれば値を出す。[recordStreakViewProvider] が前の値を残すのは読み直し（invalidate）の間だけ
+  /// （前の値の AsyncData・isRefreshing。行はスケルトンに戻らず、ちらつかない）。
+  /// 読み直しに失敗したとき・client id が変わったときは、前の値を持たない AsyncError / AsyncLoading が
+  /// 来るので、行を消す / スケルトンにする（前の値・前の人の値は出さない）。
+  /// 読めなかったあとの読み直しの間（値の無いエラーのまま読み込み中）は、スケルトンを出さずに隠したままにする
+  static SummaryRowData? streakRowDataOf(AsyncValue<RecordStreakView?> async) {
+    if (async.hasValue) {
+      final view = async.valueOrNull;
+      return view == null ? null : _streakRow(view);
+    }
+    if (async.hasError) return null;
+    return const SummaryRowData.loading();
+  }
+
+  static SummaryRowData _streakRow(RecordStreakView view) {
+    return switch (view) {
+      RecordStreakRecordedToday(:final days) => SummaryRowData.value(
+          [FcValuePart('$days', '日')],
+          sub: days == 1 ? '今日記録しました' : '今日も記録しました',
+        ),
+      RecordStreakAlive(:final days) => SummaryRowData.value(
+          [FcValuePart('$days', '日')],
+          sub: '今日記録すると${days + 1}日',
+        ),
+      RecordStreakNone() => const SummaryRowData.missing(
+          text: 'これから',
+          sub: '今日記録すると1日目',
+        ),
+    };
   }
 
   static SummaryRowData _mealRow(AsyncValue<int> async) {
@@ -202,6 +249,7 @@ class DailySummaryCard extends ConsumerWidget {
 class DailySummaryCardBody extends StatelessWidget {
   const DailySummaryCardBody({
     super.key,
+    this.streak,
     required this.meals,
     required this.exercise,
     required this.weight,
@@ -212,6 +260,9 @@ class DailySummaryCardBody extends StatelessWidget {
     this.onSleepTap,
     this.onSleepRecord,
   });
+
+  /// 先頭の「記録の連続」（押せない行）。null なら行を出さない（読めない・ログインしていない）
+  final SummaryRowData? streak;
 
   final SummaryRowData meals;
   final SummaryRowData exercise;
@@ -228,10 +279,19 @@ class DailySummaryCardBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final streak = this.streak;
     return FcRowsCard(
       title: '今日のまとめ',
       padding: FcRowsCard.summaryPadding,
       children: [
+        // 移る先が無いので押せない（矢印も出さない）。読み上げは行全体で 1 文
+        if (streak != null)
+          _SummaryRow(
+            icon: LucideIcons.flame,
+            title: '記録の連続',
+            data: streak,
+            readAsSentence: true,
+          ),
         _SummaryRow(
           icon: LucideIcons.utensils,
           title: '食事',
@@ -269,6 +329,7 @@ class _SummaryRow extends StatelessWidget {
     required this.data,
     this.onTap,
     this.onAction,
+    this.readAsSentence = false,
   });
 
   final IconData icon;
@@ -278,6 +339,11 @@ class _SummaryRow extends StatelessWidget {
 
   /// [SummaryRowKind.action] の操作
   final VoidCallback? onAction;
+
+  /// 読み上げを「見出し、値。補足」の 1 文にする（押せない「記録の連続」の行。
+  /// 例:「記録の連続、12日。今日記録すると13日」「記録の連続、読み込み中」）。
+  /// false の行（食事・運動・体重・睡眠）の読み上げは今までどおり
+  final bool readAsSentence;
 
   @override
   Widget build(BuildContext context) {
@@ -306,6 +372,19 @@ class _SummaryRow extends StatelessWidget {
               );
     }
 
+    final String? semanticLabel;
+    if (isAction) {
+      // 操作を含む行は、読み上げを「未記録」としてまとめ、記録の操作は別の操作として足す
+      semanticLabel = [title, if (data.sub != null) data.sub!, '未記録'].join('、');
+    } else if (readAsSentence && trailing is FcRowValue) {
+      // 値の読み上げ（「12日」「これから」「読み込み中」）は FcRowValue と同じ言葉を使う
+      final sub = data.sub;
+      semanticLabel =
+          '$title、${trailing.semanticText}${sub == null ? '' : '。$sub'}';
+    } else {
+      semanticLabel = null;
+    }
+
     final row = FcListRow(
       density: FcRowDensity.summary,
       icon: icon,
@@ -313,10 +392,7 @@ class _SummaryRow extends StatelessWidget {
       caption: data.sub,
       trailing: trailing,
       onTap: onTap,
-      // 操作を含む行は、読み上げを「未記録」としてまとめ、記録の操作は別の操作として足す
-      semanticLabel: isAction
-          ? [title, if (data.sub != null) data.sub!, '未記録'].join('、')
-          : null,
+      semanticLabel: semanticLabel,
     );
 
     if (isAction && onAction != null && onTap != null) {
@@ -362,12 +438,14 @@ Widget _previewApp(
 }
 
 DailySummaryCardBody _previewBody({
+  SummaryRowData? streak,
   SummaryRowData? meals,
   SummaryRowData? exercise,
   SummaryRowData? weight,
   SummaryRowData? sleep,
 }) {
   return DailySummaryCardBody(
+    streak: streak,
     meals: meals ?? SummaryRowData.value([const FcValuePart('2', '回')]),
     exercise: exercise ??
         const SummaryRowData.value(
@@ -437,5 +515,83 @@ Widget previewDailySummaryCardDarkLarge() {
     _previewBody(),
     brightness: Brightness.dark,
     textScale: 1.35,
+  );
+}
+
+// 記録の連続（先頭の行）。中身は画面と同じ変換（DailySummaryCard.streakRowDataOf）で作る
+
+SummaryRowData? _previewStreak(RecordStreakView view) =>
+    DailySummaryCard.streakRowDataOf(AsyncData(view));
+
+/// 今日まだ自分で記録していない日（体重は昨日、睡眠はヘルスケアから。どちらも今日の分に数えない）
+DailySummaryCardBody _previewStreakAliveBody() {
+  return _previewBody(
+    streak: _previewStreak(const RecordStreakAlive(days: 12)),
+    meals: const SummaryRowData.missing(sub: 'メッセージから記録できます'),
+    weight: const SummaryRowData.value(
+      [FcValuePart('62.4', 'kg')],
+      sub: '前回から +0.1 kg · 9月12日 7:30',
+    ),
+  );
+}
+
+@Preview(name: 'DailySummaryCard - 記録の連続（今日記録済み）')
+Widget previewDailySummaryCardStreakRecordedToday() {
+  return _previewApp(
+    _previewBody(
+      streak: _previewStreak(const RecordStreakRecordedToday(days: 12)),
+    ),
+  );
+}
+
+@Preview(name: 'DailySummaryCard - 記録の連続（今日まだ）')
+Widget previewDailySummaryCardStreakAlive() =>
+    _previewApp(_previewStreakAliveBody());
+
+@Preview(name: 'DailySummaryCard - 記録の連続（これから）')
+Widget previewDailySummaryCardStreakNone() {
+  return _previewApp(
+    _previewBody(
+      streak: _previewStreak(const RecordStreakNone()),
+      meals: const SummaryRowData.missing(sub: 'メッセージから記録できます'),
+      exercise: const SummaryRowData.missing(sub: '今週（9/7〜）'),
+      weight: const SummaryRowData.missing(),
+      sleep: const SummaryRowData.action(
+        '目覚めを記録',
+        sub: 'ヘルスケアと連携すると自動で入ります',
+      ),
+    ),
+  );
+}
+
+@Preview(name: 'DailySummaryCard - 記録の連続（読み込み中）')
+Widget previewDailySummaryCardStreakLoading() {
+  return _previewApp(
+    _previewBody(
+      streak: DailySummaryCard.streakRowDataOf(const AsyncLoading()),
+      meals: const SummaryRowData.loading(),
+      exercise: const SummaryRowData.loading(sub: '今週（9/7〜）'),
+      weight: const SummaryRowData.loading(),
+      sleep: const SummaryRowData.loading(),
+    ),
+  );
+}
+
+@Preview(name: 'DailySummaryCard - 記録の連続（今日まだ）ダーク')
+Widget previewDailySummaryCardStreakAliveDark() {
+  return _previewApp(
+    _previewStreakAliveBody(),
+    brightness: Brightness.dark,
+  );
+}
+
+@Preview(name: 'DailySummaryCard - 記録の連続（1 日目）ダーク / 文字 2.0')
+Widget previewDailySummaryCardStreakFirstDayDarkLarge() {
+  return _previewApp(
+    _previewBody(
+      streak: _previewStreak(const RecordStreakRecordedToday(days: 1)),
+    ),
+    brightness: Brightness.dark,
+    textScale: 2.0,
   );
 }

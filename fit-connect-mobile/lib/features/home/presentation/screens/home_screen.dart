@@ -12,6 +12,7 @@ import 'package:fit_connect_mobile/features/home/presentation/widgets/daily_summ
 import 'package:fit_connect_mobile/features/home/presentation/widgets/goal_card.dart';
 import 'package:fit_connect_mobile/features/home/providers/latest_trainer_comment_provider.dart';
 import 'package:fit_connect_mobile/features/onboarding_flow/presentation/widgets/getting_started_card.dart';
+import 'package:fit_connect_mobile/features/record_streak/domain/record_streak_view.dart';
 import 'package:fit_connect_mobile/features/sessions/models/session_model.dart';
 import 'package:fit_connect_mobile/features/sessions/presentation/widgets/next_session_card.dart';
 import 'package:fit_connect_mobile/features/sessions/utils/session_formatting.dart';
@@ -302,9 +303,11 @@ class _PreviewHome extends StatelessWidget {
       );
     }
 
+    // 記録の連続は、画面と同じ変換（DailySummaryCard.streakRowDataOf）で作る
     final DailySummaryCardBody summary;
     if (isLoading) {
       summary = DailySummaryCardBody(
+        streak: DailySummaryCard.streakRowDataOf(const AsyncLoading()),
         meals: const SummaryRowData.loading(),
         exercise: SummaryRowData.loading(sub: formatWeekStartLabel(now)),
         weight: const SummaryRowData.loading(),
@@ -312,6 +315,9 @@ class _PreviewHome extends StatelessWidget {
       );
     } else if (isNew) {
       summary = DailySummaryCardBody(
+        streak: DailySummaryCard.streakRowDataOf(
+          const AsyncData(RecordStreakNone()),
+        ),
         meals: const SummaryRowData.missing(sub: 'メッセージから記録できます'),
         exercise: SummaryRowData.missing(sub: formatWeekStartLabel(now)),
         weight: const SummaryRowData.missing(),
@@ -327,6 +333,10 @@ class _PreviewHome extends StatelessWidget {
       );
     } else {
       summary = DailySummaryCardBody(
+        // 今日の食事・体重を記録済み
+        streak: DailySummaryCard.streakRowDataOf(
+          AsyncData(RecordStreakRecordedToday(days: isAchieved ? 28 : 12)),
+        ),
         meals: SummaryRowData.value([const FcValuePart('2', '回')]),
         exercise: SummaryRowData.value(
           [const FcValuePart('3', '日')],

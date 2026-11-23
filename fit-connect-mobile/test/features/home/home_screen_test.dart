@@ -8,6 +8,7 @@ import 'package:fit_connect_mobile/features/home/presentation/screens/home_scree
 import 'package:fit_connect_mobile/features/home/presentation/widgets/coach_comment_card.dart';
 import 'package:fit_connect_mobile/features/home/presentation/widgets/goal_card.dart';
 import 'package:fit_connect_mobile/features/onboarding_flow/presentation/widgets/getting_started_card.dart';
+import 'package:fit_connect_mobile/features/record_streak/domain/record_streak_view.dart';
 import 'package:fit_connect_mobile/features/sessions/presentation/widgets/next_session_card.dart';
 import 'package:fit_connect_mobile/shared/widgets/fc/fc.dart';
 
@@ -153,6 +154,35 @@ void main() {
         await tester.pumpAndSettle();
       }
 
+      expect(tabs, [2, 3, 1, 4]);
+    });
+
+    testWidgets('記録の連続は今日のまとめの先頭（押せない）。ほかの行の行き先は変わらない', (tester) async {
+      final tabs = <int>[];
+      await pumpScreen(
+        tester,
+        overrides: normalHomeOverrides(
+          streak: const AsyncData(RecordStreakRecordedToday(days: 12)),
+        ),
+        onRecords: tabs.add,
+      );
+
+      expect(
+        tester.widgetList<FcListRow>(find.byType(FcListRow)).map((r) => r.title),
+        ['記録の連続', '食事', '運動', '体重', '睡眠'],
+      );
+      expect(top(tester, find.text('今日のまとめ')),
+          lessThan(top(tester, find.text('記録の連続'))));
+      expect(find.text('今日も記録しました'), findsOneWidget);
+
+      await tester.tap(find.text('記録の連続'), warnIfMissed: false);
+      await tester.pumpAndSettle();
+      expect(tabs, isEmpty);
+
+      for (final title in ['食事', '運動', '体重', '睡眠']) {
+        await tester.tap(find.text(title));
+        await tester.pumpAndSettle();
+      }
       expect(tabs, [2, 3, 1, 4]);
     });
   });

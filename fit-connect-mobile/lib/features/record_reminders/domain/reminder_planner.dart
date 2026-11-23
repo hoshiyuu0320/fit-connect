@@ -2,6 +2,7 @@ import 'package:timezone/timezone.dart' as tz;
 
 import 'package:fit_connect_mobile/features/record_reminders/models/record_reminder_settings.dart';
 import 'package:fit_connect_mobile/features/record_reminders/models/reminder_kind.dart';
+import 'package:fit_connect_mobile/shared/utils/record_tags.dart';
 
 // 記録のリマインダーの予約内容を決める純関数（設計 §4・§4.1・§4.2・§9）。
 // Flutter・Supabase・FLN には依存しない。
@@ -265,13 +266,10 @@ ReminderDiff diffReminders(
   );
 }
 
-/// サーバー（parse-message-tags の parseTagFromTags）がタグを読むときの形。
-/// '#体重' / '#食事' / '#食事:朝食' など（前後の空白を含むものは記録にならない）
-final _serverTagPattern = RegExp(r'^#(食事|運動|体重)(?::(.+))?$');
-
 /// 送ったメッセージのタグから「今日記録した項目」を推定する（設計 §4.1）。
 ///
 /// サーバーは `tags[0]` だけを記録にするので、最初のタグだけを見る（0件か1件の集合を返す）。
+/// タグの形は [serverRecordTagPattern]（shared/utils/record_tags.dart。記録の連続と共通）。
 /// 判定はサーバー（parse-message-tags）と同じ:
 /// - `#体重`（詳細があっても）→ weight
 /// - `#食事:<詳細>` は詳細を「朝」→「昼」→「夕」か「晩」の順に調べて breakfast / lunch / dinner
@@ -282,7 +280,7 @@ final _serverTagPattern = RegExp(r'^#(食事|運動|体重)(?::(.+))?$');
 /// 別名がそのまま tags に入ることは無い。
 Set<ReminderKind> reminderKindsFromTags(List<String> tags) {
   if (tags.isEmpty) return <ReminderKind>{};
-  final match = _serverTagPattern.firstMatch(tags.first);
+  final match = serverRecordTagPattern.firstMatch(tags.first);
   if (match == null) return <ReminderKind>{};
 
   switch (match.group(1)) {

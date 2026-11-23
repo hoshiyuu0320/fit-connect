@@ -43,9 +43,13 @@ class FakeSupabaseRestServer {
   void respond(String path, Object? json, {int status = 200}) =>
       _responses[path] = (status: status, json: json);
 
+  /// このサーバーの URL（'http://127.0.0.1:<ポート>'）。
+  /// SupabaseService.client を使うコードは、Supabase.initialize の url に渡してこのサーバーへ向ける
+  /// （TestWidgetsFlutterBinding の下では、HTTP を 400 にする HttpOverrides.global を外すこと）
+  String get url => 'http://127.0.0.1:${_server.port}';
+
   /// このサーバーへ向けた SupabaseClient（使い終わったら dispose すること）
-  SupabaseClient client() =>
-      SupabaseClient('http://127.0.0.1:${_server.port}', 'test-anon-key');
+  SupabaseClient client() => SupabaseClient(url, 'test-anon-key');
 
   Future<void> close() => _server.close(force: true);
 

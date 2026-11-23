@@ -19,6 +19,7 @@ import 'package:fit_connect_mobile/features/consent/data/consent_repository.dart
 import 'package:fit_connect_mobile/features/home/presentation/screens/home_screen.dart';
 import 'package:fit_connect_mobile/features/home/presentation/screens/main_screen.dart';
 import 'package:fit_connect_mobile/features/messages/providers/messages_provider.dart';
+import 'package:fit_connect_mobile/features/record_streak/providers/record_streak_provider.dart';
 import 'package:fit_connect_mobile/features/sleep_records/providers/morning_dialog_provider.dart';
 
 import 'features/home/home_test_support.dart'
@@ -509,6 +510,36 @@ void main() {
       expect(find.byType(ClientLoadErrorView), findsNothing);
       expect(find.byType(WelcomeScreen), findsNothing);
       expect(currentSession(), isNotNull);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('前面に戻ったとき、記録の連続を読み直す（背景に回っただけでは読み直さない）', (tester) async {
+      fetchClient = () => Future<Client?>.value(sampleClient());
+      var streakFetches = 0;
+      final container = await pumpApp(
+        tester,
+        overrides: [
+          ..._mainScreenOverrides(),
+          recordStreakProvider.overrideWith((ref) async {
+            streakFetches++;
+            return null;
+          }),
+        ],
+      );
+      expect(find.byType(MainScreen), findsOneWidget);
+
+      // 自動破棄なので、ホームの行の代わりに購読して保つ
+      container.listen(recordStreakProvider, (_, __) {});
+      await tester.pump();
+      expect(streakFetches, 1);
+
+      await pauseApp(tester);
+      await tester.pumpAndSettle();
+      expect(streakFetches, 1);
+
+      await resumeApp(tester);
+      await tester.pumpAndSettle();
+      expect(streakFetches, 2);
       expect(tester.takeException(), isNull);
     });
 
