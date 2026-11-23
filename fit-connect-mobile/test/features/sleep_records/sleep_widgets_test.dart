@@ -71,51 +71,77 @@ void main() {
 
   group('SleepSummaryCard（昨夜の睡眠）', () {
     testWidgets('HealthKit のデータ: 時間・就寝/起床・内訳・目覚めの言葉・編集', (tester) async {
-      var edits = 0;
-      await pumpWidget(
-        tester,
-        SleepSummaryCard(
-          record: sleepRecord(0, total: 450, rating: WakeupRating.refreshed),
-          onEditWakeup: () => edits++,
-        ),
-      );
+      await withPlatform(TargetPlatform.iOS, () async {
+        var edits = 0;
+        await pumpWidget(
+          tester,
+          SleepSummaryCard(
+            record: sleepRecord(0, total: 450, rating: WakeupRating.refreshed),
+            onEditWakeup: () => edits++,
+          ),
+        );
 
-      expect(find.text('昨夜の睡眠'), findsOneWidget);
-      expect(find.byIcon(LucideIcons.moon), findsOneWidget);
-      // 連携元のピル（muted・heart-pulse）
-      expect(find.text('HealthKit'), findsOneWidget);
-      expect(find.byIcon(LucideIcons.heartPulse), findsOneWidget);
-      final pill = tester.widget<FcPill>(
-        find.ancestor(
-            of: find.text('HealthKit'), matching: find.byType(FcPill)),
-      );
-      expect(pill.tone, FcPillTone.muted);
-      // 大きな時間（34）
-      expect(numText(tester), '7時間30分');
-      expect(
-        tester.widget<FcNum>(find.byType(FcNum)).size,
-        FcNumSize.review,
-      );
-      // 就寝 / 起床（時は 0 埋めしない）
-      expect(find.text('就寝'), findsOneWidget);
-      expect(find.text('23:30'), findsOneWidget);
-      expect(find.text('起床'), findsOneWidget);
-      expect(find.text('7:20'), findsOneWidget);
-      // 内訳（深い / レム / 浅い / 覚醒）
-      for (final label in ['深い', 'レム', '浅い', '覚醒']) {
-        expect(find.text(label), findsOneWidget);
-      }
-      expect(find.text('1時間25分'), findsOneWidget);
-      expect(find.text('20分'), findsOneWidget);
-      // 目覚め: 言葉のピル + 編集
-      expect(find.text('目覚め'), findsOneWidget);
-      expect(find.text('すっきり'), findsOneWidget);
-      expect(find.text('編集'), findsOneWidget);
-      expect(find.byIcon(LucideIcons.pencil), findsOneWidget);
-      expectNoEmojiOrFaceIcons(tester);
+        expect(find.text('昨夜の睡眠'), findsOneWidget);
+        expect(find.byIcon(LucideIcons.moon), findsOneWidget);
+        // 連携元のピル（muted・heart-pulse）
+        expect(find.text('HealthKit'), findsOneWidget);
+        expect(find.byIcon(LucideIcons.heartPulse), findsOneWidget);
+        final pill = tester.widget<FcPill>(
+          find.ancestor(
+              of: find.text('HealthKit'), matching: find.byType(FcPill)),
+        );
+        expect(pill.tone, FcPillTone.muted);
+        // 大きな時間（34）
+        expect(numText(tester), '7時間30分');
+        expect(
+          tester.widget<FcNum>(find.byType(FcNum)).size,
+          FcNumSize.review,
+        );
+        // 就寝 / 起床（時は 0 埋めしない）
+        expect(find.text('就寝'), findsOneWidget);
+        expect(find.text('23:30'), findsOneWidget);
+        expect(find.text('起床'), findsOneWidget);
+        expect(find.text('7:20'), findsOneWidget);
+        // 内訳（深い / レム / 浅い / 覚醒）
+        for (final label in ['深い', 'レム', '浅い', '覚醒']) {
+          expect(find.text(label), findsOneWidget);
+        }
+        expect(find.text('1時間25分'), findsOneWidget);
+        expect(find.text('20分'), findsOneWidget);
+        // 目覚め: 言葉のピル + 編集
+        expect(find.text('目覚め'), findsOneWidget);
+        expect(find.text('すっきり'), findsOneWidget);
+        expect(find.text('編集'), findsOneWidget);
+        expect(find.byIcon(LucideIcons.pencil), findsOneWidget);
+        expectNoEmojiOrFaceIcons(tester);
 
-      await tester.tap(find.text('編集'));
-      expect(edits, 1);
+        await tester.tap(find.text('編集'));
+        expect(edits, 1);
+      });
+    });
+
+    testWidgets('Android: 連携元のピルは Health Connect（HealthKit は出ない）',
+        (tester) async {
+      await withPlatform(TargetPlatform.android, () async {
+        await pumpWidget(
+          tester,
+          SleepSummaryCard(
+            record: sleepRecord(0, total: 450, rating: WakeupRating.refreshed),
+            onEditWakeup: () {},
+          ),
+        );
+
+        // 名前だけが変わる（muted・heart-pulse のピルは iOS と同じ）
+        expect(find.text('Health Connect'), findsOneWidget);
+        expect(find.text('HealthKit'), findsNothing);
+        expect(find.byIcon(LucideIcons.heartPulse), findsOneWidget);
+        final pill = tester.widget<FcPill>(
+          find.ancestor(
+              of: find.text('Health Connect'), matching: find.byType(FcPill)),
+        );
+        expect(pill.tone, FcPillTone.muted);
+        expect(find.text('手動の記録'), findsNothing);
+      });
     });
 
     testWidgets('内訳の色は accent の濃淡と separator（indigo 系をやめた）', (tester) async {
@@ -157,47 +183,71 @@ void main() {
     });
 
     testWidgets('手動の記録のみ: 時間は「未取得」（0 にしない）で、詳細の案内が出る', (tester) async {
-      await pumpWidget(
-        tester,
-        SleepSummaryCard(
-          record: sleepRecord(0, rating: WakeupRating.groggy),
-          onEditWakeup: () {},
-        ),
-      );
+      await withPlatform(TargetPlatform.iOS, () async {
+        await pumpWidget(
+          tester,
+          SleepSummaryCard(
+            record: sleepRecord(0, rating: WakeupRating.groggy),
+            onEditWakeup: () {},
+          ),
+        );
 
-      expect(find.text('HealthKit'), findsNothing);
-      expect(find.text('手動の記録'), findsOneWidget);
-      final num = tester.widget<FcNum>(find.byType(FcNum));
-      expect(num.value, '未取得');
-      expect(allText(tester), isNot(contains('0分')));
-      expect(find.text('詳細データを取得するにはヘルスケア連携を有効にしてください'), findsOneWidget);
-      // 就寝/起床・内訳は出さない
-      expect(find.text('就寝'), findsNothing);
-      expect(find.byType(FcSleepStageBar), findsNothing);
-      // 目覚めの評価は言葉で出る
-      expect(find.text('だるい'), findsOneWidget);
-      expectNoEmojiOrFaceIcons(tester);
+        // 連携元のピルは出ない（どちらの名前も）
+        expect(find.text('HealthKit'), findsNothing);
+        expect(find.text('Health Connect'), findsNothing);
+        expect(find.text('手動の記録'), findsOneWidget);
+        final num = tester.widget<FcNum>(find.byType(FcNum));
+        expect(num.value, '未取得');
+        expect(allText(tester), isNot(contains('0分')));
+        expect(find.text('詳細データを取得するにはヘルスケア連携を有効にしてください'), findsOneWidget);
+        // 就寝/起床・内訳は出さない
+        expect(find.text('就寝'), findsNothing);
+        expect(find.byType(FcSleepStageBar), findsNothing);
+        // 目覚めの評価は言葉で出る
+        expect(find.text('だるい'), findsOneWidget);
+        expectNoEmojiOrFaceIcons(tester);
+      });
+    });
+
+    testWidgets('Android: 手動の記録のみなら連携元のピルは出ない', (tester) async {
+      await withPlatform(TargetPlatform.android, () async {
+        await pumpWidget(
+          tester,
+          SleepSummaryCard(
+            record: sleepRecord(0, rating: WakeupRating.groggy),
+            onEditWakeup: () {},
+          ),
+        );
+
+        expect(find.text('Health Connect'), findsNothing);
+        expect(find.text('HealthKit'), findsNothing);
+        expect(find.text('手動の記録'), findsOneWidget);
+      });
     });
 
     testWidgets('編集は 44×44 以上の領域で、文字拡大 1.35・狭い幅でもはみ出さない', (tester) async {
-      await pumpWidget(
-        tester,
-        SleepSummaryCard(
-          record: sleepRecord(0, total: 450, rating: WakeupRating.okay),
-          onEditWakeup: () {},
-        ),
-        textScale: 1.35,
-        width: 320,
-      );
+      // 見出し行の幅は連携元のピルの文字数で決まる。OS を固定する（iOS = HealthKit）。
+      // テスト用フォント（Ahem）は 1 文字が 1em 幅なので、Health Connect は幅 320・1.35 倍だと収まらない
+      await withPlatform(TargetPlatform.iOS, () async {
+        await pumpWidget(
+          tester,
+          SleepSummaryCard(
+            record: sleepRecord(0, total: 450, rating: WakeupRating.okay),
+            onEditWakeup: () {},
+          ),
+          textScale: 1.35,
+          width: 320,
+        );
 
-      expect(tester.takeException(), isNull);
-      final edit = find.ancestor(
-        of: find.text('編集'),
-        matching: find.byType(FcPressable),
-      );
-      final size = tester.getSize(edit);
-      expect(size.height, greaterThanOrEqualTo(44));
-      expect(size.width, greaterThanOrEqualTo(44));
+        expect(tester.takeException(), isNull);
+        final edit = find.ancestor(
+          of: find.text('編集'),
+          matching: find.byType(FcPressable),
+        );
+        final size = tester.getSize(edit);
+        expect(size.height, greaterThanOrEqualTo(44));
+        expect(size.width, greaterThanOrEqualTo(44));
+      });
     });
 
     testWidgets('ダークでも描画できる', (tester) async {
@@ -287,24 +337,40 @@ void main() {
     ];
 
     testWidgets('値は「6:50」形式・曜日ラベル・未取得の日は「未取得」', (tester) async {
-      await pumpWidget(
-          tester, const FcCard(child: SleepWeekChart(entries: entries)));
+      await withPlatform(TargetPlatform.iOS, () async {
+        await pumpWidget(
+            tester, const FcCard(child: SleepWeekChart(entries: entries)));
 
-      expect(find.byType(FcBars), findsOneWidget);
-      final bars = tester.widget<FcBars>(find.byType(FcBars));
-      expect(bars.max, 540);
-      expect(bars.height, 96);
-      expect(bars.items.length, 7);
-      expect(find.text('6:50'), findsNWidgets(2)); // 9/7 と 9/12
-      expect(find.text('7:30'), findsOneWidget); // 今日
-      expect(find.text('未取得'), findsOneWidget);
-      for (final w in ['月', '火', '水', '木', '金', '土', '日']) {
-        expect(find.text(w), findsOneWidget);
-      }
-      expect(
-        find.text('HealthKit · 6日分の平均（9/9は未取得）'),
-        findsOneWidget,
-      );
+        expect(find.byType(FcBars), findsOneWidget);
+        final bars = tester.widget<FcBars>(find.byType(FcBars));
+        expect(bars.max, 540);
+        expect(bars.height, 96);
+        expect(bars.items.length, 7);
+        expect(find.text('6:50'), findsNWidgets(2)); // 9/7 と 9/12
+        expect(find.text('7:30'), findsOneWidget); // 今日
+        expect(find.text('未取得'), findsOneWidget);
+        for (final w in ['月', '火', '水', '木', '金', '土', '日']) {
+          expect(find.text(w), findsOneWidget);
+        }
+        expect(
+          find.text('HealthKit · 6日分の平均（9/9は未取得）'),
+          findsOneWidget,
+        );
+      });
+    });
+
+    testWidgets('Android: caption は「Health Connect · …」（HealthKit は出ない）',
+        (tester) async {
+      await withPlatform(TargetPlatform.android, () async {
+        await pumpWidget(
+            tester, const FcCard(child: SleepWeekChart(entries: entries)));
+
+        expect(
+          find.text('Health Connect · 6日分の平均（9/9は未取得）'),
+          findsOneWidget,
+        );
+        expect(find.textContaining('HealthKit'), findsNothing);
+      });
     });
 
     testWidgets('最後の日（今日）だけ accent、未取得の日は高さ 2 の線', (tester) async {
@@ -555,37 +621,76 @@ void main() {
     });
 
     testWidgets('同期できないときは警告の囲み（再試行つき）。押すと onRetry', (tester) async {
-      var retries = 0;
-      await pumpWidget(
-        tester,
-        SleepSyncStatus(
-          lastSyncAt: syncedAt,
-          failed: true,
-          now: DateTime(2026, 9, 13),
-          onRetry: () => retries++,
-        ),
-      );
+      await withPlatform(TargetPlatform.iOS, () async {
+        var retries = 0;
+        await pumpWidget(
+          tester,
+          SleepSyncStatus(
+            lastSyncAt: syncedAt,
+            failed: true,
+            now: DateTime(2026, 9, 13),
+            onRetry: () => retries++,
+          ),
+        );
 
-      expect(
-        find.text('HealthKitと同期できませんでした。9月13日（日）7:32 に取得した値を表示しています。'),
-        findsOneWidget,
-      );
-      final notice = tester.widget<FcInlineNotice>(find.byType(FcInlineNotice));
-      expect(notice.kind, FcNoticeKind.warning);
-      expect(find.byIcon(LucideIcons.alertCircle), findsOneWidget);
-      expect(find.text('最終同期 9月13日（日）7:32'), findsNothing);
+        expect(
+          find.text('HealthKitと同期できませんでした。9月13日（日）7:32 に取得した値を表示しています。'),
+          findsOneWidget,
+        );
+        final notice =
+            tester.widget<FcInlineNotice>(find.byType(FcInlineNotice));
+        expect(notice.kind, FcNoticeKind.warning);
+        expect(find.byIcon(LucideIcons.alertCircle), findsOneWidget);
+        expect(find.text('最終同期 9月13日（日）7:32'), findsNothing);
 
-      await tester.tap(find.text('再試行'));
-      expect(retries, 1);
+        await tester.tap(find.text('再試行'));
+        expect(retries, 1);
+      });
     });
 
     testWidgets('onRetry が無ければ再試行は出さない。取得日時が無ければ日時の文を省く', (tester) async {
-      await pumpWidget(
-        tester,
-        const SleepSyncStatus(lastSyncAt: null, failed: true),
-      );
-      expect(find.text('HealthKitと同期できませんでした。'), findsOneWidget);
-      expect(find.text('再試行'), findsNothing);
+      await withPlatform(TargetPlatform.iOS, () async {
+        await pumpWidget(
+          tester,
+          const SleepSyncStatus(lastSyncAt: null, failed: true),
+        );
+        expect(find.text('HealthKitと同期できませんでした。'), findsOneWidget);
+        expect(find.text('再試行'), findsNothing);
+      });
+    });
+
+    testWidgets('Android: 同期できないときは「Health Connectと同期できませんでした。…」',
+        (tester) async {
+      await withPlatform(TargetPlatform.android, () async {
+        await pumpWidget(
+          tester,
+          SleepSyncStatus(
+            lastSyncAt: syncedAt,
+            failed: true,
+            now: DateTime(2026, 9, 13),
+            onRetry: () {},
+          ),
+        );
+
+        expect(
+          find.text('Health Connectと同期できませんでした。9月13日（日）7:32 に取得した値を表示しています。'),
+          findsOneWidget,
+        );
+        expect(find.textContaining('HealthKit'), findsNothing);
+      });
+    });
+
+    testWidgets('Android: 取得日時が無ければ「Health Connectと同期できませんでした。」だけ',
+        (tester) async {
+      await withPlatform(TargetPlatform.android, () async {
+        await pumpWidget(
+          tester,
+          const SleepSyncStatus(lastSyncAt: null, failed: true),
+        );
+
+        expect(find.text('Health Connectと同期できませんでした。'), findsOneWidget);
+        expect(find.textContaining('HealthKit'), findsNothing);
+      });
     });
 
     test('睡眠の失敗かの判定: 「睡眠:」の項目があるときだけ（体重だけは false）', () {

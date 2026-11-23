@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fit_connect_mobile/features/sleep_records/models/sleep_record_model.dart';
 import 'package:fit_connect_mobile/features/sleep_records/presentation/utils/sleep_labels.dart';
@@ -9,6 +10,14 @@ import 'sleep_test_helpers.dart';
 
 /// 睡眠画面の表示文字の整形（正本 record-screens.js の書式）と、直近7日の集計の純粋なテスト。
 void main() {
+  /// 端末を [platform] に見立てる（純粋な `test()` 用。テストの終わりに必ず戻す）。
+  /// `flutter test` は何も指定しないと Android 扱いなので、連携元の名前
+  /// （iOS は HealthKit・Android は Health Connect）に関わるテストは OS を明示する
+  void usePlatform(TargetPlatform platform) {
+    debugDefaultTargetPlatformOverride = platform;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+  }
+
   group('日付・時刻・時間の書式', () {
     test('日付は「9月13日（日）」（全角の括弧・空白なし）、年は違うときだけ付く', () {
       final sunday = DateTime(2026, 9, 13);
@@ -73,6 +82,7 @@ void main() {
     ];
 
     test('正本のサンプル: 6日分の平均 6時間58分・9/9 は未取得', () {
+      usePlatform(TargetPlatform.iOS);
       final summary = SleepWeekSummary.from(entries);
       expect(summary.recordedDays, 6);
       expect(summary.averageMinutes, 418);
@@ -82,6 +92,7 @@ void main() {
     });
 
     test('未取得が複数なら「、」でつなぐ。すべて取得できていれば括弧を付けない', () {
+      usePlatform(TargetPlatform.iOS);
       final summary = SleepWeekSummary.from(const [
         DailySleepEntry(dateKey: '2026-09-09'),
         DailySleepEntry(dateKey: '2026-09-10'),
@@ -98,6 +109,7 @@ void main() {
     });
 
     test('未取得が 4 日以上なら日付ではなく日数で出す', () {
+      usePlatform(TargetPlatform.iOS);
       final summary = SleepWeekSummary.from(const [
         DailySleepEntry(dateKey: '2026-09-09'),
         DailySleepEntry(dateKey: '2026-09-10'),
@@ -109,6 +121,7 @@ void main() {
     });
 
     test('1日も取得できていなければ平均を出さない（0 にしない）', () {
+      usePlatform(TargetPlatform.iOS);
       final summary = SleepWeekSummary.from(const [
         DailySleepEntry(dateKey: '2026-09-12'),
         DailySleepEntry(dateKey: '2026-09-13'),
@@ -116,6 +129,46 @@ void main() {
       expect(summary.averageMinutes, isNull);
       expect(summary.recordedDays, 0);
       expect(summary.caption, 'HealthKit の記録はまだありません');
+    });
+
+    test('Android では連携元が「Health Connect」（名前の後の書式は iOS と同じ）', () {
+      usePlatform(TargetPlatform.android);
+
+      final sample = SleepWeekSummary.from(entries);
+      expect(sample.caption, 'Health Connect · 6日分の平均（9/9は未取得）');
+
+      final several = SleepWeekSummary.from(const [
+        DailySleepEntry(dateKey: '2026-09-09'),
+        DailySleepEntry(dateKey: '2026-09-10'),
+        DailySleepEntry(dateKey: '2026-09-11', minutes: 420),
+      ]);
+      expect(several.caption, 'Health Connect · 1日分の平均（9/9、9/10は未取得）');
+
+      final many = SleepWeekSummary.from(const [
+        DailySleepEntry(dateKey: '2026-09-09'),
+        DailySleepEntry(dateKey: '2026-09-10'),
+        DailySleepEntry(dateKey: '2026-09-11'),
+        DailySleepEntry(dateKey: '2026-09-12'),
+        DailySleepEntry(dateKey: '2026-09-13', minutes: 420),
+      ]);
+      expect(many.caption, 'Health Connect · 1日分の平均（4日は未取得）');
+
+      final full = SleepWeekSummary.from(const [
+        DailySleepEntry(dateKey: '2026-09-10', minutes: 400),
+        DailySleepEntry(dateKey: '2026-09-11', minutes: 420),
+      ]);
+      expect(full.caption, 'Health Connect · 2日分の平均');
+    });
+
+    test('Android: 1日も取得できていなければ「Health Connect の記録はまだありません」', () {
+      usePlatform(TargetPlatform.android);
+
+      final summary = SleepWeekSummary.from(const [
+        DailySleepEntry(dateKey: '2026-09-12'),
+        DailySleepEntry(dateKey: '2026-09-13'),
+      ]);
+      expect(summary.averageMinutes, isNull);
+      expect(summary.caption, 'Health Connect の記録はまだありません');
     });
 
     test('睡眠レコードから 7 日分（古い日 → 今日）を作り、無い日・時間の無い日は null', () {
@@ -151,6 +204,7 @@ void main() {
     });
 
     test('同期できなかったときの文言（日時が分からなければ日時の文を省く）', () {
+      usePlatform(TargetPlatform.iOS);
       final at = DateTime(2026, 9, 13, 7, 32);
       expect(
         SleepSyncStatus.failureMessage(at, now: DateTime(2026, 9, 13)),
@@ -159,6 +213,20 @@ void main() {
       expect(
         SleepSyncStatus.failureMessage(null),
         'HealthKitと同期できませんでした。',
+      );
+    });
+
+    test('Android: 同期できなかったときの文言は「Health Connectと同期できませんでした。」', () {
+      usePlatform(TargetPlatform.android);
+
+      final at = DateTime(2026, 9, 13, 7, 32);
+      expect(
+        SleepSyncStatus.failureMessage(at, now: DateTime(2026, 9, 13)),
+        'Health Connectと同期できませんでした。9月13日（日）7:32 に取得した値を表示しています。',
+      );
+      expect(
+        SleepSyncStatus.failureMessage(null),
+        'Health Connectと同期できませんでした。',
       );
     });
   });

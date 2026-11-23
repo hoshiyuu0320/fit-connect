@@ -16,6 +16,7 @@ import 'package:fit_connect_mobile/features/weight_records/models/weight_record_
 import 'package:fit_connect_mobile/features/weight_records/presentation/widgets/weight_format.dart';
 import 'package:fit_connect_mobile/features/weight_records/providers/weight_records_provider.dart';
 import 'package:fit_connect_mobile/shared/models/period_filter.dart';
+import 'package:fit_connect_mobile/shared/utils/health_source_name.dart';
 import 'package:fit_connect_mobile/shared/widgets/fc/fc.dart';
 
 // ============================================
@@ -182,7 +183,7 @@ class DailySummaryCard extends ConsumerWidget {
               if (h > 0) FcValuePart('$h', '時間'),
               FcValuePart('$m', '分'),
             ],
-            sub: 'HealthKit',
+            sub: healthSourceName(),
           );
         }
         final rating = record?.wakeupRating;
@@ -379,9 +380,9 @@ DailySummaryCardBody _previewBody({
           sub: '前回から +0.1 kg · 7:30',
         ),
     sleep: sleep ??
-        const SummaryRowData.value(
-          [FcValuePart('7', '時間'), FcValuePart('30', '分')],
-          sub: 'HealthKit',
+        SummaryRowData.value(
+          const [FcValuePart('7', '時間'), FcValuePart('30', '分')],
+          sub: healthSourceName(),
         ),
     onMealsTap: () {},
     onActivityTap: () {},

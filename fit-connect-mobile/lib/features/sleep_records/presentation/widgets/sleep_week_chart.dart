@@ -7,6 +7,7 @@ import 'package:fit_connect_mobile/core/theme/app_text_styles.dart';
 import 'package:fit_connect_mobile/features/sleep_records/data/sleep_date_utils.dart';
 import 'package:fit_connect_mobile/features/sleep_records/models/sleep_record_model.dart';
 import 'package:fit_connect_mobile/features/sleep_records/presentation/utils/sleep_labels.dart';
+import 'package:fit_connect_mobile/shared/utils/health_source_name.dart';
 import 'package:fit_connect_mobile/shared/widgets/fc/fc.dart';
 import 'package:fit_connect_mobile/shared/widgets/fc/fc_previews.dart';
 
@@ -64,8 +65,9 @@ class SleepWeekSummary {
   /// 「HealthKit · 6日分の平均（9/9は未取得）」。未取得が 4 日以上なら「（5日は未取得）」。
   /// 1日も無ければ「HealthKit の記録はまだありません」
   String get caption {
-    if (recordedDays == 0) return 'HealthKit の記録はまだありません';
-    final base = 'HealthKit · $recordedDays日分の平均';
+    final source = healthSourceName();
+    if (recordedDays == 0) return '$source の記録はまだありません';
+    final base = '$source · $recordedDays日分の平均';
     if (missingLabels.isEmpty) return base;
     // 日付を並べるのは 3 日まで（それ以上は長くなるので日数だけ）
     final missing = missingLabels.length <= _maxListedMissing
