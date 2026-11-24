@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { requireTrainer } from '@/lib/api/guards'
 
-export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams
-  const trainerId = searchParams.get('trainerId')
-
-  if (!trainerId) {
-    return NextResponse.json({ error: 'trainerId is required' }, { status: 400 })
-  }
+export async function GET() {
+  const auth = await requireTrainer()
+  if (auth.response) return auth.response
+  const trainerId = auth.user.id
 
   try {
     const { data, error } = await supabaseAdmin
@@ -31,12 +29,16 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireTrainer()
+  if (auth.response) return auth.response
+  const trainerId = auth.user.id
+
   try {
     const body = await request.json()
-    const { trainerId, title, description, category, planType, estimatedMinutes, exercises } = body
+    const { title, description, category, planType, estimatedMinutes, exercises } = body
 
-    if (!trainerId || !title) {
-      return NextResponse.json({ error: 'trainerId and title are required' }, { status: 400 })
+    if (!title) {
+      return NextResponse.json({ error: 'title is required' }, { status: 400 })
     }
 
     // ワークアウトプランを作成

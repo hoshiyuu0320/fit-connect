@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { requireTrainer, notFoundResponse, trainerOwnsSubscription } from '@/lib/api/guards'
 
 // PUT: ステータス変更
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireTrainer()
+  if (auth.response) return auth.response
+  const trainerId = auth.user.id
+
   const { id } = await params
 
   try {
@@ -17,6 +22,10 @@ export async function PUT(
         { error: 'Valid status is required (active, paused, or cancelled)' },
         { status: 400 }
       )
+    }
+
+    if (!(await trainerOwnsSubscription(trainerId, id))) {
+      return notFoundResponse()
     }
 
     const { data, error } = await supabaseAdmin
@@ -46,7 +55,15 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireTrainer()
+  if (auth.response) return auth.response
+  const trainerId = auth.user.id
+
   const { id } = await params
+
+  if (!(await trainerOwnsSubscription(trainerId, id))) {
+    return notFoundResponse()
+  }
 
   try {
     const { error } = await supabaseAdmin

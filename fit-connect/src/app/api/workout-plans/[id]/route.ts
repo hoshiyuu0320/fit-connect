@@ -1,14 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { requireTrainer, notFoundResponse, trainerOwnsPlan } from '@/lib/api/guards'
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireTrainer()
+  if (auth.response) return auth.response
+  const trainerId = auth.user.id
+
   const { id } = await params
 
   if (!id) {
     return NextResponse.json({ error: 'Missing plan ID' }, { status: 400 })
+  }
+
+  if (!(await trainerOwnsPlan(trainerId, id))) {
+    return notFoundResponse()
   }
 
   try {
@@ -86,10 +95,18 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireTrainer()
+  if (auth.response) return auth.response
+  const trainerId = auth.user.id
+
   const { id } = await params
 
   if (!id) {
     return NextResponse.json({ error: 'Missing plan ID' }, { status: 400 })
+  }
+
+  if (!(await trainerOwnsPlan(trainerId, id))) {
+    return notFoundResponse()
   }
 
   try {
