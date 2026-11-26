@@ -1,17 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { requireTrainer, notFoundResponse, trainerOwnsClient, trainerOwnsTemplate } from '@/lib/api/guards'
 
 // GET: 月契約一覧
-export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams
-  const trainerId = searchParams.get('trainerId')
-
-  if (!trainerId) {
-    return NextResponse.json(
-      { error: 'trainerId is required' },
-      { status: 400 }
-    )
-  }
+export async function GET() {
+  const auth = await requireTrainer()
+  if (auth.response) return auth.response
+  const trainerId = auth.user.id
 
   try {
     const { data, error } = await supabaseAdmin
@@ -61,6 +56,10 @@ export async function GET(request: NextRequest) {
 
 // POST: 月契約作成 + 初回チケット即発行
 export async function POST(request: NextRequest) {
+  const auth = await requireTrainer()
+  if (auth.response) return auth.response
+  const trainerId = auth.user.id
+
   try {
     const body = await request.json()
     const { templateId, clientId, startDate } = body
@@ -70,6 +69,13 @@ export async function POST(request: NextRequest) {
         { error: 'templateId, clientId, and startDate are required' },
         { status: 400 }
       )
+    }
+
+    if (!(await trainerOwnsTemplate(trainerId, templateId))) {
+      return notFoundResponse()
+    }
+    if (!(await trainerOwnsClient(trainerId, clientId))) {
+      return notFoundResponse()
     }
 
     // 1. テンプレート情報を取得

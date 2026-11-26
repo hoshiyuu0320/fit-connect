@@ -1,17 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import {
+  requireTrainer,
+  notFoundResponse,
+  trainerOwnsClient,
+  trainerOwnsPlan,
+  trainerOwnsSession,
+  trainerOwnsTicket,
+} from '@/lib/api/guards'
 
 export async function GET(request: NextRequest) {
+  const auth = await requireTrainer()
+  if (auth.response) return auth.response
+  const trainerId = auth.user.id
+
   const searchParams = request.nextUrl.searchParams
-  const trainerId = searchParams.get('trainerId')
   const clientId = searchParams.get('clientId')
   const weekStart = searchParams.get('weekStart')
   const weekEnd = searchParams.get('weekEnd')
   const includeHistory = searchParams.get('includeHistory') === 'true'
 
-  if (!trainerId || !clientId || !weekEnd) {
+  if (!clientId || !weekEnd) {
     return NextResponse.json(
-      { error: 'trainerId, clientId, weekEnd are required' },
+      { error: 'clientId, weekEnd are required' },
       { status: 400 }
     )
   }
@@ -21,6 +32,10 @@ export async function GET(request: NextRequest) {
       { error: 'weekStart is required when includeHistory is not true' },
       { status: 400 }
     )
+  }
+
+  if (clientId && !(await trainerOwnsClient(trainerId, clientId))) {
+    return notFoundResponse()
   }
 
   // includeHistory の場合は weekEnd から過去30日分を取得
@@ -63,15 +78,35 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireTrainer()
+  if (auth.response) return auth.response
+  const trainerId = auth.user.id
+
   try {
     const body = await request.json()
-    const { trainerId, clientId, planId, assignedDate, ticketId, sessionTime, sessionDateTime, createSession, sessionId } = body
+    const { clientId, planId, assignedDate, ticketId, sessionTime, sessionDateTime, createSession, sessionId } = body
 
-    if (!trainerId || !clientId || !planId || !assignedDate) {
+    if (!clientId || !planId || !assignedDate) {
       return NextResponse.json(
-        { error: 'trainerId, clientId, planId, assignedDate are required' },
+        { error: 'clientId, planId, assignedDate are required' },
         { status: 400 }
       )
+    }
+
+    if (!(await trainerOwnsClient(trainerId, clientId))) {
+      return notFoundResponse()
+    }
+
+    if (!(await trainerOwnsPlan(trainerId, planId))) {
+      return notFoundResponse()
+    }
+
+    if (sessionId && !(await trainerOwnsSession(trainerId, sessionId))) {
+      return notFoundResponse()
+    }
+
+    if (ticketId && !(await trainerOwnsTicket(trainerId, ticketId))) {
+      return notFoundResponse()
     }
 
     // アサインメントを作成

@@ -1,20 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { savePushSubscription } from '@/lib/supabase/savePushSubscription'
 import { deletePushSubscription } from '@/lib/supabase/deletePushSubscription'
+import { requireTrainer } from '@/lib/api/guards'
 
 export async function POST(request: NextRequest) {
+  const auth = await requireTrainer()
+  if (auth.response) return auth.response
+  const trainerId = auth.user.id
+
   try {
     const body = await request.json()
-    const { trainerId, endpoint, p256dh, auth } = body
+    const { endpoint, p256dh, auth: pushAuth } = body
 
-    if (!trainerId || !endpoint || !p256dh || !auth) {
+    if (!endpoint || !p256dh || !pushAuth) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       )
     }
 
-    await savePushSubscription({ trainerId, endpoint, p256dh, auth })
+    await savePushSubscription({ trainerId, endpoint, p256dh, auth: pushAuth })
 
     return NextResponse.json({ status: 'ok' })
   } catch (error) {
@@ -27,11 +32,15 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const auth = await requireTrainer()
+  if (auth.response) return auth.response
+  const trainerId = auth.user.id
+
   try {
     const body = await request.json()
-    const { trainerId, endpoint } = body
+    const { endpoint } = body
 
-    if (!trainerId || !endpoint) {
+    if (!endpoint) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }

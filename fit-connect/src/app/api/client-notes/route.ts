@@ -1,12 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { requireTrainer, notFoundResponse, trainerOwnsClient } from '@/lib/api/guards'
 
 export async function POST(req: NextRequest) {
-  const body = await req.json()
-  const { trainerId, clientId, title, content, fileUrls, isShared, sessionNumber } = body
+  const auth = await requireTrainer()
+  if (auth.response) return auth.response
+  const trainerId = auth.user.id
 
-  if (!trainerId || !clientId || !title) {
+  const body = await req.json()
+  // 画面は sessionNumber も送るが、client_notes に session_number 列は無い（develop の migration で削除済み）ので DB へは送らない
+  const { clientId, title, content, fileUrls, isShared } = body
+
+  if (!clientId || !title) {
     return NextResponse.json({ error: 'Missing parameters' }, { status: 400 })
+  }
+
+  if (!(await trainerOwnsClient(trainerId, clientId))) {
+    return notFoundResponse()
   }
 
   const { data, error } = await supabaseAdmin
@@ -20,7 +30,6 @@ export async function POST(req: NextRequest) {
         file_urls: fileUrls || [],
         is_shared: isShared || false,
         ...(isShared && { shared_at: new Date().toISOString() }),
-        ...(sessionNumber !== undefined && { session_number: sessionNumber }),
       },
     ])
     .select()
