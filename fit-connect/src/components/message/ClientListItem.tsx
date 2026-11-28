@@ -1,5 +1,7 @@
 'use client'
 
+import { StorageImg } from '@/components/common/StorageImg'
+
 interface ClientListItemProps {
   client: { client_id: string; name: string; profile_image_url: string | null }
   isSelected: boolean
@@ -54,17 +56,17 @@ export function ClientListItem({
     >
       {/* Avatar */}
       <div className="flex-shrink-0 relative">
-        {client.profile_image_url ? (
-          <img
-            src={client.profile_image_url}
-            alt={client.name}
-            className="w-10 h-10 rounded-full object-cover"
-          />
-        ) : (
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white ${lastMessage ? 'bg-[#64748B]' : 'bg-[#CBD5E1]'}`}>
-            {initial}
-          </div>
-        )}
+        <StorageImg
+          value={client.profile_image_url}
+          bucket="client-avatars"
+          alt={client.name}
+          className="w-10 h-10 rounded-full object-cover"
+          fallback={
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white ${lastMessage ? 'bg-[#64748B]' : 'bg-[#CBD5E1]'}`}>
+              {initial}
+            </div>
+          }
+        />
         {hasUnread && (
           <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-[#DC2626] border-2 border-white rounded-full" />
         )}

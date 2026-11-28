@@ -2,6 +2,7 @@
 
 import React from 'react'
 import Link from 'next/link'
+import { StorageImg } from '@/components/common/StorageImg'
 import type { RecordCardData, RecordCardType } from '@/components/message/recordCardParser'
 
 // RecordCardType → クライアント詳細タブ名のマッピング
@@ -222,10 +223,14 @@ export function RecordCard({ data, clientId, imageUrls, onImageClick }: RecordCa
                 }}
                 className="block"
               >
-                <img
-                  src={url}
+                <StorageImg
+                  value={url}
+                  bucket="message-photos"
                   alt={`添付画像 ${imgIndex + 1}`}
                   className="w-24 h-24 object-cover rounded-sm border border-black/5 cursor-pointer hover:opacity-80 transition-opacity"
+                  fallback={
+                    <div className="w-24 h-24 rounded-sm border border-black/5 bg-[#F8FAFC]" />
+                  }
                 />
               </button>
             ))}

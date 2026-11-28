@@ -3,6 +3,11 @@ import { supabase } from '../supabase'
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const MAX_FILE_SIZE = 2 * 1024 * 1024 // 2MB
 
+/**
+ * トレーナープロフィール画像を profile-images バケットへアップロードする。
+ * 戻り値は `パス#encodeURIComponent(元ファイル名)` 形式
+ * （DB にはパスを保存し、表示時に署名URLへ解決する）。
+ */
 export async function uploadProfileImage(
   file: File,
   trainerId: string
@@ -34,13 +39,7 @@ export async function uploadProfileImage(
 
   if (uploadError) throw uploadError
 
-  // Get public URL
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from('profile-images').getPublicUrl(filePath)
-
   // Append original filename as hash fragment for display purposes
-  const urlWithOriginalName = `${publicUrl}#${encodeURIComponent(file.name)}`
-
-  return urlWithOriginalName
+  // （ベースはバケット相対パス。フルURLは保存しない）
+  return `${filePath}#${encodeURIComponent(file.name)}`
 }

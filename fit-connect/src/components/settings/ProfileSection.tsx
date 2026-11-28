@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { uploadProfileImage } from '@/lib/supabase/uploadProfileImage'
+import { StorageImg } from '@/components/common/StorageImg'
 import type { Trainer } from '@/types/trainer'
 
 const profileSchema = z.object({
@@ -94,8 +95,6 @@ export function ProfileSection({ trainer, onUpdate }: ProfileSectionProps) {
     }
   }
 
-  const displayImageUrl = previewUrl || trainer.profile_image_url
-
   return (
     <Card>
       <CardHeader>
@@ -109,16 +108,26 @@ export function ProfileSection({ trainer, onUpdate }: ProfileSectionProps) {
               <Label>プロフィール画像</Label>
               <div className="flex items-center gap-4">
                 <div className="w-24 h-24 rounded-full overflow-hidden bg-blue-100 flex items-center justify-center">
-                  {displayImageUrl ? (
+                  {previewUrl ? (
+                    // 選択直後のローカルプレビュー（blob: URL）はそのまま表示
                     <img
-                      src={displayImageUrl}
+                      src={previewUrl}
                       alt="プロフィール画像"
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <span className="text-2xl font-semibold text-blue-600">
-                      {getInitials(trainer.name)}
-                    </span>
+                    // 保存済みの値はパス or フルURL（レガシー）or 外部URL（Google）の両対応
+                    <StorageImg
+                      value={trainer.profile_image_url}
+                      bucket="profile-images"
+                      alt="プロフィール画像"
+                      className="w-full h-full object-cover"
+                      fallback={
+                        <span className="text-2xl font-semibold text-blue-600">
+                          {getInitials(trainer.name)}
+                        </span>
+                      }
+                    />
                   )}
                 </div>
                 <div>

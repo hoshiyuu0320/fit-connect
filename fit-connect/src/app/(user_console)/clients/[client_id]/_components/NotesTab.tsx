@@ -1,8 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import Image from 'next/image'
 import { format } from 'date-fns'
+import { StorageImg } from '@/components/common/StorageImg'
+import { getSignedStorageUrl } from '@/lib/supabase/signedStorageUrls'
+import { noteFileName, isNoteFilePdf } from '@/lib/supabase/storagePaths'
 import type { ClientNote } from '@/types/client'
 import { CreateNoteModal } from './CreateNoteModal'
 import { EditNoteModal } from './EditNoteModal'
@@ -20,18 +22,6 @@ export function NotesTab({ notes, clientId, trainerId, onRefetch }: NotesTabProp
   const [editNote, setEditNote] = useState<ClientNote | null>(null)
   const [deleteNote, setDeleteNote] = useState<ClientNote | null>(null)
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
-
-  const isPdf = (url: string) => url.toLowerCase().endsWith('.pdf')
-
-  const getFileName = (url: string) => {
-    const hashIndex = url.indexOf('#')
-    if (hashIndex !== -1) {
-      return decodeURIComponent(url.substring(hashIndex + 1))
-    }
-    const decoded = decodeURIComponent(url.split('/').pop() || '')
-    const match = decoded.match(/^\d+_(.+)$/)
-    return match ? match[1] : decoded
-  }
 
   return (
     <div className="space-y-4">
@@ -143,18 +133,9 @@ export function NotesTab({ notes, clientId, trainerId, onRefetch }: NotesTabProp
                   {note.file_urls && note.file_urls.length > 0 && (
                     <div className="flex gap-2 flex-wrap">
                       {note.file_urls.map((url, i) => {
-                        if (isPdf(url)) {
+                        if (isNoteFilePdf(url)) {
                           return (
-                            <a
-                              key={i}
-                              href={url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-1 px-2 py-1 bg-[#F8FAFC] border border-[#E2E8F0] rounded-md text-xs text-[#64748B] hover:border-[#14B8A6] transition-colors"
-                            >
-                              <span>📄</span>
-                              <span className="max-w-[120px] truncate">{getFileName(url)}</span>
-                            </a>
+                            <NotePdfLink key={i} value={url} fileName={noteFileName(url)} />
                           )
                         }
                         return (
@@ -164,12 +145,12 @@ export function NotesTab({ notes, clientId, trainerId, onRefetch }: NotesTabProp
                             onClick={() => setLightboxUrl(url)}
                             className="relative w-14 h-14 rounded-md overflow-hidden border border-[#E2E8F0] hover:border-[#14B8A6] hover:opacity-80 transition-all"
                           >
-                            <Image
-                              src={url}
+                            <StorageImg
+                              value={url}
+                              bucket="client-notes"
                               alt={`添付画像 ${i + 1}`}
-                              fill
-                              className="object-cover"
-                              unoptimized
+                              className="absolute inset-0 w-full h-full object-cover"
+                              fallback={<span className="absolute inset-0 bg-[#F8FAFC]" />}
                             />
                           </button>
                         )
@@ -202,8 +183,9 @@ export function NotesTab({ notes, clientId, trainerId, onRefetch }: NotesTabProp
           onClick={() => setLightboxUrl(null)}
         >
           <div className="relative max-w-3xl max-h-[80vh] w-full mx-4">
-            <img
-              src={lightboxUrl}
+            <StorageImg
+              value={lightboxUrl}
+              bucket="client-notes"
               alt="添付画像"
               className="w-full h-full object-contain rounded-md"
             />
@@ -242,5 +224,31 @@ export function NotesTab({ notes, clientId, trainerId, onRefetch }: NotesTabProp
         onDeleted={onRefetch}
       />
     </div>
+  )
+}
+
+// PDF 添付リンク。署名URLは TTL 3600秒で失効するため、マウント時ではなく
+// クリック時に解決して開く（キャッシュの残り有効期限が短ければ再発行される）
+function NotePdfLink({ value, fileName }: { value: string; fileName: string }) {
+  const handleClick = async (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault()
+    const signedUrl = await getSignedStorageUrl(value, 'client-notes')
+    if (signedUrl) {
+      window.open(signedUrl, '_blank', 'noopener,noreferrer')
+    } else {
+      alert('ファイルを開けませんでした')
+    }
+  }
+
+  return (
+    <a
+      href="#"
+      role="button"
+      onClick={handleClick}
+      className="flex items-center gap-1 px-2 py-1 bg-[#F8FAFC] border border-[#E2E8F0] rounded-md text-xs text-[#64748B] hover:border-[#14B8A6] transition-colors"
+    >
+      <span>📄</span>
+      <span className="max-w-[120px] truncate">{fileName}</span>
+    </a>
   )
 }

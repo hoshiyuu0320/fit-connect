@@ -1,6 +1,7 @@
 'use client'
 
 import { User, Scale, Utensils, Dumbbell, TrendingUp, TrendingDown } from 'lucide-react'
+import { StorageImg } from '@/components/common/StorageImg'
 import type { Client } from '@/types/client'
 import { PURPOSE_OPTIONS, GENDER_OPTIONS } from '@/types/client'
 
@@ -67,17 +68,17 @@ export function ClientReportHeader({
       <div className="bg-white border border-[#E2E8F0] rounded-md p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           {/* アバター */}
-          {client.profile_image_url ? (
-            <img
-              src={client.profile_image_url}
-              alt={client.name}
-              className="w-[48px] h-[48px] rounded-full object-cover"
-            />
-          ) : (
-            <div className="w-[48px] h-[48px] rounded-full bg-[#14B8A6] flex items-center justify-center">
-              <User className="w-5 h-5 text-white" />
-            </div>
-          )}
+          <StorageImg
+            value={client.profile_image_url}
+            bucket="client-avatars"
+            alt={client.name}
+            className="w-[48px] h-[48px] rounded-full object-cover"
+            fallback={
+              <div className="w-[48px] h-[48px] rounded-full bg-[#14B8A6] flex items-center justify-center">
+                <User className="w-5 h-5 text-white" />
+              </div>
+            }
+          />
           <div>
             <p className="font-bold text-base text-[#0F172A]">{client.name}</p>
             {attributeParts.length > 0 && (
