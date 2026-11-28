@@ -1,0 +1,76 @@
+# supabase/tests の SQL テスト（RLS・権限・トリガー・関数）を、migration だけを当てた新しい DB で流す。
+# 手元での流し方・テストの決まり・必須のチェックにするときの注意は supabase/tests/README.md。
+# 公開リポジトリなのでログは誰でも読める。秘密の値は使わない（ローカルの DB だけで完結する）。
+name: Supabase DB tests
+
+on:
+  pull_request:
+    branches:
+      - main
+      - 'develop/**'
+    paths:
+      - 'supabase/**'
+      - '.github/workflows/supabase-db-tests.yml'
+  push:
+    branches:
+      - main
+      - 'develop/**'
+    paths:
+      - 'supabase/**'
+      - '.github/workflows/supabase-db-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  sql-tests:
+    name: SQL tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: チェックアウト
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Supabase CLI を用意する
+        uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1.7.3
+        with:
+          version: '2.120.0'
+
+      # ローカル用のテストデータ（supabase/Seed.sql）を入れず、migration だけの DB で流す。
+      # 書き換えるのは CI の作業ディレクトリの config.toml だけ（リポジトリには戻らない）
+      - name: seed を止める
+        run: |
+          config=supabase/config.toml
+          if grep -Eq '^[[:space:]]*\[db\.seed\]' "$config"; then
+            echo "$config に [db.seed] が既にあるので、足さない"
+          else
+            printf '\n[db.seed]\nenabled = false\n' >> "$config"
+          fi
+          # 既にあった [db.seed] が seed を入れる設定なら、ここで止める
+          if ! awk '
+            /^[[:space:]]*\[/ { in_seed = ($0 ~ /^[[:space:]]*\[db\.seed\]/); next }
+            in_seed && /^[[:space:]]*enabled[[:space:]]*=[[:space:]]*false([[:space:]#]|$)/ { found = 1 }
+            END { exit !found }
+          ' "$config"; then
+            echo "::error file=$config::[db.seed] に enabled = false がありません。CI では seed を止めて流します"
+            exit 1
+          fi
+          sed -n '/^\[db\.seed\]/,$p' "$config"
+
+      # DB のコンテナだけを起動し、supabase/migrations を当てる（DB 以外のサービスは起動しない）
+      - name: DB を起動して migration を当てる
+        run: supabase db start
+
+      - name: SQL テストを流す
+        run: bash supabase/tests/run_all.sh
