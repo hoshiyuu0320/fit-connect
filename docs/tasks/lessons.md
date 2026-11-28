@@ -978,3 +978,17 @@
 ### main に hotfix を入れたら、develop へ戻す作業をタスクに残す
 - main が develop に無いコミットを持つと、次に develop を main へ出すときに衝突する（#124 では7本）。hotfix の方が正しいファイル（#124 の `trainers/create`）は、衝突を develop の版で解くと壊れる
 - hotfix の PR に、`git merge-tree` で試した衝突の一覧とファイルごとの解き方を書き、タスク表に develop へ戻すフォローアップを残す
+
+## プランのフォームの空の数値欄（5.12 のフォローアップ、2026-11-28）で得た知見
+
+### react-hook-form の `valueAsNumber` は、触っていない空欄も NaN にする — 任意の数値欄は `setValueAs` で空を undefined に
+- RHF 7 は登録のとき、既定値が `undefined` なら入力欄（DOM）の値を読む。`valueAsNumber` だと空文字が `NaN` になるので、触っていない空欄も `NaN`。`z.number().optional()` は `NaN` を通さず、`handleSubmit` が検証で止まる。そのエラーを表示する欄が無いと、何も起きないように見える（フォーカスだけが空欄へ移る）
+- 任意の数値欄は `setValueAs`（空・空白・`NaN` → `undefined`、数字の文字列 → number。RHF は既定値の number にも呼ぶので両方を受ける）にする。`valueAsNumber` とは併用できない
+- `type="number"` の欄に `noValidate` の無いフォームでは、小数（step の既定は 1）はブラウザの検証が先に送信を止め、吹き出しが出る。zod の「整数で」のメッセージは、一度送信したあとの入力し直しで出る
+- 編集の API が `if (x !== undefined) update.x = x` の形だと、フォームが空欄を `undefined` で送ると JSON から消え、編集で消した値が残る。空は `null` で送る
+- 数値欄のあるフォームを直すときは、`valueAsNumber` の他の使いどころ（`git grep -n valueAsNumber fit-connect/src`）も見る
+
+### 隔離スタックの Web の QA は、テスト用トレーナーを `NEXT_PUBLIC_DEV_LOGIN_*` に渡してテストログインのボタンで入る
+- 隔離スタックに admin API でトレーナーを作り（メール確認済み・`trainers` の行も入れる）、そのメールとパスワードを dev server の環境変数 `NEXT_PUBLIC_DEV_LOGIN_EMAIL` / `NEXT_PUBLIC_DEV_LOGIN_PASSWORD` に渡すと、ログイン画面の「テストログイン」で入れる。合成 Cookie は要らない。値はスクリプトでファイルにだけ書き、画面にもログにも出さない
+- 隔離スタックの cron は、postgres では `cron.job` を UPDATE できない（permission denied）。`select cron.alter_job(jobid, active := false) from cron.job where active` で止める
+- 修正前の版の再現（負の対照）は、修正後のファイルをスクラッチに控え、`git show origin/develop/1.0.0:<path> > <path>` で戻して同じ dev server（HMR）で行い、控えから戻したら sha256 で一致を確かめる

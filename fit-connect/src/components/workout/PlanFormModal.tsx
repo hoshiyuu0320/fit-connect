@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
+import { toast } from 'sonner'
 import {
   Dialog,
   DialogContent,
@@ -21,25 +21,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { WORKOUT_CATEGORY_OPTIONS, PLAN_TYPE_OPTIONS, type WorkoutPlan } from '@/types/workout'
-
-const exerciseSchema = z.object({
-  name: z.string().min(1, '種目名は必須です'),
-  sets: z.number().min(1, 'セット数は1以上'),
-  reps: z.number().optional(),
-  weight: z.number().optional(),
-  memo: z.string().optional(),
-})
-
-const formSchema = z.object({
-  title: z.string().min(1, 'タイトルは必須です'),
-  description: z.string().optional(),
-  category: z.string().optional(),
-  planType: z.enum(['session', 'self_guided']),
-  estimatedMinutes: z.number().optional(),
-  exercises: z.array(exerciseSchema).min(1, '種目を1つ以上追加してください'),
-})
-
-type FormData = z.infer<typeof formSchema>
+import {
+  buildPlanPayload,
+  planFormSchema,
+  toOptionalNumber,
+  type PlanFormValues,
+} from '@/lib/workout/planForm'
 
 interface PlanFormModalProps {
   open: boolean
@@ -56,8 +43,8 @@ export function PlanFormModal({
 }: PlanFormModalProps) {
   const isEditing = !!editingPlan
 
-  const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<PlanFormValues>({
+    resolver: zodResolver(planFormSchema),
     defaultValues: {
       title: '',
       description: '',
@@ -104,23 +91,9 @@ export function PlanFormModal({
     }
   }, [open, editingPlan, form])
 
-  const onSubmit = async (data: FormData) => {
+  const onSubmit = async (data: PlanFormValues) => {
     try {
-      const payload = {
-        title: data.title,
-        description: data.description || undefined,
-        category: data.category,
-        planType: data.planType,
-        estimatedMinutes: data.estimatedMinutes,
-        exercises: data.exercises.map((ex, index) => ({
-          name: ex.name,
-          sets: ex.sets,
-          reps: ex.reps,
-          weight: ex.weight,
-          memo: ex.memo,
-          orderIndex: index,
-        })),
-      }
+      const payload = buildPlanPayload(data)
 
       const url = isEditing
         ? `/api/workout-plans/${editingPlan!.id}`
@@ -139,6 +112,7 @@ export function PlanFormModal({
       onClose()
     } catch (error) {
       console.error('プラン保存エラー:', error)
+      toast.error('プランを保存できませんでした。もう一度お試しください')
     }
   }
 
@@ -226,9 +200,14 @@ export function PlanFormModal({
               <Input
                 id="estimatedMinutes"
                 type="number"
-                {...form.register('estimatedMinutes', { valueAsNumber: true })}
+                {...form.register('estimatedMinutes', { setValueAs: toOptionalNumber })}
                 placeholder="例: 45"
               />
+              {form.formState.errors.estimatedMinutes && (
+                <p className="text-xs text-red-500">
+                  {form.formState.errors.estimatedMinutes.message}
+                </p>
+              )}
             </div>
           </div>
 
@@ -265,26 +244,41 @@ export function PlanFormModal({
                     <Label>セット数 *</Label>
                     <Input
                       type="number"
-                      {...form.register(`exercises.${index}.sets`, { valueAsNumber: true })}
+                      {...form.register(`exercises.${index}.sets`, { setValueAs: toOptionalNumber })}
                       placeholder="3"
                     />
+                    {form.formState.errors.exercises?.[index]?.sets && (
+                      <p className="text-xs text-red-500">
+                        {form.formState.errors.exercises[index]?.sets?.message}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-1">
                     <Label>回数</Label>
                     <Input
                       type="number"
-                      {...form.register(`exercises.${index}.reps`, { valueAsNumber: true })}
+                      {...form.register(`exercises.${index}.reps`, { setValueAs: toOptionalNumber })}
                       placeholder="10"
                     />
+                    {form.formState.errors.exercises?.[index]?.reps && (
+                      <p className="text-xs text-red-500">
+                        {form.formState.errors.exercises[index]?.reps?.message}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-1">
                     <Label>重量 (kg)</Label>
                     <Input
                       type="number"
                       step="0.5"
-                      {...form.register(`exercises.${index}.weight`, { valueAsNumber: true })}
+                      {...form.register(`exercises.${index}.weight`, { setValueAs: toOptionalNumber })}
                       placeholder="60"
                     />
+                    {form.formState.errors.exercises?.[index]?.weight && (
+                      <p className="text-xs text-red-500">
+                        {form.formState.errors.exercises[index]?.weight?.message}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="space-y-1">
