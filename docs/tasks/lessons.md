@@ -964,3 +964,17 @@
 - `hoshiyuu0320/fit-connect` は公開リポジトリで、タスク表・lessons・PR 本文・コミットメッセージは誰でも読める（`gh repo view hoshiyuu0320/fit-connect --json visibility`）
 - 本番に残っている穴は「どの種類の問題か」と「直したかどうか」だけを書き、経路・手順・具体的な URL や id の手に入れ方はオーナーへの報告に書く。修正が本番に出た後なら、経緯として詳しく書いてよい
 - セキュリティの記録を書く前に visibility を確かめる。サイドセッションのブリーフにも書く
+
+## 本番 Web（main）への hotfix（フェーズ5.12、#124、2026-11-26）で得た知見
+
+### 列を消す migration は、本番で動いている Web（main）がその列を使っていないかを確かめてから当てる
+- 8.3①（2026-09）の migration `20260906000200` で `client_notes.session_number` を消したが、本番の Web（main）の API はこの列を書き続けていた。本番ではカルテの作成・編集が PostgREST の `PGRST204` で 500 になっていて、#124 の作業で見つかるまで気づかなかった
+- migration は develop から `db push` で本番に当たるが、Web は main のまま（Vercel の本番は main）。列の削除・名前の変更の前に、`git grep -n <列名> origin/main -- fit-connect/src` で本番の Web が使っていないかを見る。使っていれば、main を先に直すか、列を残す
+
+### 本番に出たかは、新旧で応答が変わる読み取りの要求で先に確かめる
+- デプロイの成功は、GitHub の Deployments API（`deployments?environment=Production`）とコミットのステータスで確かめる。#124 のマージの直後は前の本番しか出ず、ステータスは pending だった
+- そのあと最初に送るのは、古いコードと新しいコードで応答が変わり、どちらでもデータを返さず書き込まない要求にする（#124 では、存在しない trainerId での `GET /api/tickets/all`。古いコードなら 200、新しいコードなら 401）。新しいコードだと分かってから POST を送る。古いコードが動いていると、POST が本番に書き込むことがある
+
+### main に hotfix を入れたら、develop へ戻す作業をタスクに残す
+- main が develop に無いコミットを持つと、次に develop を main へ出すときに衝突する（#124 では7本）。hotfix の方が正しいファイル（#124 の `trainers/create`）は、衝突を develop の版で解くと壊れる
+- hotfix の PR に、`git merge-tree` で試した衝突の一覧とファイルごとの解き方を書き、タスク表に develop へ戻すフォローアップを残す
