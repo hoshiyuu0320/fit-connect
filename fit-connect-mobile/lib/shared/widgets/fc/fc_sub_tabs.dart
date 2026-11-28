@@ -1,10 +1,12 @@
 import 'dart:math' as math;
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 
 import 'package:fit_connect_mobile/core/theme/app_colors.dart';
 import 'package:fit_connect_mobile/core/theme/app_spacing.dart';
 import 'package:fit_connect_mobile/core/theme/app_text_styles.dart';
+import 'fc_bottom_nav.dart';
 import 'fc_pressable.dart';
 
 /// [FcSubTabs] の 1 項目
@@ -35,6 +37,10 @@ class FcSubTabItem<T> {
 /// - 見た目の高さは 32（外枠の内側余白 2 + タブ 28）。上下に 6 ずつ透明なタッチ領域を持ち、
 ///   部品の高さは 44（タッチ領域は高さ 44 以上・幅 64 以上）
 /// - 色・文字・選択中の表現は通常と同じ
+/// - `floating: true` は、スクロールする中身の上に重ねて浮かせるとき用。外枠だけを下部ナビ
+///   （[FcBottomNav]）のカプセルと同じ扱いにする: navigationSurface の面・1px の navigationBorder の枠・
+///   背景ぼかし 18・`0 3px 14px` の薄い影。「コントラストを高く」「色を反転」のときは
+///   ぼかさず不透明な surface。枠は外枠の内側に描くので、寸法（外枠 32・部品 44）は変わらない
 class FcSubTabs<T> extends StatefulWidget {
   const FcSubTabs({
     super.key,
@@ -42,7 +48,8 @@ class FcSubTabs<T> extends StatefulWidget {
     required this.selected,
     required this.onChanged,
     this.padding,
-  }) : compact = false;
+  })  : compact = false,
+        floating = false;
 
   /// 2〜3 項目用の小さなピル。幅は内容に合わせる（クラスの説明を参照）
   const FcSubTabs.compact({
@@ -51,6 +58,7 @@ class FcSubTabs<T> extends StatefulWidget {
     required this.selected,
     required this.onChanged,
     this.padding,
+    this.floating = false,
   }) : compact = true;
 
   final List<FcSubTabItem<T>> items;
@@ -62,6 +70,9 @@ class FcSubTabs<T> extends StatefulWidget {
 
   /// 小さなピルで出すか（[FcSubTabs.compact]）
   final bool compact;
+
+  /// 中身の上に重ねて浮かせる見た目にするか（[FcSubTabs.compact] のみ。クラスの説明を参照）
+  final bool floating;
 
   /// 外枠の角丸
   static const double radius = 26;
@@ -205,12 +216,14 @@ class _FcSubTabsState<T> extends State<FcSubTabs<T>> {
         Positioned.fill(
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: touchOutset),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: colors.surface,
-                borderRadius: BorderRadius.circular(FcSubTabs.radius),
-              ),
-            ),
+            child: widget.floating
+                ? _buildFloatingFace(colors)
+                : DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: colors.surface,
+                      borderRadius: BorderRadius.circular(FcSubTabs.radius),
+                    ),
+                  ),
           ),
         ),
         Padding(
@@ -245,6 +258,42 @@ class _FcSubTabsState<T> extends State<FcSubTabs<T>> {
       tabs = Padding(padding: widget.padding!, child: tabs);
     }
     return tabs;
+  }
+
+  /// 浮かせるときの外枠の面。下部ナビのカプセルと同じ（面・枠・ぼかし・影）。
+  /// 枠は面の内側に描く（子を持たない面なので、寸法は変わらない）
+  Widget _buildFloatingFace(AppColorsExtension colors) {
+    final media = MediaQuery.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final solid = media.highContrast || media.invertColors;
+    final borderRadius = BorderRadius.circular(FcSubTabs.radius);
+
+    Widget face = DecoratedBox(
+      decoration: BoxDecoration(
+        color: solid ? colors.surface : colors.navigationSurface,
+        borderRadius: borderRadius,
+        border: Border.all(
+          color: colors.navigationBorder,
+          width: AppSizes.navBorderWidth,
+        ),
+      ),
+    );
+    if (!solid) {
+      face = BackdropFilter(
+        filter: ImageFilter.blur(
+          sigmaX: FcBottomNav.blurSigma,
+          sigmaY: FcBottomNav.blurSigma,
+        ),
+        child: face,
+      );
+    }
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: borderRadius,
+        boxShadow: FcBottomNav.capsuleShadow(isDark: isDark),
+      ),
+      child: ClipRRect(borderRadius: borderRadius, child: face),
+    );
   }
 }
 

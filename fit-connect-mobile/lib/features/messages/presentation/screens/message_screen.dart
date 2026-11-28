@@ -257,28 +257,37 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
                           onFilterChanged: (filter) => ref
                               .read(messageFilterControllerProvider.notifier)
                               .setFilter(filter),
-                          child: stateAsync.when(
-                            data: (paginatedState) {
-                              final filtered = applyMessageFilter(
-                                  paginatedState.messages, messageFilter);
-                              if (filtered.isEmpty) {
-                                return _EmptyThread(
-                                  recordsOnly:
-                                      messageFilter == MessageFilter.recordsOnly,
+                          builder: (context, topInset) {
+                            // 一覧は自分の余白に足す（ピルの下をスクロールして通る）。
+                            // それ以外の状態は、上に同じ余白を付ける
+                            Widget inset(Widget child) => Padding(
+                                  padding: EdgeInsets.only(top: topInset),
+                                  child: child,
                                 );
-                              }
-                              return _buildMessageList(
-                                paginatedState,
-                                currentUser?.id,
-                                filtered,
-                              );
-                            },
-                            loading: () => const _ThreadSkeleton(),
-                            error: (e, _) => _ThreadError(
-                              onRetry: () =>
-                                  ref.invalidate(paginatedMessagesProvider),
-                            ),
-                          ),
+                            return stateAsync.when(
+                              data: (paginatedState) {
+                                final filtered = applyMessageFilter(
+                                    paginatedState.messages, messageFilter);
+                                if (filtered.isEmpty) {
+                                  return inset(_EmptyThread(
+                                    recordsOnly: messageFilter ==
+                                        MessageFilter.recordsOnly,
+                                  ));
+                                }
+                                return _buildMessageList(
+                                  paginatedState,
+                                  currentUser?.id,
+                                  filtered,
+                                  topInset: topInset,
+                                );
+                              },
+                              loading: () => inset(const _ThreadSkeleton()),
+                              error: (e, _) => inset(_ThreadError(
+                                onRetry: () =>
+                                    ref.invalidate(paginatedMessagesProvider),
+                              )),
+                            );
+                          },
                         ),
                       ),
                       // 入力（クイック操作 + 入力行）。高さはこの領域まで（フォームを開いたときは中でスクロール）
@@ -314,7 +323,8 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
   }
 
   Widget _buildMessageList(PaginatedMessagesState paginatedState,
-      String? currentUserId, List<Message> messages) {
+      String? currentUserId, List<Message> messages,
+      {required double topInset}) {
     final colors = AppColors.of(context);
     final allMessages = paginatedState.messages;
     final messageFilter = ref.watch(messageFilterControllerProvider);
@@ -346,7 +356,8 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
     return ListView.builder(
       reverse: true,
       controller: _scrollController,
-      padding: EdgeInsets.fromLTRB(horizontal, 0, horizontal, 6),
+      // 上（いちばん古い側の端）に、重なっている絞り込みのピルの分を空ける
+      padding: EdgeInsets.fromLTRB(horizontal, topInset, horizontal, 6),
       itemCount: sortedDates.length +
           (paginatedState.isLoadingMore || !paginatedState.hasMore ? 1 : 0),
       itemBuilder: (context, dateIndex) {
@@ -466,59 +477,73 @@ String _dateLabel(DateTime date, {DateTime? now}) {
 // 画面の部品
 // ============================================
 
-/// 会話の領域。上に絞り込み（すべて / 記録）のタブ、下に会話。
+/// 会話の領域。会話を全面に置き、その上・中央に絞り込み（すべて / 記録）のピルを重ねて浮かせる。
 ///
 /// 画面の上にコーチのヘッダーは置かない（誰との会話かは、吹き出しのアバターと名前で分かる）。
-/// 会話に高さを譲るため、絞り込みは小さなピル（[FcSubTabs.compact]。見た目 32・タッチ領域 44）を
-/// 中央に置く。選択中はライト・ダークどちらでも面の違いと文字の色・太さの両方で分かる。
+/// 絞り込みは小さなピル（[FcSubTabs.compact] の floating。見た目 32・タッチ領域 44）で、
+/// 会話の高さを取らない（会話はピルの下をスクロールして通る）。
+/// 選択中はライト・ダークどちらでも面の違いと文字の色・太さの両方で分かる。
+/// 中身がピルに隠れないよう、[builder] にピルの行の高さ（[filterRowHeight]）を「上の余白」として渡す。
 /// この領域の高さが足りないとき（キーボード表示中に記録フォームを開いたなど）は、
-/// 行ごと畳んで会話に高さを譲る。
+/// ピルを出さず（上の余白は 0）、会話に高さを譲る。
 class _ThreadArea extends StatelessWidget {
   const _ThreadArea({
     required this.filter,
     required this.onFilterChanged,
-    required this.child,
+    required this.builder,
   });
 
-  /// タブの行の高さ（ピルの上下の透明なタッチ領域を含む。行の余白は足さない）
+  /// ピルの行の高さ（ピルの上下の透明なタッチ領域を含む。行の余白は足さない）
   static const double filterRowHeight = FcSubTabs.compactTouchHeight;
 
-  /// タブの行を出すのに必要な領域の高さ（タブの行 + 会話に最低限の高さ）
+  /// ピルを出すのに必要な領域の高さ（ピルの行 + 会話に最低限の高さ）
   static const double minHeightForFilter = filterRowHeight + 112;
 
   final MessageFilter filter;
   final ValueChanged<MessageFilter> onFilterChanged;
-  final Widget child;
+
+  /// 会話の中身。`topInset` は、重なっているピルの分として上に空ける高さ（ピルが無いときは 0）
+  final Widget Function(BuildContext context, double topInset) builder;
 
   @override
   Widget build(BuildContext context) {
     final horizontal = AppSpacing.pageHorizontalOf(context);
     return LayoutBuilder(
-      builder: (context, constraints) => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (constraints.maxHeight >= minHeightForFilter)
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: horizontal),
-              child: Center(
-                child: Semantics(
-                  container: true,
-                  label: 'メッセージの絞り込み',
-                  child: FcSubTabs<MessageFilter>.compact(
-                    items: const [
-                      FcSubTabItem(value: MessageFilter.all, label: 'すべて'),
-                      FcSubTabItem(
-                          value: MessageFilter.recordsOnly, label: '記録'),
-                    ],
-                    selected: filter,
-                    onChanged: onFilterChanged,
+      builder: (context, constraints) {
+        final showFilter = constraints.maxHeight >= minHeightForFilter;
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: builder(context, showFilter ? filterRowHeight : 0),
+            ),
+            if (showFilter)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: horizontal),
+                  child: Center(
+                    child: Semantics(
+                      container: true,
+                      label: 'メッセージの絞り込み',
+                      child: FcSubTabs<MessageFilter>.compact(
+                        floating: true,
+                        items: const [
+                          FcSubTabItem(value: MessageFilter.all, label: 'すべて'),
+                          FcSubTabItem(
+                              value: MessageFilter.recordsOnly, label: '記録'),
+                        ],
+                        selected: filter,
+                        onChanged: onFilterChanged,
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-          Expanded(child: child),
-        ],
-      ),
+          ],
+        );
+      },
     );
   }
 }
@@ -641,12 +666,19 @@ class _PreviewMessageScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final horizontal = AppSpacing.pageHorizontalOf(context);
 
-    final Widget thread = switch (state) {
-      _PreviewState.loading => const _ThreadSkeleton(),
-      _PreviewState.empty => const _EmptyThread(recordsOnly: false),
-      _PreviewState.normal => ListView(
-          reverse: true,
-          padding: EdgeInsets.fromLTRB(horizontal, 0, horizontal, 6),
+    Widget thread(double topInset) => switch (state) {
+          _PreviewState.loading => Padding(
+              padding: EdgeInsets.only(top: topInset),
+              child: const _ThreadSkeleton(),
+            ),
+          _PreviewState.empty => Padding(
+              padding: EdgeInsets.only(top: topInset),
+              child: const _EmptyThread(recordsOnly: false),
+            ),
+          _PreviewState.normal => ListView(
+              reverse: true,
+              padding:
+                  EdgeInsets.fromLTRB(horizontal, topInset, horizontal, 6),
           children: [
             Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -696,7 +728,7 @@ class _PreviewMessageScreen extends StatelessWidget {
           child: _ThreadArea(
             filter: MessageFilter.all,
             onFilterChanged: (_) {},
-            child: thread,
+            builder: (context, topInset) => thread(topInset),
           ),
         ),
         ChatInput(

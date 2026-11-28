@@ -205,6 +205,136 @@ void main() {
       expect(rect.right - records.right, closeTo(2, 0.01));
     });
 
+    testWidgets('ピルは会話の上に重ねて浮かせる（会話の高さを取らない。一覧の上の余白 = ピルの行 44）',
+        (tester) async {
+      await pumpMessageScreen(
+        tester,
+        overrides: messageScreenOverrides(messages: sampleThread()),
+        viewPadding: _phone,
+      );
+      final tabs = find.byType(FcSubTabs<MessageFilter>);
+      expect(tester.widget<FcSubTabs<MessageFilter>>(tabs).floating, isTrue);
+      // 会話の領域の上端 = ピルの上端（ステータスバーのすぐ下）
+      final list = find.byWidgetPredicate((w) => w is ListView && w.reverse);
+      expect(list, findsOneWidget);
+      expect(tester.getRect(list).top, tester.getRect(tabs).top);
+      expect(tester.getRect(list).top, 47);
+      // 中身がピルに隠れないよう、いちばん古い側の端にピルの行の分を空ける
+      final padding =
+          tester.widget<ListView>(list).padding!.resolve(TextDirection.ltr);
+      expect(padding.top, 44);
+    });
+
+    testWidgets('一覧の端までスクロールしても「これ以上メッセージはありません」はピルに隠れない', (tester) async {
+      await pumpMessageScreen(
+        tester,
+        overrides: messageScreenOverrides(messages: sampleThread()),
+        viewPadding: _phone,
+      );
+      final list = find.byWidgetPredicate((w) => w is ListView && w.reverse);
+      final position = tester
+          .state<ScrollableState>(find
+              .descendant(of: list, matching: find.byType(Scrollable))
+              .first)
+          .position;
+      // 画面に収まらない会話であること（スクロール中はピルの下を通る）
+      expect(position.maxScrollExtent, greaterThan(0));
+      position.jumpTo(position.maxScrollExtent);
+      await tester.pumpAndSettle();
+
+      final caption = find.text('これ以上メッセージはありません');
+      expect(caption, findsOneWidget);
+      expect(
+        tester.getRect(caption).top,
+        greaterThanOrEqualTo(
+            tester.getRect(find.byType(FcSubTabs<MessageFilter>)).bottom),
+      );
+    });
+
+    for (final (name, brightness, colors) in [
+      ('ライト', Brightness.light, AppColorsExtension.light),
+      ('ダーク', Brightness.dark, AppColorsExtension.dark),
+    ]) {
+      testWidgets(
+          '$name: 外枠は下部ナビと同じ浮いた面（navigationSurface + 1px の navigationBorder + ぼかし + 影）',
+          (tester) async {
+        await pumpMessageScreen(
+          tester,
+          overrides: messageScreenOverrides(messages: sampleThread()),
+          viewPadding: _phone,
+          brightness: brightness,
+        );
+        final tabs = find.byType(FcSubTabs<MessageFilter>);
+        final faceFinder = find.descendant(
+          of: tabs,
+          matching: find.byWidgetPredicate((w) =>
+              w is DecoratedBox &&
+              w.decoration is BoxDecoration &&
+              (w.decoration as BoxDecoration).border != null),
+        );
+        final face =
+            tester.widget<DecoratedBox>(faceFinder).decoration as BoxDecoration;
+        expect(face.color, colors.navigationSurface);
+        expect(
+          face.border,
+          Border.all(color: colors.navigationBorder, width: 1),
+        );
+        // 枠を足しても外枠の見た目の高さは 32 のまま（部品 44 の中央・幅は部品と同じ）
+        final faceRect = tester.getRect(faceFinder);
+        final rect = tester.getRect(tabs);
+        expect(faceRect.height, 32);
+        expect(faceRect.top - rect.top, 6);
+        expect(faceRect.width, rect.width);
+
+        expect(
+          find.descendant(of: tabs, matching: find.byType(BackdropFilter)),
+          findsOneWidget,
+        );
+        final shadow = tester
+            .widgetList<DecoratedBox>(find.descendant(
+              of: tabs,
+              matching: find.byType(DecoratedBox),
+            ))
+            .map((box) => box.decoration)
+            .whereType<BoxDecoration>()
+            .singleWhere((d) => d.boxShadow != null)
+            .boxShadow!;
+        expect(shadow, hasLength(1));
+        expect(shadow.single.offset, const Offset(0, 3));
+        expect(shadow.single.blurRadius, 14);
+        expect(
+          shadow.single.color.a,
+          closeTo(brightness == Brightness.dark ? 0.20 : 0.04, 0.005),
+        );
+      });
+    }
+
+    testWidgets('「コントラストを高く」のときは、ぼかさず不透明な surface', (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(highContrast: true);
+      addTearDown(
+          tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      await pumpMessageScreen(
+        tester,
+        overrides: messageScreenOverrides(messages: sampleThread()),
+        viewPadding: _phone,
+      );
+      final tabs = find.byType(FcSubTabs<MessageFilter>);
+      expect(
+        find.descendant(of: tabs, matching: find.byType(BackdropFilter)),
+        findsNothing,
+      );
+      final face = tester
+          .widgetList<DecoratedBox>(find.descendant(
+            of: tabs,
+            matching: find.byType(DecoratedBox),
+          ))
+          .map((box) => box.decoration)
+          .whereType<BoxDecoration>()
+          .singleWhere((d) => d.border != null);
+      expect(face.color, AppColorsExtension.light.surface);
+    });
+
     testWidgets('タップ領域は高さ 44 以上', (tester) async {
       await pumpMessageScreen(
         tester,
