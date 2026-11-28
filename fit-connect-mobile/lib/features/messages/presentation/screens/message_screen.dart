@@ -13,7 +13,6 @@ import 'package:fit_connect_mobile/features/messages/providers/paginated_message
 import 'package:fit_connect_mobile/features/messages/presentation/widgets/message_bubble.dart';
 import 'package:fit_connect_mobile/features/messages/presentation/widgets/chat_input.dart';
 import 'package:fit_connect_mobile/features/messages/presentation/widgets/reply_quote.dart';
-import 'package:fit_connect_mobile/features/messages/presentation/widgets/trainer_avatar.dart';
 import 'package:fit_connect_mobile/features/auth/providers/auth_provider.dart';
 import 'package:fit_connect_mobile/features/auth/providers/current_user_provider.dart';
 import 'package:intl/intl.dart';
@@ -26,7 +25,8 @@ import 'package:fit_connect_mobile/shared/widgets/fc/fc.dart';
 
 /// メッセージタブ（トレーナーとの会話）。
 ///
-/// 正本 `message-screens.js` の `ChatScreen`: 上から コーチのヘッダー → 会話 → クイック操作 + 入力。
+/// 正本 `message-screens.js` の `ChatScreen` から、コーチのヘッダーを外したもの（Issue #130）:
+/// 上から 絞り込みのピル → 会話 → クイック操作 + 入力。
 /// 固定高さの会話で、入力欄は下に固定する（キーボードの真上 / ナビの上）。
 /// 自分のメッセージもトレーナーのメッセージも吹き出し（[MessageBubble]。自分は surface・右上が角丸 0、
 /// トレーナーは surfaceSecondary・左上が角丸 0 の鏡写し）。
@@ -230,8 +230,6 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
     });
 
     final currentUser = ref.watch(authNotifierProvider).valueOrNull;
-    final trainerProfile = ref.watch(trainerProfileProvider).valueOrNull;
-    final trainerName = trainerDisplayName(trainerProfile?.name);
 
     // 下部ナビの上へ入力欄を置く。ナビが確保する余白（参照値 93 + 28）のうち、本文との間の 28 は
     // 正本の会話画面にはない（入力欄の下 12 + ナビの上余白 14 で足りる）ので引く。
@@ -248,10 +246,6 @@ class _MessageScreenState extends ConsumerState<MessageScreen> {
           bottom: false,
           child: Column(
             children: [
-              _ChatHeader(
-                name: trainerName,
-                imageValue: trainerProfile?.profileImageUrl,
-              ),
               Expanded(
                 child: LayoutBuilder(
                   builder: (context, constraints) => Column(
@@ -472,62 +466,11 @@ String _dateLabel(DateTime date, {DateTime? now}) {
 // 画面の部品
 // ============================================
 
-/// コーチのヘッダー（正本 `ChatHeader` + `CoachHeader`）。
-///
-/// アバター（46）・名前（25/500/字間 -1）・役割「あなたの担当トレーナー」（14・textSecondary）。
-/// 余白 左右 20 / 上 4 / 下 12、下に 1px の separator。オンライン表示・最終ログインは出さない。
-class _ChatHeader extends StatelessWidget {
-  const _ChatHeader({required this.name, required this.imageValue});
-
-  final String name;
-  final String? imageValue;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-    final horizontal = AppSpacing.pageHorizontalOf(context);
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: colors.separator)),
-      ),
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(horizontal, 4, horizontal, 12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            TrainerAvatar(name: name, imageValue: imageValue, size: FcAvatar.lg),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Semantics(
-                    header: true,
-                    child: Text(name, style: AppTextStyles.coachName(context)),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    'あなたの担当トレーナー',
-                    style: AppTextStyles.label(context)
-                        .copyWith(color: colors.textSecondary, height: 1.5),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 /// 会話の領域。上に絞り込み（すべて / 記録）のタブ、下に会話。
 ///
-/// 正本の会話画面には絞り込みが無いが、現行の機能（記録だけに絞り込める）を残すため、
-/// ヘッダーの下に置く。記録画面と同じ [FcSubTabs]（カプセルの中で選択中だけ面と accent の文字）で、
-/// 2 項目なので幅いっぱいに等分して広がる。ボタンではなくタブに見えるようにするためで、
-/// 選択中はライト・ダークどちらでも面の違いと文字の色・太さの両方で分かる。
+/// 画面の上にコーチのヘッダーは置かない（誰との会話かは、吹き出しのアバターと名前で分かる）。
+/// 会話に高さを譲るため、絞り込みは小さなピル（[FcSubTabs.compact]。見た目 32・タッチ領域 44）を
+/// 中央に置く。選択中はライト・ダークどちらでも面の違いと文字の色・太さの両方で分かる。
 /// この領域の高さが足りないとき（キーボード表示中に記録フォームを開いたなど）は、
 /// 行ごと畳んで会話に高さを譲る。
 class _ThreadArea extends StatelessWidget {
@@ -537,13 +480,8 @@ class _ThreadArea extends StatelessWidget {
     required this.child,
   });
 
-  /// タブの行の余白（上・下）。ヘッダーの下線とタブ、タブと会話の間を空ける
-  static const double filterTop = 12;
-  static const double filterBottom = 8;
-
-  /// タブの行の高さ（タブ 44 + カプセルの内側余白 4×2 + 上下の余白）
-  static const double filterRowHeight =
-      AppSizes.minTouch + FcSubTabs.inset * 2 + filterTop + filterBottom;
+  /// タブの行の高さ（ピルの上下の透明なタッチ領域を含む。行の余白は足さない）
+  static const double filterRowHeight = FcSubTabs.compactTouchHeight;
 
   /// タブの行を出すのに必要な領域の高さ（タブの行 + 会話に最低限の高さ）
   static const double minHeightForFilter = filterRowHeight + 112;
@@ -561,19 +499,21 @@ class _ThreadArea extends StatelessWidget {
         children: [
           if (constraints.maxHeight >= minHeightForFilter)
             Padding(
-              padding: EdgeInsets.fromLTRB(
-                horizontal,
-                filterTop,
-                horizontal,
-                filterBottom,
-              ),
-              child: FcSubTabs<MessageFilter>(
-                items: const [
-                  FcSubTabItem(value: MessageFilter.all, label: 'すべて'),
-                  FcSubTabItem(value: MessageFilter.recordsOnly, label: '記録'),
-                ],
-                selected: filter,
-                onChanged: onFilterChanged,
+              padding: EdgeInsets.symmetric(horizontal: horizontal),
+              child: Center(
+                child: Semantics(
+                  container: true,
+                  label: 'メッセージの絞り込み',
+                  child: FcSubTabs<MessageFilter>.compact(
+                    items: const [
+                      FcSubTabItem(value: MessageFilter.all, label: 'すべて'),
+                      FcSubTabItem(
+                          value: MessageFilter.recordsOnly, label: '記録'),
+                    ],
+                    selected: filter,
+                    onChanged: onFilterChanged,
+                  ),
+                ),
               ),
             ),
           Expanded(child: child),
@@ -752,7 +692,6 @@ class _PreviewMessageScreen extends StatelessWidget {
 
     return Column(
       children: [
-        const _ChatHeader(name: '田中トレーナー', imageValue: null),
         Expanded(
           child: _ThreadArea(
             filter: MessageFilter.all,

@@ -56,6 +56,7 @@ class FcPreviewGallery extends StatefulWidget {
 class _FcPreviewGalleryState extends State<FcPreviewGallery> {
   String _period = 'month';
   String _subTab = 'weight';
+  bool _compactRecordsOnly = false;
   String _meal = 'lunch';
   String _kind = 'all';
   bool _toggle = true;
@@ -254,6 +255,17 @@ class _FcPreviewGalleryState extends State<FcPreviewGallery> {
               ],
               selected: _subTab,
               onChanged: (v) => setState(() => _subTab = v),
+            ),
+            const SizedBox(height: AppSpacing.cardGap),
+            Center(
+              child: FcSubTabs<bool>.compact(
+                items: const [
+                  FcSubTabItem(value: false, label: 'すべて'),
+                  FcSubTabItem(value: true, label: '記録'),
+                ],
+                selected: _compactRecordsOnly,
+                onChanged: (v) => setState(() => _compactRecordsOnly = v),
+              ),
             ),
             const SizedBox(height: AppSpacing.cardGap),
             FcChips<String>.single(
