@@ -939,3 +939,28 @@
 - `information_schema.column_privileges` / `table_privileges` は、見る人が grantor か grantee（またはその所属）の権限しか出さない。5.11 の適用後に Supabase MCP の `execute_sql`（`supabase_read_only_user`）で確かめると、実際は9列ある authenticated の UPDATE が0件と出た。migration ヘッダーの「適用後の確認」で余分な列権限を探す部分は、このユーザーでは余分な権限があっても0行になる（隔離スタックでは postgres で流したので気づかなかった。SQL エディタも postgres なので見える）
 - 権限の確認は `has_table_privilege` / `has_column_privilege` / `has_any_column_privilege` / `has_function_privilege` と `pg_attribute` で書く。見る人に関係なく、そのロールの実際の権限（PUBLIC やロールの所属を通した付与も含む）を返す。migration 末尾の検査 DO ブロックはこの形だったので、適用時の検査は正しく効いていた
 - 「0 行なら OK」の確認には、見えていることの対照を一緒に出す（ここでは、付けたはずの9列を `has_column_privilege` で数えて 9 になること。改ざんの確認では全行数）。0 行が「無い」のか「見えない」のかを分けられる
+
+## Health Connect の権限画面からプライバシーポリシーを開く（フェーズ1.6 の残り、2026-11-23、`fix/health-connect-privacy-policy`）で得た知見
+
+### 「プライバシーポリシー」の入り口は2つ — 専用の Activity に向け、Flutter は起動しない
+- Android 13 以下（Health Connect が APK の端末）は `androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE` の intent-filter、14 以上は `VIEW_PERMISSION_USAGE` + `HEALTH_PERMISSIONS` の activity-alias（`START_VIEW_PERMISSION_USAGE` で守られる）から入る。health プラグインの README どおり MainActivity に向けると、リンクを押してもアプリが開くだけになる
+- Android の公式の例と同じく、専用の Activity（`PermissionsRationaleActivity`）に向け、外部のブラウザでプライバシーポリシーを開いてすぐ閉じる。URL は Dart の `LegalLinks.privacyUrl` と Kotlin の2か所に持つので、Dart のテストで Kotlin のソースを読んで照合する
+
+### adb での再現: 13 以下の入り口は名指し（`-n`）で開く
+- intent-filter に `DEFAULT` の category が無い（公式の例も、変更前の MainActivity も同じ）ので、`am start -a androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE -p <pkg>` は `unable to resolve Intent` になる。Health Connect は受け手を問い合わせてから名指しで開くので、`-n <pkg>/.PermissionsRationaleActivity` で再現する
+- 14 以上の alias は adb から直接は開けない。Health Connect の権限の要求の画面の「privacy policy」か、アプリごとの権限の画面（`am start -a android.health.connect.action.MANAGE_HEALTH_PERMISSIONS --es android.intent.extra.PACKAGE_NAME <pkg>`）の「Read privacy policy」から押す
+- 開いた URL は `logcat -s ActivityTaskManager:I` の `START u0 {act=android.intent.action.VIEW dat=https://<host>/...}` で確かめる（パスは伏せられるので、値はテストで照合する）。新しいエミュレータの Chrome は初回の案内が出て、進めると Chrome の利用規約に同意することになるので、ページの中身はそこでは見ない
+
+### アプリのリンク先が本番で開けるかは、本番の Web で確かめる
+- 規約の3ページ（6.1、2026-07）は develop にしか無く、本番の Web（main、2026-04-26）では `/privacy`・`/terms` が 404 だった。アプリの設定・同意ダイアログのリンクも、本番では開けていなかった
+- アプリに外部のリンクを足す・変えるときは、`git ls-tree -r --name-only origin/main -- fit-connect/src/app` と本番の URL（公開ページの GET）で、リンク先が本番に出ているかを確かめる
+
+### エミュレータのスナップショットにアプリが入っていないことがある
+- `-no-snapshot-save` で起動していたため、Medium_Phone_API_37.0 の default_boot は前回の QA の前のままで、アプリも書き込み用アプリも入っていなかった。検証用ビルドを入れ、テストログインからやり直す（権限の最初の要求から確かめられる）
+
+## このリポジトリは公開（2026-11-23 に確認）
+
+### 本番でまだ塞がっていない穴の経路・手順は、ドキュメント・PR・コミットに書かない
+- `hoshiyuu0320/fit-connect` は公開リポジトリで、タスク表・lessons・PR 本文・コミットメッセージは誰でも読める（`gh repo view hoshiyuu0320/fit-connect --json visibility`）
+- 本番に残っている穴は「どの種類の問題か」と「直したかどうか」だけを書き、経路・手順・具体的な URL や id の手に入れ方はオーナーへの報告に書く。修正が本番に出た後なら、経緯として詳しく書いてよい
+- セキュリティの記録を書く前に visibility を確かめる。サイドセッションのブリーフにも書く
