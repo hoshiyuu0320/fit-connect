@@ -1,6 +1,11 @@
 // ================================================
 // FIT-CONNECT 顧客管理機能 TypeScript型定義
 // ================================================
+// 【Storage 値のセマンティクス（フェーズ8.2）】
+// 画像/ファイル系カラム（profile_image_url / image_urls / images / file_urls）は
+// 「バケット相対パス」保存へ移行済み。レガシー行にはフルURL
+// （/storage/v1/object/public/... 形式）や外部URL（Google 等）が共存するため、
+// 表示・削除は必ず src/lib/supabase/storagePaths.ts のヘルパー経由で扱うこと。
 
 // クライアント基本情報
 export type Client = {
@@ -15,7 +20,7 @@ export type Client = {
   purpose: 'diet' | 'contest' | 'body_make' | 'health_improvement' | 'mental_improvement' | 'performance_improvement'
   goal_description: string | null
   goal_deadline: string | null
-  profile_image_url: string | null
+  profile_image_url: string | null  // client-avatars バケットのパス（レガシー行はフルURL共存）
   line_user_id: string | null
   created_at: string
 }
@@ -33,7 +38,7 @@ export type WeightRecord = {
   weight: number
   notes: string | null
   recorded_at: string
-  image_urls?: string[] | null
+  image_urls?: string[] | null  // message-photos バケットのパス（レガシー行はフルURL共存）
 }
 
 // 食事記録
@@ -43,7 +48,7 @@ export type MealRecord = {
   meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack'
   notes: string | null
   calories: number | null
-  images: string[] | null
+  images: string[] | null  // message-photos バケットのパス（レガシー行はフルURL共存）
   recorded_at: string
 }
 
@@ -68,7 +73,7 @@ export type Message = {
   created_at: string
   senderType: 'client' | 'trainer'
   receiverType: 'client' | 'trainer'
-  image_urls: string[]
+  image_urls: string[]  // message-photos バケットのパス（レガシー行はフルURL共存）
   is_edited: boolean
   edited_at: string | null
   read_at: string | null
@@ -77,7 +82,7 @@ export type Message = {
     id: string
     sender: string
     content: string
-    image_urls?: string[]
+    image_urls?: string[]  // message-photos バケットのパス（レガシー行はフルURL共存）
   } | null
 }
 
@@ -181,7 +186,7 @@ export type ClientNote = {
   trainer_id: string
   title: string
   content: string
-  file_urls: string[]
+  file_urls: string[]  // client-notes バケットの `パス#元ファイル名` 形式（レガシー行はフルURL共存）
   is_shared: boolean
   shared_at: string | null
   session_number: number | null
@@ -195,7 +200,7 @@ export type CreateClientNoteParams = {
   trainerId: string
   title: string
   content: string
-  fileUrls?: string[]
+  fileUrls?: string[]  // client-notes バケットの `パス#元ファイル名` 形式
   isShared?: boolean
   sessionNumber?: number | null
 }
@@ -205,7 +210,7 @@ export type UpdateClientNoteParams = {
   id: string
   title?: string
   content?: string
-  fileUrls?: string[]
+  fileUrls?: string[]  // client-notes バケットの `パス#元ファイル名` 形式（レガシー行はフルURL共存）
   isShared?: boolean
   sessionNumber?: number | null
 }

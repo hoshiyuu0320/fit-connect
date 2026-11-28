@@ -3,6 +3,11 @@ import { supabase } from '@/lib/supabase'
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 
+/**
+ * カルテ添付ファイルを client-notes バケットへアップロードする。
+ * 戻り値は `パス#encodeURIComponent(元ファイル名)` 形式
+ * （DB にはパスを保存し、表示時に署名URLへ解決する）。
+ */
 export async function uploadNoteFile(
   file: File,
   trainerId: string,
@@ -29,10 +34,6 @@ export async function uploadNoteFile(
     throw error
   }
 
-  const { data: { publicUrl } } = supabase.storage
-    .from('client-notes')
-    .getPublicUrl(path)
-
-  // 元のファイル名をハッシュフラグメントに付加（表示用）
-  return `${publicUrl}#${encodeURIComponent(file.name)}`
+  // 元のファイル名をハッシュフラグメントに付加（表示用）。ベースはバケット相対パス
+  return `${path}#${encodeURIComponent(file.name)}`
 }
