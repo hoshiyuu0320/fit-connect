@@ -244,7 +244,7 @@ await SupabaseService.initialize();
 **Row Level Security (RLS):**
 - Messages: Users can only view/send messages they're part of
 - Edit: Only within 5 minutes of creation
-- Trainers: Anyone can read (for QR code flow), only self can update/insert
+- Trainers: before login (anon) only `id`, `name`, `profile_image_url` can be read (QR / invite-code registration); after login a trainer can read only its own row and a client only its trainer's row; only self can update/insert
 - Clients: Users can only access their own records
 
 **Common Patterns:**
