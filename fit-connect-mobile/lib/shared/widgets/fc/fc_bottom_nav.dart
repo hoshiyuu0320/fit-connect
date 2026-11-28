@@ -63,6 +63,18 @@ class FcBottomNav extends StatelessWidget {
   /// ナビのラベルの文字拡大の上限
   static const double maxLabelScale = 1.15;
 
+  /// カプセルの背景ぼかしの強さ（浮いた部品で共通。[FcSubTabs.compact] の floating も使う）
+  static const double blurSigma = 18;
+
+  /// カプセルの薄い影（`0 3px 14px`。ライトは黒約 4%、ダークは 20%）。浮いた部品で共通
+  static List<BoxShadow> capsuleShadow({required bool isDark}) => [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.04),
+          offset: const Offset(0, 3),
+          blurRadius: 14,
+        ),
+      ];
+
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
@@ -109,7 +121,7 @@ class FcBottomNav extends StatelessWidget {
 
     if (!solid) {
       capsuleContent = BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
         child: capsuleContent,
       );
     }
@@ -132,13 +144,7 @@ class FcBottomNav extends StatelessWidget {
           child: DecoratedBox(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(AppRadius.navigation),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.04),
-                  offset: const Offset(0, 3),
-                  blurRadius: 14,
-                ),
-              ],
+              boxShadow: capsuleShadow(isDark: isDark),
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(AppRadius.navigation),
