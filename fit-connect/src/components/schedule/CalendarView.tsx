@@ -513,119 +513,123 @@ export default function CalendarView() {
         const days = visibleDays();
         return (
             <div className="flex flex-col h-full overflow-hidden" style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: '6px' }}>
-                {/* Header */}
-                <div className="flex" style={{ borderBottom: '1px solid #E2E8F0' }}>
-                    <div className="w-16 flex-shrink-0" style={{ borderRight: '1px solid #E2E8F0', backgroundColor: '#F8FAFC' }}></div>
-                    <div className={`flex-1 grid ${viewMode === 'day' ? 'grid-cols-1' : 'grid-cols-7'}`}>
-                        {days.map((day, i) => {
-                            const isToday = isSameDay(day, new Date());
-                            return (
-                                <div key={i} className="py-3 text-center" style={{ borderRight: '1px solid #F1F5F9', backgroundColor: isToday ? 'rgba(20,184,166,0.04)' : undefined }}>
-                                    <div className="text-xs font-semibold tracking-wider" style={{ color: isToday ? '#14B8A6' : '#94A3B8' }}>
-                                        {format(day, 'E', { locale: ja })}
-                                    </div>
-                                    <div className="mt-1 text-xl font-medium" style={{ color: isToday ? '#14B8A6' : '#0F172A' }}>
-                                        {format(day, 'd')}
-                                    </div>
+                    {/* ヘッダーと終日エリアも縦スクロールの中に置き、上に固定する。
+                        外に置くと、スクロールバーの幅だけ下のグリッドが狭くなり、列の罫線がずれる（#128） */}
+                    <div className="flex-1 overflow-y-auto relative">
+                        <div className="sticky top-0 z-30" style={{ backgroundColor: '#fff' }}>
+                            {/* Header */}
+                            <div className="flex" style={{ borderBottom: '1px solid #E2E8F0' }}>
+                                <div className="w-16 flex-shrink-0" style={{ borderRight: '1px solid #E2E8F0', backgroundColor: '#F8FAFC' }}></div>
+                                <div className={`flex-1 grid ${viewMode === 'day' ? 'grid-cols-1' : 'grid-cols-7'}`}>
+                                    {days.map((day, i) => {
+                                        const isToday = isSameDay(day, new Date());
+                                        return (
+                                            <div key={i} className="py-3 text-center" style={{ borderRight: '1px solid #F1F5F9', backgroundColor: isToday ? 'rgba(20,184,166,0.04)' : undefined }}>
+                                                <div className="text-xs font-semibold tracking-wider" style={{ color: isToday ? '#14B8A6' : '#94A3B8' }}>
+                                                    {format(day, 'E', { locale: ja })}
+                                                </div>
+                                                <div className="mt-1 text-xl font-medium" style={{ color: isToday ? '#14B8A6' : '#0F172A' }}>
+                                                    {format(day, 'd')}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
-                            );
-                        })}
-                    </div>
-                </div>
-
-                {/* All-day エリア (アサインメント) */}
-                {selectedClientId && days.some(day => assignments.some(a => a.assigned_date === format(day, 'yyyy-MM-dd') && a.plan?.plan_type !== 'session')) && (
-                    <div className="flex" style={{ borderBottom: '1px solid #E2E8F0', backgroundColor: '#FAFBFC' }}>
-                        <div className="w-16 flex-shrink-0 flex items-center justify-center" style={{ borderRight: '1px solid #E2E8F0' }}>
-                            <span className="text-[10px]" style={{ color: '#94A3B8' }}>終日</span>
-                        </div>
-                        <div className={`flex-1 grid ${viewMode === 'day' ? 'grid-cols-1' : 'grid-cols-7'}`}>
-                            {days.map((day, i) => {
-                                const dayStr = format(day, 'yyyy-MM-dd');
-                                const dayAssignments = assignments.filter(a => a.assigned_date === dayStr && a.plan?.plan_type !== 'session');
-                                return (
-                                    <div key={i} className="px-1 py-1 last:border-r-0 min-h-[32px] space-y-0.5" style={{ borderRight: '1px solid #F1F5F9' }}>
-                                        {dayAssignments.map(a => (
-                                            <AssignmentMiniCard key={a.id} assignment={a} viewMode={viewMode} onDelete={handleDeleteAssignment} />
-                                        ))}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
-
-                {/* Grid Scrollable Area */}
-                <div className="flex-1 overflow-y-auto relative">
-                    <div className="flex min-h-[1360px]">
-                        {/* Time Column */}
-                        <div className="w-16 flex-shrink-0 text-xs font-medium sticky left-0 z-20 pb-[50px]" style={{ borderRight: '1px solid #E2E8F0', backgroundColor: '#fff', color: '#94A3B8' }}>
-                            {HOURS.map(hour => (
-                                <div key={hour} className="h-20 relative" style={{ borderBottom: '1px solid #F1F5F9' }}>
-                                    <span className="absolute top-1 right-2 bg-white px-1">
-                                        {hour}:00
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* Days Columns */}
-                        <div className={`flex-1 grid ${viewMode === 'day' ? 'grid-cols-1' : 'grid-cols-7'} relative`}>
-                            {/* Grid Lines Background */}
-                            <div className={`absolute inset-0 grid ${viewMode === 'day' ? 'grid-cols-1' : 'grid-cols-7'} pointer-events-none`}>
-                                {days.map((_, i) => (
-                                    <div key={i} className="h-full" style={{ borderRight: '1px solid #F1F5F9' }}></div>
-                                ))}
                             </div>
 
-                            {/* Horizontal Hour Lines Background */}
-                            <div className="absolute inset-0 flex flex-col pointer-events-none pb-[50px]">
-                                {HOURS.map((_, i) => (
-                                    <div key={i} className="h-20 w-full" style={{ borderBottom: '1px solid #F1F5F9' }}></div>
-                                ))}
-                            </div>
-
-                            {/* Interactive Slots & Events */}
-                            {days.map((day, dayIndex) => (
-                                <div key={dayIndex} className="relative h-full">
-                                    {/* Droppable Time Slots */}
-                                    {HOURS.map((hour) => (
-                                        <TimeSlotCell
-                                            key={hour}
-                                            dateStr={format(day, 'yyyy-MM-dd')}
-                                            hour={hour}
-                                            onClick={() => handleSlotClick(day, hour)}
-                                        />
-                                    ))}
-
-                                    {/* Render Events for this Day */}
-                                    {filteredSessions()
-                                        .filter(session => isSameDay(new Date(session.session_date), day))
-                                        .map(session => {
-                                            const startTime = new Date(session.session_date);
-                                            const startHour = startTime.getHours();
-                                            const startMin = startTime.getMinutes();
-                                            const endTime = new Date(startTime.getTime() + session.duration_minutes * 60000);
-                                            const endHour = endTime.getHours();
-                                            const endMin = endTime.getMinutes();
-
-                                            const gridStartHour = 6;
-                                            const top = ((startHour - gridStartHour) * 60 + startMin) * (80 / 60);
-                                            const durationMins = (endHour * 60 + endMin) - (startHour * 60 + startMin);
-                                            const height = durationMins * (80 / 60);
-
+                            {/* All-day エリア (アサインメント) */}
+                            {selectedClientId && days.some(day => assignments.some(a => a.assigned_date === format(day, 'yyyy-MM-dd') && a.plan?.plan_type !== 'session')) && (
+                                <div className="flex" style={{ borderBottom: '1px solid #E2E8F0', backgroundColor: '#FAFBFC' }}>
+                                    <div className="w-16 flex-shrink-0 flex items-center justify-center" style={{ borderRight: '1px solid #E2E8F0' }}>
+                                        <span className="text-[10px]" style={{ color: '#94A3B8' }}>終日</span>
+                                    </div>
+                                    <div className={`flex-1 grid ${viewMode === 'day' ? 'grid-cols-1' : 'grid-cols-7'}`}>
+                                        {days.map((day, i) => {
+                                            const dayStr = format(day, 'yyyy-MM-dd');
+                                            const dayAssignments = assignments.filter(a => a.assigned_date === dayStr && a.plan?.plan_type !== 'session');
                                             return (
-                                                <div key={session.id} style={{ top: `${top}px`, height: `${height}px`, position: 'absolute', width: '100%' }} className="px-0.5 z-10">
-                                                    <CalendarEvent event={session} onClick={handleSessionClick} viewMode={viewMode} />
+                                                <div key={i} className="px-1 py-1 last:border-r-0 min-h-[32px] space-y-0.5" style={{ borderRight: '1px solid #F1F5F9' }}>
+                                                    {dayAssignments.map(a => (
+                                                        <AssignmentMiniCard key={a.id} assignment={a} viewMode={viewMode} onDelete={handleDeleteAssignment} />
+                                                    ))}
                                                 </div>
                                             );
-                                        })
-                                    }
+                                        })}
+                                    </div>
                                 </div>
-                            ))}
+                            )}
+                        </div>
+
+                        {/* Grid */}
+                        <div className="flex min-h-[1360px]">
+                            {/* Time Column */}
+                            <div className="w-16 flex-shrink-0 text-xs font-medium sticky left-0 z-20 pb-[50px]" style={{ borderRight: '1px solid #E2E8F0', backgroundColor: '#fff', color: '#94A3B8' }}>
+                                {HOURS.map(hour => (
+                                    <div key={hour} className="h-20 relative" style={{ borderBottom: '1px solid #F1F5F9' }}>
+                                        <span className="absolute top-1 right-2 bg-white px-1">
+                                            {hour}:00
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Days Columns */}
+                            <div className={`flex-1 grid ${viewMode === 'day' ? 'grid-cols-1' : 'grid-cols-7'} relative`}>
+                                {/* Grid Lines Background */}
+                                <div className={`absolute inset-0 grid ${viewMode === 'day' ? 'grid-cols-1' : 'grid-cols-7'} pointer-events-none`}>
+                                    {days.map((_, i) => (
+                                        <div key={i} className="h-full" style={{ borderRight: '1px solid #F1F5F9' }}></div>
+                                    ))}
+                                </div>
+
+                                {/* Horizontal Hour Lines Background */}
+                                <div className="absolute inset-0 flex flex-col pointer-events-none pb-[50px]">
+                                    {HOURS.map((_, i) => (
+                                        <div key={i} className="h-20 w-full" style={{ borderBottom: '1px solid #F1F5F9' }}></div>
+                                    ))}
+                                </div>
+
+                                {/* Interactive Slots & Events */}
+                                {days.map((day, dayIndex) => (
+                                    <div key={dayIndex} className="relative h-full">
+                                        {/* Droppable Time Slots */}
+                                        {HOURS.map((hour) => (
+                                            <TimeSlotCell
+                                                key={hour}
+                                                dateStr={format(day, 'yyyy-MM-dd')}
+                                                hour={hour}
+                                                onClick={() => handleSlotClick(day, hour)}
+                                            />
+                                        ))}
+
+                                        {/* Render Events for this Day */}
+                                        {filteredSessions()
+                                            .filter(session => isSameDay(new Date(session.session_date), day))
+                                            .map(session => {
+                                                const startTime = new Date(session.session_date);
+                                                const startHour = startTime.getHours();
+                                                const startMin = startTime.getMinutes();
+                                                const endTime = new Date(startTime.getTime() + session.duration_minutes * 60000);
+                                                const endHour = endTime.getHours();
+                                                const endMin = endTime.getMinutes();
+
+                                                const gridStartHour = 6;
+                                                const top = ((startHour - gridStartHour) * 60 + startMin) * (80 / 60);
+                                                const durationMins = (endHour * 60 + endMin) - (startHour * 60 + startMin);
+                                                const height = durationMins * (80 / 60);
+
+                                                return (
+                                                    <div key={session.id} style={{ top: `${top}px`, height: `${height}px`, position: 'absolute', width: '100%' }} className="px-0.5 z-10">
+                                                        <CalendarEvent event={session} onClick={handleSessionClick} viewMode={viewMode} />
+                                                    </div>
+                                                );
+                                            })
+                                        }
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
-                </div>
             </div>
         );
     };
