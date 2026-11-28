@@ -21,8 +21,8 @@ Finder _filterTab(String label) => find.descendant(
 void main() {
   setUp(FakeMessages.sent.clear);
 
-  group('ヘッダー', () {
-    testWidgets('コーチのヘッダー（名前・「あなたの担当トレーナー」）。オンライン表示・最終ログインは出さない',
+  group('ヘッダー（置かない。Issue #130）', () {
+    testWidgets('コーチのヘッダー（アバター・名前・「あなたの担当トレーナー」）は出さず、絞り込みのピルが画面のいちばん上',
         (tester) async {
       await pumpMessageScreen(
         tester,
@@ -30,16 +30,24 @@ void main() {
         viewPadding: _phone,
       );
 
-      expect(find.text('田中トレーナー'), findsWidgets);
-      expect(find.text('あなたの担当トレーナー'), findsOneWidget);
+      expect(find.text('あなたの担当トレーナー'), findsNothing);
+      // 名前だけの見出しは無い（名前は吹き出しの宛名に出る）
+      expect(find.text('田中トレーナー'), findsNothing);
+      expect(find.text('田中トレーナー · 19:12'), findsOneWidget);
       expect(find.textContaining('オンライン'), findsNothing);
       expect(find.textContaining('オフライン'), findsNothing);
       expect(find.textContaining('最終'), findsNothing);
-      // アバターは 46
-      expect(tester.getSize(find.byType(FcAvatar).first), const Size(46, 46));
+      // 大きなアバター（46）は無い
+      for (final avatar in tester.widgetList<FcAvatar>(find.byType(FcAvatar))) {
+        expect(avatar.size, lessThan(46));
+      }
+      // ステータスバー（47）のすぐ下からピルの行（高さ 44）
+      final tabs = find.byType(FcSubTabs<MessageFilter>);
+      expect(tester.getTopLeft(tabs).dy, 47);
+      expect(tester.getSize(tabs).height, 44);
     });
 
-    testWidgets('名前が「田中」でも「田中トレーナー」でも、見出しは「田中トレーナー」（二重にならない）',
+    testWidgets('名前が「田中」でも「田中トレーナー」でも、吹き出しの宛名は「田中トレーナー」（二重にならない）',
         (tester) async {
       for (final raw in ['田中', '田中トレーナー']) {
         await pumpMessageScreen(
@@ -51,26 +59,11 @@ void main() {
           viewPadding: _phone,
         );
 
-        expect(find.text('田中トレーナー'), findsWidgets, reason: raw);
         expect(find.textContaining('トレーナートレーナー'), findsNothing, reason: raw);
         // 吹き出しの宛名・返信の引用も同じ表記
         expect(find.text('田中トレーナー · 19:12'), findsOneWidget, reason: raw);
         expect(find.textContaining('田中トレーナーへの返信'), findsOneWidget, reason: raw);
       }
-    });
-
-    testWidgets('名前は 25px・字間 -1（コーチ名）', (tester) async {
-      await pumpMessageScreen(
-        tester,
-        overrides: messageScreenOverrides(messages: sampleThread()),
-        viewPadding: _phone,
-      );
-      final name = tester.widget<Text>(find.descendant(
-        of: find.byWidgetPredicate((w) => w is Semantics && w.properties.header == true),
-        matching: find.text('田中トレーナー'),
-      ).first);
-      expect(name.style?.fontSize, 25);
-      expect(name.style?.letterSpacing, -1);
     });
   });
 
@@ -175,7 +168,7 @@ void main() {
   });
 
   group('絞り込みのタブ（すべて / 記録）', () {
-    testWidgets('2 項目のタブが幅いっぱい（画面の左右余白の内側）に等分して広がり、ボタン（チップ）ではない',
+    testWidgets('小さなピル（見た目の高さ 32）を中央に置き、2 つのタブは等幅。ボタン（チップ）ではない',
         (tester) async {
       await pumpMessageScreen(
         tester,
@@ -185,13 +178,13 @@ void main() {
       expect(find.byType(FcChips<MessageFilter>), findsNothing);
       final tabs = find.byType(FcSubTabs<MessageFilter>);
       expect(tabs, findsOneWidget);
-      // 390 - 左右 20
-      expect(tester.getSize(tabs).width, 350);
-      expect(tester.getTopLeft(tabs).dx, 20);
+      // 幅いっぱいには広げず、画面（390）の中央
+      final rect = tester.getRect(tabs);
+      expect(rect.width, lessThan(200));
+      expect(rect.center.dx, closeTo(195, 0.5));
       // 文言は「すべて」「記録」のまま
       expect(_filterTab('すべて'), findsOneWidget);
       expect(_filterTab('記録'), findsOneWidget);
-      // 2 つのタブは、外枠の中でほぼ半分ずつ（文字数の違いの分だけが差）
       Rect faceOf(String label) => tester.getRect(find
           .ancestor(
             of: _filterTab(label),
@@ -200,10 +193,16 @@ void main() {
           .first);
       final all = faceOf('すべて');
       final records = faceOf('記録');
-      expect((all.width - records.width).abs(), lessThan(24));
-      expect(all.left, lessThan(records.left));
-      // 外枠の内側余白 4 と、タブの間隔 2 を除いて、ほぼ全幅を 2 つで使う
-      expect(all.width + records.width, closeTo(350 - 4 * 2 - 2, 1));
+      // 面は高さ 28・等幅で、間隔 2
+      expect(all.height, 28);
+      expect(records.height, 28);
+      expect(all.width, closeTo(records.width, 0.01));
+      expect(records.left - all.right, closeTo(2, 0.01));
+      // 外枠（見た目）は面の外側に 2 ずつ = 高さ 32。部品の高さ 44 の中央
+      expect(all.top - rect.top, 8);
+      expect(rect.bottom - all.bottom, 8);
+      expect(all.left - rect.left, closeTo(2, 0.01));
+      expect(rect.right - records.right, closeTo(2, 0.01));
     });
 
     testWidgets('タップ領域は高さ 44 以上', (tester) async {
@@ -300,7 +299,11 @@ void main() {
         textScale: 1.35,
       );
       expect(tester.takeException(), isNull);
-      expect(tester.getSize(find.byType(FcSubTabs<MessageFilter>)).width, 350);
+      final rect = tester.getRect(find.byType(FcSubTabs<MessageFilter>));
+      expect(rect.width, lessThanOrEqualTo(350));
+      expect(rect.center.dx, closeTo(195, 0.5));
+      // 文字が大きくなった分だけ高さが伸びる（44 を下回らない）
+      expect(rect.height, greaterThanOrEqualTo(44));
     });
 
     testWidgets('高さが足りないとき（キーボード + 記録フォーム）は、タブの行ごと畳んで会話に譲る', (tester) async {

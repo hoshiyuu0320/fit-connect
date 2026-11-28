@@ -89,15 +89,6 @@ class AppTextStyles {
         height: 1.3,
       );
 
-  /// コーチ名（コーチ画面）。25 / 500 / 字間 -1 / 行高 1.2（正本 `CoachHeader` は letterSpacing -1）
-  static TextStyle coachName(BuildContext context) => _style(
-        context,
-        size: 25,
-        weight: FontWeight.w500,
-        letterSpacing: -1,
-        height: 1.2,
-      );
-
   /// 種目名。17 / 500 / 行高 1.5
   static TextStyle exerciseName(BuildContext context) => _style(
         context,
