@@ -993,6 +993,22 @@
 - 隔離スタックの cron は、postgres では `cron.job` を UPDATE できない（permission denied）。`select cron.alter_job(jobid, active := false) from cron.job where active` で止める
 - 修正前の版の再現（負の対照）は、修正後のファイルをスクラッチに控え、`git show origin/develop/1.0.0:<path> > <path>` で戻して同じ dev server（HMR）で行い、控えから戻したら sha256 で一致を確かめる
 
+## RLS の CI テスト基盤（フェーズ5.4、2026-11-28）で得た知見
+
+### UPDATE・DELETE の穴は、列を読まない形で試す — `SET id = id` は SELECT のポリシーに隠される
+- `UPDATE t SET id = id` は列を読むので、UPDATE のポリシーに加えて SELECT のポリシーも掛かる。他人に UPDATE を通すポリシー（`FOR UPDATE TO authenticated USING (true)`）を足して試すと、SELECT が絞っているせいで 0 行になり、穴を見逃した。`SET 列 = DEFAULT` / `SET 列 = NULL`（WHERE も RETURNING も無し）なら届いた
+- 同じ値での上書きは `to_jsonb` の写しの比較では見分けられず、本当に消すと FK の参照エラーが穴を隠す。届いた行を BEFORE トリガーで記録して NULL を返す（行は変わらない）形にした（`rls_baseline_test.sql`）
+
+### 権限（GRANT）で止まる穴は、振る舞いのテストでは見えない — ポリシーの静的な確認と両方で守る
+- anon に表の権限が無い表（例: `payments`）に `FOR SELECT TO anon USING (true)` を足しても、権限の層で止まるので、振る舞いの確認は通る。あとで誰かが GRANT を足した瞬間に開く。条件の無いポリシーを許可リストで止める静的な確認を併せて置いた
+
+### docker exec の外で `2>&1` すると、psql の NOTICE と stdout の順序が入れ替わる
+- 最後の `PASSED` が NOTICE（stderr）で出るテストでは、外でまとめると後ろの行（完了タグ `DO` など）が先に届き、「最後の行が PASSED」の判定が揺れた。コンテナの中で `sh -c 'exec psql ... 2>&1'` とまとめ、`-q` で完了タグを消す（`run_all.sh`）
+- Supabase CLI は DB のボリュームにもコンテナと同じ `supabase_db_<id>` という名前を付ける。コンテナの有無は `docker inspect --type container` で調べる
+
+### CI の DB は `supabase db start` で足りる
+- DB のコンテナだけが残り、`supabase/migrations` をすべて当てる（auth・storage の schema も、使い捨てのコンテナが作る）。手元で 15 秒ほど。seed は config の `[db.seed] enabled = false` で止める（`Seed.sql` は macOS では既定の `seed.sql` として読まれるが、Linux では読まれない。どちらでも同じになるよう明示する）
+
 ## スケジュールの罫線のずれ（#128、2026-11-28、`fix/calendar-grid-alignment`）で得た知見
 
 ### スクロールする本文と、外に置いた見出しを同じ grid で揃えると、スクロールバーの幅だけずれる
@@ -1003,4 +1019,3 @@
 ### 並行するセッションが内蔵ブラウザで QA していると、ログインの Cookie が上書きされる
 - 内蔵ブラウザの Cookie はポートで分かれない。隔離スタックはどれも `127.0.0.1` なので Cookie 名が `sb-127-auth-token` で同じになり、別のセッションがテストログインすると、こちらの API Route が 401 になる（Cookie の JWT の `iss` が別のポートになっている）
 - `docker ps` に別の隔離スタックがあれば、ログインし直さない（相手の QA を壊す）。親の `.claude/launch.json` も並行セッションが構成を足すので、控えから丸ごと戻さず、自分の構成だけを取り除く
-
