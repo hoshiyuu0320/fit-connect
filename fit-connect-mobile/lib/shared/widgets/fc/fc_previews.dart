@@ -267,6 +267,19 @@ class _FcPreviewGalleryState extends State<FcPreviewGallery> {
                 onChanged: (v) => setState(() => _compactRecordsOnly = v),
               ),
             ),
+            const SizedBox(height: AppSpacing.sm),
+            // 中身の上に重ねて浮かせるとき（下部ナビと同じ面・枠・ぼかし・影）
+            Center(
+              child: FcSubTabs<bool>.compact(
+                floating: true,
+                items: const [
+                  FcSubTabItem(value: false, label: 'すべて'),
+                  FcSubTabItem(value: true, label: '記録'),
+                ],
+                selected: _compactRecordsOnly,
+                onChanged: (v) => setState(() => _compactRecordsOnly = v),
+              ),
+            ),
             const SizedBox(height: AppSpacing.cardGap),
             FcChips<String>.single(
               items: const [
