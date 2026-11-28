@@ -94,7 +94,7 @@
 
 - **背景**: クライアントには課金 UI を一切持たせず、トレーナーの `subscription_plan` を継承するモデル（FIT-CONNECT のビジネス要件）
 - **チェーン**: `auth.uid()` → `clients.user_id` → `clients.trainer_id` → `trainers.subscription_plan`
-- **RLS の罠**: クライアントが自分のトレーナーの subscription_plan を SELECT できる必要がある。FIT-CONNECT の `trainers_select_all USING (true)` ポリシーがすでにこれを許可していたので追加対応不要だったが、新規プロジェクトでは要注意
+- **RLS の罠**: クライアントが自分のトレーナーの subscription_plan を SELECT できる必要がある。FIT-CONNECT の `trainers_select_all USING (true)` ポリシーがすでにこれを許可していたので追加対応不要だったが、新規プロジェクトでは要注意（2026-11-28 の 5.13 で、顧客が担当トレーナーの行を読むのは `trainers_select_client_trainer` になった。今の Mobile はプランを clients から判定し、trainers のプランは読まない）
 - **関連**: `lib/features/subscription/providers/ai_features_enabled_provider.dart`
 
 ### Anthropic 構造化出力の totals 不整合
@@ -1019,3 +1019,29 @@
 ### 並行するセッションが内蔵ブラウザで QA していると、ログインの Cookie が上書きされる
 - 内蔵ブラウザの Cookie はポートで分かれない。隔離スタックはどれも `127.0.0.1` なので Cookie 名が `sb-127-auth-token` で同じになり、別のセッションがテストログインすると、こちらの API Route が 401 になる（Cookie の JWT の `iss` が別のポートになっている）
 - `docker ps` に別の隔離スタックがあれば、ログインし直さない（相手の QA を壊す）。親の `.claude/launch.json` も並行セッションが構成を足すので、控えから丸ごと戻さず、自分の構成だけを取り除く
+
+## trainers を読める行と列を役ごとに絞る（フェーズ5.13、2026-11-28）で得た知見
+
+### 列単位の GRANT は `select *` を丸ごと 42501 にする — アプリが `*` で読む役は、行（RLS）で絞る
+- 表の SELECT を外して列の SELECT だけを付けると、`*` や付けていない列を含む要求は、読める列だけを返すのではなく、要求ごと `permission denied`（42501）になる。PostgREST の `select=*`、supabase-js の `select('*')`、supabase_flutter の引数の無い `.select()` は、どれも `*`
+- 5.13 では、Web の設定画面と Mobile の全部の版が `*` で読むので、ログイン後は行で絞り、ログイン前（Mobile の登録の3列だけ）は列で絞った
+- 列で絞りたい役があるときは、先にアプリを列を指定して読む形にし、その版が行き渡ってから絞る（Mobile は、版を上げたビルドを配って強制アップデート）
+
+### 権限を絞る migration は、最後に `has_*_privilege` で結果を確かめ、違えば例外で止める
+- `REVOKE` は、migration を流す役が付けた権限しか外さない。本番に別の付与者の GRANT や PUBLIC への GRANT があると、黙って残る。`has_column_privilege`・`has_table_privilege` は、付与者・PUBLIC・役の継承を全部含めて判定する
+- 5.13 では、DO ブロックで anon の列とテーブルの権限・ポリシーの組を確かめた。CLI はファイルごとに1つのトランザクションで当てるので、例外で migration ごと戻り、版も記録されない（隔離 DB で、別の付与者の GRANT を作って確かめた）
+- 手で権限を戻すときの注意: `REVOKE SELECT ON TABLE` は、その役の列単位の SELECT も一緒に外す
+
+### Realtime と GraphQL も、REST と同じ列の権限と RLS に従う — 確かめるときは3つとも
+- Realtime の postgres_changes は、購読者の役の列の権限で通知の列を落とし、RLS で届ける行を選ぶ。pg_graphql は、その役が読めない列をスキーマから消す（`Unknown field`）。どれも隔離スタックで、当てる前と後を比べて確かめた
+- 表を `supabase_realtime` に入れると、RLS と列の権限が許す範囲で、変更の通知が届く。読めてよい範囲を決めるときは、通知も含めて考える
+- pg_graphql 1.6 は、スキーマのコメントで許さない限り、`__schema`・`__type` を返さない。列が見えるかは、列を1つずつ選んで確かめる
+
+### Mobile の古い版が何を読むかは、git の歴史から洗い出す
+- 端末に残る古いビルドも、同じ DB を読む。読み方を変えずに権限を絞るには、全部の版の読み方を知る必要がある。`git log -S"<表名>"` を、subtree の取り込み（2026-04-26）の前のパス（`lib/...`、その前は `fit_connect_mobile/lib/...`）でも引く
+- pubspec の版は 1.0.0+1 のままなので、強制アップデート（`app_config.min_supported_version`）では古いビルドを選べない。古いビルドを切るには、先に版を上げたビルドを配る
+
+### 公開のリポジトリで本番の穴を直す migration は、本番に当ててから PR を出す
+- migration とテストは、直す前に何が誰にできたかを示してしまう。PR（ブランチの push）から本番に当てるまでの間、直し方から穴が分かる
+- 5.13 では、隔離スタックでテストと当てる前後の比較を済ませ、オーナーの指示で手元のブランチから本番に `db push` してから、PR を出した。本番に当てた migration は版が記録されるので、あとで develop から `db push` しても流し直されない
+- ワークツリーから本番に当てるときは、本番とリンク済みのチェックアウトの `supabase/.temp` を写す（gitignore 済み）。終わったら消す（誤って本番に流さないため）

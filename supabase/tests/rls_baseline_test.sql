@@ -202,15 +202,16 @@ CREATE TEMP TABLE rb_open_policy_allowlist (
 ) ON COMMIT DROP;
 
 INSERT INTO rb_open_policy_allowlist (tbl, policy, cmd, reason) VALUES
-  -- trainers_select_all（FOR SELECT TO public USING (true)。20260131000001 で作成）
-  --   Mobile の登録（QR の読み取り・招待コードの入力）で、顧客の行ができる前に、トレーナーの
-  --   id・名前・画像を読む（registration_provider.dart の fetchTrainerInfo）。
-  --   20260712000000 にも「全件読み取りは QR コード連携フローで必要」とある。
-  --   顧客が自分のトレーナーの subscription_plan を読むのにも使う（lessons.md）。
-  --   見直しは既知の課題: 統合判断（2026-07-10-integration-decisions.md 判断5）で、
-  --   招待コードの導入と合わせて扱う予定
-  ('trainers', 'trainers_select_all', 'SELECT',
-   'Mobile の登録（QR・招待コード）でログイン前にトレーナーを読む。見直しは統合判断5 の課題'),
+  -- trainers_select_anon（FOR SELECT TO anon USING (true)。20261128000000 で作成）
+  --   Mobile の登録（QR の読み取り・招待コードの入力）で、ログイン前に、トレーナーの
+  --   id・名前・画像を id で引く（registration_provider.dart の fetchTrainerInfo）。
+  --   anon が読めるのは id・name・profile_image_url の 3 列だけ（列単位の GRANT）。
+  --   ログイン後に見えるのは、トレーナーは自分の行、顧客は担当トレーナーの行だけ
+  --   （trainers_select_own / trainers_select_client_trainer。条件付き）。
+  --   詳しくは trainers_rls_test.sql。anon がトレーナー全員を一覧できるのは既知の課題で、
+  --   統合判断（2026-07-10-integration-decisions.md 判断5）の招待コードの導入で扱う予定
+  ('trainers', 'trainers_select_anon', 'SELECT',
+   'Mobile の登録でログイン前にトレーナーを id で引く。anon が読めるのは 3 列だけ（trainers_rls_test.sql）。全員を一覧できるのは統合判断5 の課題'),
   -- app_config_select_all（FOR SELECT TO anon, authenticated USING (true)。20260829000100 で作成）
   --   Mobile が起動時（ログイン前を含む）に、強制アップデートの判定で読む
   --   （app_config_repository.dart）。中身は公開してよい設定だけ（最小バージョン・ストアの URL・
@@ -229,8 +230,9 @@ CREATE TEMP TABLE rb_visible_allowlist (
 INSERT INTO rb_visible_allowlist (tbl, who, reason)
 SELECT v.tbl, unnest(v.who), v.reason
   FROM (VALUES
-    -- trainers_select_all による（(1) と同じ理由。anon にも、他人のトレーナー・顧客にも見える）
-    ('trainers',   ARRAY['anon', 'B', 'CB'], 'trainers_select_all（(1) と同じ理由）'),
+    -- trainers_select_anon による（(1) と同じ理由）。見えるのは anon だけ（読める 3 列で行を
+    -- 突き合わせる）。B には自分の行、CB には担当トレーナー B の行だけが見え、守る行は見えない
+    ('trainers',   ARRAY['anon'], 'trainers_select_anon（(1) と同じ理由。anon が読めるのは 3 列だけ）'),
     -- app_config_select_all による（(1) と同じ理由）
     ('app_config', ARRAY['anon', 'B', 'CB'], 'app_config_select_all（(1) と同じ理由）')
   ) AS v(tbl, who, reason);
